@@ -368,15 +368,6 @@ CREATE TABLE IF NOT EXISTS `stock_operation_line` (
   INDEX `ix_operation_line_material_operation` (`stock_material_id`, `operation_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `alembic_version` (
-  `version_num` VARCHAR(32) NOT NULL,
-  CONSTRAINT `alembic_version_pkc` PRIMARY KEY (`version_num`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-INSERT INTO `alembic_version` (`version_num`)
-VALUES ('20260718_0004')
-ON DUPLICATE KEY UPDATE `version_num` = VALUES(`version_num`);
-
 -- 首次登录账号，默认密码均为 123456。重复导入不会重置已有账号密码。
 INSERT INTO `user` (`username`, `password_hash`, `display_name`, `role`, `enabled`)
 VALUES

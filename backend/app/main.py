@@ -20,6 +20,7 @@ from app.api.v1 import router as api_router
 from app.core.config import settings
 from app.core.database import engine
 from app.core.errors import AppError
+from app.core.schema import schema_differences
 
 logger = logging.getLogger("spare_parts.api")
 
@@ -152,6 +153,7 @@ async def health(request: Request) -> JSONResponse:
     try:
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
+            differences = await connection.run_sync(schema_differences)
     except Exception as exc:
         logger.warning("database health check failed error_type=%s", type(exc).__name__)
         return error_response(
@@ -159,6 +161,15 @@ async def health(request: Request) -> JSONResponse:
             status_code=503,
             code="DATABASE_UNAVAILABLE",
             message="数据库连接不可用",
+        )
+    if differences:
+        logger.error("database schema mismatch differences=%s", differences)
+        return error_response(
+            request,
+            status_code=503,
+            code="DATABASE_SCHEMA_MISMATCH",
+            message="数据库表结构与当前版本不一致，请重建数据库并导入最新版 init.sql",
+            details=differences,
         )
     return JSONResponse(content={"status": "ok", "database": "ok"})
 
