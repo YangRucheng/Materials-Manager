@@ -214,11 +214,12 @@ onMounted(() => {
       </div></n-card
     ><n-card
       ><n-data-table
+        :bordered="false"
         :columns="columns"
         :data="items"
         :loading="loading"
         :row-key="(r: PurchaseMaterial) => r.id" />
-      <div class="text-right">
+      <div class="pagination-bar">
         <n-pagination
           v-model:page="page"
           :page-size="20"

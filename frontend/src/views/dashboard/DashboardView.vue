@@ -105,7 +105,7 @@ onMounted(load)
           >
         </div></template
       >
-      <n-table :single-line="false"
+      <n-table :bordered="false" :single-line="false"
         ><thead>
           <tr>
             <th>物资</th>

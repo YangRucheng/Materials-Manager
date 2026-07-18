@@ -169,12 +169,13 @@ onMounted(load)
     >
     <n-card
       ><n-data-table
+        :bordered="false"
         :columns="columns"
         :data="items"
         :loading="loading"
         :scroll-x="900"
         :row-key="(r: InventoryBalance) => r.stock_material_id" />
-      <div class="text-right">
+      <div class="pagination-bar">
         <n-pagination
           v-model:page="page"
           :item-count="total"
