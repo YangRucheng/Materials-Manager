@@ -1,6 +1,8 @@
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import Response
 
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter, require_roles
 from app.domain.enums import Role
@@ -13,9 +15,10 @@ from app.schemas import (
     PurchaseMaterialCreate,
     PurchaseMaterialRead,
     PurchaseMaterialUpdate,
+    PurchasePlanExportRequest,
     PurchaseRecordRead,
 )
-from app.services import material_service, purchase_request_service
+from app.services import excel_export_service, material_service, purchase_request_service
 from app.services.common import validate_version
 
 router = APIRouter(prefix="/purchase-materials", tags=["申购计划"])
@@ -61,6 +64,65 @@ async def create_material(
 ) -> PurchaseMaterialRead:
     item = await material_service.create_purchase_material(session, data, user.id)
     return await material_service.purchase_read(session, item)
+
+
+def _excel_response(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type=excel_export_service.XLSX_CONTENT_TYPE,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
+
+
+@router.get("/export-uncoded")
+async def export_uncoded_materials(
+    session: DbSession,
+    user: CurrentUser,
+    keyword: str | None = None,
+) -> Response:
+    materials = await material_service.purchase_materials_for_export(
+        session, keyword=keyword, coded=False, moved=False
+    )
+    rows = [
+        {
+            "serial": index,
+            "name": item.name,
+            "model_spec": item.model_spec,
+            "unit_name": item.unit.name,
+            "actual_demand_person": item.actual_demand_person,
+            "application_reason": "；".join(
+                value for value in (item.usage, item.remark) if value
+            ),
+        }
+        for index, item in enumerate(materials, start=1)
+    ]
+    return _excel_response(
+        *excel_export_service.render_excel("material-code-application.json", rows)
+    )
+
+
+@router.post("/export-purchase-application")
+async def export_purchase_application(
+    data: PurchasePlanExportRequest,
+    session: DbSession,
+    user: CurrentUser,
+) -> Response:
+    materials = await material_service.purchase_materials_for_export(
+        session, material_ids=data.material_ids, coded=True, moved=False
+    )
+    rows = [
+        {
+            "material_code": item.material_code,
+            "name": item.name,
+            "planned_qty": item.planned_qty,
+            "actual_demand_person": item.actual_demand_person,
+            "usage": item.usage,
+            "remark": item.remark,
+            "subitem_no": item.subitem_no,
+        }
+        for item in materials
+    ]
+    return _excel_response(*excel_export_service.render_excel("purchase-application.json", rows))
 
 
 @router.post("/batch-move-to-record", response_model=list[PurchaseRecordRead])

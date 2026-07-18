@@ -1444,6 +1444,121 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-materials/export-uncoded:
+    get:
+      tags:
+      - 申购计划
+      summary: Export Uncoded Materials
+      operationId: export_uncoded_materials_api_v1_purchase_materials_export_uncoded_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Keyword
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-materials/export-purchase-application:
+    post:
+      tags:
+      - 申购计划
+      summary: Export Purchase Application
+      operationId: export_purchase_application_api_v1_purchase_materials_export_purchase_application_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchasePlanExportRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/purchase-materials/batch-move-to-record:
     post:
       tags:
@@ -3375,20 +3490,22 @@ components:
       title: ApiError
     BatchMovePurchasePlansRequest:
       properties:
-        trace_no:
-          type: string
-          maxLength: 128
-          minLength: 1
-          title: Trace No
         purchase_order_no:
-          type: string
-          maxLength: 128
-          minLength: 1
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
           title: Purchase Order No
-        purchase_time:
+        trace_no:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Trace No
+        purchase_date:
           type: string
-          format: date-time
-          title: Purchase Time
+          format: date
+          title: Purchase Date
         salesperson:
           anyOf:
           - type: string
@@ -3412,9 +3529,7 @@ components:
       additionalProperties: false
       type: object
       required:
-      - trace_no
-      - purchase_order_no
-      - purchase_time
+      - purchase_date
       - material_ids
       title: BatchMovePurchasePlansRequest
     Body_upload_api_v1_files_images_post:
@@ -3744,20 +3859,22 @@ components:
       title: MeasurementUnitUpdate
     MovePurchasePlanRequest:
       properties:
-        trace_no:
-          type: string
-          maxLength: 128
-          minLength: 1
-          title: Trace No
         purchase_order_no:
-          type: string
-          maxLength: 128
-          minLength: 1
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
           title: Purchase Order No
-        purchase_time:
+        trace_no:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Trace No
+        purchase_date:
           type: string
-          format: date-time
-          title: Purchase Time
+          format: date
+          title: Purchase Date
         salesperson:
           anyOf:
           - type: string
@@ -3774,9 +3891,7 @@ components:
       additionalProperties: false
       type: object
       required:
-      - trace_no
-      - purchase_order_no
-      - purchase_time
+      - purchase_date
       title: MovePurchasePlanRequest
     OperationCreate:
       properties:
@@ -4087,7 +4202,9 @@ components:
     PreparedInboundRead:
       properties:
         purchase_request_no:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Purchase Request No
         line_id:
           type: integer
@@ -4115,7 +4232,6 @@ components:
           title: Stock Material Id
       type: object
       required:
-      - purchase_request_no
       - line_id
       - purchase_material_id
       - material_name
@@ -4384,6 +4500,20 @@ components:
       - usage
       - version
       title: PurchaseMaterialUpdate
+    PurchasePlanExportRequest:
+      properties:
+        material_ids:
+          items:
+            type: integer
+          type: array
+          maxItems: 200
+          minItems: 1
+          title: Material Ids
+      additionalProperties: false
+      type: object
+      required:
+      - material_ids
+      title: PurchasePlanExportRequest
     PurchaseRecordRead:
       properties:
         line_id:
@@ -4395,14 +4525,16 @@ components:
         purchase_material_id:
           type: integer
           title: Purchase Material Id
-        trace_no:
-          type: string
-          title: Trace No
         purchase_order_no:
           anyOf:
           - type: string
           - type: 'null'
           title: Purchase Order No
+        trace_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trace No
         status:
           $ref: '#/components/schemas/PurchaseRequestStatus'
         material_code:
@@ -4458,12 +4590,12 @@ components:
           - type: integer
           - type: 'null'
           title: Stock Material Id
-        purchase_time:
+        purchase_date:
           anyOf:
           - type: string
-            format: date-time
+            format: date
           - type: 'null'
-          title: Purchase Time
+          title: Purchase Date
         created_at:
           type: string
           format: date-time
@@ -4476,7 +4608,6 @@ components:
       - line_id
       - purchase_request_id
       - purchase_material_id
-      - trace_no
       - status
       - material_code
       - material_name
@@ -4493,26 +4624,24 @@ components:
       title: PurchaseRecordRead
     PurchaseRecordUpdate:
       properties:
-        trace_no:
-          anyOf:
-          - type: string
-            maxLength: 128
-            minLength: 1
-          - type: 'null'
-          title: Trace No
         purchase_order_no:
           anyOf:
           - type: string
             maxLength: 128
-            minLength: 1
           - type: 'null'
           title: Purchase Order No
-        purchase_time:
+        trace_no:
           anyOf:
           - type: string
-            format: date-time
+            maxLength: 128
           - type: 'null'
-          title: Purchase Time
+          title: Trace No
+        purchase_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Purchase Date
         salesperson:
           anyOf:
           - type: string
@@ -4536,26 +4665,24 @@ components:
       title: PurchaseRecordUpdate
     PurchaseRequestCreate:
       properties:
-        trace_no:
-          anyOf:
-          - type: string
-            maxLength: 128
-            minLength: 1
-          - type: 'null'
-          title: Trace No
         purchase_order_no:
           anyOf:
           - type: string
             maxLength: 128
-            minLength: 1
           - type: 'null'
           title: Purchase Order No
-        purchase_time:
+        trace_no:
           anyOf:
           - type: string
-            format: date-time
+            maxLength: 128
           - type: 'null'
-          title: Purchase Time
+          title: Trace No
+        purchase_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Purchase Date
         remark:
           anyOf:
           - type: string
@@ -4660,14 +4787,16 @@ components:
         id:
           type: integer
           title: Id
-        trace_no:
-          type: string
-          title: Trace No
         purchase_order_no:
           anyOf:
           - type: string
           - type: 'null'
           title: Purchase Order No
+        trace_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trace No
         status:
           $ref: '#/components/schemas/PurchaseRequestStatus'
         applicant_name:
@@ -4698,12 +4827,12 @@ components:
           - type: string
           - type: 'null'
           title: Close Reason
-        purchase_time:
+        purchase_date:
           anyOf:
           - type: string
-            format: date-time
+            format: date
           - type: 'null'
-          title: Purchase Time
+          title: Purchase Date
         completed_at:
           anyOf:
           - type: string
@@ -4730,7 +4859,6 @@ components:
       type: object
       required:
       - id
-      - trace_no
       - status
       - applicant_name
       - created_at
@@ -4752,26 +4880,24 @@ components:
       title: PurchaseRequestStatus
     PurchaseRequestUpdate:
       properties:
-        trace_no:
-          anyOf:
-          - type: string
-            maxLength: 128
-            minLength: 1
-          - type: 'null'
-          title: Trace No
         purchase_order_no:
           anyOf:
           - type: string
             maxLength: 128
-            minLength: 1
           - type: 'null'
           title: Purchase Order No
-        purchase_time:
+        trace_no:
           anyOf:
           - type: string
-            format: date-time
+            maxLength: 128
           - type: 'null'
-          title: Purchase Time
+          title: Trace No
+        purchase_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Purchase Date
         remark:
           anyOf:
           - type: string

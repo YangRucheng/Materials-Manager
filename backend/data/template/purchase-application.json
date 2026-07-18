@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "template_name": "采购申请模板",
+  "source_template": "采购申请模版.xlsx",
+  "output_filename": "采购申请-{date}.xlsx",
+  "sheet": {
+    "title": "采购申请",
+    "header_row": 1,
+    "data_start_row": 2,
+    "freeze_panes": "A2",
+    "column_widths": {
+      "A": 23.33, "B": 18.33, "C": 17.16, "D": 16.0, "E": 29.37,
+      "F": 16.84, "G": 23.5, "H": 11.5, "I": 32.67, "J": 20.0, "K": 21.25
+    }
+  },
+  "styles": {
+    "header": {"font_name": "等线", "font_size": 11, "bold": true, "fill": "D9EAD3", "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true},
+    "data": {"font_name": "等线", "font_size": 11, "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true},
+    "date": {"font_name": "等线", "font_size": 11, "horizontal": "center", "vertical": "center", "number_format": "yyyy/m/d", "border": true}
+  },
+  "columns": [
+    {"column": "A", "header": "物料编码（必填）", "field": "material_code"},
+    {"column": "B", "header": "物料名称（必填）", "field": "name"},
+    {"column": "C", "header": "申请数量（必填）", "field": "planned_qty"},
+    {"column": "D", "header": "实际需求人", "field": "actual_demand_person"},
+    {"column": "E", "header": "需求部门", "field": "demand_department"},
+    {"column": "F", "header": "用途", "field": "usage"},
+    {"column": "G", "header": "要求到现场日期（必填）", "field": "required_arrival_date", "style": "date"},
+    {"column": "H", "header": "紧急程度", "field": "urgency", "default": "正常", "validation": "urgency"},
+    {"column": "I", "header": "超限申请原因", "field": "over_limit_reason", "default": "首次申购", "validation": "over_limit_reason"},
+    {"column": "J", "header": "超限申请备注", "field": "remark"},
+    {"column": "K", "header": "技改项目编码/子项号", "field": "subitem_no"}
+  ],
+  "validation_lists": {
+    "urgency": ["正常", "紧急", "非常紧急"],
+    "over_limit_reason": ["一物多码（历史消耗偏差）", "跨项目调拨申请被拒", "跨项目调拨数量不足", "低频消耗物料", "首次申购", "库存不可用", "物料需求增加", "其它"]
+  }
+}

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from io import BytesIO
+
 import pytest
 from httpx import AsyncClient
+from openpyxl import load_workbook
 
 from tests.conftest import auth_headers, create_stock
 
@@ -53,9 +56,9 @@ async def move_to_record(
         f"/api/v1/purchase-materials/{plan_id}/move-to-record",
         headers=headers,
         json={
-            "trace_no": trace_no,
             "purchase_order_no": "SG-2026-001",
-            "purchase_time": "2026-07-18T10:00:00+08:00",
+            "trace_no": trace_no,
+            "purchase_date": "2026-07-18",
             "salesperson": "赵经理",
             "remark": "等待供应商发货",
         },
@@ -77,9 +80,9 @@ async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncC
         f"/api/v1/purchase-materials/{plan['id']}/move-to-record",
         headers=headers,
         json={
-            "trace_no": "ZS-UNCODED",
             "purchase_order_no": "SG-UNCODED",
-            "purchase_time": "2026-07-18T10:00:00+08:00",
+            "trace_no": "ZS-UNCODED",
+            "purchase_date": "2026-07-18",
         },
     )
     assert rejected.status_code == 409
@@ -173,9 +176,9 @@ async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: Asyn
         headers=headers,
         json={
             "material_ids": [first["id"], second["id"]],
-            "trace_no": "ZS-BATCH-001",
             "purchase_order_no": "SG-BATCH-001",
-            "purchase_time": "2026-07-18T11:30:00+08:00",
+            "trace_no": "ZS-BATCH-001",
+            "purchase_date": "2026-07-18",
             "salesperson": "批量业务员",
             "remark": "批量转入",
         },
@@ -218,9 +221,9 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
         headers=headers,
         json={
             "version": first_record["version"],
-            "trace_no": "ZS-A-修订",
             "purchase_order_no": "SG-A-修订",
-            "purchase_time": "2026-07-19T10:30:00+08:00",
+            "trace_no": "ZS-A-修订",
+            "purchase_date": "2026-07-19",
             "salesperson": "钱经理",
             "remark": "预计下周到货",
         },
@@ -228,7 +231,7 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
     assert changed.status_code == 200, changed.text
     assert changed.json()["trace_no"] == "ZS-A-修订"
     assert changed.json()["purchase_order_no"] == "SG-A-修订"
-    assert changed.json()["purchase_time"] == "2026-07-19T02:30:00Z"
+    assert changed.json()["purchase_date"] == "2026-07-19"
     assert changed.json()["salesperson"] == "钱经理"
     assert changed.json()["remark"] == "预计下周到货"
 
@@ -236,9 +239,9 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
         f"/api/v1/purchase-materials/{first['id']}/move-to-record",
         headers=headers,
         json={
-            "trace_no": "ZS-REPEAT",
             "purchase_order_no": "SG-REPEAT",
-            "purchase_time": "2026-07-18T10:00:00+08:00",
+            "trace_no": "ZS-REPEAT",
+            "purchase_date": "2026-07-18",
         },
     )
     assert duplicate.status_code == 409
@@ -310,3 +313,66 @@ async def test_purchase_plans_can_repeat_code_and_stock_material(client: AsyncCl
         client, purchase, "重复补库物资", code="DQ-REPEAT", stock_material_id=stock_id
     )
     assert first["id"] != second["id"]
+
+
+@pytest.mark.asyncio
+async def test_purchase_tracking_numbers_are_optional_and_order_number_defaults(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    blank = await create_purchase_plan(client, headers, "空单号计划", code="DQ-BLANK")
+    response = await client.post(
+        f"/api/v1/purchase-materials/{blank['id']}/move-to-record",
+        headers=headers,
+        json={
+            "purchase_order_no": "",
+            "trace_no": "",
+            "purchase_date": "2026-07-18",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["purchase_order_no"] is None
+    assert response.json()["trace_no"] is None
+    assert response.json()["purchase_date"] == "2026-07-18"
+
+    defaulted = await create_purchase_plan(client, headers, "默认申购单号", code="DQ-DEFAULT")
+    response = await client.post(
+        f"/api/v1/purchase-materials/{defaulted['id']}/move-to-record",
+        headers=headers,
+        json={"purchase_date": "2026-07-18"},
+    )
+    assert response.status_code == 200, response.text
+    assert str(response.json()["purchase_order_no"]).startswith("申购 ")
+    assert response.json()["trace_no"] is None
+
+
+@pytest.mark.asyncio
+async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    uncoded = await create_purchase_plan(client, headers, "待编码接触器")
+    coded = await create_purchase_plan(client, headers, "已编码接触器", code="DQ-XLSX-1")
+
+    code_export = await client.get(
+        "/api/v1/purchase-materials/export-uncoded",
+        headers=headers,
+    )
+    assert code_export.status_code == 200, code_export.text
+    assert code_export.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    code_sheet = load_workbook(BytesIO(code_export.content)).active
+    assert code_sheet["D7"].value == uncoded["name"]
+    assert code_sheet["E7"].value == uncoded["model_spec"]
+    assert code_sheet["I7"].value == uncoded["unit_name"]
+
+    purchase_export = await client.post(
+        "/api/v1/purchase-materials/export-purchase-application",
+        headers=headers,
+        json={"material_ids": [coded["id"]]},
+    )
+    assert purchase_export.status_code == 200, purchase_export.text
+    purchase_sheet = load_workbook(BytesIO(purchase_export.content)).active
+    assert purchase_sheet["A1"].value == "物料编码（必填）"
+    assert purchase_sheet["A2"].value == coded["material_code"]
+    assert purchase_sheet["B2"].value == coded["name"]
+    assert str(purchase_sheet["C2"].value) == coded["planned_qty"]

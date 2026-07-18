@@ -11,11 +11,11 @@ import type {
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import MaterialSelector from '@/components/MaterialSelector.vue'
-import { formatShanghaiTime, toIsoWithTimezone } from '@/utils/time'
+import { formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
-import { defaultTraceNo } from '@/utils/purchase'
+import { defaultPurchaseOrderNo } from '@/utils/purchase'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,9 +33,9 @@ const deleting = ref(false)
 const showMove = ref(false)
 const moving = ref(false)
 const moveForm = reactive({
-  trace_no: defaultTraceNo(),
-  purchase_order_no: '',
-  purchase_time: Date.now(),
+  purchase_order_no: defaultPurchaseOrderNo(),
+  trace_no: '',
+  purchase_date: Date.now(),
   salesperson: '',
   remark: '',
 })
@@ -148,22 +148,27 @@ function confirmDelete() {
     onPositiveClick: deletePlan,
   })
 }
+function openMove() {
+  Object.assign(moveForm, {
+    purchase_order_no: defaultPurchaseOrderNo(),
+    trace_no: '',
+    purchase_date: Date.now(),
+    salesperson: '',
+    remark: '',
+  })
+  showMove.value = true
+}
 async function moveToRecord() {
-  if (
-    !material.value ||
-    !moveForm.trace_no.trim() ||
-    !moveForm.purchase_order_no.trim() ||
-    !moveForm.purchase_time
-  ) {
-    message.error('请填写追溯号、申购单号和申购时间')
+  if (!material.value || !moveForm.purchase_date) {
+    message.error('请选择申购日期')
     return
   }
   moving.value = true
   try {
     const record = await procurementApi.movePlanToRecord(material.value.id, {
-      trace_no: moveForm.trace_no,
-      purchase_order_no: moveForm.purchase_order_no,
-      purchase_time: toIsoWithTimezone(moveForm.purchase_time),
+      purchase_order_no: moveForm.purchase_order_no.trim() || null,
+      trace_no: moveForm.trace_no.trim() || null,
+      purchase_date: toShanghaiDate(moveForm.purchase_date),
       salesperson: moveForm.salesperson || undefined,
       remark: moveForm.remark || undefined,
     })
@@ -207,9 +212,7 @@ onMounted(() => {
         <n-button v-if="!material.stock_material_id" @click="showLink = true"
           >关联二级库物资</n-button
         >
-        <n-button
-          v-if="material.material_code && !material.moved_to_record"
-          @click="showMove = true"
+        <n-button v-if="material.material_code && !material.moved_to_record" @click="openMove"
           >转入申购记录</n-button
         >
         <n-button type="primary" :loading="saving" @click="save">保存修改</n-button>
@@ -300,18 +303,18 @@ onMounted(() => {
       >
       <n-form label-placement="top">
         <div class="form-grid">
-          <n-form-item label="追溯号" required>
-            <n-input v-model:value="moveForm.trace_no" maxlength="128" />
-          </n-form-item>
-          <n-form-item label="申购单号" required>
-            <n-input v-model:value="moveForm.purchase_order_no" maxlength="128" />
-          </n-form-item>
-          <n-form-item label="申购时间" required>
-            <n-date-picker
-              v-model:value="moveForm.purchase_time"
-              type="datetime"
-              class="full-width"
+          <n-form-item label="申购单号">
+            <n-input
+              v-model:value="moveForm.purchase_order_no"
+              maxlength="128"
+              placeholder="可留空"
             />
+          </n-form-item>
+          <n-form-item label="追溯号">
+            <n-input v-model:value="moveForm.trace_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="申购日期" required>
+            <n-date-picker v-model:value="moveForm.purchase_date" type="date" class="full-width" />
           </n-form-item>
           <n-form-item label="业务员">
             <n-input v-model:value="moveForm.salesperson" maxlength="128" />
