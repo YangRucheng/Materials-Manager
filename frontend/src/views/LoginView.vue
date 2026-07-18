@@ -10,17 +10,11 @@ const auth = useAuthStore()
 const message = useMessage()
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
-const model = reactive({ username: 'admin', password: '123456' })
+const model = reactive({ username: '', password: '' })
 const rules: FormRules = {
   username: { required: true, message: '请输入用户名', trigger: 'blur' },
   password: { required: true, message: '请输入密码', trigger: 'blur' },
 }
-const accounts = [
-  ['admin', '超级管理员'],
-  ['warehouse', '仓库管理员'],
-  ['purchase', '申购管理员'],
-  ['readonly', '只读角色'],
-]
 
 async function submit() {
   await formRef.value?.validate()
@@ -65,16 +59,6 @@ async function submit() {
             >登录</n-button
           >
         </n-form>
-        <n-divider>演示账号（密码均为 123456）</n-divider>
-        <div class="demo-grid">
-          <n-button
-            v-for="item in accounts"
-            :key="item[0]"
-            size="small"
-            @click="model.username = item[0]"
-            >{{ item[1] }}</n-button
-          >
-        </div>
       </n-card>
     </section>
   </main>
@@ -137,10 +121,5 @@ h1 {
 h2 {
   font-size: 28px;
   margin: 0 0 6px;
-}
-.demo-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 </style>
