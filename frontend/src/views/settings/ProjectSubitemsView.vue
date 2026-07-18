@@ -104,7 +104,7 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">项目子项</h1>
-        <p class="page-subtitle">请购与出库使用的项目、子项基础数据</p>
+        <p class="page-subtitle">申购与出库使用的项目、子项基础数据</p>
       </div>
       <n-button type="primary" @click="open()">新建项目子项</n-button>
     </div>

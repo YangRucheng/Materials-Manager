@@ -81,6 +81,25 @@ async def low_stock(
     return Page(items=items, page=page, page_size=page_size, total=total)
 
 
+@router.get("/inventory/balances/{material_id}", response_model=InventoryBalanceRead)
+async def balance_detail(
+    material_id: int, session: DbSession, user: CurrentUser
+) -> InventoryBalanceRead:
+    items, _ = await inventory_service.inventory_balances(
+        session,
+        keyword=None,
+        minimum_qty=None,
+        maximum_qty=None,
+        low_stock_only=False,
+        page=1,
+        page_size=1,
+        material_id=material_id,
+    )
+    if not items:
+        raise AppError("NOT_FOUND", "库存物资不存在", status_code=404)
+    return items[0]
+
+
 @router.post(
     "/inventory/inbounds", response_model=StockOperationRead, status_code=status.HTTP_201_CREATED
 )

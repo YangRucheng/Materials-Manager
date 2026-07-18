@@ -26,6 +26,28 @@ def operation_payload(
 
 
 @pytest.mark.asyncio
+async def test_inbound_reason_defaults_empty_but_outbound_still_requires_it(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "warehouse")
+    material_id = await create_stock(client, headers, "业务原因测试")
+    payload = {
+        "client_request_id": "inbound-without-reason",
+        "occurred_at": "2026-07-18T10:00:00+08:00",
+        "source_type": "MANUAL",
+        "lines": [{"stock_material_id": material_id, "quantity": "1"}],
+    }
+    inbound = await client.post("/api/v1/inventory/inbounds", headers=headers, json=payload)
+    assert inbound.status_code == 201, inbound.text
+    assert inbound.json()["business_reason"] == ""
+
+    payload["client_request_id"] = "outbound-without-reason"
+    outbound = await client.post("/api/v1/inventory/outbounds", headers=headers, json=payload)
+    assert outbound.status_code == 400
+    assert outbound.json()["code"] == "BUSINESS_REASON_REQUIRED"
+
+
+@pytest.mark.asyncio
 async def test_idempotency_negative_stock_and_permissions(client: AsyncClient) -> None:
     warehouse = await auth_headers(client, "warehouse")
     readonly = await auth_headers(client, "readonly")
@@ -181,6 +203,10 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
             "name": "低库存物资",
             "model_spec": "CJX2-2510 220V",
             "unit_id": 1,
+            "purchase_responsible": "李工",
+            "planned_qty": "5",
+            "usage": "低库存补库",
+            "project_subitem_id": 1,
             "stock_material_id": material_id,
             "image_ids": [],
         },

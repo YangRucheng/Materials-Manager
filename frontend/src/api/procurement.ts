@@ -4,6 +4,7 @@ import type {
   PreparedInbound,
   PurchaseMaterial,
   PurchaseMaterialWrite,
+  PurchaseRecord,
   PurchaseRequest,
   PurchaseRequestWrite,
   StockOperation,
@@ -23,6 +24,13 @@ export const procurementApi = {
       .post<PurchaseMaterial>(`/purchase-materials/${id}/link-stock-material`, {
         stock_material_id,
       })
+      .then((r) => r.data),
+  movePlanToRecord: (
+    id: number,
+    payload: { request_no: string; salesperson?: string; remark?: string },
+  ) =>
+    apiClient
+      .post<PurchaseRecord>(`/purchase-materials/${id}/move-to-record`, payload)
       .then((r) => r.data),
   uncodedMaterials: (params?: Record<string, unknown>) =>
     apiClient
@@ -46,4 +54,12 @@ export const procurementApi = {
     apiClient
       .post<PreparedInbound>(`/purchase-request-lines/${lineId}/prepare-inbound`)
       .then((r) => r.data),
+  records: (params?: Record<string, unknown>) =>
+    apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
+  record: (lineId: number) =>
+    apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
+  updateRecord: (
+    lineId: number,
+    payload: { request_no?: string; salesperson?: string; remark?: string; version: number },
+  ) => apiClient.patch<PurchaseRecord>(`/purchase-records/${lineId}`, payload).then((r) => r.data),
 }

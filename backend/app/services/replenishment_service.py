@@ -105,6 +105,8 @@ async def create_replenishment_draft(
             name=stock.name,
             model_spec=stock.model_spec,
             unit_id=stock.unit_id,
+            planned_qty=suggested,
+            usage="低库存补库",
             remark="；".join(note_parts),
             stock_material_id=stock.id,
             image_ids=[link.file_id for link in stock.images],

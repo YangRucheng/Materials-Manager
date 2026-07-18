@@ -5,12 +5,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
-from app.domain.enums import CodeState, Role
+from app.domain.enums import CodeState
 from app.models import (
     FileObject,
     MeasurementUnit,
+    ProjectSubitem,
     PurchaseMaterial,
     PurchaseMaterialImage,
+    PurchaseRequestLine,
     StockBalance,
     StockMaterial,
     StockMaterialImage,
@@ -24,7 +26,13 @@ from app.schemas import (
     StockMaterialRead,
     StockMaterialUpdate,
 )
-from app.services.common import file_read, identity_hash, utc_aware, validate_version
+from app.services.common import (
+    file_read,
+    identity_hash,
+    utc_aware,
+    validate_quantity_precision,
+    validate_version,
+)
 
 
 async def _unit(session: AsyncSession, unit_id: int) -> MeasurementUnit:
@@ -134,7 +142,7 @@ async def update_stock_material(
 async def get_purchase_material(session: AsyncSession, material_id: int) -> PurchaseMaterial:
     item = await session.scalar(select(PurchaseMaterial).where(PurchaseMaterial.id == material_id))
     if item is None:
-        raise not_found("申购物资")
+        raise not_found("申购计划")
     return item
 
 
@@ -144,6 +152,13 @@ async def code_state(session: AsyncSession, item: PurchaseMaterial) -> CodeState
 
 
 async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> PurchaseMaterialRead:
+    moved_to_record = bool(
+        await session.scalar(
+            select(PurchaseRequestLine.id)
+            .where(PurchaseRequestLine.purchase_material_id == item.id)
+            .limit(1)
+        )
+    )
     return PurchaseMaterialRead(
         id=item.id,
         material_code=item.material_code,
@@ -152,12 +167,21 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         unit_id=item.unit_id,
         unit_name=item.unit.name,
         actual_demand_person=item.actual_demand_person,
-        purchase_responsible_id=item.purchase_responsible_id,
-        purchase_responsible_name=item.purchase_responsible.display_name,
+        purchase_responsible=item.purchase_responsible,
+        planned_qty=item.planned_qty,
+        usage=item.usage,
+        project_subitem_id=item.project_subitem_id,
+        project_subitem_name=(
+            f"{item.project_subitem.project_code} / {item.project_subitem.subitem_no} "
+            f"{item.project_subitem.subitem_name}"
+            if item.project_subitem
+            else None
+        ),
         remark=item.remark,
         stock_material_id=item.stock_material_id,
         stock_material_name=item.stock_material.name if item.stock_material else None,
         code_state=await code_state(session, item),
+        moved_to_record=moved_to_record,
         enabled=item.enabled,
         images=[file_read(link.file) for link in item.images],
         created_at=utc_aware(item.created_at),
@@ -177,22 +201,20 @@ async def _validate_stock_link(
     return stock
 
 
-async def _purchase_responsible(session: AsyncSession, user_id: int) -> User:
-    user = await session.get(User, user_id)
-    if user is None or not user.enabled or user.role == Role.READ_ONLY:
-        raise AppError(
-            "INVALID_PURCHASE_RESPONSIBLE",
-            "申购负责人必须是启用的管理用户",
-        )
-    return user
-
-
 async def create_purchase_material(
     session: AsyncSession, data: PurchaseMaterialCreate, user_id: int
 ) -> PurchaseMaterial:
     unit = await _unit(session, data.unit_id)
-    responsible_id = data.purchase_responsible_id or user_id
-    responsible = await _purchase_responsible(session, responsible_id)
+    current_user_name = await session.scalar(select(User.display_name).where(User.id == user_id))
+    responsible = data.purchase_responsible or current_user_name or "待补充"
+    project = (
+        await session.get(ProjectSubitem, data.project_subitem_id)
+        if data.project_subitem_id
+        else None
+    )
+    if data.project_subitem_id and (project is None or not project.enabled):
+        raise AppError("INVALID_PROJECT_SUBITEM", "项目子项不存在或已停用")
+    validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
     item = PurchaseMaterial(
@@ -200,8 +222,11 @@ async def create_purchase_material(
         name=data.name,
         model_spec=data.model_spec,
         unit_id=data.unit_id,
-        actual_demand_person=data.actual_demand_person or responsible.display_name,
-        purchase_responsible_id=responsible_id,
+        actual_demand_person=data.actual_demand_person or responsible,
+        purchase_responsible=responsible,
+        planned_qty=data.planned_qty,
+        usage=data.usage,
+        project_subitem_id=data.project_subitem_id,
         remark=data.remark,
         stock_material_id=data.stock_material_id,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
@@ -214,7 +239,7 @@ async def create_purchase_material(
         ],
     )
     item.unit = unit
-    item.purchase_responsible = responsible
+    item.project_subitem = project
     item.stock_material = stock
     session.add(item)
     await session.flush()
@@ -226,18 +251,35 @@ async def update_purchase_material(
 ) -> PurchaseMaterial:
     validate_version(data.version, item.version)
     unit = await _unit(session, data.unit_id)
-    responsible_id = data.purchase_responsible_id or item.purchase_responsible_id
-    responsible = await _purchase_responsible(session, responsible_id)
+    responsible = data.purchase_responsible or item.purchase_responsible
+    project = (
+        await session.get(ProjectSubitem, data.project_subitem_id)
+        if data.project_subitem_id
+        else None
+    )
+    if data.project_subitem_id and (project is None or not project.enabled):
+        raise AppError("INVALID_PROJECT_SUBITEM", "项目子项不存在或已停用")
+    validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
-    for key in ("material_code", "name", "model_spec", "unit_id", "remark", "stock_material_id"):
+    for key in (
+        "material_code",
+        "name",
+        "model_spec",
+        "unit_id",
+        "planned_qty",
+        "usage",
+        "project_subitem_id",
+        "remark",
+        "stock_material_id",
+    ):
         setattr(item, key, getattr(data, key))
     if data.actual_demand_person is not None:
         item.actual_demand_person = data.actual_demand_person
-    item.purchase_responsible_id = responsible_id
+    item.purchase_responsible = responsible
     item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_id)
     item.unit = unit
-    item.purchase_responsible = responsible
+    item.project_subitem = project
     item.stock_material = stock
     item.images = [
         PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
@@ -284,6 +326,7 @@ async def search_purchase_materials(
     keyword: str | None,
     enabled: bool | None,
     coded: bool | None,
+    moved: bool | None,
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseMaterial], int]:
@@ -303,6 +346,13 @@ async def search_purchase_materials(
         query = query.where(PurchaseMaterial.material_code.is_not(None))
     elif coded is False:
         query = query.where(PurchaseMaterial.material_code.is_(None))
+    if moved is not None:
+        record_exists = (
+            select(PurchaseRequestLine.id)
+            .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+            .exists()
+        )
+        query = query.where(record_exists if moved else ~record_exists)
     count = await session.scalar(select(func.count()).select_from(query.subquery()))
     items = list(
         (

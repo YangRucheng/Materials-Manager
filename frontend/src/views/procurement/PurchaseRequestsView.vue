@@ -2,82 +2,102 @@
 import { h, onMounted, reactive, ref } from 'vue'
 import { NButton, NTag, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import type { PurchaseRequest } from '@/api/generated'
+import type { PurchaseRecord } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
-import { useAuthStore } from '@/stores/auth'
 import { requestStatusLabels, statusTagType } from '@/utils/status'
 import { formatShanghaiTime } from '@/utils/time'
 
 const router = useRouter()
-const auth = useAuthStore()
-const items = ref<PurchaseRequest[]>([])
+const items = ref<PurchaseRecord[]>([])
 const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const filters = reactive({ keyword: '', status: null as string | null })
-const columns: DataTableColumns<PurchaseRequest> = [
+const columns: DataTableColumns<PurchaseRecord> = [
   {
-    title: '请购单号',
+    title: '申购记录号',
     key: 'request_no',
-    width: 150,
-    render: (r) =>
+    width: 170,
+    render: (row) =>
       h(
         NButton,
         {
           text: true,
           type: 'primary',
-          onClick: () => router.push(`/procurement/requests/${r.id}`),
+          onClick: () => router.push(`/procurement/records/${row.line_id}`),
         },
-        { default: () => r.request_no },
+        { default: () => row.request_no },
       ),
   },
-  { title: '申购人', key: 'applicant_name', width: 100 },
   {
-    title: '明细摘要',
-    key: 'lines',
-    render: (r) =>
-      r.lines.map((x) => `${x.material_name_snapshot} × ${x.requested_qty}`).join('；'),
+    title: '物资',
+    key: 'material_name',
+    render: (row) =>
+      h('div', [
+        h('strong', row.material_name),
+        h('div', { class: 'muted' }, `${row.material_code}｜${row.model_spec}`),
+      ]),
   },
+  {
+    title: '计划 / 已到 / 未到',
+    key: 'quantity',
+    width: 190,
+    render: (row) =>
+      `${row.planned_qty} / ${row.received_qty} / ${row.remaining_qty} ${row.unit_name}`,
+  },
+  { title: '申购负责人', key: 'purchase_responsible', width: 110 },
+  { title: '业务员', key: 'salesperson', width: 110, render: (row) => row.salesperson || '—' },
   {
     title: '状态',
     key: 'status',
-    width: 110,
-    render: (r) =>
-      h(NTag, { type: statusTagType(r.status) }, { default: () => requestStatusLabels[r.status] }),
+    width: 120,
+    render: (row) =>
+      h(
+        NTag,
+        { type: statusTagType(row.status) },
+        { default: () => requestStatusLabels[row.status] },
+      ),
   },
-  { title: '受理人', key: 'handler_name', width: 100, render: (r) => r.handler_name || '—' },
   {
-    title: '创建时间',
-    key: 'created_at',
+    title: '提交时间',
+    key: 'submitted_at',
     width: 170,
-    render: (r) => formatShanghaiTime(r.created_at),
+    render: (row) => formatShanghaiTime(row.submitted_at),
   },
   {
     title: '操作',
     key: 'action',
     width: 80,
-    render: (r) =>
+    render: (row) =>
       h(
         NButton,
-        { size: 'small', onClick: () => router.push(`/procurement/requests/${r.id}`) },
-        { default: () => '详情' },
+        { size: 'small', onClick: () => router.push(`/procurement/records/${row.line_id}`) },
+        { default: () => '跟踪' },
       ),
   },
 ]
+
 async function load() {
   loading.value = true
   try {
-    const d = await procurementApi.requests({ page: page.value, page_size: 20, ...filters })
-    items.value = d.items
-    total.value = d.total
+    const data = await procurementApi.records({
+      page: page.value,
+      page_size: 20,
+      keyword: filters.keyword || undefined,
+      status: filters.status || undefined,
+    })
+    items.value = data.items
+    total.value = data.total
   } finally {
     loading.value = false
   }
 }
+
 function query() {
   page.value = 1
   void load()
 }
+
 onMounted(load)
 </script>
 
@@ -85,45 +105,39 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <div>
-        <h1 class="page-title">请购单</h1>
-        <p class="page-subtitle">从草稿、受理到到货入库的闭环跟踪</p>
+        <h1 class="page-title">申购记录</h1>
+        <p class="page-subtitle">按物资展平跟踪正式申购的计划量、到货量和未到数量</p>
       </div>
-      <n-button
-        v-if="auth.can('purchase:write')"
-        type="primary"
-        @click="router.push('/procurement/requests/new')"
-        >新建请购</n-button
-      >
     </div>
-    <n-card
-      ><div class="filter-bar">
+    <n-card>
+      <div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
-          placeholder="请购单号、物资名称"
+          placeholder="记录号、编码、名称、业务员或备注"
           clearable
-          style="width: 240px"
-        /><n-select
+          style="width: 300px"
+        />
+        <n-select
           v-model:value="filters.status"
           clearable
           :options="Object.entries(requestStatusLabels).map(([value, label]) => ({ value, label }))"
           placeholder="状态"
           style="width: 150px"
-        /><n-button type="primary" @click="query">查询</n-button>
-      </div></n-card
-    ><n-card
-      ><n-data-table
+        />
+        <n-button type="primary" @click="query">查询</n-button>
+      </div>
+    </n-card>
+    <n-card>
+      <n-data-table
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1050"
-        :row-key="(r: PurchaseRequest) => r.id" />
+        :scroll-x="1200"
+        :row-key="(row: PurchaseRecord) => row.line_id"
+      />
       <div class="text-right">
-        <n-pagination
-          v-model:page="page"
-          :page-size="20"
-          :item-count="total"
-          @update:page="load"
-        /></div
-    ></n-card>
+        <n-pagination v-model:page="page" :page-size="20" :item-count="total" @update:page="load" />
+      </div>
+    </n-card>
   </div>
 </template>

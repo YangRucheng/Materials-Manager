@@ -30,8 +30,10 @@ describe('请购提交前编码校验', () => {
   })
 })
 
-describe('请购单默认单号', () => {
+describe('申购记录默认编号', () => {
   it('按上海时区生成年月日名称', () => {
-    expect(defaultPurchaseRequestNo(new Date('2026-07-16T16:30:00Z'))).toBe('申购单-2026年7月17日')
+    expect(defaultPurchaseRequestNo(new Date('2026-07-16T16:30:00Z'))).toBe(
+      '申购记录-2026年7月17日',
+    )
   })
 })

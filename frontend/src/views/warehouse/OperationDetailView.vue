@@ -60,7 +60,7 @@ async function load() {
   }
 }
 function validationError(): string | null {
-  if (!edit.business_reason.trim()) return '业务原因必填'
+  if (edit.operation_type === 'OUTBOUND' && !edit.business_reason.trim()) return '业务原因必填'
   if (
     !edit.lines.length ||
     edit.lines.some((line) => !line.stock_material_id || !isDecimalString(line.quantity, 1))
@@ -86,7 +86,7 @@ async function save() {
         purchase_request_line_id: line.purchase_request_line_id,
       })),
     })
-    message.success('流水已修改，关联库存和请购到货数量已重新计算')
+    message.success('流水已修改，关联库存和申购到货数量已重新计算')
     editing.value = false
     await load()
   } catch (error) {
@@ -103,7 +103,7 @@ function confirmSave() {
   }
   dialog.warning({
     title: '确认修改流水',
-    content: '修改流水将重新计算受影响物资的库存、后续流水快照及关联请购到货数量。',
+    content: '修改流水将重新计算受影响物资的库存、后续流水快照及关联申购到货数量。',
     positiveText: '确认修改',
     negativeText: '取消',
     onPositiveClick: save,
@@ -148,7 +148,7 @@ onMounted(load)
       </n-space>
     </div>
     <n-alert v-if="editing" type="warning" title="修改影响提示"
-      >保存后，后端会按发生时间重放相关物资的全部流水，并重算请购到货数量；允许形成负库存和超量到货。</n-alert
+      >保存后，后端会按发生时间重放相关物资的全部流水，并重算申购到货数量；允许形成负库存和超量到货。</n-alert
     >
     <n-card title="单据信息">
       <n-form v-if="editing" label-placement="top">
@@ -192,12 +192,12 @@ onMounted(load)
         <n-descriptions-item label="来源">{{ operation.source_type }}</n-descriptions-item>
         <n-descriptions-item label="操作人">{{ operation.operator_name }}</n-descriptions-item>
         <n-descriptions-item label="业务原因" :span="2">{{
-          operation.business_reason
+          operation.business_reason || '—'
         }}</n-descriptions-item>
         <n-descriptions-item label="领用人">{{
           operation.receiver_name || '—'
         }}</n-descriptions-item>
-        <n-descriptions-item label="来源请购">{{
+        <n-descriptions-item label="来源申购记录">{{
           operation.purchase_request_no || '—'
         }}</n-descriptions-item>
         <n-descriptions-item label="请求幂等 ID" :span="2">{{
@@ -220,7 +220,7 @@ onMounted(load)
             <th>数量</th>
             <th>操作前</th>
             <th>操作后</th>
-            <th>关联请购行</th>
+            <th>关联申购记录</th>
           </tr>
         </thead>
         <tbody>

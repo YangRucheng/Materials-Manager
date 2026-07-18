@@ -7,15 +7,17 @@ from app.domain.enums import Role
 from app.models import User
 from app.schemas import (
     LinkStockMaterialRequest,
+    MovePurchasePlanRequest,
     Page,
     PurchaseMaterialCreate,
     PurchaseMaterialRead,
     PurchaseMaterialUpdate,
+    PurchaseRecordRead,
 )
-from app.services import material_service
+from app.services import material_service, purchase_request_service
 from app.services.common import validate_version
 
-router = APIRouter(prefix="/purchase-materials", tags=["申购物资"])
+router = APIRouter(prefix="/purchase-materials", tags=["申购计划"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
 LinkWriter = Annotated[
@@ -33,9 +35,16 @@ async def list_materials(
     keyword: str | None = None,
     enabled: bool | None = None,
     coded: bool | None = None,
+    moved: bool | None = None,
 ) -> Page[PurchaseMaterialRead]:
     items, total = await material_service.search_purchase_materials(
-        session, keyword=keyword, enabled=enabled, coded=coded, page=page, page_size=page_size
+        session,
+        keyword=keyword,
+        enabled=enabled,
+        coded=coded,
+        moved=moved,
+        page=page,
+        page_size=page_size,
     )
     return Page(
         items=[await material_service.purchase_read(session, item) for item in items],
@@ -90,3 +99,16 @@ async def link_stock_material(
     item.version += 1
     await session.flush()
     return await material_service.purchase_read(session, item)
+
+
+@router.post("/{material_id}/move-to-record", response_model=PurchaseRecordRead)
+async def move_to_record(
+    material_id: int,
+    data: MovePurchasePlanRequest,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> PurchaseRecordRead:
+    line = await purchase_request_service.move_plan_to_record(
+        session, material_id, data, user.id
+    )
+    return purchase_request_service.purchase_record_read(line)
