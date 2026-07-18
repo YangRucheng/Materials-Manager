@@ -83,6 +83,17 @@ async def update_material(
     return await material_service.purchase_read(session, item)
 
 
+@router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_material(
+    material_id: int,
+    version: int,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> None:
+    item = await material_service.get_purchase_material(session, material_id)
+    await material_service.delete_purchase_material(session, item, version)
+
+
 @router.post("/{material_id}/link-stock-material", response_model=PurchaseMaterialRead)
 async def link_stock_material(
     material_id: int,
@@ -108,7 +119,5 @@ async def move_to_record(
     session: DbSession,
     user: PurchaseWriter,
 ) -> PurchaseRecordRead:
-    line = await purchase_request_service.move_plan_to_record(
-        session, material_id, data, user.id
-    )
+    line = await purchase_request_service.move_plan_to_record(session, material_id, data, user.id)
     return purchase_request_service.purchase_record_read(line)

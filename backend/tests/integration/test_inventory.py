@@ -78,9 +78,7 @@ async def test_idempotency_negative_stock_and_permissions(client: AsyncClient) -
     outbound = await client.post(
         "/api/v1/inventory/outbounds",
         headers=warehouse,
-        json=operation_payload(
-            "outbound-too-much", material_id, "6", "2026-07-17T11:00:00+08:00"
-        )
+        json=operation_payload("outbound-too-much", material_id, "6", "2026-07-17T11:00:00+08:00")
         | {"receiver_name": "测试领用人"},
     )
     assert outbound.status_code == 201, outbound.text
@@ -213,9 +211,21 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     assert low.json()["items"][0]["warning_state"] == "PENDING_PURCHASE"
     assert low.json()["items"][0]["suggested_purchase_qty"] == "10"
 
+    missing_confirmation = await client.post(
+        f"/api/v1/inventory/low-stock/{material_id}/create-replenishment-draft",
+        headers=warehouse,
+        json={},
+    )
+    assert missing_confirmation.status_code == 422
+
     replenishment = await client.post(
         f"/api/v1/inventory/low-stock/{material_id}/create-replenishment-draft",
         headers=warehouse,
+        json={
+            "planned_qty": "9",
+            "actual_demand_person": "检修班张三",
+            "purchase_responsible": "采购李工",
+        },
     )
     assert replenishment.status_code == 200, replenishment.text
     assert replenishment.json()["next"] == "purchase_material"
@@ -223,6 +233,9 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
         f"/api/v1/purchase-materials/{replenishment.json()['resource_id']}", headers=purchase
     )
     assert plan.json()["stock_material_id"] == material_id
+    assert plan.json()["planned_qty"] == "9"
+    assert plan.json()["actual_demand_person"] == "检修班张三"
+    assert plan.json()["purchase_responsible"] == "采购李工"
     requests = await client.get("/api/v1/purchase-requests", headers=purchase)
     assert requests.json()["total"] == 0
 

@@ -1187,6 +1187,12 @@ paths:
         schema:
           type: integer
           title: Material Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplenishmentDraftCreate'
       responses:
         '200':
           description: Successful Response
@@ -1523,6 +1529,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PurchaseMaterialRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - 申购计划
+      summary: Delete Material
+      operationId: delete_material_api_v1_purchase_materials__material_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: material_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Material Id
+      - name: version
+        in: query
+        required: true
+        schema:
+          type: integer
+          title: Version
+      responses:
+        '204':
+          description: Successful Response
         '400':
           description: 业务校验失败
           content:
@@ -4578,6 +4643,32 @@ components:
       required:
       - reason
       title: ReasonAction
+    ReplenishmentDraftCreate:
+      properties:
+        planned_qty:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
+          title: Planned Qty
+        actual_demand_person:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Actual Demand Person
+        purchase_responsible:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Purchase Responsible
+      additionalProperties: false
+      type: object
+      required:
+      - planned_qty
+      - actual_demand_person
+      - purchase_responsible
+      title: ReplenishmentDraftCreate
     ReplenishmentDraftRead:
       properties:
         next:
