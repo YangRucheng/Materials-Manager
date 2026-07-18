@@ -35,7 +35,7 @@ def test_init_sql_matches_current_model_schema() -> None:
     blocks = _table_blocks()
     model_tables = {table.name: table for table in Base.metadata.sorted_tables}
 
-    assert set(blocks) == set(model_tables) | {"alembic_version"}
+    assert set(blocks) == set(model_tables)
 
     for table_name, table in model_tables.items():
         block = blocks[table_name]

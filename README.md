@@ -171,7 +171,7 @@ docker compose up -d --remove-orphans
 docker compose ps
 ```
 
-后端容器不执行数据库迁移，会直接启动 API。升级后应重新检查 `/health` 并完成一次登录验证。
+后端容器不执行数据库迁移，会直接启动 API。`/health` 只读检查连接和表结构；如果返回 `DATABASE_SCHEMA_MISMATCH`，请重建空库并导入最新版 `database/init.sql`，服务不会自动修改数据库。升级后还应完成一次登录验证。
 
 ### 停止服务
 

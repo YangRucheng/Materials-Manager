@@ -37,3 +37,16 @@ async def test_health_reports_database_failure(
 
     assert response.status_code == 503
     assert response.json()["code"] == "DATABASE_UNAVAILABLE"
+
+
+async def test_health_reports_schema_mismatch(
+    client: AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    differences = {"missing_tables": ["purchase_material"]}
+    monkeypatch.setattr(main, "schema_differences", lambda _connection: differences)
+
+    response = await client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "DATABASE_SCHEMA_MISMATCH"
+    assert response.json()["details"] == differences

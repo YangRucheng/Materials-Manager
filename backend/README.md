@@ -14,7 +14,7 @@ mysql -h <数据库地址> -u <用户名> -p <数据库名> < ../database/init.s
 .venv/Scripts/uvicorn app.main:app --reload
 ```
 
-空数据库初始化通过项目根目录的 `database/init.sql` 完成；当前开发阶段不执行运行时迁移，结构变化后需要重建空库。Docker 容器会直接启动 API 服务。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
+空数据库初始化通过项目根目录的 `database/init.sql` 完成；当前开发阶段不执行运行时迁移，结构变化后需要重建空库。Docker 容器会直接启动 API 服务，`/health` 仅通过只读元数据查询校验表结构，不会自动修改数据库。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
 
 ## 验证与契约
 
