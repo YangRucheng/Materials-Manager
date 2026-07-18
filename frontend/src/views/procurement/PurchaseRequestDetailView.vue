@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import { requestStatusLabels, statusTagType } from '@/utils/status'
-import { formatShanghaiTime } from '@/utils/time'
+import { formatShanghaiTime, toIsoWithTimezone } from '@/utils/time'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,7 +20,13 @@ const record = ref<PurchaseRecord | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const showEdit = ref(false)
-const edit = reactive({ request_no: '', salesperson: '', remark: '' })
+const edit = reactive({
+  trace_no: '',
+  purchase_order_no: '',
+  purchase_time: Date.now(),
+  salesperson: '',
+  remark: '',
+})
 const linkModal = reactive({
   show: false,
   mode: 'link' as 'link' | 'create',
@@ -44,7 +50,11 @@ async function load() {
 function openEdit() {
   if (!record.value) return
   Object.assign(edit, {
-    request_no: record.value.request_no,
+    trace_no: record.value.trace_no,
+    purchase_order_no: record.value.purchase_order_no || '',
+    purchase_time: record.value.purchase_time
+      ? new Date(record.value.purchase_time).getTime()
+      : Date.now(),
     salesperson: record.value.salesperson || '',
     remark: record.value.remark || '',
   })
@@ -52,14 +62,21 @@ function openEdit() {
 }
 
 async function saveTracking() {
-  if (!record.value || !edit.request_no.trim()) {
-    message.error('请填写申购记录号')
+  if (
+    !record.value ||
+    !edit.trace_no.trim() ||
+    !edit.purchase_order_no.trim() ||
+    !edit.purchase_time
+  ) {
+    message.error('请填写追溯号、申购单号和申购时间')
     return
   }
   saving.value = true
   try {
     record.value = await procurementApi.updateRecord(record.value.line_id, {
-      request_no: edit.request_no,
+      trace_no: edit.trace_no,
+      purchase_order_no: edit.purchase_order_no,
+      purchase_time: toIsoWithTimezone(edit.purchase_time),
       salesperson: edit.salesperson || undefined,
       remark: edit.remark || undefined,
       version: record.value.version,
@@ -134,7 +151,7 @@ async function continueInbound() {
         material_id: stockId,
         quantity: record.value.remaining_qty,
         purchase_line_id: record.value.line_id,
-        request_no: record.value.request_no,
+        request_no: record.value.trace_no,
       },
     })
   } catch (error) {
@@ -157,7 +174,7 @@ onMounted(() => {
         <n-button text @click="router.back()">← 返回申购记录</n-button>
         <h1 class="page-title">{{ record.material_name }}</h1>
         <p class="page-subtitle">
-          {{ record.request_no }} ·
+          {{ record.trace_no }} ·
           <n-tag :type="statusTagType(record.status)">{{
             requestStatusLabels[record.status]
           }}</n-tag>
@@ -179,12 +196,15 @@ onMounted(() => {
     </div>
     <n-card title="到货跟踪">
       <n-descriptions :column="3">
-        <n-descriptions-item label="申购记录号">{{ record.request_no }}</n-descriptions-item>
+        <n-descriptions-item label="追溯号">{{ record.trace_no }}</n-descriptions-item>
+        <n-descriptions-item label="申购单号">{{
+          record.purchase_order_no || '—'
+        }}</n-descriptions-item>
         <n-descriptions-item label="状态">{{
           requestStatusLabels[record.status]
         }}</n-descriptions-item>
-        <n-descriptions-item label="提交时间">{{
-          formatShanghaiTime(record.submitted_at)
+        <n-descriptions-item label="申购时间">{{
+          formatShanghaiTime(record.purchase_time)
         }}</n-descriptions-item>
         <n-descriptions-item label="计划数量"
           >{{ record.planned_qty }} {{ record.unit_name }}</n-descriptions-item
@@ -221,16 +241,22 @@ onMounted(() => {
     <n-button
       text
       type="primary"
-      @click="
-        router.push({ name: 'operations', query: { purchase_request_no: record.request_no } })
-      "
+      @click="router.push({ name: 'operations', query: { purchase_request_no: record.trace_no } })"
       >查看关联入库流水 →</n-button
     >
     <n-modal v-model:show="showEdit" preset="card" title="编辑跟踪信息" style="width: 560px">
       <n-form label-placement="top">
-        <n-form-item label="申购记录号" required
-          ><n-input v-model:value="edit.request_no"
-        /></n-form-item>
+        <div class="form-grid">
+          <n-form-item label="追溯号" required>
+            <n-input v-model:value="edit.trace_no" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="申购单号" required>
+            <n-input v-model:value="edit.purchase_order_no" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="申购时间" required>
+            <n-date-picker v-model:value="edit.purchase_time" type="datetime" class="full-width" />
+          </n-form-item>
+        </div>
         <n-form-item label="业务员"><n-input v-model:value="edit.salesperson" /></n-form-item>
         <n-form-item label="跟踪备注">
           <n-input v-model:value="edit.remark" type="textarea" maxlength="1000" show-count />

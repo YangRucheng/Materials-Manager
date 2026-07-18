@@ -200,7 +200,7 @@ onMounted(load)
           operation.receiver_name || '—'
         }}</n-descriptions-item>
         <n-descriptions-item label="子项号">{{ operation.subitem_no || '—' }}</n-descriptions-item>
-        <n-descriptions-item label="来源申购记录">{{
+        <n-descriptions-item label="来源追溯号">{{
           operation.purchase_request_no || '—'
         }}</n-descriptions-item>
         <n-descriptions-item label="请求幂等 ID" :span="2">{{

@@ -6,6 +6,7 @@ from app.core.permissions import CurrentUser, DbSession, PurchaseWriter, require
 from app.domain.enums import Role
 from app.models import User
 from app.schemas import (
+    BatchMovePurchasePlansRequest,
     LinkStockMaterialRequest,
     MovePurchasePlanRequest,
     Page,
@@ -60,6 +61,16 @@ async def create_material(
 ) -> PurchaseMaterialRead:
     item = await material_service.create_purchase_material(session, data, user.id)
     return await material_service.purchase_read(session, item)
+
+
+@router.post("/batch-move-to-record", response_model=list[PurchaseRecordRead])
+async def batch_move_to_record(
+    data: BatchMovePurchasePlansRequest,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> list[PurchaseRecordRead]:
+    lines = await purchase_request_service.batch_move_plans_to_record(session, data, user.id)
+    return [purchase_request_service.purchase_record_read(line) for line in lines]
 
 
 @router.get("/{material_id}", response_model=PurchaseMaterialRead)
