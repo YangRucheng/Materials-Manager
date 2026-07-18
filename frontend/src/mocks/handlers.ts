@@ -11,7 +11,7 @@ import type {
   StockMaterialWrite,
   StockOperation,
 } from '@/api/generated'
-import { defaultTraceNo } from '@/utils/purchase'
+import { defaultPurchaseOrderNo } from '@/utils/purchase'
 import {
   mockImageUrl,
   nextIds,
@@ -69,8 +69,8 @@ const purchaseRecord = (
     line_id: line.id,
     purchase_request_id: request.id,
     purchase_material_id: line.purchase_material_id,
-    trace_no: request.trace_no,
     purchase_order_no: request.purchase_order_no,
+    trace_no: request.trace_no,
     status: request.status,
     material_code: line.material_code_snapshot || '',
     material_name: line.material_name_snapshot,
@@ -86,7 +86,7 @@ const purchaseRecord = (
     usage: line.usage,
     subitem_no: line.subitem_no,
     stock_material_id: material.stock_material_id,
-    purchase_time: request.purchase_time,
+    purchase_date: request.purchase_date,
     created_at: request.created_at,
     version: request.version,
   }
@@ -110,13 +110,13 @@ const movePlansToRecords = (
   }))
   const purchaseRequest: (typeof purchaseRequests)[number] = {
     id: nextIds.request++,
-    trace_no: body.trace_no,
     purchase_order_no: body.purchase_order_no,
+    trace_no: body.trace_no,
     status: 'PROCESSING',
     applicant_name: actor(request).display_name,
     salesperson: body.salesperson,
     remark: body.remark,
-    purchase_time: body.purchase_time,
+    purchase_date: body.purchase_date,
     created_at: now(),
     version: 1,
     lines,
@@ -213,7 +213,7 @@ const makeOperation = (
     receiver_name: payload.receiver_name,
     subitem_no: payload.subitem_no,
     source_type: payload.source_type,
-    purchase_request_no: purchaseRequest?.trace_no,
+    purchase_request_no: purchaseRequest?.trace_no || undefined,
     client_request_id: payload.client_request_id,
     created_at: now(),
     version: 1,
@@ -750,9 +750,9 @@ export const handlers = [
     })
     const item = {
       id,
-      trace_no: body.trace_no || defaultTraceNo(),
-      purchase_order_no: body.purchase_order_no,
-      purchase_time: body.purchase_time,
+      purchase_order_no: body.purchase_order_no || defaultPurchaseOrderNo(),
+      trace_no: body.trace_no,
+      purchase_date: body.purchase_date,
       status: 'DRAFT' as const,
       applicant_name: selectedMaterials[0]?.purchase_responsible || actor(request).display_name,
       remark: body.remark,
@@ -782,9 +782,9 @@ export const handlers = [
     )
     if (responsibles.size > 1)
       return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
-    item.trace_no = body.trace_no || item.trace_no
     item.purchase_order_no = body.purchase_order_no
-    item.purchase_time = body.purchase_time
+    item.trace_no = body.trace_no
+    item.purchase_date = body.purchase_date
     item.remark = body.remark
     item.applicant_name = selectedMaterials[0]?.purchase_responsible || item.applicant_name
     item.lines = body.lines.map((line) => {
@@ -840,7 +840,7 @@ export const handlers = [
           (m) => m.id === line.purchase_material_id,
         )?.material_code
       })
-      item.purchase_time ||= now()
+      item.purchase_date ||= now().slice(0, 10)
     }
     if (action === 'accept') item.handler_name = actor(request).display_name
     if (action === 'return') item.return_reason = body.reason

@@ -34,7 +34,6 @@ from app.services.common import (
     event_reads,
     log_event,
     utc_aware,
-    utc_naive,
     utcnow,
     validate_quantity_precision,
     validate_version,
@@ -44,9 +43,9 @@ ZERO = Decimal("0")
 SHANGHAI = timezone(timedelta(hours=8))
 
 
-def default_trace_no() -> str:
+def default_purchase_order_no() -> str:
     now = datetime.now(SHANGHAI)
-    return f"追溯-{now.year}{now.month:02d}{now.day:02d}-{now:%H%M%S}"
+    return f"申购 {now.year}/{now.month}/{now.day}"
 
 
 async def get_request(
@@ -72,8 +71,8 @@ async def request_read(session: AsyncSession, item: PurchaseRequest) -> Purchase
     )
     return PurchaseRequestRead(
         id=item.id,
-        trace_no=item.trace_no,
         purchase_order_no=item.purchase_order_no,
+        trace_no=item.trace_no,
         status=item.status,
         applicant_name=applicant_name or "未知用户",
         handler_name=handler_name,
@@ -81,7 +80,7 @@ async def request_read(session: AsyncSession, item: PurchaseRequest) -> Purchase
         remark=item.remark,
         return_reason=item.return_reason,
         close_reason=item.close_reason,
-        purchase_time=utc_aware(item.purchase_time),
+        purchase_date=item.purchase_date,
         completed_at=utc_aware(item.completed_at),
         created_at=utc_aware(item.created_at),
         version=item.version,
@@ -185,9 +184,13 @@ async def create_request(
     session: AsyncSession, data: PurchaseRequestCreate, user_id: int
 ) -> PurchaseRequest:
     item = PurchaseRequest(
-        trace_no=data.trace_no or default_trace_no(),
-        purchase_order_no=data.purchase_order_no,
-        purchase_time=utc_naive(data.purchase_time) if data.purchase_time else None,
+        purchase_order_no=(
+            data.purchase_order_no or None
+            if "purchase_order_no" in data.model_fields_set
+            else default_purchase_order_no()
+        ),
+        trace_no=data.trace_no or None,
+        purchase_date=data.purchase_date,
         status=PurchaseRequestStatus.DRAFT,
         applicant_id=user_id,
         remark=data.remark,
@@ -218,10 +221,9 @@ async def update_request(
         raise invalid_transition(item.status.value, "update")
     if any(line.received_qty > ZERO for line in item.lines):
         raise AppError("REQUEST_HAS_RECEIPTS", "已有到货记录的请购单不能修改", status_code=409)
-    if data.trace_no:
-        item.trace_no = data.trace_no
-    item.purchase_order_no = data.purchase_order_no
-    item.purchase_time = utc_naive(data.purchase_time) if data.purchase_time else None
+    item.purchase_order_no = data.purchase_order_no or None
+    item.trace_no = data.trace_no or None
+    item.purchase_date = data.purchase_date
     item.remark = data.remark
     item.updated_by = user_id
     item.version += 1
@@ -270,7 +272,7 @@ async def submit_request(
         )
     old = item.status
     item.status = PurchaseRequestStatus.SUBMITTED
-    item.purchase_time = item.purchase_time or utcnow()
+    item.purchase_date = item.purchase_date or datetime.now(SHANGHAI).date()
     item.return_reason = None
     item.updated_by = user_id
     item.version += 1
@@ -472,8 +474,8 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         line_id=line.id,
         purchase_request_id=request.id,
         purchase_material_id=line.purchase_material_id,
-        trace_no=request.trace_no,
         purchase_order_no=request.purchase_order_no,
+        trace_no=request.trace_no,
         status=request.status,
         material_code=line.material_code_snapshot or "",
         material_name=line.material_name_snapshot,
@@ -489,7 +491,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         usage=line.usage,
         subitem_no=line.subitem_no,
         stock_material_id=material.stock_material_id,
-        purchase_time=utc_aware(request.purchase_time),
+        purchase_date=request.purchase_date,
         created_at=utc_aware(request.created_at),
         version=request.version,
     )
@@ -558,13 +560,17 @@ async def move_plans_to_record(
             details={"material_ids": sorted(moved_ids)},
         )
     request = PurchaseRequest(
-        trace_no=data.trace_no,
-        purchase_order_no=data.purchase_order_no,
+        purchase_order_no=(
+            data.purchase_order_no or None
+            if "purchase_order_no" in data.model_fields_set
+            else default_purchase_order_no()
+        ),
+        trace_no=data.trace_no or None,
         status=PurchaseRequestStatus.PROCESSING,
         applicant_id=user_id,
         salesperson=data.salesperson,
         remark=data.remark,
-        purchase_time=utc_naive(data.purchase_time),
+        purchase_date=data.purchase_date,
         created_by=user_id,
         updated_by=user_id,
         lines=[],
@@ -620,12 +626,12 @@ async def update_purchase_record(
 ) -> PurchaseRequestLine:
     request = line.request
     validate_version(data.version, request.version)
-    if data.trace_no is not None:
-        request.trace_no = data.trace_no
-    if data.purchase_order_no is not None:
-        request.purchase_order_no = data.purchase_order_no
-    if data.purchase_time is not None:
-        request.purchase_time = utc_naive(data.purchase_time)
+    if "purchase_order_no" in data.model_fields_set:
+        request.purchase_order_no = data.purchase_order_no or None
+    if "trace_no" in data.model_fields_set:
+        request.trace_no = data.trace_no or None
+    if "purchase_date" in data.model_fields_set:
+        request.purchase_date = data.purchase_date
     request.salesperson = data.salesperson
     request.remark = data.remark
     request.updated_by = user_id
