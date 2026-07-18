@@ -58,8 +58,10 @@ a {
 .success-text {
   color: #18a058;
 }
-.text-right {
-  text-align: right;
+.pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 .full-width {
   width: 100%;

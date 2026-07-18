@@ -84,7 +84,7 @@ onMounted(load)
     </div>
     <div class="detail-grid">
       <n-card title="物资信息"
-        ><n-descriptions label-placement="left" :column="2" bordered
+        ><n-descriptions label-placement="left" :column="2"
           ><n-descriptions-item label="名称">{{ material.name }}</n-descriptions-item
           ><n-descriptions-item label="型号规格">{{ material.model_spec }}</n-descriptions-item
           ><n-descriptions-item label="计量单位">{{ material.unit_name }}</n-descriptions-item
@@ -112,7 +112,7 @@ onMounted(load)
         ><n-empty v-else description="暂无图片" size="small"
       /></n-card>
       <n-card title="安全库存策略"
-        ><n-descriptions bordered :column="2" style="margin-bottom: 16px"
+        ><n-descriptions :column="2" style="margin-bottom: 16px"
           ><n-descriptions-item label="最低库存">{{
             balance?.minimum_qty ?? '—'
           }}</n-descriptions-item

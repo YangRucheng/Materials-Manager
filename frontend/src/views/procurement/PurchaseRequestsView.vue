@@ -129,13 +129,14 @@ onMounted(load)
     </n-card>
     <n-card>
       <n-data-table
+        :bordered="false"
         :columns="columns"
         :data="items"
         :loading="loading"
         :scroll-x="1200"
         :row-key="(row: PurchaseRecord) => row.line_id"
       />
-      <div class="text-right">
+      <div class="pagination-bar">
         <n-pagination v-model:page="page" :page-size="20" :item-count="total" @update:page="load" />
       </div>
     </n-card>

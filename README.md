@@ -66,7 +66,7 @@ mysql -h <数据库地址> -P 3306 -u <数据库用户> -p <数据库名> < data
 
 也可以直接通过 1Panel 的数据库导入功能上传 `database/init.sql`。
 
-初始化脚本会创建表、基础计量单位和初始登录账号，但不会创建数据库或 MySQL 账号。后端启动时不会自动建表、执行迁移或写入初始数据，因此必须在首次启动前完成导入。
+初始化脚本会创建表、基础计量单位和初始登录账号，但不会创建数据库或 MySQL 账号。后端启动时会自动执行已有数据库的 Alembic 增量迁移，但不会创建数据库、初始化空库或写入初始账号，因此首次启动前仍必须完成导入。
 
 `database/init.sql` 仅用于初始化空数据库，不要将它作为已有生产数据库的升级脚本重复导入。
 
@@ -161,9 +161,9 @@ docker compose logs -f
 
 ### 升级
 
-固定标签 `backend` 和 `frontend` 指向 `main` 分支最新构建。升级前先查看目标版本说明；如果版本包含数据库结构变更，应先按版本说明备份并迁移数据库，不能重新导入 `database/init.sql`。
+固定标签 `backend` 和 `frontend` 指向 `main` 分支最新构建。升级前先备份数据库；后端容器会在 API 启动前自动执行 Alembic 增量迁移，不能对已有数据库重新导入 `database/init.sql`。
 
-确认数据库准备完成后执行：
+确认数据库已备份后执行：
 
 ```bash
 docker compose pull
@@ -171,7 +171,7 @@ docker compose up -d --remove-orphans
 docker compose ps
 ```
 
-升级后应重新检查 `/health` 并完成一次登录验证。
+可通过 `docker compose logs backend` 确认迁移完成。只有迁移成功后 API 才会启动；迁移失败时后端容器会退出并按重启策略重试，不会让新代码连接旧表结构继续提供服务。升级后应重新检查 `/health` 并完成一次登录验证。
 
 ### 停止服务
 

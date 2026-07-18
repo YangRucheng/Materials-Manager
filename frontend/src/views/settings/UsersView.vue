@@ -136,6 +136,7 @@ onMounted(load)
     </div>
     <n-card
       ><n-data-table
+        :bordered="false"
         :columns="columns"
         :data="items"
         :loading="loading"

@@ -162,7 +162,7 @@ onMounted(() => {
       >
     </div>
     <n-card title="物资信息"
-      ><n-descriptions bordered :column="3"
+      ><n-descriptions :column="3"
         ><n-descriptions-item label="物料编码">{{
           material.material_code || '—'
         }}</n-descriptions-item

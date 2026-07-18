@@ -14,7 +14,7 @@ mysql -h <数据库地址> -u <用户名> -p <数据库名> < ../database/init.s
 .venv/Scripts/uvicorn app.main:app --reload
 ```
 
-数据库初始化只通过项目根目录的 `database/init.sql` 完成，不在业务代码或应用启动过程内自动执行。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
+空数据库初始化通过项目根目录的 `database/init.sql` 完成；Docker 容器启动时会在 API 服务前自动执行 Alembic 增量迁移。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
 
 ## 验证与契约
 

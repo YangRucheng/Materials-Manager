@@ -178,7 +178,7 @@ onMounted(() => {
       </n-space>
     </div>
     <n-card title="到货跟踪">
-      <n-descriptions bordered :column="3">
+      <n-descriptions :column="3">
         <n-descriptions-item label="申购记录号">{{ record.request_no }}</n-descriptions-item>
         <n-descriptions-item label="状态">{{
           requestStatusLabels[record.status]
@@ -208,7 +208,7 @@ onMounted(() => {
       </n-descriptions>
     </n-card>
     <n-card title="物资与计划信息">
-      <n-descriptions bordered :column="3">
+      <n-descriptions :column="3">
         <n-descriptions-item label="物料编码">{{ record.material_code }}</n-descriptions-item>
         <n-descriptions-item label="名称">{{ record.material_name }}</n-descriptions-item>
         <n-descriptions-item label="型号规格">{{ record.model_spec }}</n-descriptions-item>
