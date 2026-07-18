@@ -5,6 +5,7 @@ import type {
   OperationUpdate,
   OperationWrite,
   Page,
+  ReplenishmentDraftWrite,
   ReplenishmentPolicy,
   StockMaterial,
   StockMaterialWrite,
@@ -47,10 +48,11 @@ export const inventoryApi = {
     apiClient
       .post<StockOperation>(`/inventory/operations/${id}/reverse`, payload)
       .then((r) => r.data),
-  replenish: (id: number) =>
+  replenish: (id: number, payload: ReplenishmentDraftWrite) =>
     apiClient
       .post<{ next: 'purchase_material'; resource_id: number }>(
         `/inventory/low-stock/${id}/create-replenishment-draft`,
+        payload,
       )
       .then((r) => r.data),
 }
