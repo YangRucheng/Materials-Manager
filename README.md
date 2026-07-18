@@ -6,9 +6,10 @@
 
 项目不部署 MySQL 容器，必须连接已有的 MySQL 8.0 服务。
 
-1. 在 MySQL 中创建数据库和账号。
-2. 复制 `.env.example` 为 `.env`，修改 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。
-3. 拉取并启动服务：
+1. 在 MySQL 中创建空数据库，并将 [database/init.sql](database/init.sql) 导入该数据库。
+2. 确认 MySQL 服务已加入外部 Docker 网络 `1panel-network`。
+3. 复制 `.env.example` 为 `.env`，修改 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。连接串中的主机名应填写 `1panel-network` 内可访问的 MySQL 容器名。
+4. 拉取并启动服务：
 
 ```bash
 docker login docker.io
@@ -21,9 +22,9 @@ docker compose up -d
 - 前端：`http://localhost:8080`
 - 后端接口文档：`http://localhost:8000/api/docs`
 
-如果 MySQL 运行在 Docker 宿主机上，Windows/macOS 可以在连接串中使用 `host.docker.internal`；远程 MySQL 请填写其内网域名或 IP。密码中的 `@`、`:`、`/` 等字符必须进行 URL 编码。
+Compose 会直接使用 1Panel 已有的外部网络 `1panel-network`，不会创建或管理 MySQL 容器。远程 MySQL 也可填写其内网域名或 IP。密码中的 `@`、`:`、`/` 等字符必须进行 URL 编码。
 
-首次启动会自动执行 Alembic 迁移并写入演示账号。生产使用前请修改初始密码及 JWT 密钥。上传图片保存在 Compose 的 `uploads` 数据卷中。
+后端容器不会自动建表、迁移或写入种子数据，数据库初始化与业务服务启动完全分离。初始化 SQL 会创建四个账号：`admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。首次登录后请立即修改密码，并在生产使用前修改 JWT 密钥。上传图片保存在 Compose 的 `uploads` 数据卷中。
 
 ## Docker Hub 镜像
 
