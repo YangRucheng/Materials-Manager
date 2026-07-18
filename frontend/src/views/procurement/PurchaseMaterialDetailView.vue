@@ -14,6 +14,7 @@ import MaterialSelector from '@/components/MaterialSelector.vue'
 import { formatShanghaiTime } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
+import PurchaseResponsibleSelector from '@/components/PurchaseResponsibleSelector.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +34,8 @@ const form = reactive<PurchaseMaterialWrite>({
   name: '',
   model_spec: '',
   unit_id: null,
+  actual_demand_person: '',
+  purchase_responsible_id: undefined,
   remark: '',
   image_ids: [],
 })
@@ -61,6 +64,8 @@ function openEdit() {
     name: material.value.name,
     model_spec: material.value.model_spec,
     unit_id: material.value.unit_id,
+    actual_demand_person: material.value.actual_demand_person,
+    purchase_responsible_id: material.value.purchase_responsible_id,
     remark: material.value.remark || '',
     stock_material_id: material.value.stock_material_id,
     image_ids: material.value.images.map((image) => image.id),
@@ -70,8 +75,15 @@ function openEdit() {
   showEdit.value = true
 }
 async function save() {
-  if (!material.value || !form.name.trim() || !form.model_spec.trim() || !form.unit_id) {
-    message.error('请完整填写名称、型号规格和计量单位')
+  if (
+    !material.value ||
+    !form.name.trim() ||
+    !form.model_spec.trim() ||
+    !form.unit_id ||
+    !form.actual_demand_person?.trim() ||
+    !form.purchase_responsible_id
+  ) {
+    message.error('请完整填写名称、型号规格、计量单位、实际需求人和申购负责人')
     return
   }
   saving.value = true
@@ -117,6 +129,12 @@ onMounted(() => {
         ><n-descriptions-item label="名称">{{ material.name }}</n-descriptions-item
         ><n-descriptions-item label="型号规格">{{ material.model_spec }}</n-descriptions-item
         ><n-descriptions-item label="单位">{{ material.unit_name }}</n-descriptions-item
+        ><n-descriptions-item label="实际需求人">{{
+          material.actual_demand_person
+        }}</n-descriptions-item
+        ><n-descriptions-item label="申购负责人">{{
+          material.purchase_responsible_name
+        }}</n-descriptions-item
         ><n-descriptions-item label="编码状态"
           ><n-tag :type="material.code_state === 'CODED' ? 'success' : 'warning'">{{
             material.code_state
@@ -183,6 +201,17 @@ onMounted(() => {
           /></n-form-item>
           <n-form-item label="计量单位" required
             ><n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions"
+          /></n-form-item>
+          <n-form-item label="实际需求人" required
+            ><n-input
+              v-model:value="form.actual_demand_person"
+              maxlength="128"
+              placeholder="填写提出实际需求的员工"
+          /></n-form-item>
+          <n-form-item label="申购负责人" required
+            ><PurchaseResponsibleSelector
+              :value="form.purchase_responsible_id ?? null"
+              @update:value="form.purchase_responsible_id = $event ?? undefined"
           /></n-form-item>
         </div>
         <n-form-item label="备注"

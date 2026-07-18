@@ -10,8 +10,9 @@ describe('Decimal 字符串', () => {
   it('按单位小数位校验正数量', () => {
     expect(isDecimalString('12', 0)).toBe(true)
     expect(isDecimalString('12.1', 0)).toBe(false)
-    expect(isDecimalString('0.125', 3)).toBe(true)
-    expect(isDecimalString('0', 3)).toBe(false)
+    expect(isDecimalString('0.1', 1)).toBe(true)
+    expect(isDecimalString('0.12', 1)).toBe(false)
+    expect(isDecimalString('0', 1)).toBe(false)
   })
 
   it('精确计算出库后库存', () => {

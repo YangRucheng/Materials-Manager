@@ -55,6 +55,7 @@ declare module 'vue' {
     OperationLinesEditor: typeof import('./src/components/OperationLinesEditor.vue')['default']
     ProjectSubitemSelector: typeof import('./src/components/ProjectSubitemSelector.vue')['default']
     PurchaseMaterialSelector: typeof import('./src/components/PurchaseMaterialSelector.vue')['default']
+    PurchaseResponsibleSelector: typeof import('./src/components/PurchaseResponsibleSelector.vue')['default']
     QuantityInput: typeof import('./src/components/QuantityInput.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

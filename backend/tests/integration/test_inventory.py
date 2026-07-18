@@ -55,7 +55,7 @@ async def test_idempotency_negative_stock_and_permissions(client: AsyncClient) -
     )
     assert outbound.status_code == 201, outbound.text
     detail = await client.get(f"/api/v1/stock-materials/{material_id}", headers=warehouse)
-    assert detail.json()["current_qty"] == "-1.000"
+    assert detail.json()["current_qty"] == "-1"
 
 
 @pytest.mark.asyncio
@@ -90,8 +90,8 @@ async def test_edit_historical_operation_replays_snapshots(client: AsyncClient) 
     later = await client.get(
         f"/api/v1/inventory/operations/{outbound.json()['id']}", headers=headers
     )
-    assert later.json()["lines"][0]["before_qty"] == "5.000"
-    assert later.json()["lines"][0]["after_qty"] == "2.000"
+    assert later.json()["lines"][0]["before_qty"] == "5"
+    assert later.json()["lines"][0]["after_qty"] == "2"
 
     changed_again = await client.patch(
         f"/api/v1/inventory/operations/{changed.json()['id']}",
@@ -109,10 +109,10 @@ async def test_edit_historical_operation_replays_snapshots(client: AsyncClient) 
     later = await client.get(
         f"/api/v1/inventory/operations/{outbound.json()['id']}", headers=headers
     )
-    assert later.json()["lines"][0]["before_qty"] == "2.000"
-    assert later.json()["lines"][0]["after_qty"] == "-1.000"
+    assert later.json()["lines"][0]["before_qty"] == "2"
+    assert later.json()["lines"][0]["after_qty"] == "-1"
     detail = await client.get(f"/api/v1/stock-materials/{material_id}", headers=headers)
-    assert detail.json()["current_qty"] == "-1.000"
+    assert detail.json()["current_qty"] == "-1"
 
 
 @pytest.mark.asyncio
@@ -142,7 +142,7 @@ async def test_concurrent_outbound_allows_negative_without_lost_updates(
         responses = [await outbound("concurrent-a"), await outbound("concurrent-b")]
     assert [response.status_code for response in responses] == [201, 201]
     detail = await client.get(f"/api/v1/stock-materials/{material_id}", headers=headers)
-    assert detail.json()["current_qty"] == "-3.000"
+    assert detail.json()["current_qty"] == "-3"
 
 
 @pytest.mark.asyncio
@@ -158,7 +158,7 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     assert policy.status_code == 200
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
     assert low.json()["items"][0]["warning_state"] == "PENDING_PURCHASE"
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "10.000"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "10"
 
     replenishment = await client.post(
         f"/api/v1/inventory/low-stock/{material_id}/create-replenishment-draft",
@@ -206,8 +206,8 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     )
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
     assert low.json()["items"][0]["warning_state"] == "ON_ORDER"
-    assert low.json()["items"][0]["on_order_qty"] == "5.000"
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "5.000"
+    assert low.json()["items"][0]["on_order_qty"] == "5"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "5"
 
     disabled = await client.post(
         f"/api/v1/stock-materials/{material_id}/disable", headers=warehouse, json={}
