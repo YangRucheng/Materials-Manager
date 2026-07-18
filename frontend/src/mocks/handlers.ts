@@ -252,8 +252,23 @@ export const handlers = [
   http.patch(`${api}/users/:id`, async ({ params, request }) => {
     const item = users.find((x) => x.id === Number(params.id))
     if (!item) return error(404, 'NOT_FOUND', '用户不存在')
-    Object.assign(item, await request.json(), { version: item.version + 1 })
+    const body = (await request.json()) as Partial<(typeof users)[number]>
+    if (body.username && users.some((x) => x.id !== item.id && x.username === body.username))
+      return error(409, 'DUPLICATE_USERNAME', '用户名已存在')
+    Object.assign(item, body, { version: item.version + 1 })
     return HttpResponse.json(item)
+  }),
+  http.delete(`${api}/users/:id`, ({ params, request }) => {
+    const item = users.find((x) => x.id === Number(params.id))
+    if (!item) return error(404, 'NOT_FOUND', '用户不存在')
+    if (item.id === actor(request).id)
+      return error(409, 'CANNOT_DELETE_CURRENT_USER', '不能删除当前登录用户')
+    const referenced =
+      operations.some((operation) => operation.operator_name === item.display_name) ||
+      purchaseMaterials.some((material) => material.purchase_responsible_id === item.id)
+    if (referenced) return error(409, 'USER_IN_USE', '该用户已有操作记录或业务数据关联，不能删除')
+    users.splice(users.indexOf(item), 1)
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.get(`${api}/stock-materials`, ({ request }) => {

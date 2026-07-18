@@ -127,3 +127,8 @@ async def edit_user(
     item_id: int, data: UserUpdate, session: DbSession, user: SuperAdmin
 ) -> UserRead:
     return UserRead.model_validate(await dictionary_service.update_user(session, item_id, data))
+
+
+@router.delete("/users/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_user(item_id: int, session: DbSession, user: SuperAdmin) -> None:
+    await dictionary_service.delete_user(session, item_id, user.id)

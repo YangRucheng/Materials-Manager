@@ -82,6 +82,10 @@ class UserCreate(RequestModel):
 
 
 class UserUpdate(RequestModel):
+    username: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)]
+        | None
+    ) = None
     display_name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
