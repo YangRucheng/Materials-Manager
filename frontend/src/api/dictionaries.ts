@@ -20,4 +20,5 @@ export const dictionaryApi = {
     apiClient.post<User>('/users', payload).then((r) => r.data),
   updateUser: (id: number, payload: Partial<User> & { password?: string }) =>
     apiClient.patch<User>(`/users/${id}`, payload).then((r) => r.data),
+  deleteUser: (id: number) => apiClient.delete(`/users/${id}`),
 }

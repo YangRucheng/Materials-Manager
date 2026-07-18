@@ -6,6 +6,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import Base
 from app.core.errors import AppError, not_found
 from app.core.security import hash_password
 from app.models import MeasurementUnit, ProjectSubitem, User
@@ -171,12 +172,56 @@ async def update_user(session: AsyncSession, item_id: int, data: UserUpdate) -> 
     if item is None:
         raise not_found("用户")
     validate_version(data.version, item.version)
-    for key in ("display_name", "role", "enabled"):
+    for key in ("username", "display_name", "role", "enabled"):
         value = getattr(data, key)
         if value is not None:
             setattr(item, key, value)
     if data.password:
         item.password_hash = hash_password(data.password)
     item.version += 1
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise AppError("DUPLICATE_USERNAME", "用户名已存在", status_code=409) from exc
     return item
+
+
+async def _user_has_references(session: AsyncSession, user_id: int) -> bool:
+    for table in Base.metadata.sorted_tables:
+        if table is User.__table__:
+            continue
+        for column in table.columns:
+            references_user = any(
+                foreign_key.target_fullname == "user.id" for foreign_key in column.foreign_keys
+            )
+            if not references_user:
+                continue
+            reference = await session.scalar(select(column).where(column == user_id).limit(1))
+            if reference is not None:
+                return True
+    return False
+
+
+async def delete_user(session: AsyncSession, item_id: int, current_user_id: int) -> None:
+    item = await session.get(User, item_id)
+    if item is None:
+        raise not_found("用户")
+    if item.id == current_user_id:
+        raise AppError(
+            "CANNOT_DELETE_CURRENT_USER", "不能删除当前登录用户", status_code=409
+        )
+    if await _user_has_references(session, item.id):
+        raise AppError(
+            "USER_IN_USE",
+            "该用户已有操作记录或业务数据关联，不能删除",
+            status_code=409,
+        )
+    await session.delete(item)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise AppError(
+            "USER_IN_USE",
+            "该用户已有操作记录或业务数据关联，不能删除",
+            status_code=409,
+        ) from exc

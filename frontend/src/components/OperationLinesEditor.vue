@@ -39,6 +39,12 @@ function patch(index: number, value: Partial<OperationLineModel>) {
   const next = props.lines.map((line, i) => (i === index ? { ...line, ...value } : line))
   emit('update:lines', next)
 }
+function selectMaterial(index: number, material?: StockMaterial) {
+  patch(index, {
+    stock_material_id: material?.id ?? null,
+    material,
+  })
+}
 function add() {
   emit('update:lines', [...props.lines, { stock_material_id: null, quantity: '' }])
 }
@@ -67,8 +73,7 @@ function remove(index: number) {
         :value="line.stock_material_id"
         :disabled="disabled"
         :exclude-ids="selectedIds.filter((id) => id !== line.stock_material_id)"
-        @update:value="patch(index, { stock_material_id: $event })"
-        @select="patch(index, { material: $event })"
+        @select="selectMaterial(index, $event)"
       />
       <span>{{ line.material?.current_qty ?? '—' }} {{ line.material?.unit_name }}</span>
       <QuantityInput
