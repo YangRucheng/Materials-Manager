@@ -103,7 +103,7 @@ async def edit_project(
 @router.get("/users", response_model=Page[UserRead])
 async def users(
     session: DbSession,
-    user: SuperAdmin,
+    user: CurrentUser,
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: str | None = None,

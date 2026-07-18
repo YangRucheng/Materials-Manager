@@ -49,7 +49,7 @@ export interface MeasurementUnit {
   id: number
   code: string
   name: string
-  decimal_places: 0 | 1 | 2 | 3
+  decimal_places: 0 | 1
   enabled: boolean
   version: number
 }
@@ -177,6 +177,9 @@ export interface PurchaseMaterial {
   model_spec: string
   unit_id: number
   unit_name: string
+  actual_demand_person: string
+  purchase_responsible_id: number
+  purchase_responsible_name: string
   remark?: string
   stock_material_id?: number
   stock_material_name?: string
@@ -192,6 +195,8 @@ export interface PurchaseMaterialWrite {
   name: string
   model_spec: string
   unit_id: number | null
+  actual_demand_person?: string
+  purchase_responsible_id?: number
   remark?: string
   stock_material_id?: number
   image_ids: number[]

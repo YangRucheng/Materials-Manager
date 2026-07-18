@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
-from app.domain.enums import CodeState
+from app.domain.enums import CodeState, Role
 from app.models import (
     FileObject,
     MeasurementUnit,
@@ -14,6 +14,7 @@ from app.models import (
     StockBalance,
     StockMaterial,
     StockMaterialImage,
+    User,
 )
 from app.schemas import (
     PurchaseMaterialCreate,
@@ -150,6 +151,9 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         model_spec=item.model_spec,
         unit_id=item.unit_id,
         unit_name=item.unit.name,
+        actual_demand_person=item.actual_demand_person,
+        purchase_responsible_id=item.purchase_responsible_id,
+        purchase_responsible_name=item.purchase_responsible.display_name,
         remark=item.remark,
         stock_material_id=item.stock_material_id,
         stock_material_name=item.stock_material.name if item.stock_material else None,
@@ -173,10 +177,22 @@ async def _validate_stock_link(
     return stock
 
 
+async def _purchase_responsible(session: AsyncSession, user_id: int) -> User:
+    user = await session.get(User, user_id)
+    if user is None or not user.enabled or user.role == Role.READ_ONLY:
+        raise AppError(
+            "INVALID_PURCHASE_RESPONSIBLE",
+            "申购负责人必须是启用的管理用户",
+        )
+    return user
+
+
 async def create_purchase_material(
     session: AsyncSession, data: PurchaseMaterialCreate, user_id: int
 ) -> PurchaseMaterial:
     unit = await _unit(session, data.unit_id)
+    responsible_id = data.purchase_responsible_id or user_id
+    responsible = await _purchase_responsible(session, responsible_id)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
     item = PurchaseMaterial(
@@ -184,6 +200,8 @@ async def create_purchase_material(
         name=data.name,
         model_spec=data.model_spec,
         unit_id=data.unit_id,
+        actual_demand_person=data.actual_demand_person or responsible.display_name,
+        purchase_responsible_id=responsible_id,
         remark=data.remark,
         stock_material_id=data.stock_material_id,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
@@ -196,6 +214,7 @@ async def create_purchase_material(
         ],
     )
     item.unit = unit
+    item.purchase_responsible = responsible
     item.stock_material = stock
     session.add(item)
     await session.flush()
@@ -207,12 +226,18 @@ async def update_purchase_material(
 ) -> PurchaseMaterial:
     validate_version(data.version, item.version)
     unit = await _unit(session, data.unit_id)
+    responsible_id = data.purchase_responsible_id or item.purchase_responsible_id
+    responsible = await _purchase_responsible(session, responsible_id)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
     for key in ("material_code", "name", "model_spec", "unit_id", "remark", "stock_material_id"):
         setattr(item, key, getattr(data, key))
+    if data.actual_demand_person is not None:
+        item.actual_demand_person = data.actual_demand_person
+    item.purchase_responsible_id = responsible_id
     item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_id)
     item.unit = unit
+    item.purchase_responsible = responsible
     item.stock_material = stock
     item.images = [
         PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)

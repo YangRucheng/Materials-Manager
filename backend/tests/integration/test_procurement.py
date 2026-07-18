@@ -12,6 +12,8 @@ async def create_purchase_material(
     name: str,
     code: str | None = None,
     stock_material_id: int | None = None,
+    actual_demand_person: str = "车间员工张三",
+    purchase_responsible_id: int = 3,
 ) -> dict[str, object]:
     response = await client.post(
         "/api/v1/purchase-materials",
@@ -21,13 +23,17 @@ async def create_purchase_material(
             "name": name,
             "model_spec": "M60-2P 5A",
             "unit_id": 1,
+            "actual_demand_person": actual_demand_person,
+            "purchase_responsible_id": purchase_responsible_id,
             "remark": "新物资",
             "stock_material_id": stock_material_id,
             "image_ids": [],
         },
     )
     assert response.status_code == 201, response.text
-    return response.json()
+    result = response.json()
+    assert result["actual_demand_person"] == actual_demand_person
+    return result
 
 
 async def create_request(
@@ -169,7 +175,7 @@ async def test_direct_code_maintenance_and_over_receipt_close_loop(client: Async
     assert over.status_code == 201, over.text
     request_state = await client.get(f"/api/v1/purchase-requests/{request['id']}", headers=purchase)
     assert request_state.json()["status"] == "COMPLETED"
-    assert request_state.json()["lines"][0]["received_qty"] == "6.000"
+    assert request_state.json()["lines"][0]["received_qty"] == "6"
 
     linked = await client.get(f"/api/v1/purchase-materials/{material['id']}", headers=purchase)
     assert linked.json()["stock_material_id"] == stock_id
@@ -195,7 +201,7 @@ async def test_direct_code_maintenance_and_over_receipt_close_loop(client: Async
     assert edited_receipt.status_code == 200, edited_receipt.text
     request_state = await client.get(f"/api/v1/purchase-requests/{request['id']}", headers=purchase)
     assert request_state.json()["status"] == "COMPLETED"
-    assert request_state.json()["lines"][0]["received_qty"] == "5.000"
+    assert request_state.json()["lines"][0]["received_qty"] == "5"
 
     reversed_receipt = await client.post(
         f"/api/v1/inventory/operations/{full.json()['id']}/reverse",
@@ -205,7 +211,7 @@ async def test_direct_code_maintenance_and_over_receipt_close_loop(client: Async
     assert reversed_receipt.status_code == 200, reversed_receipt.text
     request_state = await client.get(f"/api/v1/purchase-requests/{request['id']}", headers=purchase)
     assert request_state.json()["status"] == "PARTIALLY_RECEIVED"
-    assert request_state.json()["lines"][0]["received_qty"] == "2.000"
+    assert request_state.json()["lines"][0]["received_qty"] == "2"
 
 
 @pytest.mark.asyncio
@@ -220,3 +226,36 @@ async def test_purchase_plans_can_repeat_code_and_stock_material(client: AsyncCl
         client, purchase, "重复补库物资", code="DQ-REPEAT", stock_material_id=stock_id
     )
     assert first["id"] != second["id"]
+
+
+@pytest.mark.asyncio
+async def test_request_applicant_inherits_plan_responsible(client: AsyncClient) -> None:
+    purchase = await auth_headers(client, "purchase")
+    first = await create_purchase_material(client, purchase, "负责人一", purchase_responsible_id=3)
+    second = await create_purchase_material(client, purchase, "负责人二", purchase_responsible_id=1)
+
+    request = await create_request(client, purchase, int(first["id"]))
+    assert request["applicant_name"] == "申购管理员"
+
+    mixed = await client.post(
+        "/api/v1/purchase-requests",
+        headers=purchase,
+        json={
+            "lines": [
+                {
+                    "purchase_material_id": first["id"],
+                    "requested_qty": "1",
+                    "usage": "检修",
+                    "project_subitem_id": 1,
+                },
+                {
+                    "purchase_material_id": second["id"],
+                    "requested_qty": "1",
+                    "usage": "检修",
+                    "project_subitem_id": 1,
+                },
+            ]
+        },
+    )
+    assert mixed.status_code == 409
+    assert mixed.json()["code"] == "MULTIPLE_PURCHASE_RESPONSIBLES"

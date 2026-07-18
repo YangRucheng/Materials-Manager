@@ -9,7 +9,6 @@ import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { isDecimalString } from '@/utils/decimal'
 import { defaultPurchaseRequestNo, findUncodedLineNumbers } from '@/utils/purchase'
-import { useDictionaryStore } from '@/stores/dictionaries'
 
 interface LineModel {
   id?: number
@@ -22,7 +21,6 @@ interface LineModel {
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
-const dictionaries = useDictionaryStore()
 const request = ref<PurchaseRequest | null>(null)
 const saving = ref(false)
 const loading = ref(false)
@@ -32,6 +30,23 @@ const model = reactive<{ request_no: string; remark: string; lines: LineModel[] 
   lines: [{ purchase_material_id: null, requested_qty: '', usage: '', project_subitem_id: null }],
 })
 const uncodedLineNumbers = computed(() => findUncodedLineNumbers(model.lines))
+const responsibleIds = computed(() => [
+  ...new Set(
+    model.lines
+      .map((line) => line.material?.purchase_responsible_id)
+      .filter((id): id is number => id !== undefined),
+  ),
+])
+const applicantName = computed(() => {
+  const names = [
+    ...new Set(
+      model.lines
+        .map((line) => line.material?.purchase_responsible_name)
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ]
+  return names.length === 1 ? names[0] : ''
+})
 const uncodedLines = computed(() =>
   model.lines
     .map((x, i) => ({ line: x, index: i + 1 }))
@@ -54,10 +69,11 @@ function selectMaterial(i: number, material?: PurchaseMaterial) {
 function validate() {
   if (!model.request_no.trim()) return '请填写请购单号'
   if (!model.lines.length) return '至少添加一行明细'
+  if (responsibleIds.value.length > 1) return '同一请购单只能选择同一申购负责人的计划'
   const bad = model.lines.find(
     (x) =>
       !x.purchase_material_id ||
-      !isDecimalString(x.requested_qty, 3) ||
+      !isDecimalString(x.requested_qty, 1) ||
       !x.usage.trim() ||
       !x.project_subitem_id,
   )
@@ -127,21 +143,22 @@ async function loadExisting() {
     request.value = await procurementApi.request(id)
     model.request_no = request.value.request_no
     model.remark = request.value.remark || ''
-    const mats = await procurementApi.materials({ page_size: 200 })
+    const materials = await Promise.all(
+      request.value.lines.map((line) => procurementApi.material(line.purchase_material_id)),
+    )
     model.lines = request.value.lines.map((x) => ({
       id: x.id,
       purchase_material_id: x.purchase_material_id,
       requested_qty: x.requested_qty,
       usage: x.usage,
       project_subitem_id: x.project_subitem_id,
-      material: mats.items.find((m) => m.id === x.purchase_material_id),
+      material: materials.find((material) => material.id === x.purchase_material_id),
     }))
   } finally {
     loading.value = false
   }
 }
 onMounted(() => {
-  void dictionaries.load()
   void loadExisting()
 })
 </script>
@@ -162,6 +179,11 @@ onMounted(() => {
             v-model:value="model.request_no"
             maxlength="128"
             placeholder="例如：申购单-2026年7月17日" /></n-form-item
+        ><n-form-item label="申购人（从申购计划带入）"
+          ><n-input
+            :value="applicantName"
+            disabled
+            placeholder="选择申购物资后自动带入" /></n-form-item
         ><n-form-item label="备注"
           ><n-input
             v-model:value="model.remark"
@@ -194,9 +216,7 @@ onMounted(() => {
               <n-button text type="error" @click="goCompleteCode(line)">去补充编码</n-button>
             </div>
           </div>
-          <QuantityInput
-            v-model:value="line.requested_qty"
-            :decimal-places="dictionaries.getUnit(line.material?.unit_id)?.decimal_places ?? 3"
+          <QuantityInput v-model:value="line.requested_qty" :decimal-places="1"
             ><template #suffix>{{ line.material?.unit_name }}</template></QuantityInput
           ><n-input
             v-model:value="line.usage"
@@ -215,6 +235,8 @@ onMounted(() => {
       <n-alert v-if="uncodedLines.length" type="warning" style="margin-top: 16px"
         >第
         {{ uncodedLines.map((x) => x.index).join('、') }} 行没有物料编码，只能保存草稿。</n-alert
+      ><n-alert v-if="responsibleIds.length > 1" type="error" style="margin-top: 16px"
+        >所选计划的申购负责人不一致，请拆分为不同请购单。</n-alert
       > </n-card
     ><n-space justify="end"
       ><n-button @click="router.back()">取消</n-button

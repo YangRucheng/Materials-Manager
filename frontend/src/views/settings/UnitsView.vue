@@ -14,7 +14,7 @@ const editing = ref<MeasurementUnit | null>(null)
 const form = reactive({
   code: '',
   name: '',
-  decimal_places: 0 as 0 | 1 | 2 | 3,
+  decimal_places: 0 as 0 | 1,
   enabled: true,
   version: 0,
 })
@@ -86,7 +86,7 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">计量单位</h1>
-        <p class="page-subtitle">数量输入按单位限制 0～3 位小数</p>
+        <p class="page-subtitle">数量输入按单位限制为整数或 1 位小数</p>
       </div>
       <n-button type="primary" @click="open()">新建单位</n-button>
     </div>
@@ -109,7 +109,7 @@ onMounted(load)
         ><n-form-item label="小数位"
           ><n-select
             v-model:value="form.decimal_places"
-            :options="[0, 1, 2, 3].map((x) => ({ label: String(x), value: x }))" /></n-form-item
+            :options="[0, 1].map((x) => ({ label: String(x), value: x }))" /></n-form-item
         ><n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item></n-form
       ><template #footer
         ><n-space justify="end"

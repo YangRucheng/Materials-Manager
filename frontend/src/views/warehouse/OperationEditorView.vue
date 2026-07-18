@@ -31,7 +31,7 @@ function validate(): string | null {
   if (!model.business_reason.trim()) return '请填写业务原因'
   if (
     !model.lines.length ||
-    model.lines.some((x) => !x.stock_material_id || !isDecimalString(x.quantity, 3))
+    model.lines.some((x) => !x.stock_material_id || !isDecimalString(x.quantity, 1))
   )
     return '请完整填写物资和有效数量'
   return null

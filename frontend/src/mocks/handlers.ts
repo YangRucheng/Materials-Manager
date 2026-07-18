@@ -479,6 +479,9 @@ export const handlers = [
       model_spec: stock.model_spec,
       unit_id: stock.unit_id,
       unit_name: stock.unit_name,
+      actual_demand_person: '仓库管理员',
+      purchase_responsible_id: 2,
+      purchase_responsible_name: '仓库管理员',
       remark: [stock.remark, `补库计划：建议申购 ${suggested} ${stock.unit_name}`]
         .filter(Boolean)
         .join('；'),
@@ -518,6 +521,8 @@ export const handlers = [
     const body = (await request.json()) as PurchaseMaterialWrite
     const u = unit(body.unit_id)
     if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
+    const responsible =
+      users.find((user) => user.id === body.purchase_responsible_id) || actor(request)
     const item = {
       id: nextIds.purchase++,
       material_code: body.material_code || undefined,
@@ -525,6 +530,9 @@ export const handlers = [
       model_spec: body.model_spec,
       unit_id: u.id,
       unit_name: u.name,
+      actual_demand_person: body.actual_demand_person || responsible.display_name,
+      purchase_responsible_id: responsible.id,
+      purchase_responsible_name: responsible.display_name,
       remark: body.remark,
       stock_material_id: body.stock_material_id,
       code_state: body.material_code ? ('CODED' as const) : ('UNCODED' as const),
@@ -542,8 +550,10 @@ export const handlers = [
     if (!item) return error(404, 'NOT_FOUND', '申购物资不存在')
     const body = (await request.json()) as PurchaseMaterialWrite
     const selectedUnit = unit(body.unit_id)
+    const responsible = users.find((user) => user.id === body.purchase_responsible_id)
     Object.assign(item, body, {
       unit_name: selectedUnit?.name || item.unit_name,
+      purchase_responsible_name: responsible?.display_name || item.purchase_responsible_name,
       code_state: body.material_code ? 'CODED' : 'UNCODED',
       version: item.version + 1,
       updated_at: now(),
@@ -581,6 +591,12 @@ export const handlers = [
   http.post(`${api}/purchase-requests`, async ({ request }) => {
     const body = (await request.json()) as PurchaseRequestWrite
     const id = nextIds.request++
+    const selectedMaterials = body.lines.map((line) =>
+      purchaseMaterials.find((item) => item.id === line.purchase_material_id),
+    )
+    const responsibleIds = new Set(selectedMaterials.map((item) => item?.purchase_responsible_id))
+    if (responsibleIds.size > 1)
+      return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
     const lines = body.lines.map((line) => {
       const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
       const p = project(line.project_subitem_id)!
@@ -604,7 +620,8 @@ export const handlers = [
       id,
       request_no: body.request_no || defaultPurchaseRequestNo(),
       status: 'DRAFT' as const,
-      applicant_name: actor(request).display_name,
+      applicant_name:
+        selectedMaterials[0]?.purchase_responsible_name || actor(request).display_name,
       remark: body.remark,
       created_at: now(),
       version: 1,
@@ -624,8 +641,17 @@ export const handlers = [
     if (!['DRAFT', 'RETURNED'].includes(item.status))
       return error(409, 'INVALID_STATUS_TRANSITION', '当前状态不可编辑')
     const body = (await request.json()) as PurchaseRequestWrite
+    const selectedMaterials = body.lines.map((line) =>
+      purchaseMaterials.find((material) => material.id === line.purchase_material_id),
+    )
+    const responsibleIds = new Set(
+      selectedMaterials.map((material) => material?.purchase_responsible_id),
+    )
+    if (responsibleIds.size > 1)
+      return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
     item.request_no = body.request_no || item.request_no
     item.remark = body.remark
+    item.applicant_name = selectedMaterials[0]?.purchase_responsible_name || item.applicant_name
     item.lines = body.lines.map((line) => {
       const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
       const p = project(line.project_subitem_id)!

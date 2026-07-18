@@ -19,10 +19,16 @@ const options = computed(() =>
       style: x.material_code ? undefined : { color: '#d03050' },
     })),
 )
-async function load() {
+async function load(keyword = '') {
   loading.value = true
   try {
-    materials.value = (await procurementApi.materials({ page_size: 200, enabled: true })).items
+    materials.value = (
+      await procurementApi.materials({
+        page_size: 200,
+        enabled: true,
+        keyword: keyword || undefined,
+      })
+    ).items
   } finally {
     loading.value = false
   }
@@ -44,8 +50,10 @@ onMounted(load)
     :loading="loading"
     :disabled="disabled"
     filterable
+    remote
     clearable
     placeholder="选择申购物资"
+    @search="load"
     @update:value="update"
   />
 </template>

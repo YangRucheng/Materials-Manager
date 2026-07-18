@@ -67,7 +67,7 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
                     updated_by=1,
                 ),
                 MeasurementUnit(
-                    code="M", name="米", decimal_places=2, enabled=True, created_by=1, updated_by=1
+                    code="M", name="米", decimal_places=1, enabled=True, created_by=1, updated_by=1
                 ),
                 ProjectSubitem(
                     project_code="WX-2026",

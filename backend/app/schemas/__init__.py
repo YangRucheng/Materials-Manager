@@ -21,8 +21,8 @@ from app.domain.enums import (
     SourceType,
 )
 
-PositiveQuantity = Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=3)]
-NonnegativeQuantity = Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=3)]
+PositiveQuantity = Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=1)]
+NonnegativeQuantity = Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=1)]
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
@@ -31,7 +31,10 @@ class RequestModel(BaseModel):
 
 
 class ReadModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={Decimal: lambda value: format(value.normalize(), "f")},
+    )
 
 
 class Page[T](ReadModel):
@@ -101,7 +104,7 @@ class MeasurementUnitRead(ReadModel):
 class MeasurementUnitCreate(RequestModel):
     code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
-    decimal_places: int = Field(default=0, ge=0, le=3)
+    decimal_places: int = Field(default=0, ge=0, le=1)
     enabled: bool = True
 
 
@@ -112,7 +115,7 @@ class MeasurementUnitUpdate(RequestModel):
     name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)] | None
     ) = None
-    decimal_places: int | None = Field(default=None, ge=0, le=3)
+    decimal_places: int | None = Field(default=None, ge=0, le=1)
     enabled: bool | None = None
     version: int
 
@@ -328,6 +331,11 @@ class PurchaseMaterialBase(RequestModel):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
     ]
     unit_id: int
+    actual_demand_person: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    purchase_responsible_id: int | None = None
     remark: str | None = Field(default=None, max_length=1000)
     stock_material_id: int | None = None
     image_ids: list[int] = Field(default_factory=list, max_length=9)
@@ -355,6 +363,9 @@ class PurchaseMaterialRead(ReadModel):
     model_spec: str
     unit_id: int
     unit_name: str
+    actual_demand_person: str
+    purchase_responsible_id: int
+    purchase_responsible_name: str
     remark: str | None = None
     stock_material_id: int | None = None
     stock_material_name: str | None = None

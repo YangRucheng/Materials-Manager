@@ -123,7 +123,7 @@ async def _replace_lines(
     request: PurchaseRequest,
     lines: list[PurchaseRequestLineWrite],
     user_id: int,
-) -> None:
+) -> int | None:
     merged = _merge_lines(lines)
     material_ids = sorted({line.purchase_material_id for line in merged})
     project_ids = sorted({line.project_subitem_id for line in merged})
@@ -157,6 +157,14 @@ async def _replace_lines(
         raise not_found("申购物资")
     if len(project_map) != len(project_ids):
         raise not_found("项目子项")
+    responsible_ids = {item.purchase_responsible_id for item in materials}
+    if len(responsible_ids) > 1:
+        raise AppError(
+            "MULTIPLE_PURCHASE_RESPONSIBLES",
+            "同一请购单只能包含同一申购负责人的计划",
+            status_code=409,
+            details={"purchase_responsible_ids": sorted(responsible_ids)},
+        )
     for line in merged:
         material = material_map[line.purchase_material_id]
         project = project_map[line.project_subitem_id]
@@ -186,6 +194,7 @@ async def _replace_lines(
         )
         for line in merged
     ]
+    return next(iter(responsible_ids), None)
 
 
 async def create_request(
@@ -202,7 +211,9 @@ async def create_request(
     )
     session.add(item)
     await session.flush()
-    await _replace_lines(session, item, data.lines, user_id)
+    responsible_id = await _replace_lines(session, item, data.lines, user_id)
+    if responsible_id is not None:
+        item.applicant_id = responsible_id
     await session.flush()
     await log_event(
         session,
@@ -228,7 +239,9 @@ async def update_request(
     item.remark = data.remark
     item.updated_by = user_id
     item.version += 1
-    await _replace_lines(session, item, data.lines, user_id)
+    responsible_id = await _replace_lines(session, item, data.lines, user_id)
+    if responsible_id is not None:
+        item.applicant_id = responsible_id
     await session.flush()
     await log_event(
         session,

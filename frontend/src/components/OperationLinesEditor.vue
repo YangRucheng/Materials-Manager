@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import MaterialSelector from './MaterialSelector.vue'
 import QuantityInput from './QuantityInput.vue'
 import type { StockMaterial } from '@/api/generated'
 import { compareDecimal, subtractDecimal } from '@/utils/decimal'
-import { useDictionaryStore } from '@/stores/dictionaries'
 
 export interface OperationLineModel {
   stock_material_id: number | null
@@ -23,7 +22,6 @@ const props = withDefaults(
   { disabled: false, showPurchaseLink: false },
 )
 const emit = defineEmits<{ 'update:lines': [lines: OperationLineModel[]] }>()
-const dictionaries = useDictionaryStore()
 const selectedIds = computed(() =>
   props.lines.map((x) => x.stock_material_id).filter((x): x is number => x !== null),
 )
@@ -50,10 +48,6 @@ function remove(index: number) {
     props.lines.filter((_, i) => i !== index),
   )
 }
-function decimalPlaces(line: OperationLineModel): number {
-  return dictionaries.getUnit(line.material?.unit_id)?.decimal_places ?? 3
-}
-onMounted(() => void dictionaries.load())
 </script>
 
 <template>
@@ -80,7 +74,7 @@ onMounted(() => void dictionaries.load())
       <QuantityInput
         :value="line.quantity"
         :disabled="disabled"
-        :decimal-places="decimalPlaces(line)"
+        :decimal-places="1"
         @update:value="patch(index, { quantity: $event })"
         ><template #suffix>{{ line.material?.unit_name }}</template></QuantityInput
       >

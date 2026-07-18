@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `measurement_unit` (
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_measurement_unit` PRIMARY KEY (`id`),
   CONSTRAINT `ck_measurement_unit_decimal_places_range`
-    CHECK (`decimal_places` >= 0 AND `decimal_places` <= 3),
+    CHECK (`decimal_places` >= 0 AND `decimal_places` <= 1),
   CONSTRAINT `uq_measurement_unit_code` UNIQUE (`code`),
   CONSTRAINT `uq_measurement_unit_name` UNIQUE (`name`),
   CONSTRAINT `fk_measurement_unit_created_by_user`
@@ -209,6 +209,8 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `name` VARCHAR(128) NOT NULL,
   `model_spec` VARCHAR(255) NOT NULL,
   `unit_id` BIGINT UNSIGNED NOT NULL,
+  `actual_demand_person` VARCHAR(128) NOT NULL,
+  `purchase_responsible_id` BIGINT UNSIGNED NOT NULL,
   `remark` VARCHAR(1000) NULL,
   `stock_material_id` BIGINT UNSIGNED NULL,
   `identity_hash` VARCHAR(64) NOT NULL,
@@ -221,6 +223,8 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   CONSTRAINT `pk_purchase_material` PRIMARY KEY (`id`),
   CONSTRAINT `fk_purchase_material_unit_id_measurement_unit`
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
+  CONSTRAINT `fk_purchase_material_purchase_responsible_id_user`
+    FOREIGN KEY (`purchase_responsible_id`) REFERENCES `user` (`id`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
   CONSTRAINT `fk_purchase_material_created_by_user`
@@ -231,12 +235,13 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   INDEX `ix_purchase_material_material_code` (`material_code`),
   INDEX `ix_purchase_material_model_spec` (`model_spec`),
   INDEX `ix_purchase_material_name` (`name`),
+  INDEX `ix_purchase_material_purchase_responsible_id` (`purchase_responsible_id`),
   INDEX `ix_purchase_material_stock_material_id` (`stock_material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_balance` (
   `stock_material_id` BIGINT UNSIGNED NOT NULL,
-  `quantity` DECIMAL(18, 3) NOT NULL DEFAULT 0,
+  `quantity` DECIMAL(18, 1) NOT NULL DEFAULT 0,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   CONSTRAINT `pk_stock_balance` PRIMARY KEY (`stock_material_id`),
@@ -257,8 +262,8 @@ CREATE TABLE IF NOT EXISTS `stock_material_image` (
 
 CREATE TABLE IF NOT EXISTS `stock_replenishment_policy` (
   `stock_material_id` BIGINT UNSIGNED NOT NULL,
-  `minimum_qty` DECIMAL(18, 3) NOT NULL,
-  `target_qty` DECIMAL(18, 3) NOT NULL,
+  `minimum_qty` DECIMAL(18, 1) NOT NULL,
+  `target_qty` DECIMAL(18, 1) NOT NULL,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -297,8 +302,8 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   `material_name_snapshot` VARCHAR(128) NOT NULL,
   `model_spec_snapshot` VARCHAR(255) NOT NULL,
   `unit_name_snapshot` VARCHAR(32) NOT NULL,
-  `requested_qty` DECIMAL(18, 3) NOT NULL,
-  `received_qty` DECIMAL(18, 3) NOT NULL DEFAULT 0,
+  `requested_qty` DECIMAL(18, 1) NOT NULL,
+  `received_qty` DECIMAL(18, 1) NOT NULL DEFAULT 0,
   `usage` VARCHAR(500) NOT NULL,
   `project_subitem_id` BIGINT UNSIGNED NOT NULL,
   `project_code_snapshot` VARCHAR(64) NOT NULL,
@@ -330,9 +335,9 @@ CREATE TABLE IF NOT EXISTS `stock_operation_line` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `operation_id` BIGINT UNSIGNED NOT NULL,
   `stock_material_id` BIGINT UNSIGNED NOT NULL,
-  `quantity` DECIMAL(18, 3) NOT NULL,
-  `before_qty` DECIMAL(18, 3) NOT NULL,
-  `after_qty` DECIMAL(18, 3) NOT NULL,
+  `quantity` DECIMAL(18, 1) NOT NULL,
+  `before_qty` DECIMAL(18, 1) NOT NULL,
+  `after_qty` DECIMAL(18, 1) NOT NULL,
   `material_name_snapshot` VARCHAR(128) NOT NULL,
   `model_spec_snapshot` VARCHAR(255) NOT NULL,
   `unit_name_snapshot` VARCHAR(32) NOT NULL,

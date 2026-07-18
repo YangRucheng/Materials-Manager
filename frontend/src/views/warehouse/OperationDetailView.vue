@@ -63,7 +63,7 @@ function validationError(): string | null {
   if (!edit.business_reason.trim()) return '业务原因必填'
   if (
     !edit.lines.length ||
-    edit.lines.some((line) => !line.stock_material_id || !isDecimalString(line.quantity))
+    edit.lines.some((line) => !line.stock_material_id || !isDecimalString(line.quantity, 1))
   )
     return '请完整填写物资和有效数量'
   return null

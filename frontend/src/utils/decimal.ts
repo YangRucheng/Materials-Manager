@@ -1,6 +1,6 @@
-const decimalPattern = /^\d+(?:\.\d{1,3})?$/
+const decimalPattern = /^\d+(?:\.\d)?$/
 
-export function isDecimalString(value: string, decimalPlaces = 3, allowZero = false): boolean {
+export function isDecimalString(value: string, decimalPlaces = 1, allowZero = false): boolean {
   if (!decimalPattern.test(value)) return false
   const [integer, fraction = ''] = value.split('.')
   if (fraction.length > decimalPlaces || integer.length > 18) return false
