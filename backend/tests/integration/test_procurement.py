@@ -6,14 +6,15 @@ from httpx import AsyncClient
 from tests.conftest import auth_headers, create_stock
 
 
-async def create_purchase_material(
+async def create_purchase_plan(
     client: AsyncClient,
     headers: dict[str, str],
     name: str,
+    *,
     code: str | None = None,
     stock_material_id: int | None = None,
-    actual_demand_person: str = "车间员工张三",
-    purchase_responsible_id: int = 3,
+    planned_qty: str = "5",
+    purchase_responsible: str = "李工",
 ) -> dict[str, object]:
     response = await client.post(
         "/api/v1/purchase-materials",
@@ -23,133 +24,153 @@ async def create_purchase_material(
             "name": name,
             "model_spec": "M60-2P 5A",
             "unit_id": 1,
-            "actual_demand_person": actual_demand_person,
-            "purchase_responsible_id": purchase_responsible_id,
-            "remark": "新物资",
+            "actual_demand_person": "车间员工张三",
+            "purchase_responsible": purchase_responsible,
+            "planned_qty": planned_qty,
+            "usage": "控制柜检修",
+            "project_subitem_id": 1,
+            "remark": "新计划",
             "stock_material_id": stock_material_id,
             "image_ids": [],
         },
     )
     assert response.status_code == 201, response.text
     result = response.json()
-    assert result["actual_demand_person"] == actual_demand_person
+    assert result["planned_qty"] == planned_qty
+    assert result["purchase_responsible"] == purchase_responsible
     return result
 
 
-async def create_request(
+async def move_to_record(
     client: AsyncClient,
     headers: dict[str, str],
-    purchase_material_id: int,
-    qty: str = "5",
-    request_no: str | None = None,
+    plan_id: int,
+    request_no: str = "公司申购-2026-001",
 ) -> dict[str, object]:
     response = await client.post(
-        "/api/v1/purchase-requests",
+        f"/api/v1/purchase-materials/{plan_id}/move-to-record",
         headers=headers,
-        json={
-            "request_no": request_no,
-            "remark": "检修备件",
-            "lines": [
-                {
-                    "purchase_material_id": purchase_material_id,
-                    "requested_qty": qty,
-                    "usage": "控制柜检修",
-                    "project_subitem_id": 1,
-                }
-            ],
-        },
+        json={"request_no": request_no, "salesperson": "赵经理", "remark": "等待供应商发货"},
     )
-    assert response.status_code == 201, response.text
+    assert response.status_code == 200, response.text
     return response.json()
 
 
 @pytest.mark.asyncio
-async def test_uncoded_query_request_number_and_submit_guard(client: AsyncClient) -> None:
+async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
-    material = await create_purchase_material(client, headers, "未编码物资")
+    plan = await create_purchase_plan(client, headers, "未编码物资")
 
     uncoded = await client.get("/api/v1/purchase-materials?coded=false", headers=headers)
     assert uncoded.status_code == 200
-    assert [item["id"] for item in uncoded.json()["items"]] == [material["id"]]
+    assert [item["id"] for item in uncoded.json()["items"]] == [plan["id"]]
 
-    request = await create_request(client, headers, int(material["id"]))
-    assert request["request_no"].startswith("申购单-")
-    assert request["request_no"].endswith("日")
+    rejected = await client.post(
+        f"/api/v1/purchase-materials/{plan['id']}/move-to-record",
+        headers=headers,
+        json={"request_no": "公司申购-未编码"},
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["code"] == "MATERIAL_CODE_REQUIRED"
 
-    renamed = await client.patch(
-        f"/api/v1/purchase-requests/{request['id']}",
+    coded = await client.patch(
+        f"/api/v1/purchase-materials/{plan['id']}",
         headers=headers,
         json={
-            "version": request["version"],
-            "request_no": "公司系统申购单-2026-0717-A",
-            "remark": request["remark"],
-            "lines": [
-                {
-                    "id": request["lines"][0]["id"],
-                    "purchase_material_id": material["id"],
-                    "requested_qty": "5",
-                    "usage": "控制柜检修",
-                    "project_subitem_id": 1,
-                }
-            ],
-        },
-    )
-    assert renamed.status_code == 200, renamed.text
-    assert renamed.json()["request_no"] == "公司系统申购单-2026-0717-A"
-
-    response = await client.post(
-        f"/api/v1/purchase-requests/{request['id']}/submit", headers=headers, json={}
-    )
-    assert response.status_code == 409
-    assert response.json()["code"] == "MATERIAL_CODE_REQUIRED"
-    assert response.json()["details"]["lines"][0]["purchase_material_id"] == material["id"]
-
-
-@pytest.mark.asyncio
-async def test_direct_code_maintenance_and_over_receipt_close_loop(client: AsyncClient) -> None:
-    purchase = await auth_headers(client, "purchase")
-    warehouse = await auth_headers(client, "warehouse")
-    material = await create_purchase_material(client, purchase, "智能电机保护器")
-    coded = await client.patch(
-        f"/api/v1/purchase-materials/{material['id']}",
-        headers=purchase,
-        json={
-            "version": material["version"],
+            "version": plan["version"],
             "material_code": "DQ-000500",
-            "name": material["name"],
-            "model_spec": material["model_spec"],
-            "unit_id": material["unit_id"],
-            "remark": material["remark"],
+            "name": plan["name"],
+            "model_spec": plan["model_spec"],
+            "unit_id": plan["unit_id"],
+            "actual_demand_person": plan["actual_demand_person"],
+            "purchase_responsible": plan["purchase_responsible"],
+            "planned_qty": plan["planned_qty"],
+            "usage": plan["usage"],
+            "project_subitem_id": plan["project_subitem_id"],
+            "remark": plan["remark"],
             "stock_material_id": None,
             "image_ids": [],
         },
     )
     assert coded.status_code == 200, coded.text
-    assert coded.json()["code_state"] == "CODED"
+    record = await move_to_record(client, headers, int(plan["id"]))
+    assert record["material_code"] == "DQ-000500"
+    assert record["planned_qty"] == "5"
+    assert record["status"] == "PROCESSING"
 
-    request = await create_request(
-        client, purchase, int(material["id"]), request_no="公司请购单-DQ-2026-001"
+
+@pytest.mark.asyncio
+async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(
+        client, headers, "负责人一", code="DQ-1", purchase_responsible="外部负责人甲"
     )
-    for action in ("submit", "accept"):
-        response = await client.post(
-            f"/api/v1/purchase-requests/{request['id']}/{action}", headers=purchase, json={}
-        )
-        assert response.status_code == 200, response.text
-        request = response.json()
+    second = await create_purchase_plan(
+        client, headers, "负责人二", code="DQ-2", purchase_responsible="外部负责人乙"
+    )
+    first_record = await move_to_record(client, headers, int(first["id"]), "正式申购-A")
+    await move_to_record(client, headers, int(second["id"]), "正式申购-B")
+
+    remaining_plans = await client.get(
+        "/api/v1/purchase-materials?moved=false", headers=headers
+    )
+    assert remaining_plans.json()["total"] == 0
+
+    records = await client.get("/api/v1/purchase-records", headers=headers)
+    assert records.status_code == 200
+    assert records.json()["total"] == 2
+    assert len(records.json()["items"]) == 2
+    assert all("material_name" in item for item in records.json()["items"])
+
+    changed = await client.patch(
+        f"/api/v1/purchase-records/{first_record['line_id']}",
+        headers=headers,
+        json={
+            "version": first_record["version"],
+            "request_no": "正式申购-A-修订",
+            "salesperson": "钱经理",
+            "remark": "预计下周到货",
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["salesperson"] == "钱经理"
+    assert changed.json()["remark"] == "预计下周到货"
+
+    duplicate = await client.post(
+        f"/api/v1/purchase-materials/{first['id']}/move-to-record",
+        headers=headers,
+        json={"request_no": "重复"},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["code"] == "PLAN_ALREADY_MOVED"
+
+
+@pytest.mark.asyncio
+async def test_record_receipts_update_flat_arrival_progress(client: AsyncClient) -> None:
+    purchase = await auth_headers(client, "purchase")
+    warehouse = await auth_headers(client, "warehouse")
     stock_id = await create_stock(client, warehouse, "智能电机保护器")
-    line_id = request["lines"][0]["id"]
+    plan = await create_purchase_plan(
+        client,
+        purchase,
+        "智能电机保护器",
+        code="DQ-000501",
+        stock_material_id=stock_id,
+        planned_qty="5",
+    )
+    record = await move_to_record(client, purchase, int(plan["id"]))
 
     def receipt_payload(request_id: str, quantity: str) -> dict[str, object]:
         return {
             "client_request_id": request_id,
             "occurred_at": "2026-07-17T10:00:00+08:00",
             "source_type": "PURCHASE_RECEIPT",
-            "business_reason": "请购物资到货",
+            "business_reason": "",
             "lines": [
                 {
                     "stock_material_id": stock_id,
                     "quantity": quantity,
-                    "purchase_request_line_id": line_id,
+                    "purchase_request_line_id": record["line_id"],
                 }
             ],
         }
@@ -160,58 +181,25 @@ async def test_direct_code_maintenance_and_over_receipt_close_loop(client: Async
         json=receipt_payload("receipt-1", "2"),
     )
     assert partial.status_code == 201, partial.text
+    progress = await client.get(
+        f"/api/v1/purchase-records/{record['line_id']}", headers=purchase
+    )
+    assert progress.json()["received_qty"] == "2"
+    assert progress.json()["remaining_qty"] == "3"
+    assert progress.json()["status"] == "PARTIALLY_RECEIVED"
+
     full = await client.post(
         "/api/v1/inventory/inbounds",
         headers=warehouse,
         json=receipt_payload("receipt-2", "3"),
     )
     assert full.status_code == 201, full.text
-
-    over = await client.post(
-        "/api/v1/inventory/inbounds",
-        headers=warehouse,
-        json=receipt_payload("receipt-over", "1"),
+    progress = await client.get(
+        f"/api/v1/purchase-records/{record['line_id']}", headers=purchase
     )
-    assert over.status_code == 201, over.text
-    request_state = await client.get(f"/api/v1/purchase-requests/{request['id']}", headers=purchase)
-    assert request_state.json()["status"] == "COMPLETED"
-    assert request_state.json()["lines"][0]["received_qty"] == "6"
-
-    linked = await client.get(f"/api/v1/purchase-materials/{material['id']}", headers=purchase)
-    assert linked.json()["stock_material_id"] == stock_id
-
-    edited_receipt = await client.patch(
-        f"/api/v1/inventory/operations/{partial.json()['id']}",
-        headers=warehouse,
-        json={
-            "version": partial.json()["version"],
-            "operation_type": "INBOUND",
-            "occurred_at": "2026-07-17T10:00:00+08:00",
-            "source_type": "PURCHASE_RECEIPT",
-            "business_reason": "到货数量复核改为 1",
-            "lines": [
-                {
-                    "stock_material_id": stock_id,
-                    "quantity": "1",
-                    "purchase_request_line_id": line_id,
-                }
-            ],
-        },
-    )
-    assert edited_receipt.status_code == 200, edited_receipt.text
-    request_state = await client.get(f"/api/v1/purchase-requests/{request['id']}", headers=purchase)
-    assert request_state.json()["status"] == "COMPLETED"
-    assert request_state.json()["lines"][0]["received_qty"] == "5"
-
-    reversed_receipt = await client.post(
-        f"/api/v1/inventory/operations/{full.json()['id']}/reverse",
-        headers=warehouse,
-        json={"client_request_id": "reverse-receipt-2", "reason": "到货退回"},
-    )
-    assert reversed_receipt.status_code == 200, reversed_receipt.text
-    request_state = await client.get(f"/api/v1/purchase-requests/{request['id']}", headers=purchase)
-    assert request_state.json()["status"] == "PARTIALLY_RECEIVED"
-    assert request_state.json()["lines"][0]["received_qty"] == "2"
+    assert progress.json()["received_qty"] == "5"
+    assert progress.json()["remaining_qty"] == "0"
+    assert progress.json()["status"] == "COMPLETED"
 
 
 @pytest.mark.asyncio
@@ -219,43 +207,10 @@ async def test_purchase_plans_can_repeat_code_and_stock_material(client: AsyncCl
     purchase = await auth_headers(client, "purchase")
     warehouse = await auth_headers(client, "warehouse")
     stock_id = await create_stock(client, warehouse, "重复补库物资")
-    first = await create_purchase_material(
+    first = await create_purchase_plan(
         client, purchase, "重复补库物资", code="DQ-REPEAT", stock_material_id=stock_id
     )
-    second = await create_purchase_material(
+    second = await create_purchase_plan(
         client, purchase, "重复补库物资", code="DQ-REPEAT", stock_material_id=stock_id
     )
     assert first["id"] != second["id"]
-
-
-@pytest.mark.asyncio
-async def test_request_applicant_inherits_plan_responsible(client: AsyncClient) -> None:
-    purchase = await auth_headers(client, "purchase")
-    first = await create_purchase_material(client, purchase, "负责人一", purchase_responsible_id=3)
-    second = await create_purchase_material(client, purchase, "负责人二", purchase_responsible_id=1)
-
-    request = await create_request(client, purchase, int(first["id"]))
-    assert request["applicant_name"] == "申购管理员"
-
-    mixed = await client.post(
-        "/api/v1/purchase-requests",
-        headers=purchase,
-        json={
-            "lines": [
-                {
-                    "purchase_material_id": first["id"],
-                    "requested_qty": "1",
-                    "usage": "检修",
-                    "project_subitem_id": 1,
-                },
-                {
-                    "purchase_material_id": second["id"],
-                    "requested_qty": "1",
-                    "usage": "检修",
-                    "project_subitem_id": 1,
-                },
-            ]
-        },
-    )
-    assert mixed.status_code == 409
-    assert mixed.json()["code"] == "MULTIPLE_PURCHASE_RESPONSIBLES"

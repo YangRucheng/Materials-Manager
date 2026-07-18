@@ -61,7 +61,7 @@ const columns: DataTableColumns<StockOperation> = [
   { title: '原因', key: 'business_reason' },
   { title: '操作人', key: 'operator_name', width: 100 },
   {
-    title: '来源请购',
+    title: '来源申购记录',
     key: 'purchase_request_no',
     width: 140,
     render: (r) => r.purchase_request_no || '—',
@@ -134,7 +134,7 @@ onMounted(load)
           style="width: 120px"
         /><n-input
           v-model:value="filters.purchase_request_no"
-          placeholder="来源请购单"
+          placeholder="来源申购记录"
           style="width: 150px"
         /><n-date-picker v-model:value="dateRange" type="datetimerange" clearable /><n-button
           type="primary"

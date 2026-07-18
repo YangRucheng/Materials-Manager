@@ -250,9 +250,7 @@ class OperationCreate(RequestModel):
     ]
     occurred_at: datetime
     source_type: SourceType
-    business_reason: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
-    ]
+    business_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
     receiver_name: str | None = Field(default=None, max_length=64)
     project_subitem_id: int | None = None
     lines: list[OperationLineWrite] = Field(min_length=1)
@@ -278,9 +276,7 @@ class OperationUpdate(RequestModel):
     operation_type: OperationType
     occurred_at: datetime
     source_type: SourceType
-    business_reason: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
-    ]
+    business_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
     receiver_name: str | None = Field(default=None, max_length=64)
     project_subitem_id: int | None = None
     lines: list[OperationLineWrite] = Field(min_length=1)
@@ -339,7 +335,13 @@ class PurchaseMaterialBase(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
-    purchase_responsible_id: int | None = None
+    purchase_responsible: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    planned_qty: PositiveQuantity
+    usage: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+    project_subitem_id: int | None = None
     remark: str | None = Field(default=None, max_length=1000)
     stock_material_id: int | None = None
     image_ids: list[int] = Field(default_factory=list, max_length=9)
@@ -368,12 +370,16 @@ class PurchaseMaterialRead(ReadModel):
     unit_id: int
     unit_name: str
     actual_demand_person: str
-    purchase_responsible_id: int
-    purchase_responsible_name: str
+    purchase_responsible: str
+    planned_qty: Decimal
+    usage: str
+    project_subitem_id: int | None = None
+    project_subitem_name: str | None = None
     remark: str | None = None
     stock_material_id: int | None = None
     stock_material_name: str | None = None
     code_state: CodeState
+    moved_to_record: bool
     enabled: bool
     images: list[FileObjectRead]
     created_at: datetime
@@ -447,6 +453,7 @@ class PurchaseRequestRead(ReadModel):
     status: PurchaseRequestStatus
     applicant_name: str
     handler_name: str | None = None
+    salesperson: str | None = None
     remark: str | None = None
     return_reason: str | None = None
     close_reason: str | None = None
@@ -456,6 +463,55 @@ class PurchaseRequestRead(ReadModel):
     version: int
     lines: list[PurchaseRequestLineRead]
     events: list[BusinessEventRead]
+
+
+class MovePurchasePlanRequest(RequestModel):
+    request_no: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    salesperson: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    remark: str | None = Field(default=None, max_length=1000)
+
+
+class PurchaseRecordUpdate(RequestModel):
+    request_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    salesperson: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    remark: str | None = Field(default=None, max_length=1000)
+    version: int
+
+
+class PurchaseRecordRead(ReadModel):
+    line_id: int
+    purchase_request_id: int
+    purchase_material_id: int
+    request_no: str
+    status: PurchaseRequestStatus
+    material_code: str
+    material_name: str
+    model_spec: str
+    unit_name: str
+    planned_qty: Decimal
+    received_qty: Decimal
+    remaining_qty: Decimal
+    actual_demand_person: str
+    purchase_responsible: str
+    salesperson: str | None = None
+    remark: str | None = None
+    usage: str
+    project_subitem_name: str
+    stock_material_id: int | None = None
+    submitted_at: datetime | None = None
+    created_at: datetime
+    version: int
 
 
 class PreparedInboundRead(ReadModel):

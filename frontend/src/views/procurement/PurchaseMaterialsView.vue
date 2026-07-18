@@ -14,7 +14,8 @@ import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
-import PurchaseResponsibleSelector from '@/components/PurchaseResponsibleSelector.vue'
+import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
+import QuantityInput from '@/components/QuantityInput.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -35,7 +36,10 @@ const form = reactive<PurchaseMaterialWrite>({
   model_spec: '',
   unit_id: null,
   actual_demand_person: '',
-  purchase_responsible_id: auth.user?.id,
+  purchase_responsible: '',
+  planned_qty: '',
+  usage: '',
+  project_subitem_id: undefined,
   remark: '',
   image_ids: [],
 })
@@ -44,7 +48,10 @@ const rules: FormRules = {
   model_spec: { required: true, message: '请输入型号规格' },
   unit_id: { type: 'number', required: true, message: '请选择单位' },
   actual_demand_person: { required: true, message: '请输入实际需求人' },
-  purchase_responsible_id: { type: 'number', required: true, message: '请选择申购负责人' },
+  purchase_responsible: { required: true, message: '请输入申购负责人' },
+  planned_qty: { required: true, message: '请输入计划数量' },
+  usage: { required: true, message: '请输入用途' },
+  project_subitem_id: { type: 'number', required: true, message: '请选择项目子项' },
 }
 const codeLabels = { UNCODED: '未编码', CODED: '已有编码' }
 const columns: DataTableColumns<PurchaseMaterial> = [
@@ -71,8 +78,9 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   },
   { title: '型号规格', key: 'model_spec' },
   { title: '单位', key: 'unit_name', width: 70 },
+  { title: '计划数量', key: 'planned_qty', width: 100 },
   { title: '实际需求人', key: 'actual_demand_person', width: 110 },
-  { title: '申购负责人', key: 'purchase_responsible_name', width: 110 },
+  { title: '申购负责人', key: 'purchase_responsible', width: 110 },
   {
     title: '编码状态',
     key: 'code_state',
@@ -121,7 +129,12 @@ const columns: DataTableColumns<PurchaseMaterial> = [
 async function load() {
   loading.value = true
   try {
-    const d = await procurementApi.materials({ page: page.value, page_size: 20, ...filters })
+    const d = await procurementApi.materials({
+      page: page.value,
+      page_size: 20,
+      moved: false,
+      ...filters,
+    })
     items.value = d.items
     total.value = d.total
   } finally {
@@ -139,7 +152,10 @@ function openCreate() {
     model_spec: '',
     unit_id: null,
     actual_demand_person: '',
-    purchase_responsible_id: auth.user?.id,
+    purchase_responsible: '',
+    planned_qty: '',
+    usage: '',
+    project_subitem_id: undefined,
     remark: '',
     image_ids: [],
   })
@@ -152,7 +168,7 @@ async function save() {
   try {
     form.image_ids = images.value.map((x) => x.id)
     const created = await procurementApi.createMaterial(form)
-    message.success('申购物资已创建')
+    message.success('申购计划已创建')
     show.value = false
     await router.push(`/procurement/materials/${created.id}`)
   } catch (e) {
@@ -171,11 +187,11 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <div>
-        <h1 class="page-title">申购物资（申购计划）</h1>
-        <p class="page-subtitle">每次补库会新增一条申购计划，物料编码可暂时为空</p>
+        <h1 class="page-title">申购计划</h1>
+        <p class="page-subtitle">计划阶段确定物资、数量、用途和项目，物料编码可暂时为空</p>
       </div>
       <n-button v-if="auth.can('purchase:write')" type="primary" @click="openCreate"
-        >新建申购物资</n-button
+        >新建申购计划</n-button
       >
     </div>
     <n-card
@@ -213,7 +229,7 @@ onMounted(() => {
     <n-modal
       v-model:show="show"
       preset="card"
-      title="新建申购物资"
+      title="新建申购计划"
       style="width: 680px"
       :mask-closable="false"
       ><n-form ref="formRef" :model="form" :rules="rules" label-placement="top"
@@ -236,12 +252,21 @@ onMounted(() => {
               v-model:value="form.actual_demand_person"
               maxlength="128"
               placeholder="填写提出实际需求的员工" /></n-form-item
-          ><n-form-item label="申购负责人" path="purchase_responsible_id"
-            ><PurchaseResponsibleSelector
-              :value="form.purchase_responsible_id ?? null"
-              @update:value="form.purchase_responsible_id = $event ?? undefined"
+          ><n-form-item label="申购负责人" path="purchase_responsible"
+            ><n-input v-model:value="form.purchase_responsible" maxlength="128"
+          /></n-form-item>
+          <n-form-item label="计划数量" path="planned_qty"
+            ><QuantityInput v-model:value="form.planned_qty" :decimal-places="1"
+          /></n-form-item>
+          <n-form-item label="项目子项" path="project_subitem_id"
+            ><ProjectSubitemSelector
+              :value="form.project_subitem_id ?? null"
+              @update:value="form.project_subitem_id = $event ?? undefined"
           /></n-form-item>
         </div>
+        <n-form-item label="用途" path="usage"
+          ><n-input v-model:value="form.usage" maxlength="500"
+        /></n-form-item>
         <n-form-item label="备注"
           ><n-input
             v-model:value="form.remark"

@@ -189,7 +189,7 @@ def _validate_operation_semantics(
     if source_type == SourceType.INITIALIZATION and operation_type != OperationType.INBOUND:
         raise AppError("INVALID_SOURCE_TYPE", "初始化业务只能是入库")
     if source_type == SourceType.PURCHASE_RECEIPT and operation_type != OperationType.INBOUND:
-        raise AppError("INVALID_SOURCE_TYPE", "请购到货只能是入库")
+        raise AppError("INVALID_SOURCE_TYPE", "申购到货只能是入库")
     if operation_type == OperationType.INBOUND and receiver_name:
         raise AppError("INVALID_RECEIVER", "只有出库业务可以填写领用人")
 
@@ -208,7 +208,7 @@ async def _lock_and_validate_receipts(
     receipt_lines = [line for line in lines if line.purchase_request_line_id is not None]
     if not receipt_lines:
         if source_type == SourceType.PURCHASE_RECEIPT:
-            raise AppError("PURCHASE_LINE_REQUIRED", "请购到货入库必须关联请购行")
+            raise AppError("PURCHASE_LINE_REQUIRED", "申购到货入库必须关联申购记录")
         additional_ids = sorted(set(additional_request_line_ids))
         if additional_ids:
             await session.scalars(
@@ -219,9 +219,9 @@ async def _lock_and_validate_receipts(
             )
         return set(additional_ids)
     if source_type not in {SourceType.PURCHASE_RECEIPT, SourceType.REVERSAL}:
-        raise AppError("INVALID_PURCHASE_RECEIPT_SOURCE", "关联请购行时来源必须为请购到货或冲销")
+        raise AppError("INVALID_PURCHASE_RECEIPT_SOURCE", "关联申购记录时来源必须为申购到货或冲销")
     if operation_type != OperationType.INBOUND and source_type != SourceType.REVERSAL:
-        raise AppError("INVALID_PURCHASE_RECEIPT_TYPE", "只有入库可以作为请购到货")
+        raise AppError("INVALID_PURCHASE_RECEIPT_TYPE", "只有入库可以作为申购到货")
     new_request_line_ids = {
         line.purchase_request_line_id
         for line in receipt_lines
@@ -234,7 +234,7 @@ async def _lock_and_validate_receipts(
         }
     )
     if len(new_request_line_ids) != len(receipt_lines):
-        raise AppError("DUPLICATE_PURCHASE_LINE", "同一流水不能重复关联同一请购行")
+        raise AppError("DUPLICATE_PURCHASE_LINE", "同一流水不能重复关联同一申购记录")
     request_lines = list(
         (
             await session.scalars(
@@ -249,7 +249,7 @@ async def _lock_and_validate_receipts(
     )
     by_id = {item.id: item for item in request_lines}
     if len(by_id) != len(request_line_ids):
-        raise not_found("请购行")
+        raise not_found("申购记录明细")
     for line in receipt_lines:
         request_line_id = line.purchase_request_line_id
         if request_line_id is None:
@@ -264,7 +264,7 @@ async def _lock_and_validate_receipts(
         }:
             raise AppError(
                 "INVALID_STATUS_TRANSITION",
-                "当前请购状态不能登记到货",
+                "当前申购记录状态不能登记到货",
                 status_code=409,
                 details={"request_id": request.id, "status": request.status.value},
             )
@@ -275,7 +275,7 @@ async def _lock_and_validate_receipts(
         elif purchase_material.stock_material_id != line.stock_material_id:
             raise AppError(
                 "PURCHASE_MATERIAL_MISMATCH",
-                "请购行与二级库物资关联不一致",
+                "申购记录与二级库物资关联不一致",
                 details={
                     "purchase_request_line_id": request_line.id,
                     "expected_stock_material_id": purchase_material.stock_material_id,
@@ -369,7 +369,7 @@ async def recompute_receipts(
         if received < ZERO:
             raise AppError(
                 "NEGATIVE_RECEIPT",
-                "请购累计到货数量不能为负数",
+                "申购累计到货数量不能为负数",
                 status_code=409,
                 details={
                     "purchase_request_line_id": line_id,
@@ -432,6 +432,8 @@ async def create_operation(
         return existing
     if data.source_type == SourceType.REVERSAL and reversal_of_id is None:
         raise AppError("INVALID_SOURCE_TYPE", "冲销来源只能由冲销接口创建")
+    if operation_type == OperationType.OUTBOUND and not data.business_reason:
+        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写业务原因")
     _validate_operation_semantics(operation_type, data.source_type, data.receiver_name)
     await _validate_project(session, data.project_subitem_id)
     materials = await _lock_and_validate_materials(session, data.lines)
@@ -505,6 +507,8 @@ async def update_operation(
     session: AsyncSession, item: StockOperation, data: OperationUpdate, user_id: int
 ) -> StockOperation:
     validate_version(data.version, item.version)
+    if data.operation_type == OperationType.OUTBOUND and not data.business_reason:
+        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写业务原因")
     _validate_operation_semantics(data.operation_type, data.source_type, data.receiver_name)
     await _validate_project(session, data.project_subitem_id)
     before = _operation_snapshot(item)
@@ -675,8 +679,11 @@ async def inventory_balances(
     low_stock_only: bool,
     page: int,
     page_size: int,
+    material_id: int | None = None,
 ) -> tuple[list[InventoryBalanceRead], int]:
     query = select(StockMaterial).join(StockBalance)
+    if material_id is not None:
+        query = query.where(StockMaterial.id == material_id)
     if keyword:
         like = f"%{keyword}%"
         query = query.where(or_(StockMaterial.name.like(like), StockMaterial.model_spec.like(like)))

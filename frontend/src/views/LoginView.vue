@@ -36,7 +36,7 @@ async function submit() {
       <div class="intro-content">
         <span class="eyebrow">ELECTRICAL WORKSHOP</span>
         <h1>电气车间<br />备件管理系统</h1>
-        <p>库存、申购计划与请购到货闭环管理</p>
+        <p>库存、申购计划与申购到货闭环管理</p>
       </div>
     </section>
     <section class="login-panel">

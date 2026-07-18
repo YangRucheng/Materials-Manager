@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
   ) NOT NULL,
   `applicant_id` BIGINT UNSIGNED NOT NULL,
   `handler_id` BIGINT UNSIGNED NULL,
+  `salesperson` VARCHAR(128) NULL,
   `remark` VARCHAR(1000) NULL,
   `return_reason` VARCHAR(500) NULL,
   `close_reason` VARCHAR(500) NULL,
@@ -210,7 +211,10 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `model_spec` VARCHAR(255) NOT NULL,
   `unit_id` BIGINT UNSIGNED NOT NULL,
   `actual_demand_person` VARCHAR(128) NOT NULL,
-  `purchase_responsible_id` BIGINT UNSIGNED NOT NULL,
+  `purchase_responsible` VARCHAR(128) NOT NULL,
+  `planned_qty` DECIMAL(18, 1) NOT NULL,
+  `usage` VARCHAR(500) NOT NULL,
+  `project_subitem_id` BIGINT UNSIGNED NULL,
   `remark` VARCHAR(1000) NULL,
   `stock_material_id` BIGINT UNSIGNED NULL,
   `identity_hash` VARCHAR(64) NOT NULL,
@@ -223,8 +227,8 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   CONSTRAINT `pk_purchase_material` PRIMARY KEY (`id`),
   CONSTRAINT `fk_purchase_material_unit_id_measurement_unit`
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
-  CONSTRAINT `fk_purchase_material_purchase_responsible_id_user`
-    FOREIGN KEY (`purchase_responsible_id`) REFERENCES `user` (`id`),
+  CONSTRAINT `fk_purchase_material_project_subitem_id_project_subitem`
+    FOREIGN KEY (`project_subitem_id`) REFERENCES `project_subitem` (`id`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
   CONSTRAINT `fk_purchase_material_created_by_user`
@@ -235,7 +239,8 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   INDEX `ix_purchase_material_material_code` (`material_code`),
   INDEX `ix_purchase_material_model_spec` (`model_spec`),
   INDEX `ix_purchase_material_name` (`name`),
-  INDEX `ix_purchase_material_purchase_responsible_id` (`purchase_responsible_id`),
+  INDEX `ix_purchase_material_purchase_responsible` (`purchase_responsible`),
+  INDEX `ix_purchase_material_project_subitem_id` (`project_subitem_id`),
   INDEX `ix_purchase_material_stock_material_id` (`stock_material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -369,7 +374,7 @@ CREATE TABLE IF NOT EXISTS `alembic_version` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `alembic_version` (`version_num`)
-VALUES ('20260717_0002')
+VALUES ('20260718_0004')
 ON DUPLICATE KEY UPDATE `version_num` = VALUES(`version_num`);
 
 -- 首次登录账号，默认密码均为 123456。重复导入不会重置已有账号密码。
@@ -397,8 +402,8 @@ INSERT INTO `measurement_unit` (
 VALUES
   ('PCS', '件', 0, 1, @admin_id, @admin_id),
   ('SET', '套', 0, 1, @admin_id, @admin_id),
-  ('M', '米', 2, 1, @admin_id, @admin_id),
-  ('KG', '千克', 3, 1, @admin_id, @admin_id)
+  ('M', '米', 1, 1, @admin_id, @admin_id),
+  ('KG', '千克', 1, 1, @admin_id, @admin_id)
 ON DUPLICATE KEY UPDATE
   `name` = VALUES(`name`),
   `decimal_places` = VALUES(`decimal_places`),

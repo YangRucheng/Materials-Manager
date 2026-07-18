@@ -21,5 +21,5 @@ export function defaultPurchaseRequestNo(date = new Date()): string {
   }).formatToParts(date)
   const value = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value || ''
-  return `申购单-${value('year')}年${value('month')}月${value('day')}日`
+  return `申购记录-${value('year')}年${value('month')}月${value('day')}日`
 }

@@ -203,8 +203,11 @@ class PurchaseMaterial(AuditMixin, Base):
         BIGINT_ID, ForeignKey("measurement_unit.id"), nullable=False
     )
     actual_demand_person: Mapped[str] = mapped_column(String(128), nullable=False)
-    purchase_responsible_id: Mapped[int] = mapped_column(
-        BIGINT_ID, ForeignKey("user.id"), nullable=False, index=True
+    purchase_responsible: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    planned_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
+    usage: Mapped[str] = mapped_column(String(500), nullable=False)
+    project_subitem_id: Mapped[int | None] = mapped_column(
+        BIGINT_ID, ForeignKey("project_subitem.id"), index=True
     )
     remark: Mapped[str | None] = mapped_column(String(1000))
     stock_material_id: Mapped[int | None] = mapped_column(
@@ -214,9 +217,7 @@ class PurchaseMaterial(AuditMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
-    purchase_responsible: Mapped[User] = relationship(
-        foreign_keys=[purchase_responsible_id], lazy="selectin"
-    )
+    project_subitem: Mapped[ProjectSubitem | None] = relationship(lazy="selectin")
     stock_material: Mapped[StockMaterial | None] = relationship(lazy="selectin")
     images: Mapped[list[PurchaseMaterialImage]] = relationship(
         back_populates="material",
@@ -249,6 +250,7 @@ class PurchaseRequest(AuditMixin, Base):
     )
     applicant_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=False)
     handler_id: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
+    salesperson: Mapped[str | None] = mapped_column(String(128))
     remark: Mapped[str | None] = mapped_column(String(1000))
     return_reason: Mapped[str | None] = mapped_column(String(500))
     close_reason: Mapped[str | None] = mapped_column(String(500))
