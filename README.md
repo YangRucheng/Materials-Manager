@@ -11,7 +11,7 @@
 3. 拉取并启动服务：
 
 ```bash
-docker login ccr.ccs.tencentyun.com
+docker login docker.io
 docker compose pull
 docker compose up -d
 ```
@@ -25,19 +25,19 @@ docker compose up -d
 
 首次启动会自动执行 Alembic 迁移并写入演示账号。生产使用前请修改初始密码及 JWT 密钥。上传图片保存在 Compose 的 `uploads` 数据卷中。
 
-## 腾讯云 CCR 镜像
+## Docker Hub 镜像
 
-GitHub Actions 在推送 `main`、推送 `v*` 标签或手工触发时，将两个镜像推送到同一个 CCR 仓库：
+GitHub Actions 在推送 `main`、推送 `v*` 标签或手工触发时，将两个镜像推送到同一个 Docker Hub 仓库：
 
-- `ccr.ccs.tencentyun.com/yangrucheng/materials-manager:backend`
-- `ccr.ccs.tencentyun.com/yangrucheng/materials-manager:frontend`
+- `docker.io/yangrucheng/materials-manager:backend`
+- `docker.io/yangrucheng/materials-manager:frontend`
 
 仓库需要配置以下 GitHub Actions Secrets：
 
-- `CCR_USERNAME`：腾讯云 CCR 登录用户名
-- `CCR_PASSWORD`：腾讯云 CCR 登录密码
+- `CCR_USERNAME`：Docker Hub 登录用户名（沿用原 Secret 名称）
+- `CCR_PASSWORD`：Docker Hub 登录密码或访问令牌（沿用原 Secret 名称）
 
-当前仓库已配置这两个 Secret。腾讯云命名空间 `yangrucheng` 下需要允许创建或预先创建 `materials-manager` 镜像仓库。
+当前仓库已配置这两个 Secret。Docker Hub 账号 `yangrucheng` 下需要存在 `materials-manager` 镜像仓库，并允许该账号推送。
 
 `main` 分支更新固定标签 `backend`、`frontend`；每次构建还会推送 `backend-sha-<commit>`、`frontend-sha-<commit>`，版本标签则生成 `backend-v*`、`frontend-v*`。
 
