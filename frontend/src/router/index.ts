@@ -111,12 +111,6 @@ const router = createRouter({
           meta: { title: '计量单位', permission: 'settings:write' },
         },
         {
-          path: 'settings/project-subitems',
-          name: 'project-subitems',
-          component: () => import('@/views/settings/ProjectSubitemsView.vue'),
-          meta: { title: '项目子项', permission: 'settings:write' },
-        },
-        {
           path: 'settings/users',
           name: 'users',
           component: () => import('@/views/settings/UsersView.vue'),

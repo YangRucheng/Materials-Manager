@@ -14,7 +14,7 @@ import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
-import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
+import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 
 const router = useRouter()
@@ -29,7 +29,7 @@ const show = ref(false)
 const saving = ref(false)
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
-const filters = reactive({ keyword: '', coded: null as boolean | null })
+const filters = reactive({ keyword: '' })
 const form = reactive<PurchaseMaterialWrite>({
   material_code: '',
   name: '',
@@ -39,7 +39,8 @@ const form = reactive<PurchaseMaterialWrite>({
   purchase_responsible: '',
   planned_qty: '',
   usage: '',
-  project_subitem_id: undefined,
+  subitem_no: '',
+  stock_material_id: undefined,
   remark: '',
   image_ids: [],
 })
@@ -51,9 +52,7 @@ const rules: FormRules = {
   purchase_responsible: { required: true, message: '请输入申购负责人' },
   planned_qty: { required: true, message: '请输入计划数量' },
   usage: { required: true, message: '请输入用途' },
-  project_subitem_id: { type: 'number', required: true, message: '请选择项目子项' },
 }
-const codeLabels = { UNCODED: '未编码', CODED: '已有编码' }
 const columns: DataTableColumns<PurchaseMaterial> = [
   {
     title: '物料编码',
@@ -82,19 +81,6 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   { title: '实际需求人', key: 'actual_demand_person', width: 110 },
   { title: '申购负责人', key: 'purchase_responsible', width: 110 },
   {
-    title: '编码状态',
-    key: 'code_state',
-    width: 100,
-    render: (r) =>
-      h(
-        NTag,
-        {
-          type: r.code_state === 'CODED' ? 'success' : 'warning',
-        },
-        { default: () => codeLabels[r.code_state] },
-      ),
-  },
-  {
     title: '关联二级库物资',
     key: 'stock_material_name',
     render: (r) => r.stock_material_name || '—',
@@ -102,27 +88,14 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   {
     title: '操作',
     key: 'action',
-    width: 180,
+    width: 90,
     render: (r) =>
       h('div', { class: 'action-row' }, [
         h(
           NButton,
           { size: 'small', onClick: () => router.push(`/procurement/materials/${r.id}`) },
-          { default: () => '详情' },
+          { default: () => (auth.can('purchase:write') ? '编辑' : '查看') },
         ),
-        ...(auth.can('purchase:write') && r.code_state === 'UNCODED'
-          ? [
-              h(
-                NButton,
-                {
-                  size: 'small',
-                  type: 'primary',
-                  onClick: () => router.push(`/procurement/materials/${r.id}`),
-                },
-                { default: () => '补充编码' },
-              ),
-            ]
-          : []),
       ]),
   },
 ]
@@ -155,7 +128,8 @@ function openCreate() {
     purchase_responsible: '',
     planned_qty: '',
     usage: '',
-    project_subitem_id: undefined,
+    subitem_no: '',
+    stock_material_id: undefined,
     remark: '',
     image_ids: [],
   })
@@ -167,7 +141,10 @@ async function save() {
   saving.value = true
   try {
     form.image_ids = images.value.map((x) => x.id)
-    const created = await procurementApi.createMaterial(form)
+    const created = await procurementApi.createMaterial({
+      ...form,
+      subitem_no: form.subitem_no?.trim() || undefined,
+    })
     message.success('申购计划已创建')
     show.value = false
     await router.push(`/procurement/materials/${created.id}`)
@@ -188,7 +165,7 @@ onMounted(() => {
     <div class="page-header">
       <div>
         <h1 class="page-title">申购计划</h1>
-        <p class="page-subtitle">计划阶段确定物资、数量、用途和项目，物料编码可暂时为空</p>
+        <p class="page-subtitle">计划阶段确定物资、数量和用途，子项号按需填写，物料编码可暂时为空</p>
       </div>
       <n-button v-if="auth.can('purchase:write')" type="primary" @click="openCreate"
         >新建申购计划</n-button
@@ -201,15 +178,6 @@ onMounted(() => {
           placeholder="编码、名称或规格"
           clearable
           style="width: 240px"
-        /><n-select
-          v-model:value="filters.coded"
-          clearable
-          :options="[
-            { value: false, label: '未编码' },
-            { value: true, label: '已有编码' },
-          ]"
-          placeholder="编码状态"
-          style="width: 140px"
         /><n-button type="primary" @click="query">查询</n-button>
       </div></n-card
     ><n-card
@@ -259,12 +227,15 @@ onMounted(() => {
           <n-form-item label="计划数量" path="planned_qty"
             ><QuantityInput v-model:value="form.planned_qty" :decimal-places="1"
           /></n-form-item>
-          <n-form-item label="项目子项" path="project_subitem_id"
-            ><ProjectSubitemSelector
-              :value="form.project_subitem_id ?? null"
-              @update:value="form.project_subitem_id = $event ?? undefined"
+          <n-form-item label="子项号"
+            ><n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填"
           /></n-form-item>
         </div>
+        <n-form-item label="关联二级库物资"
+          ><MaterialSelector
+            :value="form.stock_material_id ?? null"
+            @update:value="form.stock_material_id = $event ?? undefined"
+        /></n-form-item>
         <n-form-item label="用途" path="usage"
           ><n-input v-model:value="form.usage" maxlength="500"
         /></n-form-item>

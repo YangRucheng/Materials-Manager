@@ -14,7 +14,7 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.domain.enums import Role
 from app.main import app
-from app.models import MeasurementUnit, ProjectSubitem, User
+from app.models import MeasurementUnit, User
 
 
 @pytest_asyncio.fixture
@@ -60,7 +60,7 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
             [
                 MeasurementUnit(
                     code="PCS",
-                    name="件",
+                    name="个",
                     decimal_places=0,
                     enabled=True,
                     created_by=1,
@@ -68,15 +68,6 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
                 ),
                 MeasurementUnit(
                     code="M", name="米", decimal_places=1, enabled=True, created_by=1, updated_by=1
-                ),
-                ProjectSubitem(
-                    project_code="WX-2026",
-                    project_name="年度检修",
-                    subitem_no="01-01",
-                    subitem_name="控制柜检修",
-                    enabled=True,
-                    created_by=1,
-                    updated_by=1,
                 ),
             ]
         )

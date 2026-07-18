@@ -49,7 +49,6 @@ declare module 'vue' {
     NTabs: typeof import('naive-ui')['NTabs']
     NTag: typeof import('naive-ui')['NTag']
     OperationLinesEditor: typeof import('./src/components/OperationLinesEditor.vue')['default']
-    ProjectSubitemSelector: typeof import('./src/components/ProjectSubitemSelector.vue')['default']
     QuantityInput: typeof import('./src/components/QuantityInput.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

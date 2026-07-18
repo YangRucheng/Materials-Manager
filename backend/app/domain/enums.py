@@ -31,11 +31,6 @@ class PurchaseRequestStatus(StrEnum):
     CANCELED = "CANCELED"
 
 
-class CodeState(StrEnum):
-    UNCODED = "UNCODED"
-    CODED = "CODED"
-
-
 ON_ORDER_REQUEST_STATUSES = {
     PurchaseRequestStatus.SUBMITTED,
     PurchaseRequestStatus.PROCESSING,

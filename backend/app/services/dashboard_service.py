@@ -61,7 +61,7 @@ async def dashboard_summary(session: AsyncSession) -> DashboardSummaryRead:
         )
         or 0
     )
-    # 待申购/在途两项基于低库存列表计算；这里只按是否已有在途单据做摘要。
+    # 急需申购/在途两项基于低库存列表计算；这里只按是否已有在途单据做摘要。
     from app.services.inventory_service import inventory_balances
 
     balances, _ = await inventory_balances(

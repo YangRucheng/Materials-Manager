@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, type DataTableColumns } from 'naive-ui'
+import { NButton, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -33,12 +33,6 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   { title: '型号规格', key: 'model_spec' },
   { title: '单位', key: 'unit_name', width: 80 },
   {
-    title: '编码状态',
-    key: 'code_state',
-    width: 100,
-    render: () => h(NTag, { type: 'warning' }, { default: () => '未编码' }),
-  },
-  {
     title: '关联二级库物资',
     key: 'stock_material_name',
     render: (row) => row.stock_material_name || '—',
@@ -61,7 +55,7 @@ const columns: DataTableColumns<PurchaseMaterial> = [
           type: auth.can('purchase:write') ? 'primary' : 'default',
           onClick: () => router.push(`/procurement/materials/${row.id}`),
         },
-        { default: () => (auth.can('purchase:write') ? '补充编码' : '查看') },
+        { default: () => (auth.can('purchase:write') ? '编辑' : '查看') },
       ),
   },
 ]

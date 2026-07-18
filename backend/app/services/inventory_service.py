@@ -18,7 +18,6 @@ from app.domain.enums import (
     SourceType,
 )
 from app.models import (
-    ProjectSubitem,
     PurchaseMaterial,
     PurchaseRequest,
     PurchaseRequestLine,
@@ -87,7 +86,7 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
         operator_name=operator_name or "未知用户",
         business_reason=item.business_reason,
         receiver_name=item.receiver_name,
-        project_subitem_id=item.project_subitem_id,
+        subitem_no=item.subitem_no,
         source_type=item.source_type,
         reversal_of_id=item.reversal_of_id,
         purchase_request_no=request_no,
@@ -118,7 +117,7 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
         "source_type": item.source_type.value,
         "business_reason": item.business_reason,
         "receiver_name": item.receiver_name,
-        "project_subitem_id": item.project_subitem_id,
+        "subitem_no": item.subitem_no,
         "lines": [
             {
                 "stock_material_id": line.stock_material_id,
@@ -176,11 +175,6 @@ async def _lock_and_validate_materials(
     return by_id
 
 
-async def _validate_project(session: AsyncSession, project_id: int | None) -> None:
-    if project_id is not None and await session.get(ProjectSubitem, project_id) is None:
-        raise not_found("项目子项")
-
-
 def _validate_operation_semantics(
     operation_type: OperationType,
     source_type: SourceType,
@@ -192,6 +186,12 @@ def _validate_operation_semantics(
         raise AppError("INVALID_SOURCE_TYPE", "申购到货只能是入库")
     if operation_type == OperationType.INBOUND and receiver_name:
         raise AppError("INVALID_RECEIVER", "只有出库业务可以填写领用人")
+    if (
+        operation_type == OperationType.OUTBOUND
+        and source_type != SourceType.REVERSAL
+        and not receiver_name
+    ):
+        raise AppError("RECEIVER_REQUIRED", "出库必须填写领用人")
 
 
 async def _lock_and_validate_receipts(
@@ -435,7 +435,6 @@ async def create_operation(
     if operation_type == OperationType.OUTBOUND and not data.business_reason:
         raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写业务原因")
     _validate_operation_semantics(operation_type, data.source_type, data.receiver_name)
-    await _validate_project(session, data.project_subitem_id)
     materials = await _lock_and_validate_materials(session, data.lines)
     existing = cast(
         StockOperation | None,
@@ -461,7 +460,7 @@ async def create_operation(
         operator_id=user_id,
         business_reason=data.business_reason,
         receiver_name=data.receiver_name,
-        project_subitem_id=data.project_subitem_id,
+        subitem_no=data.subitem_no,
         source_type=data.source_type,
         reversal_of_id=reversal_of_id,
         client_request_id=data.client_request_id,
@@ -510,7 +509,6 @@ async def update_operation(
     if data.operation_type == OperationType.OUTBOUND and not data.business_reason:
         raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写业务原因")
     _validate_operation_semantics(data.operation_type, data.source_type, data.receiver_name)
-    await _validate_project(session, data.project_subitem_id)
     before = _operation_snapshot(item)
     old_material_ids = {line.stock_material_id for line in item.lines}
     old_request_line_ids = {
@@ -536,7 +534,7 @@ async def update_operation(
     item.source_type = data.source_type
     item.business_reason = data.business_reason
     item.receiver_name = data.receiver_name
-    item.project_subitem_id = data.project_subitem_id
+    item.subitem_no = data.subitem_no
     item.updated_by = user_id
     item.version += 1
     item.lines = [
@@ -592,7 +590,7 @@ async def reverse_operation(
         source_type=SourceType.REVERSAL,
         business_reason=data.reason,
         receiver_name=None,
-        project_subitem_id=original.project_subitem_id,
+        subitem_no=original.subitem_no,
         lines=[
             OperationLineWrite(
                 stock_material_id=line.stock_material_id,

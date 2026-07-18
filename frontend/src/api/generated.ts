@@ -3,7 +3,6 @@
  * 页面与组件只引用这里的 DTO，避免各自定义不一致的接口结构。
  */
 export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_ONLY'
-export type CodeState = 'UNCODED' | 'CODED'
 export type PurchaseRequestStatus =
   | 'DRAFT'
   | 'SUBMITTED'
@@ -50,15 +49,6 @@ export interface MeasurementUnit {
   code: string
   name: string
   decimal_places: 0 | 1
-  enabled: boolean
-  version: number
-}
-export interface ProjectSubitem {
-  id: number
-  project_code: string
-  project_name: string
-  subitem_no: string
-  subitem_name: string
   enabled: boolean
   version: number
 }
@@ -133,7 +123,7 @@ export interface StockOperation {
   operator_name: string
   business_reason: string
   receiver_name?: string
-  project_subitem_id?: number
+  subitem_no?: string
   source_type: SourceType
   reversal_of_id?: number
   purchase_request_no?: string
@@ -148,7 +138,7 @@ export interface OperationWrite {
   source_type: SourceType
   business_reason: string
   receiver_name?: string
-  project_subitem_id?: number
+  subitem_no?: string
   lines: Array<{ stock_material_id: number; quantity: string; purchase_request_line_id?: number }>
 }
 export interface OperationUpdate {
@@ -158,7 +148,7 @@ export interface OperationUpdate {
   source_type: SourceType
   business_reason: string
   receiver_name?: string
-  project_subitem_id?: number
+  subitem_no?: string
   lines: Array<{ stock_material_id: number; quantity: string; purchase_request_line_id?: number }>
 }
 export interface DashboardSummary {
@@ -181,12 +171,10 @@ export interface PurchaseMaterial {
   purchase_responsible: string
   planned_qty: string
   usage: string
-  project_subitem_id?: number
-  project_subitem_name?: string
+  subitem_no?: string
   remark?: string
   stock_material_id?: number
   stock_material_name?: string
-  code_state: CodeState
   moved_to_record: boolean
   enabled: boolean
   images: FileObject[]
@@ -203,7 +191,7 @@ export interface PurchaseMaterialWrite {
   purchase_responsible?: string
   planned_qty: string
   usage: string
-  project_subitem_id?: number
+  subitem_no?: string
   remark?: string
   stock_material_id?: number
   image_ids: number[]
@@ -228,10 +216,7 @@ export interface PurchaseRequestLine {
   requested_qty: string
   received_qty: string
   usage: string
-  project_subitem_id: number
-  project_code_snapshot: string
-  subitem_no_snapshot: string
-  subitem_name_snapshot: string
+  subitem_no?: string
 }
 export interface PurchaseRequest {
   id: number
@@ -268,7 +253,7 @@ export interface PurchaseRecord {
   salesperson?: string
   remark?: string
   usage: string
-  project_subitem_name: string
+  subitem_no?: string
   stock_material_id?: number
   submitted_at?: string
   created_at: string
@@ -283,7 +268,7 @@ export interface PurchaseRequestWrite {
     purchase_material_id: number | null
     requested_qty: string
     usage: string
-    project_subitem_id: number | null
+    subitem_no?: string
   }>
 }
 export interface PreparedInbound {

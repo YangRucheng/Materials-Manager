@@ -14,7 +14,6 @@ import MaterialSelector from '@/components/MaterialSelector.vue'
 import { formatShanghaiTime } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
-import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { defaultPurchaseRequestNo } from '@/utils/purchase'
 
@@ -43,7 +42,8 @@ const form = reactive<PurchaseMaterialWrite>({
   purchase_responsible: '',
   planned_qty: '',
   usage: '',
-  project_subitem_id: undefined,
+  subitem_no: '',
+  stock_material_id: undefined,
   remark: '',
   image_ids: [],
 })
@@ -76,7 +76,7 @@ function openEdit() {
     purchase_responsible: material.value.purchase_responsible,
     planned_qty: material.value.planned_qty,
     usage: material.value.usage,
-    project_subitem_id: material.value.project_subitem_id,
+    subitem_no: material.value.subitem_no || '',
     remark: material.value.remark || '',
     stock_material_id: material.value.stock_material_id,
     image_ids: material.value.images.map((image) => image.id),
@@ -94,16 +94,18 @@ async function save() {
     !form.actual_demand_person?.trim() ||
     !form.purchase_responsible?.trim() ||
     !form.planned_qty ||
-    !form.usage.trim() ||
-    !form.project_subitem_id
+    !form.usage.trim()
   ) {
-    message.error('请完整填写物资、数量、用途、项目和申购负责人')
+    message.error('请完整填写物资、数量、用途和申购负责人')
     return
   }
   saving.value = true
   try {
     form.image_ids = images.value.map((image) => image.id)
-    material.value = await procurementApi.updateMaterial(material.value.id, form)
+    material.value = await procurementApi.updateMaterial(material.value.id, {
+      ...form,
+      subitem_no: form.subitem_no?.trim() || undefined,
+    })
     message.success('申购计划已保存')
     showEdit.value = false
   } catch (error) {
@@ -151,10 +153,8 @@ onMounted(() => {
         ><n-button @click="openEdit">编辑计划</n-button
         ><n-button v-if="!material.stock_material_id" @click="showLink = true"
           >关联二级库物资</n-button
-        ><n-button v-if="material.code_state === 'UNCODED'" type="primary" @click="openEdit"
-          >补充编码</n-button
         ><n-button
-          v-if="material.code_state === 'CODED' && !material.moved_to_record"
+          v-if="material.material_code && !material.moved_to_record"
           type="primary"
           @click="showMove = true"
           >转入申购记录</n-button
@@ -178,13 +178,9 @@ onMounted(() => {
         ><n-descriptions-item label="计划数量"
           >{{ material.planned_qty }} {{ material.unit_name }}</n-descriptions-item
         ><n-descriptions-item label="用途">{{ material.usage }}</n-descriptions-item
-        ><n-descriptions-item label="项目子项">{{
-          material.project_subitem_name || '—'
+        ><n-descriptions-item label="子项号">{{
+          material.subitem_no || '—'
         }}</n-descriptions-item
-        ><n-descriptions-item label="编码状态"
-          ><n-tag :type="material.code_state === 'CODED' ? 'success' : 'warning'">{{
-            material.code_state
-          }}</n-tag></n-descriptions-item
         ><n-descriptions-item label="关联二级库">{{
           material.stock_material_name || '—'
         }}</n-descriptions-item
@@ -260,12 +256,15 @@ onMounted(() => {
           <n-form-item label="计划数量" required
             ><QuantityInput v-model:value="form.planned_qty" :decimal-places="1"
           /></n-form-item>
-          <n-form-item label="项目子项" required
-            ><ProjectSubitemSelector
-              :value="form.project_subitem_id ?? null"
-              @update:value="form.project_subitem_id = $event ?? undefined"
+          <n-form-item label="子项号"
+            ><n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填"
           /></n-form-item>
         </div>
+        <n-form-item label="关联二级库物资"
+          ><MaterialSelector
+            :value="form.stock_material_id ?? null"
+            @update:value="form.stock_material_id = $event ?? undefined"
+        /></n-form-item>
         <n-form-item label="用途" required
           ><n-input v-model:value="form.usage" maxlength="500"
         /></n-form-item>

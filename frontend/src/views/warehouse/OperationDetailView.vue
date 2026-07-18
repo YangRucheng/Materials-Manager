@@ -9,7 +9,6 @@ import { formatShanghaiTime, toIsoWithTimezone } from '@/utils/time'
 import OperationLinesEditor, {
   type OperationLineModel,
 } from '@/components/OperationLinesEditor.vue'
-import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
 import { isDecimalString } from '@/utils/decimal'
 
 const route = useRoute()
@@ -26,7 +25,7 @@ const edit = reactive({
   occurred_at: Date.now(),
   business_reason: '',
   receiver_name: '',
-  project_subitem_id: null as number | null,
+  subitem_no: '',
   source_type: 'MANUAL' as SourceType,
   lines: [] as OperationLineModel[],
 })
@@ -40,7 +39,7 @@ async function resetEditor(value: StockOperation) {
     occurred_at: new Date(value.occurred_at).getTime(),
     business_reason: value.business_reason,
     receiver_name: value.receiver_name || '',
-    project_subitem_id: value.project_subitem_id || null,
+    subitem_no: value.subitem_no || '',
     source_type: value.source_type,
     lines: value.lines.map((line, index) => ({
       stock_material_id: line.stock_material_id,
@@ -61,6 +60,7 @@ async function load() {
 }
 function validationError(): string | null {
   if (edit.operation_type === 'OUTBOUND' && !edit.business_reason.trim()) return '业务原因必填'
+  if (edit.operation_type === 'OUTBOUND' && !edit.receiver_name.trim()) return '领用人必填'
   if (
     !edit.lines.length ||
     edit.lines.some((line) => !line.stock_material_id || !isDecimalString(line.quantity, 1))
@@ -77,8 +77,10 @@ async function save() {
       operation_type: edit.operation_type,
       occurred_at: toIsoWithTimezone(edit.occurred_at),
       business_reason: edit.business_reason.trim(),
-      receiver_name: edit.receiver_name || undefined,
-      project_subitem_id: edit.project_subitem_id || undefined,
+      receiver_name:
+        edit.operation_type === 'OUTBOUND' ? edit.receiver_name.trim() || undefined : undefined,
+      subitem_no:
+        edit.operation_type === 'OUTBOUND' ? edit.subitem_no.trim() || undefined : undefined,
       source_type: edit.source_type,
       lines: edit.lines.map((line) => ({
         stock_material_id: line.stock_material_id!,
@@ -174,11 +176,11 @@ onMounted(load)
                 }))
               "
           /></n-form-item>
-          <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="领用人"
+          <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="领用人" required
             ><n-input v-model:value="edit.receiver_name" maxlength="64"
           /></n-form-item>
-          <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="项目子项"
-            ><ProjectSubitemSelector v-model:value="edit.project_subitem_id"
+          <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="子项号"
+            ><n-input v-model:value="edit.subitem_no" maxlength="64" placeholder="选填"
           /></n-form-item>
         </div>
         <n-form-item label="业务原因" required
@@ -197,6 +199,7 @@ onMounted(load)
         <n-descriptions-item label="领用人">{{
           operation.receiver_name || '—'
         }}</n-descriptions-item>
+        <n-descriptions-item label="子项号">{{ operation.subitem_no || '—' }}</n-descriptions-item>
         <n-descriptions-item label="来源申购记录">{{
           operation.purchase_request_no || '—'
         }}</n-descriptions-item>

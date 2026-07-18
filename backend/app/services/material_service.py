@@ -5,11 +5,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
-from app.domain.enums import CodeState
 from app.models import (
     FileObject,
     MeasurementUnit,
-    ProjectSubitem,
     PurchaseMaterial,
     PurchaseMaterialImage,
     PurchaseRequestLine,
@@ -146,11 +144,6 @@ async def get_purchase_material(session: AsyncSession, material_id: int) -> Purc
     return item
 
 
-async def code_state(session: AsyncSession, item: PurchaseMaterial) -> CodeState:
-    del session
-    return CodeState.CODED if item.material_code else CodeState.UNCODED
-
-
 async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> PurchaseMaterialRead:
     moved_to_record = bool(
         await session.scalar(
@@ -170,17 +163,10 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         purchase_responsible=item.purchase_responsible,
         planned_qty=item.planned_qty,
         usage=item.usage,
-        project_subitem_id=item.project_subitem_id,
-        project_subitem_name=(
-            f"{item.project_subitem.project_code} / {item.project_subitem.subitem_no} "
-            f"{item.project_subitem.subitem_name}"
-            if item.project_subitem
-            else None
-        ),
+        subitem_no=item.subitem_no,
         remark=item.remark,
         stock_material_id=item.stock_material_id,
         stock_material_name=item.stock_material.name if item.stock_material else None,
-        code_state=await code_state(session, item),
         moved_to_record=moved_to_record,
         enabled=item.enabled,
         images=[file_read(link.file) for link in item.images],
@@ -207,13 +193,6 @@ async def create_purchase_material(
     unit = await _unit(session, data.unit_id)
     current_user_name = await session.scalar(select(User.display_name).where(User.id == user_id))
     responsible = data.purchase_responsible or current_user_name or "待补充"
-    project = (
-        await session.get(ProjectSubitem, data.project_subitem_id)
-        if data.project_subitem_id
-        else None
-    )
-    if data.project_subitem_id and (project is None or not project.enabled):
-        raise AppError("INVALID_PROJECT_SUBITEM", "项目子项不存在或已停用")
     validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
@@ -226,7 +205,7 @@ async def create_purchase_material(
         purchase_responsible=responsible,
         planned_qty=data.planned_qty,
         usage=data.usage,
-        project_subitem_id=data.project_subitem_id,
+        subitem_no=data.subitem_no,
         remark=data.remark,
         stock_material_id=data.stock_material_id,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
@@ -239,7 +218,6 @@ async def create_purchase_material(
         ],
     )
     item.unit = unit
-    item.project_subitem = project
     item.stock_material = stock
     session.add(item)
     await session.flush()
@@ -252,13 +230,6 @@ async def update_purchase_material(
     validate_version(data.version, item.version)
     unit = await _unit(session, data.unit_id)
     responsible = data.purchase_responsible or item.purchase_responsible
-    project = (
-        await session.get(ProjectSubitem, data.project_subitem_id)
-        if data.project_subitem_id
-        else None
-    )
-    if data.project_subitem_id and (project is None or not project.enabled):
-        raise AppError("INVALID_PROJECT_SUBITEM", "项目子项不存在或已停用")
     validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
@@ -269,7 +240,7 @@ async def update_purchase_material(
         "unit_id",
         "planned_qty",
         "usage",
-        "project_subitem_id",
+        "subitem_no",
         "remark",
         "stock_material_id",
     ):
@@ -279,7 +250,6 @@ async def update_purchase_material(
     item.purchase_responsible = responsible
     item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_id)
     item.unit = unit
-    item.project_subitem = project
     item.stock_material = stock
     item.images = [
         PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
