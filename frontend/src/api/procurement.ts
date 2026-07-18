@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type {
   Page,
+  MovePurchasePlansWrite,
   PreparedInbound,
   PurchaseMaterial,
   PurchaseMaterialWrite,
@@ -27,12 +28,16 @@ export const procurementApi = {
         stock_material_id,
       })
       .then((r) => r.data),
-  movePlanToRecord: (
-    id: number,
-    payload: { request_no: string; salesperson?: string; remark?: string },
-  ) =>
+  movePlanToRecord: (id: number, payload: MovePurchasePlansWrite) =>
     apiClient
       .post<PurchaseRecord>(`/purchase-materials/${id}/move-to-record`, payload)
+      .then((r) => r.data),
+  batchMovePlansToRecord: (materialIds: number[], payload: MovePurchasePlansWrite) =>
+    apiClient
+      .post<PurchaseRecord[]>('/purchase-materials/batch-move-to-record', {
+        ...payload,
+        material_ids: materialIds,
+      })
       .then((r) => r.data),
   uncodedMaterials: (params?: Record<string, unknown>) =>
     apiClient
@@ -60,8 +65,6 @@ export const procurementApi = {
     apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
-  updateRecord: (
-    lineId: number,
-    payload: { request_no?: string; salesperson?: string; remark?: string; version: number },
-  ) => apiClient.patch<PurchaseRecord>(`/purchase-records/${lineId}`, payload).then((r) => r.data),
+  updateRecord: (lineId: number, payload: MovePurchasePlansWrite & { version: number }) =>
+    apiClient.patch<PurchaseRecord>(`/purchase-records/${lineId}`, payload).then((r) => r.data),
 }

@@ -18,6 +18,7 @@ from app.models import (
 )
 from app.schemas import (
     ActionVersion,
+    BatchMovePurchasePlansRequest,
     MovePurchasePlanRequest,
     PreparedInboundRead,
     PurchaseRecordRead,
@@ -33,6 +34,7 @@ from app.services.common import (
     event_reads,
     log_event,
     utc_aware,
+    utc_naive,
     utcnow,
     validate_quantity_precision,
     validate_version,
@@ -42,9 +44,9 @@ ZERO = Decimal("0")
 SHANGHAI = timezone(timedelta(hours=8))
 
 
-def default_request_no() -> str:
+def default_trace_no() -> str:
     now = datetime.now(SHANGHAI)
-    return f"申购记录-{now.year}年{now.month}月{now.day}日"
+    return f"追溯-{now.year}{now.month:02d}{now.day:02d}-{now:%H%M%S}"
 
 
 async def get_request(
@@ -70,7 +72,8 @@ async def request_read(session: AsyncSession, item: PurchaseRequest) -> Purchase
     )
     return PurchaseRequestRead(
         id=item.id,
-        request_no=item.request_no,
+        trace_no=item.trace_no,
+        purchase_order_no=item.purchase_order_no,
         status=item.status,
         applicant_name=applicant_name or "未知用户",
         handler_name=handler_name,
@@ -78,7 +81,7 @@ async def request_read(session: AsyncSession, item: PurchaseRequest) -> Purchase
         remark=item.remark,
         return_reason=item.return_reason,
         close_reason=item.close_reason,
-        submitted_at=utc_aware(item.submitted_at),
+        purchase_time=utc_aware(item.purchase_time),
         completed_at=utc_aware(item.completed_at),
         created_at=utc_aware(item.created_at),
         version=item.version,
@@ -182,7 +185,9 @@ async def create_request(
     session: AsyncSession, data: PurchaseRequestCreate, user_id: int
 ) -> PurchaseRequest:
     item = PurchaseRequest(
-        request_no=data.request_no or default_request_no(),
+        trace_no=data.trace_no or default_trace_no(),
+        purchase_order_no=data.purchase_order_no,
+        purchase_time=utc_naive(data.purchase_time) if data.purchase_time else None,
         status=PurchaseRequestStatus.DRAFT,
         applicant_id=user_id,
         remark=data.remark,
@@ -213,8 +218,10 @@ async def update_request(
         raise invalid_transition(item.status.value, "update")
     if any(line.received_qty > ZERO for line in item.lines):
         raise AppError("REQUEST_HAS_RECEIPTS", "已有到货记录的请购单不能修改", status_code=409)
-    if data.request_no:
-        item.request_no = data.request_no
+    if data.trace_no:
+        item.trace_no = data.trace_no
+    item.purchase_order_no = data.purchase_order_no
+    item.purchase_time = utc_naive(data.purchase_time) if data.purchase_time else None
     item.remark = data.remark
     item.updated_by = user_id
     item.version += 1
@@ -263,7 +270,7 @@ async def submit_request(
         )
     old = item.status
     item.status = PurchaseRequestStatus.SUBMITTED
-    item.submitted_at = utcnow()
+    item.purchase_time = item.purchase_time or utcnow()
     item.return_reason = None
     item.updated_by = user_id
     item.version += 1
@@ -398,7 +405,7 @@ async def prepare_inbound(session: AsyncSession, line_id: int) -> PreparedInboun
     }:
         raise AppError("INVALID_STATUS_TRANSITION", "当前申购记录状态不能发起入库", status_code=409)
     return PreparedInboundRead(
-        purchase_request_no=line.request.request_no,
+        purchase_request_no=line.request.trace_no,
         line_id=line.id,
         purchase_material_id=line.purchase_material_id,
         material_name=line.material_name_snapshot,
@@ -439,7 +446,8 @@ async def search_requests(
         query = query.where(PurchaseRequest.status == status)
     if keyword:
         query = query.where(
-            PurchaseRequest.request_no.like(f"%{keyword}%")
+            PurchaseRequest.trace_no.like(f"%{keyword}%")
+            | PurchaseRequest.purchase_order_no.like(f"%{keyword}%")
             | PurchaseRequest.remark.like(f"%{keyword}%")
         )
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
@@ -464,7 +472,8 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         line_id=line.id,
         purchase_request_id=request.id,
         purchase_material_id=line.purchase_material_id,
-        request_no=request.request_no,
+        trace_no=request.trace_no,
+        purchase_order_no=request.purchase_order_no,
         status=request.status,
         material_code=line.material_code_snapshot or "",
         material_name=line.material_name_snapshot,
@@ -480,7 +489,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         usage=line.usage,
         subitem_no=line.subitem_no,
         stock_material_id=material.stock_material_id,
-        submitted_at=utc_aware(request.submitted_at),
+        purchase_time=utc_aware(request.purchase_time),
         created_at=utc_aware(request.created_at),
         version=request.version,
     )
@@ -492,47 +501,91 @@ async def move_plan_to_record(
     data: MovePurchasePlanRequest,
     user_id: int,
 ) -> PurchaseRequestLine:
-    material = await session.scalar(
-        select(PurchaseMaterial).where(PurchaseMaterial.id == material_id).with_for_update()
+    return (await move_plans_to_record(session, [material_id], data, user_id))[0]
+
+
+async def batch_move_plans_to_record(
+    session: AsyncSession,
+    data: BatchMovePurchasePlansRequest,
+    user_id: int,
+) -> list[PurchaseRequestLine]:
+    return await move_plans_to_record(session, data.material_ids, data, user_id)
+
+
+async def move_plans_to_record(
+    session: AsyncSession,
+    material_ids: list[int],
+    data: MovePurchasePlanRequest,
+    user_id: int,
+) -> list[PurchaseRequestLine]:
+    ids = sorted(set(material_ids))
+    materials = list(
+        (
+            await session.scalars(
+                select(PurchaseMaterial)
+                .where(PurchaseMaterial.id.in_(ids))
+                .order_by(PurchaseMaterial.id)
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
     )
-    if material is None:
+    if len(materials) != len(ids):
         raise not_found("申购计划")
-    if not material.material_code:
-        raise AppError("MATERIAL_CODE_REQUIRED", "物资编码完成后才能转入申购记录", status_code=409)
-    existing = await session.scalar(
-        select(PurchaseRequestLine)
-        .where(PurchaseRequestLine.purchase_material_id == material.id)
-        .limit(1)
-        .with_for_update()
+    uncoded = [material.id for material in materials if not material.material_code]
+    if uncoded:
+        raise AppError(
+            "MATERIAL_CODE_REQUIRED",
+            "未编码物资不能转入申购记录",
+            status_code=409,
+            details={"material_ids": uncoded},
+        )
+    moved_ids = set(
+        (
+            await session.scalars(
+                select(PurchaseRequestLine.purchase_material_id)
+                .where(PurchaseRequestLine.purchase_material_id.in_(ids))
+                .with_for_update()
+            )
+        ).all()
     )
-    if existing is not None:
-        raise AppError("PLAN_ALREADY_MOVED", "该申购计划已转入申购记录", status_code=409)
+    if moved_ids:
+        raise AppError(
+            "PLAN_ALREADY_MOVED",
+            "部分申购计划已转入申购记录",
+            status_code=409,
+            details={"material_ids": sorted(moved_ids)},
+        )
     request = PurchaseRequest(
-        request_no=data.request_no,
+        trace_no=data.trace_no,
+        purchase_order_no=data.purchase_order_no,
         status=PurchaseRequestStatus.PROCESSING,
         applicant_id=user_id,
         salesperson=data.salesperson,
         remark=data.remark,
-        submitted_at=utcnow(),
+        purchase_time=utc_naive(data.purchase_time),
         created_by=user_id,
         updated_by=user_id,
         lines=[],
     )
-    line = PurchaseRequestLine(
-        purchase_material_id=material.id,
-        purchase_material=material,
-        material_code_snapshot=material.material_code,
-        material_name_snapshot=material.name,
-        model_spec_snapshot=material.model_spec,
-        unit_name_snapshot=material.unit.name,
-        requested_qty=material.planned_qty,
-        received_qty=ZERO,
-        usage=material.usage,
-        subitem_no=material.subitem_no,
-        created_by=user_id,
-        updated_by=user_id,
-    )
-    request.lines = [line]
+    request.lines = [
+        PurchaseRequestLine(
+            purchase_material_id=material.id,
+            purchase_material=material,
+            material_code_snapshot=material.material_code,
+            material_name_snapshot=material.name,
+            model_spec_snapshot=material.model_spec,
+            unit_name_snapshot=material.unit.name,
+            requested_qty=material.planned_qty,
+            received_qty=ZERO,
+            usage=material.usage,
+            subitem_no=material.subitem_no,
+            created_by=user_id,
+            updated_by=user_id,
+        )
+        for material in materials
+    ]
     session.add(request)
     await session.flush()
     await log_event(
@@ -542,9 +595,9 @@ async def move_plan_to_record(
         action="MOVED_FROM_PLAN",
         user_id=user_id,
         new_status=request.status.value,
-        remark=f"申购计划 #{material.id}",
+        remark=f"申购计划 {', '.join(f'#{material.id}' for material in materials)}",
     )
-    return line
+    return request.lines
 
 
 async def get_purchase_record(
@@ -567,8 +620,12 @@ async def update_purchase_record(
 ) -> PurchaseRequestLine:
     request = line.request
     validate_version(data.version, request.version)
-    if data.request_no is not None:
-        request.request_no = data.request_no
+    if data.trace_no is not None:
+        request.trace_no = data.trace_no
+    if data.purchase_order_no is not None:
+        request.purchase_order_no = data.purchase_order_no
+    if data.purchase_time is not None:
+        request.purchase_time = utc_naive(data.purchase_time)
     request.salesperson = data.salesperson
     request.remark = data.remark
     request.updated_by = user_id
@@ -604,7 +661,8 @@ async def search_purchase_records(
         like = f"%{keyword}%"
         query = query.where(
             or_(
-                PurchaseRequest.request_no.like(like),
+                PurchaseRequest.trace_no.like(like),
+                PurchaseRequest.purchase_order_no.like(like),
                 PurchaseRequest.salesperson.like(like),
                 PurchaseRequest.remark.like(like),
                 PurchaseRequestLine.material_code_snapshot.like(like),

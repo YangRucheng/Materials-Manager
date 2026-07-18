@@ -74,7 +74,7 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
     )
     if request_line_id:
         request_no = await session.scalar(
-            select(PurchaseRequest.request_no)
+            select(PurchaseRequest.trace_no)
             .join(PurchaseRequestLine)
             .where(PurchaseRequestLine.id == request_line_id)
         )
@@ -647,7 +647,7 @@ async def search_operations(
                 PurchaseRequestLine.id == StockOperationLine.purchase_request_line_id,
             )
             .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
-            .where(PurchaseRequest.request_no.like(f"%{purchase_request_no}%"))
+            .where(PurchaseRequest.trace_no.like(f"%{purchase_request_no}%"))
         )
     if source_type:
         query = query.where(StockOperation.source_type == source_type)

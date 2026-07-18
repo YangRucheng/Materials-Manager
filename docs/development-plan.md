@@ -72,7 +72,7 @@
 6. 申购管理员在计划阶段确认数量、用途和项目并补录编码，再转入正式申购记录。
 7. 到货后，仓库管理员从展平的申购记录发起入库；库存和已到货数量同步更新。
 
-发起补库不会创建申购记录。系统仅新增申购计划并带入建议数量，申购管理员补齐用途、项目和负责人后再正式转入。
+发起补库不会创建申购记录。用户确认计划数量、实际需求人和申购负责人后，系统仅新增申购计划；计划编码后可单条或批量转入正式申购记录。
 
 ### 4.2 申购全新物资
 
@@ -250,14 +250,15 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `request_no` | VARCHAR(128) | 必填、可重复、可编辑；默认 `申购单-{y}年{m}月{d}日` |
+| `trace_no` | VARCHAR(128) | 必填、可编辑；默认生成系统追溯号 |
+| `purchase_order_no` | VARCHAR(128) | 申购单号，可空 |
 | `status` | ENUM | 见状态机 |
 | `applicant_id` | BIGINT UNSIGNED | 申请人 |
 | `handler_id` | BIGINT UNSIGNED | 受理人，可空 |
 | `remark` | VARCHAR(1000) | 可空 |
 | `return_reason` | VARCHAR(500) | 退回时必填 |
 | `close_reason` | VARCHAR(500) | 关闭时必填 |
-| `submitted_at` | DATETIME(6) | 可空 |
+| `purchase_time` | DATETIME(6) | 申购时间，可空、可编辑 |
 | `completed_at` | DATETIME(6) | 可空 |
 
 #### `purchase_request_line`
@@ -459,7 +460,9 @@ backend/
 | --- | --- | --- |
 | GET/POST | `/purchase-materials` | 查询/创建申购计划；`coded=false` 查询未编码数据 |
 | GET/PATCH | `/purchase-materials/{id}` | 详情/修改 |
+| DELETE | `/purchase-materials/{id}` | 删除尚未转入申购记录的计划 |
 | POST | `/purchase-materials/{id}/link-stock-material` | 关联二级库物资 |
+| POST | `/purchase-materials/batch-move-to-record` | 将多条已编码计划批量转为同一批申购记录 |
 
 补录编码直接修改申购计划：
 
@@ -492,7 +495,9 @@ backend/
 
 ```json
 {
-  "request_no": "申购单-2026年7月17日",
+  "trace_no": "追溯-20260717-103000",
+  "purchase_order_no": "SG-20260717-001",
+  "purchase_time": "2026-07-17T10:30:00+08:00",
   "remark": "7 月检修备件",
   "lines": [
     {
@@ -588,7 +593,7 @@ backend/
 
 #### 未编码物资
 
-页面调用 `/purchase-materials?coded=false`，只展示物料编码为空的申购计划。没有申请号、申请人和状态；点击“编辑”进入申购计划编辑页直接填写编码。
+页面调用 `/purchase-materials?coded=false`，只展示物料编码为空的申购计划。没有申请号、申请人、状态或单独的编辑按钮；点击物资名称进入可直接编辑保存的申购计划详情页。
 
 #### 请购编辑页
 
