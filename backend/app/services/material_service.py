@@ -355,3 +355,40 @@ async def search_purchase_materials(
         .all()
     )
     return items, int(count or 0)
+
+
+async def purchase_materials_for_export(
+    session: AsyncSession,
+    *,
+    material_ids: list[int] | None = None,
+    keyword: str | None = None,
+    coded: bool | None = None,
+    moved: bool | None = None,
+) -> list[PurchaseMaterial]:
+    query = select(PurchaseMaterial)
+    if material_ids is not None:
+        query = query.where(PurchaseMaterial.id.in_(material_ids))
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.where(
+            or_(
+                PurchaseMaterial.name.like(like),
+                PurchaseMaterial.model_spec.like(like),
+                PurchaseMaterial.material_code.like(like),
+            )
+        )
+    if coded is True:
+        query = query.where(PurchaseMaterial.material_code.is_not(None))
+    elif coded is False:
+        query = query.where(PurchaseMaterial.material_code.is_(None))
+    if moved is not None:
+        record_exists = (
+            select(PurchaseRequestLine.id)
+            .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+            .exists()
+        )
+        query = query.where(record_exists if moved else ~record_exists)
+    items = list((await session.scalars(query.order_by(PurchaseMaterial.id))).unique().all())
+    if material_ids is not None and len(items) != len(set(material_ids)):
+        raise not_found("申购计划")
+    return items

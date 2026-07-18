@@ -262,13 +262,13 @@ export const purchaseMaterials: PurchaseMaterial[] = [
 export const purchaseRequests: PurchaseRequest[] = [
   {
     id: 1,
-    trace_no: 'ZS-20260715-001',
     purchase_order_no: 'SG-20260715-001',
+    trace_no: 'ZS-20260715-001',
     status: 'PARTIALLY_RECEIVED',
     applicant_name: '申购管理员',
     handler_name: '申购管理员',
     remark: '7 月检修备件',
-    purchase_time: '2026-07-15T02:00:00Z',
+    purchase_date: '2026-07-15',
     created_at: '2026-07-15T01:00:00Z',
     version: 3,
     lines: [
@@ -313,13 +313,13 @@ export const purchaseRequests: PurchaseRequest[] = [
   },
   {
     id: 2,
-    trace_no: 'ZS-20260716-001',
     purchase_order_no: 'SG-20260716-001',
+    trace_no: 'ZS-20260716-001',
     status: 'PROCESSING',
     applicant_name: '申购管理员',
     handler_name: '申购管理员',
     remark: '配电室改造',
-    purchase_time: '2026-07-16T01:00:00Z',
+    purchase_date: '2026-07-16',
     created_at: '2026-07-16T00:30:00Z',
     version: 2,
     lines: [

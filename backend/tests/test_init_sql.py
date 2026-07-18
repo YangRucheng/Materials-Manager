@@ -92,3 +92,11 @@ def test_init_sql_seeds_required_accounts_and_units() -> None:
     for code, decimal_places in (("PCS", 0), ("SET", 0), ("M", 1), ("KG", 1)):
         assert re.search(rf"\('{code}', '[^']+', {decimal_places}, 1,", sql)
     assert "('PCS', '个', 0, 1," in sql
+
+
+def test_excel_templates_are_json_specs_not_binary_workbooks() -> None:
+    template_dir = Path(__file__).parents[1] / "data" / "template"
+    assert {path.name for path in template_dir.iterdir()} == {
+        "material-code-application.json",
+        "purchase-application.json",
+    }

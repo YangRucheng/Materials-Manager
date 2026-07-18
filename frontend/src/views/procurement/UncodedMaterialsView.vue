@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, type DataTableColumns } from 'naive-ui'
+import { NButton, type DataTableColumns, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { formatShanghaiTime } from '@/utils/time'
+import { downloadBlob } from '@/utils/download'
 
 const router = useRouter()
+const message = useMessage()
 const items = ref<PurchaseMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
+const exporting = ref(false)
 const filters = reactive({ keyword: '' })
 
 const columns: DataTableColumns<PurchaseMaterial> = [
@@ -63,6 +66,21 @@ function query() {
   void load()
 }
 
+async function exportExcel() {
+  exporting.value = true
+  try {
+    const content = await procurementApi.exportUncodedMaterials({
+      keyword: filters.keyword || undefined,
+    })
+    downloadBlob(content, '物料编码申请表.xlsx')
+    message.success('物料编码申请表已导出')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -73,6 +91,7 @@ onMounted(load)
         <h1 class="page-title">未编码物资</h1>
         <p class="page-subtitle">直接查询物料编码为空的申购计划，无单独申请单和状态流程</p>
       </div>
+      <n-button :loading="exporting" :disabled="!total" @click="exportExcel">导出 Excel</n-button>
     </div>
     <n-card>
       <div class="filter-bar">

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "template_name": "物料编码申请表",
+  "source_template": "物料编码申请表.xlsx",
+  "output_filename": "物料编码申请表-{date}.xlsx",
+  "sheet": {
+    "title": "物料编码申请表",
+    "show_grid_lines": false,
+    "title_cell": "B2",
+    "title": "非汽配件物料编码申请单（WMS）",
+    "merged_cells": ["B2:AA2", "B3:S3", "T3:AA3"],
+    "sections": [
+      {"cell": "B3", "label": "申请人填写"},
+      {"cell": "T3", "label": "物料小组填写"}
+    ],
+    "header_row": 4,
+    "required_row": 5,
+    "instruction_row": 6,
+    "data_start_row": 7,
+    "minimum_data_rows": 5,
+    "column_widths": {
+      "A": 3.45, "B": 7.36, "C": 12.45, "D": 16.27, "E": 18.54,
+      "F": 16.09, "G": 19.73, "H": 14.91, "I": 11.54, "J": 13.0,
+      "K": 13.0, "L": 15.82, "M": 24.45, "N": 8.27, "O": 8.0,
+      "P": 8.82, "Q": 13.0, "R": 13.0, "S": 10.0, "T": 13.54,
+      "U": 12.09, "V": 17.18, "W": 10.63, "X": 14.0, "Y": 14.0,
+      "Z": 13.27, "AA": 8.63
+    },
+    "row_heights": {"2": 42.0, "3": 42.0, "4": 46.05, "5": 46.95, "6": 171.6}
+  },
+  "styles": {
+    "title": {"font_name": "宋体", "font_size": 24, "bold": true, "horizontal": "center", "vertical": "center", "border": true},
+    "section": {"font_name": "宋体", "font_size": 16, "bold": true, "horizontal": "center", "vertical": "center", "border": true},
+    "header": {"font_name": "宋体", "font_size": 12, "bold": true, "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true},
+    "applicant_header": {"font_name": "宋体", "font_size": 12, "bold": true, "fill": "92D050", "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true},
+    "required": {"font_name": "宋体", "font_size": 12, "fill": "92D050", "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true},
+    "instruction": {"font_name": "宋体", "font_size": 11, "horizontal": "left", "vertical": "center", "wrap_text": true, "border": true},
+    "data": {"font_name": "宋体", "font_size": 11, "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true},
+    "applicant_data": {"font_name": "宋体", "font_size": 11, "fill": "E2F0D9", "horizontal": "center", "vertical": "center", "wrap_text": true, "border": true}
+  },
+  "columns": [
+    {"column": "B", "header": "序号", "instruction": "说明", "field": "serial", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "C", "header": "物料小类", "required": "必填", "instruction": "填写物资分类的4位小类编码", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "D", "header": "物料名称", "required": "必填", "instruction": "按照物料编码规范填写物资名称，规格型号等不可填入；每行物资对应一个规格型号。", "field": "name", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "E", "header": "物料的规格型号", "required": "必填", "instruction": "型号信息之间用右斜杠“\\”分隔；乘号用×，直径用Φ；字符控制在150字符以内。", "field": "model_spec", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "F", "header": "适配的设备", "required": "生产设备备件(J类)必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "G", "header": "适配设备的型号", "required": "生产设备备件(J类)必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "H", "header": "适配设备的厂家", "required": "生产设备备件(J类)必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "I", "header": "单位", "required": "必填", "instruction": "按照物料编码规范填写。", "field": "unit_name", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "J", "header": "是否保质期管理物料", "required": "必填", "instruction": "是或否", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "K", "header": "保质期（天数）", "required": "必填", "instruction": "如果是保质期管理物料则必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "L", "header": "资产类别", "required": "必填", "instruction": "可咨询资产管理员确认。", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "M", "header": "新增原因说明", "required": "必填", "instruction": "说明用途、使用频率、有无替代物料及调拨可能性。", "field": "application_reason", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "N", "header": "申请部门", "required": "必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "O", "header": "申请人", "required": "必填", "field": "actual_demand_person", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "P", "header": "拟停止采购的物料编码", "required": "必填", "instruction": "一换一物料与拟新增物料应同属一个大类。", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "Q", "header": "拟停止采购的物料名称", "required": "必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "R", "header": "拟停止采购的物料型号", "required": "必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "S", "header": "拟停止采购的物料单位", "required": "必填", "header_style": "applicant_header", "required_style": "required", "data_style": "applicant_data"},
+    {"column": "T", "header": "物料编码", "required": "必填", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "U", "header": "物料名称", "required": "必填", "instruction": "物料名称", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "V", "header": "规格型号", "required": "必填", "instruction": "物料的规格型号", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "W", "header": "适配的设备", "required": "生产设备备件(J类)必填", "instruction": "适配的设备/车型", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "X", "header": "适配设备的规格型号", "required": "生产设备备件(J类)必填", "instruction": "适配设备/车辆的规格型号", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "Y", "header": "适配设备的厂家", "required": "生产设备备件(J类)必填", "instruction": "适配设备/车辆的厂家", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "Z", "header": "单位", "instruction": "单位", "header_style": "header", "required_style": "header", "data_style": "data"},
+    {"column": "AA", "header": "资产类别", "header_style": "header", "required_style": "header", "data_style": "data"}
+  ]
+}

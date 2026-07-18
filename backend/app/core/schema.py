@@ -2,11 +2,29 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import Enum, inspect
+from sqlalchemy import Date, DateTime, Enum, Numeric, String, inspect
 from sqlalchemy.engine import Connection
 
 import app.models  # noqa: F401
 from app.core.database import Base
+
+
+def _column_type_compatible(expected: Any, actual: Any) -> bool:
+    expected_type = expected.type
+    actual_type = actual["type"]
+    if isinstance(expected_type, DateTime):
+        return isinstance(actual_type, DateTime)
+    if isinstance(expected_type, Date):
+        return isinstance(actual_type, Date) and not isinstance(actual_type, DateTime)
+    if isinstance(expected_type, String):
+        return isinstance(actual_type, String) and actual_type.length == expected_type.length
+    if isinstance(expected_type, Numeric):
+        return (
+            isinstance(actual_type, Numeric)
+            and actual_type.precision == expected_type.precision
+            and actual_type.scale == expected_type.scale
+        )
+    return True
 
 
 def schema_differences(connection: Connection) -> dict[str, Any]:
@@ -43,6 +61,9 @@ def schema_differences(connection: Connection) -> dict[str, Any]:
             expected = expected_columns[column_name]
             actual = actual_columns[column_name]
             if bool(actual["nullable"]) != expected.nullable:
+                incompatible_columns.append(column_name)
+                continue
+            if not _column_type_compatible(expected, actual):
                 incompatible_columns.append(column_name)
                 continue
             if isinstance(expected.type, Enum):

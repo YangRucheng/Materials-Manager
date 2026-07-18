@@ -2,6 +2,7 @@
 backend/.venv/
 backend/**/__pycache__/
 backend/.pytest_cache/
+backend/.pytest-run-*/
 backend/.mypy_cache/
 backend/.ruff_cache/
 backend/data/uploads/*

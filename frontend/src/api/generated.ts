@@ -225,8 +225,8 @@ export interface PurchaseRequestLine {
 }
 export interface PurchaseRequest {
   id: number
-  trace_no: string
-  purchase_order_no?: string
+  purchase_order_no?: string | null
+  trace_no?: string | null
   status: PurchaseRequestStatus
   applicant_name: string
   handler_name?: string
@@ -234,7 +234,7 @@ export interface PurchaseRequest {
   remark?: string
   return_reason?: string
   close_reason?: string
-  purchase_time?: string
+  purchase_date?: string
   completed_at?: string
   created_at: string
   version: number
@@ -245,8 +245,8 @@ export interface PurchaseRecord {
   line_id: number
   purchase_request_id: number
   purchase_material_id: number
-  trace_no: string
-  purchase_order_no?: string
+  purchase_order_no?: string | null
+  trace_no?: string | null
   status: PurchaseRequestStatus
   material_code: string
   material_name: string
@@ -262,14 +262,14 @@ export interface PurchaseRecord {
   usage: string
   subitem_no?: string
   stock_material_id?: number
-  purchase_time?: string
+  purchase_date?: string
   created_at: string
   version: number
 }
 export interface PurchaseRequestWrite {
-  trace_no?: string
-  purchase_order_no?: string
-  purchase_time?: string
+  purchase_order_no?: string | null
+  trace_no?: string | null
+  purchase_date?: string
   remark?: string
   version?: number
   lines: Array<{
@@ -281,14 +281,14 @@ export interface PurchaseRequestWrite {
   }>
 }
 export interface MovePurchasePlansWrite {
-  trace_no: string
-  purchase_order_no: string
-  purchase_time: string
+  purchase_order_no?: string | null
+  trace_no?: string | null
+  purchase_date: string
   salesperson?: string
   remark?: string
 }
 export interface PreparedInbound {
-  purchase_request_no: string
+  purchase_request_no?: string
   line_id: number
   purchase_material_id: number
   material_name: string

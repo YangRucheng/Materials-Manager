@@ -12,19 +12,14 @@ export function findUncodedLineNumbers(lines: PurchaseLineForValidation[]): numb
   )
 }
 
-export function defaultTraceNo(date = new Date()): string {
+export function defaultPurchaseOrderNo(date = new Date()): string {
   const parts = new Intl.DateTimeFormat('zh-CN', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
   }).formatToParts(date)
   const value = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value || ''
-  const two = (type: Intl.DateTimeFormatPartTypes) => value(type).padStart(2, '0')
-  return `追溯-${value('year')}${two('month')}${two('day')}-${two('hour')}${two('minute')}${two('second')}`
+  return `申购 ${value('year')}/${value('month')}/${value('day')}`
 }

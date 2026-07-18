@@ -16,8 +16,9 @@ import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
-import { defaultTraceNo } from '@/utils/purchase'
-import { toIsoWithTimezone } from '@/utils/time'
+import { defaultPurchaseOrderNo } from '@/utils/purchase'
+import { toShanghaiDate } from '@/utils/time'
+import { downloadBlob } from '@/utils/download'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -31,14 +32,15 @@ const show = ref(false)
 const showBatch = ref(false)
 const saving = ref(false)
 const batchMoving = ref(false)
+const batchExporting = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const filters = reactive({ keyword: '' })
 const batchForm = reactive({
-  trace_no: defaultTraceNo(),
-  purchase_order_no: '',
-  purchase_time: Date.now(),
+  purchase_order_no: defaultPurchaseOrderNo(),
+  trace_no: '',
+  purchase_date: Date.now(),
   salesperson: '',
   remark: '',
 })
@@ -181,21 +183,17 @@ function openBatchMove() {
     return
   }
   Object.assign(batchForm, {
-    trace_no: defaultTraceNo(),
-    purchase_order_no: '',
-    purchase_time: Date.now(),
+    purchase_order_no: defaultPurchaseOrderNo(),
+    trace_no: '',
+    purchase_date: Date.now(),
     salesperson: '',
     remark: '',
   })
   showBatch.value = true
 }
 async function batchMove() {
-  if (
-    !batchForm.trace_no.trim() ||
-    !batchForm.purchase_order_no.trim() ||
-    !batchForm.purchase_time
-  ) {
-    message.error('请完整填写追溯号、申购单号和申购时间')
+  if (!batchForm.purchase_date) {
+    message.error('请选择申购日期')
     return
   }
   batchMoving.value = true
@@ -203,9 +201,9 @@ async function batchMove() {
     await procurementApi.batchMovePlansToRecord(
       selectedPlans.value.map((item) => item.id),
       {
-        trace_no: batchForm.trace_no.trim(),
-        purchase_order_no: batchForm.purchase_order_no.trim(),
-        purchase_time: toIsoWithTimezone(batchForm.purchase_time),
+        purchase_order_no: batchForm.purchase_order_no.trim() || null,
+        trace_no: batchForm.trace_no.trim() || null,
+        purchase_date: toShanghaiDate(batchForm.purchase_date),
         salesperson: batchForm.salesperson.trim() || undefined,
         remark: batchForm.remark.trim() || undefined,
       },
@@ -218,6 +216,21 @@ async function batchMove() {
     message.error(error instanceof Error ? error.message : '批量转入失败')
   } finally {
     batchMoving.value = false
+  }
+}
+async function exportPurchaseApplication() {
+  if (!selectedPlans.value.length) return
+  batchExporting.value = true
+  try {
+    const content = await procurementApi.exportPurchaseApplication(
+      selectedPlans.value.map((item) => item.id),
+    )
+    downloadBlob(content, '采购申请.xlsx')
+    message.success('采购申请表已导出')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '导出失败')
+  } finally {
+    batchExporting.value = false
   }
 }
 onMounted(() => {
@@ -236,6 +249,13 @@ onMounted(() => {
         </p>
       </div>
       <n-space v-if="auth.can('purchase:write')">
+        <n-button
+          :disabled="!selectedPlans.length"
+          :loading="batchExporting"
+          @click="exportPurchaseApplication"
+        >
+          导出采购申请表（{{ selectedPlans.length }}）
+        </n-button>
         <n-button :disabled="!selectedPlans.length" @click="openBatchMove">
           批量转为申购记录（{{ selectedPlans.length }}）
         </n-button>
@@ -275,22 +295,22 @@ onMounted(() => {
       :mask-closable="false"
     >
       <n-alert type="info" style="margin-bottom: 16px">
-        已选择 {{ selectedPlans.length }} 条计划，将使用同一追溯号、申购单号和申购时间转入。
+        已选择 {{ selectedPlans.length }} 条计划，将使用同一申购单号、追溯号和申购日期转入。
       </n-alert>
       <n-form label-placement="top">
         <div class="form-grid">
-          <n-form-item label="追溯号" required>
-            <n-input v-model:value="batchForm.trace_no" maxlength="128" />
-          </n-form-item>
-          <n-form-item label="申购单号" required>
-            <n-input v-model:value="batchForm.purchase_order_no" maxlength="128" />
-          </n-form-item>
-          <n-form-item label="申购时间" required>
-            <n-date-picker
-              v-model:value="batchForm.purchase_time"
-              type="datetime"
-              class="full-width"
+          <n-form-item label="申购单号">
+            <n-input
+              v-model:value="batchForm.purchase_order_no"
+              maxlength="128"
+              placeholder="可留空"
             />
+          </n-form-item>
+          <n-form-item label="追溯号">
+            <n-input v-model:value="batchForm.trace_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="申购日期" required>
+            <n-date-picker v-model:value="batchForm.purchase_date" type="date" class="full-width" />
           </n-form-item>
           <n-form-item label="业务员">
             <n-input v-model:value="batchForm.salesperson" maxlength="128" />
