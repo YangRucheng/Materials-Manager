@@ -12,11 +12,13 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.v1 import router as api_router
 from app.core.config import settings
+from app.core.database import engine
 from app.core.errors import AppError
 
 logger = logging.getLogger("spare_parts.api")
@@ -115,9 +117,50 @@ async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONR
     )
 
 
+@app.exception_handler(SQLAlchemyError)
+async def handle_database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.error(
+        "database unavailable request_id=%s error_type=%s",
+        request.state.request_id,
+        type(exc).__name__,
+    )
+    return error_response(
+        request,
+        status_code=503,
+        code="DATABASE_UNAVAILABLE",
+        message="数据库暂时不可用，请稍后重试",
+    )
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception(
+        "unexpected server error request_id=%s error_type=%s",
+        request.state.request_id,
+        type(exc).__name__,
+    )
+    return error_response(
+        request,
+        status_code=500,
+        code="INTERNAL_SERVER_ERROR",
+        message="服务内部异常，请联系管理员",
+    )
+
+
 @app.get("/health", include_in_schema=False)
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health(request: Request) -> JSONResponse:
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.warning("database health check failed error_type=%s", type(exc).__name__)
+        return error_response(
+            request,
+            status_code=503,
+            code="DATABASE_UNAVAILABLE",
+            message="数据库连接不可用",
+        )
+    return JSONResponse(content={"status": "ok", "database": "ok"})
 
 
 app.include_router(api_router, prefix="/api/v1")

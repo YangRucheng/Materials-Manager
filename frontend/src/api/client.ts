@@ -36,10 +36,12 @@ apiClient.interceptors.response.use(
       if (location.pathname !== '/login') location.assign('/login')
     }
     const payload = error.response?.data
-    return Promise.reject(
-      payload?.code
-        ? new AppError(payload)
-        : new AppError({ code: 'NETWORK_ERROR', message: '网络连接失败，请稍后重试' }),
-    )
+    const fallback: ApiError = error.response
+      ? {
+          code: 'SERVER_ERROR',
+          message: `服务请求失败（HTTP ${error.response.status}），请稍后重试`,
+        }
+      : { code: 'NETWORK_ERROR', message: '无法连接服务器，请检查网络后重试' }
+    return Promise.reject(payload?.code ? new AppError(payload) : new AppError(fallback))
   },
 )
