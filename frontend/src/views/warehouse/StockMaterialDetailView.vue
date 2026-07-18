@@ -3,7 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { inventoryApi } from '@/api/inventory'
-import type { StockMaterial } from '@/api/generated'
+import type { InventoryBalance, StockMaterial } from '@/api/generated'
 import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime } from '@/utils/time'
 import { compareDecimal, isDecimalString } from '@/utils/decimal'
@@ -13,13 +13,20 @@ const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 const material = ref<StockMaterial | null>(null)
+const balance = ref<InventoryBalance | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const policy = reactive({ minimum_qty: '0', target_qty: '0', enabled: true })
 async function load() {
   loading.value = true
   try {
-    material.value = await inventoryApi.material(Number(route.params.id))
+    const materialId = Number(route.params.id)
+    const [nextMaterial, nextBalance] = await Promise.all([
+      inventoryApi.material(materialId),
+      inventoryApi.balance(materialId),
+    ])
+    material.value = nextMaterial
+    balance.value = nextBalance
     Object.assign(
       policy,
       material.value.replenishment_policy || { minimum_qty: '0', target_qty: '0', enabled: true },
@@ -34,7 +41,7 @@ async function savePolicy() {
     !isDecimalString(policy.target_qty, 1, true) ||
     compareDecimal(policy.target_qty, policy.minimum_qty) < 0
   ) {
-    message.error('目标库存必须大于或等于最低库存，且最多 3 位小数')
+    message.error('目标库存必须大于或等于最低库存，且最多 1 位小数')
     return
   }
   saving.value = true
@@ -43,6 +50,10 @@ async function savePolicy() {
       ...policy,
       version: material.value?.version,
     })
+    if (balance.value) {
+      balance.value.minimum_qty = policy.minimum_qty
+      balance.value.target_qty = policy.target_qty
+    }
     message.success('安全库存策略已保存')
   } catch (e) {
     message.error(e instanceof Error ? e.message : '保存失败')
@@ -101,6 +112,17 @@ onMounted(load)
         ><n-empty v-else description="暂无图片" size="small"
       /></n-card>
       <n-card title="安全库存策略"
+        ><n-descriptions bordered :column="2" style="margin-bottom: 16px"
+          ><n-descriptions-item label="最低库存">{{
+            balance?.minimum_qty ?? '—'
+          }}</n-descriptions-item
+          ><n-descriptions-item label="目标库存">{{
+            balance?.target_qty ?? '—'
+          }}</n-descriptions-item
+          ><n-descriptions-item label="在途">{{ balance?.on_order_qty ?? '0' }}</n-descriptions-item
+          ><n-descriptions-item label="建议申购">{{
+            balance?.suggested_purchase_qty ?? '0'
+          }}</n-descriptions-item></n-descriptions
         ><n-form label-placement="top"
           ><n-form-item label="最低库存"
             ><n-input v-model:value="policy.minimum_qty" :disabled="!auth.can('warehouse:write')"

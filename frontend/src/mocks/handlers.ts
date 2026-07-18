@@ -60,6 +60,36 @@ const recalcRequest = (lineId: number) => {
     request.status = 'PARTIALLY_RECEIVED'
   else request.status = request.handler_name ? 'PROCESSING' : 'SUBMITTED'
 }
+const purchaseRecord = (
+  request: (typeof purchaseRequests)[number],
+  line: (typeof purchaseRequests)[number]['lines'][number],
+) => {
+  const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
+  return {
+    line_id: line.id,
+    purchase_request_id: request.id,
+    purchase_material_id: line.purchase_material_id,
+    request_no: request.request_no,
+    status: request.status,
+    material_code: line.material_code_snapshot || '',
+    material_name: line.material_name_snapshot,
+    model_spec: line.model_spec_snapshot,
+    unit_name: line.unit_name_snapshot,
+    planned_qty: line.requested_qty,
+    received_qty: line.received_qty,
+    remaining_qty: String(Number(line.requested_qty) - Number(line.received_qty)),
+    actual_demand_person: material.actual_demand_person,
+    purchase_responsible: material.purchase_responsible,
+    salesperson: request.salesperson,
+    remark: request.remark,
+    usage: line.usage,
+    project_subitem_name: `${line.project_code_snapshot} / ${line.subitem_no_snapshot} ${line.subitem_name_snapshot}`,
+    stock_material_id: material.stock_material_id,
+    submitted_at: request.submitted_at,
+    created_at: request.created_at,
+    version: request.version,
+  }
+}
 const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
   const purchaseIds = new Set(
     purchaseMaterials.filter((x) => x.stock_material_id === material.id).map((x) => x.id),
@@ -263,9 +293,7 @@ export const handlers = [
     if (!item) return error(404, 'NOT_FOUND', '用户不存在')
     if (item.id === actor(request).id)
       return error(409, 'CANNOT_DELETE_CURRENT_USER', '不能删除当前登录用户')
-    const referenced =
-      operations.some((operation) => operation.operator_name === item.display_name) ||
-      purchaseMaterials.some((material) => material.purchase_responsible_id === item.id)
+    const referenced = operations.some((operation) => operation.operator_name === item.display_name)
     if (referenced) return error(409, 'USER_IN_USE', '该用户已有操作记录或业务数据关联，不能删除')
     users.splice(users.indexOf(item), 1)
     return new HttpResponse(null, { status: 204 })
@@ -353,6 +381,12 @@ export const handlers = [
         url,
       ),
     )
+  }),
+  http.get(`${api}/inventory/balances/:id`, ({ params }) => {
+    const material = stockMaterials.find((item) => item.id === Number(params.id))
+    return material
+      ? HttpResponse.json(inventoryBalance(material))
+      : error(404, 'NOT_FOUND', '库存物资不存在')
   }),
   http.get(`${api}/inventory/low-stock`, ({ request }) => {
     const url = new URL(request.url)
@@ -495,8 +529,10 @@ export const handlers = [
       unit_id: stock.unit_id,
       unit_name: stock.unit_name,
       actual_demand_person: '仓库管理员',
-      purchase_responsible_id: 2,
-      purchase_responsible_name: '仓库管理员',
+      purchase_responsible: '仓库管理员',
+      planned_qty: suggested,
+      usage: '低库存补库',
+      moved_to_record: false,
       remark: [stock.remark, `补库计划：建议申购 ${suggested} ${stock.unit_name}`]
         .filter(Boolean)
         .join('；'),
@@ -517,12 +553,14 @@ export const handlers = [
     const url = new URL(request.url)
     const q = (url.searchParams.get('keyword') || '').toLowerCase()
     const coded = url.searchParams.get('coded')
+    const moved = url.searchParams.get('moved')
     return HttpResponse.json(
       page(
         purchaseMaterials.filter(
           (x) =>
             (!q || `${x.material_code || ''}${x.name}${x.model_spec}`.toLowerCase().includes(q)) &&
-            (coded === null || Boolean(x.material_code) === (coded === 'true')),
+            (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
+            (moved === null || x.moved_to_record === (moved === 'true')),
         ),
         url,
       ),
@@ -536,8 +574,7 @@ export const handlers = [
     const body = (await request.json()) as PurchaseMaterialWrite
     const u = unit(body.unit_id)
     if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
-    const responsible =
-      users.find((user) => user.id === body.purchase_responsible_id) || actor(request)
+    const responsible = body.purchase_responsible || actor(request).display_name
     const item = {
       id: nextIds.purchase++,
       material_code: body.material_code || undefined,
@@ -545,12 +582,16 @@ export const handlers = [
       model_spec: body.model_spec,
       unit_id: u.id,
       unit_name: u.name,
-      actual_demand_person: body.actual_demand_person || responsible.display_name,
-      purchase_responsible_id: responsible.id,
-      purchase_responsible_name: responsible.display_name,
+      actual_demand_person: body.actual_demand_person || responsible,
+      purchase_responsible: responsible,
+      planned_qty: body.planned_qty,
+      usage: body.usage,
+      project_subitem_id: body.project_subitem_id,
+      project_subitem_name: project(body.project_subitem_id || null)?.subitem_name,
       remark: body.remark,
       stock_material_id: body.stock_material_id,
       code_state: body.material_code ? ('CODED' as const) : ('UNCODED' as const),
+      moved_to_record: false,
       enabled: true,
       images: [],
       created_at: now(),
@@ -565,10 +606,9 @@ export const handlers = [
     if (!item) return error(404, 'NOT_FOUND', '申购物资不存在')
     const body = (await request.json()) as PurchaseMaterialWrite
     const selectedUnit = unit(body.unit_id)
-    const responsible = users.find((user) => user.id === body.purchase_responsible_id)
     Object.assign(item, body, {
       unit_name: selectedUnit?.name || item.unit_name,
-      purchase_responsible_name: responsible?.display_name || item.purchase_responsible_name,
+      project_subitem_name: project(body.project_subitem_id || null)?.subitem_name,
       code_state: body.material_code ? 'CODED' : 'UNCODED',
       version: item.version + 1,
       updated_at: now(),
@@ -584,6 +624,93 @@ export const handlers = [
     item.stock_material_name = stock.name
     item.version++
     return HttpResponse.json(item)
+  }),
+  http.post(`${api}/purchase-materials/:id/move-to-record`, async ({ params, request }) => {
+    const material = purchaseMaterials.find((item) => item.id === Number(params.id))
+    if (!material) return error(404, 'NOT_FOUND', '申购计划不存在')
+    if (!material.material_code)
+      return error(409, 'MATERIAL_CODE_REQUIRED', '物资编码完成后才能转入申购记录')
+    if (material.moved_to_record)
+      return error(409, 'PLAN_ALREADY_MOVED', '该申购计划已转入申购记录')
+    const body = (await request.json()) as {
+      request_no: string
+      salesperson?: string
+      remark?: string
+    }
+    const selectedProject = project(material.project_subitem_id || null) || projects[0]
+    const line = {
+      id: nextIds.requestLine++,
+      purchase_material_id: material.id,
+      material_code_snapshot: material.material_code,
+      material_name_snapshot: material.name,
+      model_spec_snapshot: material.model_spec,
+      unit_name_snapshot: material.unit_name,
+      requested_qty: material.planned_qty,
+      received_qty: '0',
+      usage: material.usage,
+      project_subitem_id: selectedProject.id,
+      project_code_snapshot: selectedProject.project_code,
+      subitem_no_snapshot: selectedProject.subitem_no,
+      subitem_name_snapshot: selectedProject.subitem_name,
+    }
+    const purchaseRequest = {
+      id: nextIds.request++,
+      request_no: body.request_no,
+      status: 'PROCESSING' as const,
+      applicant_name: actor(request).display_name,
+      salesperson: body.salesperson,
+      remark: body.remark,
+      submitted_at: now(),
+      created_at: now(),
+      version: 1,
+      lines: [line],
+      events: [event('由申购计划转入', undefined, 'PROCESSING')],
+    }
+    material.moved_to_record = true
+    purchaseRequests.unshift(purchaseRequest)
+    return HttpResponse.json(purchaseRecord(purchaseRequest, line))
+  }),
+  http.get(`${api}/purchase-records`, ({ request }) => {
+    const url = new URL(request.url)
+    const keyword = (url.searchParams.get('keyword') || '').toLowerCase()
+    const status = url.searchParams.get('status')
+    const records = purchaseRequests.flatMap((purchaseRequest) =>
+      purchaseRequest.lines.map((line) => purchaseRecord(purchaseRequest, line)),
+    )
+    return HttpResponse.json(
+      page(
+        records.filter(
+          (record) =>
+            (!keyword ||
+              `${record.request_no}${record.material_code}${record.material_name}${record.salesperson || ''}${record.remark || ''}`
+                .toLowerCase()
+                .includes(keyword)) &&
+            (!status || record.status === status),
+        ),
+        url,
+      ),
+    )
+  }),
+  http.get(`${api}/purchase-records/:id`, ({ params }) => {
+    for (const purchaseRequest of purchaseRequests) {
+      const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
+      if (line) return HttpResponse.json(purchaseRecord(purchaseRequest, line))
+    }
+    return error(404, 'NOT_FOUND', '申购记录不存在')
+  }),
+  http.patch(`${api}/purchase-records/:id`, async ({ params, request }) => {
+    for (const purchaseRequest of purchaseRequests) {
+      const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
+      if (!line) continue
+      const body = (await request.json()) as {
+        request_no?: string
+        salesperson?: string
+        remark?: string
+      }
+      Object.assign(purchaseRequest, body, { version: purchaseRequest.version + 1 })
+      return HttpResponse.json(purchaseRecord(purchaseRequest, line))
+    }
+    return error(404, 'NOT_FOUND', '申购记录不存在')
   }),
   http.get(`${api}/purchase-requests`, ({ request }) => {
     const url = new URL(request.url)
@@ -609,8 +736,8 @@ export const handlers = [
     const selectedMaterials = body.lines.map((line) =>
       purchaseMaterials.find((item) => item.id === line.purchase_material_id),
     )
-    const responsibleIds = new Set(selectedMaterials.map((item) => item?.purchase_responsible_id))
-    if (responsibleIds.size > 1)
+    const responsibles = new Set(selectedMaterials.map((item) => item?.purchase_responsible))
+    if (responsibles.size > 1)
       return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
     const lines = body.lines.map((line) => {
       const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
@@ -635,8 +762,7 @@ export const handlers = [
       id,
       request_no: body.request_no || defaultPurchaseRequestNo(),
       status: 'DRAFT' as const,
-      applicant_name:
-        selectedMaterials[0]?.purchase_responsible_name || actor(request).display_name,
+      applicant_name: selectedMaterials[0]?.purchase_responsible || actor(request).display_name,
       remark: body.remark,
       created_at: now(),
       version: 1,
@@ -659,14 +785,14 @@ export const handlers = [
     const selectedMaterials = body.lines.map((line) =>
       purchaseMaterials.find((material) => material.id === line.purchase_material_id),
     )
-    const responsibleIds = new Set(
-      selectedMaterials.map((material) => material?.purchase_responsible_id),
+    const responsibles = new Set(
+      selectedMaterials.map((material) => material?.purchase_responsible),
     )
-    if (responsibleIds.size > 1)
+    if (responsibles.size > 1)
       return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
     item.request_no = body.request_no || item.request_no
     item.remark = body.remark
-    item.applicant_name = selectedMaterials[0]?.purchase_responsible_name || item.applicant_name
+    item.applicant_name = selectedMaterials[0]?.purchase_responsible || item.applicant_name
     item.lines = body.lines.map((line) => {
       const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
       const p = project(line.project_subitem_id)!

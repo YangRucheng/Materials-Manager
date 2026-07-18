@@ -29,10 +29,6 @@ const columns: DataTableColumns<InventoryBalance> = [
   },
   { title: '单位', key: 'unit_name', width: 70 },
   { title: '当前库存', key: 'current_qty', width: 100 },
-  { title: '最低库存', key: 'minimum_qty', width: 100, render: (r) => r.minimum_qty || '—' },
-  { title: '目标库存', key: 'target_qty', width: 100, render: (r) => r.target_qty || '—' },
-  { title: '在途', key: 'on_order_qty', width: 90 },
-  { title: '建议申购', key: 'suggested_purchase_qty', width: 100 },
   {
     title: '预警状态',
     key: 'warning_state',
@@ -176,7 +172,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1250"
+        :scroll-x="900"
         :row-key="(r: InventoryBalance) => r.stock_material_id" />
       <div class="text-right">
         <n-pagination

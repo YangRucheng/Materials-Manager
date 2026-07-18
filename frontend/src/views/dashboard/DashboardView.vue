@@ -38,7 +38,7 @@ const cards = computed(() => [
     color: '#f0a020',
   },
   {
-    label: '待处理请购',
+    label: '待跟踪申购',
     value: summary.value.pending_purchase_request_count,
     hint: `部分到货 ${summary.value.partially_received_count}`,
     color: '#18a058',
@@ -109,10 +109,9 @@ onMounted(load)
         ><thead>
           <tr>
             <th>物资</th>
-            <th>当前 / 最低 / 目标</th>
-            <th>在途</th>
-            <th>建议申购</th>
+            <th>当前库存</th>
             <th>状态</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -120,20 +119,23 @@ onMounted(load)
             <td>
               {{ item.name }}<br /><span class="muted">{{ item.model_spec }}</span>
             </td>
-            <td>
-              {{ item.current_qty }} / {{ item.minimum_qty }} / {{ item.target_qty }}
-              {{ item.unit_name }}
-            </td>
-            <td>{{ item.on_order_qty }}</td>
-            <td>{{ item.suggested_purchase_qty }}</td>
+            <td>{{ item.current_qty }} {{ item.unit_name }}</td>
             <td>
               <n-tag :type="item.warning_state === 'ON_ORDER' ? 'info' : 'error'">{{
                 item.warning_state === 'ON_ORDER' ? '已申购待入库' : '待申购'
               }}</n-tag>
             </td>
+            <td>
+              <n-button
+                text
+                type="primary"
+                @click="router.push(`/warehouse/materials/${item.stock_material_id}`)"
+                >查看详情</n-button
+              >
+            </td>
           </tr>
           <tr v-if="!lowStock.length">
-            <td colspan="5"><n-empty description="当前没有低库存物资" /></td>
+            <td colspan="4"><n-empty description="当前没有低库存物资" /></td>
           </tr></tbody
       ></n-table>
     </n-card>

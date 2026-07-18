@@ -30,9 +30,9 @@ const menuOptions = computed<MenuOption[]>(() => {
     label: '申购管理',
     key: 'procurement-group',
     children: [
-      link('申购物资（计划）', 'purchase-materials'),
+      link('申购计划', 'purchase-materials'),
       link('未编码物资', 'uncoded-materials'),
-      link('请购单', 'purchase-requests'),
+      link('申购记录', 'purchase-records'),
     ],
   })
   if (auth.can('settings:write'))

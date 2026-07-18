@@ -28,7 +28,7 @@ const model = reactive({
 })
 const title = computed(() => (props.operationType === 'INBOUND' ? '办理入库' : '办理出库'))
 function validate(): string | null {
-  if (!model.business_reason.trim()) return '请填写业务原因'
+  if (props.operationType === 'OUTBOUND' && !model.business_reason.trim()) return '请填写业务原因'
   if (
     !model.lines.length ||
     model.lines.some((x) => !x.stock_material_id || !isDecimalString(x.quantity, 1))
@@ -102,7 +102,7 @@ onMounted(async () => {
     ]
     if (route.query.purchase_line_id) {
       model.source_type = 'PURCHASE_RECEIPT'
-      model.business_reason = `请购物资到货（${route.query.request_no || ''}）`
+      model.business_reason = `申购物资到货（${route.query.request_no || ''}）`
     }
   }
 })
@@ -130,7 +130,7 @@ onMounted(async () => {
               v-model:value="model.source_type"
               :options="[
                 { label: '手工入库', value: 'MANUAL' },
-                { label: '请购到货', value: 'PURCHASE_RECEIPT' },
+                { label: '申购到货', value: 'PURCHASE_RECEIPT' },
                 { label: '初始化入库', value: 'INITIALIZATION' },
               ]" /></n-form-item
           ><n-form-item v-if="operationType === 'OUTBOUND'" label="领用人"
@@ -139,12 +139,14 @@ onMounted(async () => {
             ><ProjectSubitemSelector v-model:value="model.project_subitem_id"
           /></n-form-item>
         </div>
-        <n-form-item label="业务原因" required
+        <n-form-item label="业务原因" :required="operationType === 'OUTBOUND'"
           ><n-input
             v-model:value="model.business_reason"
             maxlength="500"
             show-count
-            placeholder="说明本次库存变化原因" /></n-form-item></n-form
+            :placeholder="
+              operationType === 'INBOUND' ? '可选' : '说明本次库存变化原因'
+            " /></n-form-item></n-form
     ></n-card>
     <n-card title="物资明细"
       ><OperationLinesEditor v-model:lines="model.lines" :type="operationType"

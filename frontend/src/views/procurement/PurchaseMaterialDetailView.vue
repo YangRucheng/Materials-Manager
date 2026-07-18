@@ -14,7 +14,9 @@ import MaterialSelector from '@/components/MaterialSelector.vue'
 import { formatShanghaiTime } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
-import PurchaseResponsibleSelector from '@/components/PurchaseResponsibleSelector.vue'
+import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
+import QuantityInput from '@/components/QuantityInput.vue'
+import { defaultPurchaseRequestNo } from '@/utils/purchase'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +30,9 @@ const selectedStock = ref<number | null>(null)
 const stockPreview = ref<StockMaterial | undefined>()
 const showEdit = ref(false)
 const saving = ref(false)
+const showMove = ref(false)
+const moving = ref(false)
+const moveForm = reactive({ request_no: defaultPurchaseRequestNo(), salesperson: '', remark: '' })
 const images = ref<FileObject[]>([])
 const form = reactive<PurchaseMaterialWrite>({
   material_code: '',
@@ -35,7 +40,10 @@ const form = reactive<PurchaseMaterialWrite>({
   model_spec: '',
   unit_id: null,
   actual_demand_person: '',
-  purchase_responsible_id: undefined,
+  purchase_responsible: '',
+  planned_qty: '',
+  usage: '',
+  project_subitem_id: undefined,
   remark: '',
   image_ids: [],
 })
@@ -65,7 +73,10 @@ function openEdit() {
     model_spec: material.value.model_spec,
     unit_id: material.value.unit_id,
     actual_demand_person: material.value.actual_demand_person,
-    purchase_responsible_id: material.value.purchase_responsible_id,
+    purchase_responsible: material.value.purchase_responsible,
+    planned_qty: material.value.planned_qty,
+    usage: material.value.usage,
+    project_subitem_id: material.value.project_subitem_id,
     remark: material.value.remark || '',
     stock_material_id: material.value.stock_material_id,
     image_ids: material.value.images.map((image) => image.id),
@@ -81,21 +92,45 @@ async function save() {
     !form.model_spec.trim() ||
     !form.unit_id ||
     !form.actual_demand_person?.trim() ||
-    !form.purchase_responsible_id
+    !form.purchase_responsible?.trim() ||
+    !form.planned_qty ||
+    !form.usage.trim() ||
+    !form.project_subitem_id
   ) {
-    message.error('请完整填写名称、型号规格、计量单位、实际需求人和申购负责人')
+    message.error('请完整填写物资、数量、用途、项目和申购负责人')
     return
   }
   saving.value = true
   try {
     form.image_ids = images.value.map((image) => image.id)
     material.value = await procurementApi.updateMaterial(material.value.id, form)
-    message.success('申购物资已保存')
+    message.success('申购计划已保存')
     showEdit.value = false
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
     saving.value = false
+  }
+}
+async function moveToRecord() {
+  if (!material.value || !moveForm.request_no.trim()) {
+    message.error('请填写申购记录号')
+    return
+  }
+  moving.value = true
+  try {
+    const record = await procurementApi.movePlanToRecord(material.value.id, {
+      request_no: moveForm.request_no,
+      salesperson: moveForm.salesperson || undefined,
+      remark: moveForm.remark || undefined,
+    })
+    message.success('已转入申购记录')
+    showMove.value = false
+    await router.push(`/procurement/records/${record.line_id}`)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '转入失败')
+  } finally {
+    moving.value = false
   }
 }
 onMounted(() => {
@@ -108,16 +143,21 @@ onMounted(() => {
   <div v-if="material" v-loading="loading" class="page">
     <div class="page-header">
       <div>
-        <n-button text @click="router.back()">← 返回申购物资</n-button>
+        <n-button text @click="router.back()">← 返回申购计划</n-button>
         <h1 class="page-title">{{ material.name }}</h1>
         <p class="page-subtitle">{{ material.material_code || '暂无物料编码' }}</p>
       </div>
       <n-space v-if="auth.can('purchase:write')"
-        ><n-button @click="openEdit">编辑物资</n-button
+        ><n-button @click="openEdit">编辑计划</n-button
         ><n-button v-if="!material.stock_material_id" @click="showLink = true"
           >关联二级库物资</n-button
         ><n-button v-if="material.code_state === 'UNCODED'" type="primary" @click="openEdit"
           >补充编码</n-button
+        ><n-button
+          v-if="material.code_state === 'CODED' && !material.moved_to_record"
+          type="primary"
+          @click="showMove = true"
+          >转入申购记录</n-button
         ></n-space
       >
     </div>
@@ -133,7 +173,13 @@ onMounted(() => {
           material.actual_demand_person
         }}</n-descriptions-item
         ><n-descriptions-item label="申购负责人">{{
-          material.purchase_responsible_name
+          material.purchase_responsible
+        }}</n-descriptions-item
+        ><n-descriptions-item label="计划数量"
+          >{{ material.planned_qty }} {{ material.unit_name }}</n-descriptions-item
+        ><n-descriptions-item label="用途">{{ material.usage }}</n-descriptions-item
+        ><n-descriptions-item label="项目子项">{{
+          material.project_subitem_name || '—'
         }}</n-descriptions-item
         ><n-descriptions-item label="编码状态"
           ><n-tag :type="material.code_state === 'CODED' ? 'success' : 'warning'">{{
@@ -184,7 +230,7 @@ onMounted(() => {
     <n-modal
       v-model:show="showEdit"
       preset="card"
-      title="编辑申购物资"
+      title="编辑申购计划"
       style="width: 680px"
       :mask-closable="false"
     >
@@ -209,11 +255,20 @@ onMounted(() => {
               placeholder="填写提出实际需求的员工"
           /></n-form-item>
           <n-form-item label="申购负责人" required
-            ><PurchaseResponsibleSelector
-              :value="form.purchase_responsible_id ?? null"
-              @update:value="form.purchase_responsible_id = $event ?? undefined"
+            ><n-input v-model:value="form.purchase_responsible" maxlength="128"
+          /></n-form-item>
+          <n-form-item label="计划数量" required
+            ><QuantityInput v-model:value="form.planned_qty" :decimal-places="1"
+          /></n-form-item>
+          <n-form-item label="项目子项" required
+            ><ProjectSubitemSelector
+              :value="form.project_subitem_id ?? null"
+              @update:value="form.project_subitem_id = $event ?? undefined"
           /></n-form-item>
         </div>
+        <n-form-item label="用途" required
+          ><n-input v-model:value="form.usage" maxlength="500"
+        /></n-form-item>
         <n-form-item label="备注"
           ><n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count
         /></n-form-item>
@@ -223,6 +278,36 @@ onMounted(() => {
         ><n-space justify="end"
           ><n-button @click="showEdit = false">取消</n-button
           ><n-button type="primary" :loading="saving" @click="save">保存</n-button></n-space
+        ></template
+      >
+    </n-modal>
+    <n-modal
+      v-model:show="showMove"
+      preset="card"
+      title="转入申购记录"
+      style="width: 560px"
+      :mask-closable="false"
+    >
+      <n-alert type="info" style="margin-bottom: 16px"
+        >表示已在公司系统正式提交申购；物资和计划数量会锁定带入到货跟踪。</n-alert
+      >
+      <n-form label-placement="top">
+        <n-form-item label="申购记录号" required
+          ><n-input v-model:value="moveForm.request_no" maxlength="128"
+        /></n-form-item>
+        <n-form-item label="业务员"
+          ><n-input v-model:value="moveForm.salesperson" maxlength="128"
+        /></n-form-item>
+        <n-form-item label="跟踪备注"
+          ><n-input v-model:value="moveForm.remark" type="textarea" maxlength="1000" show-count
+        /></n-form-item>
+      </n-form>
+      <template #footer
+        ><n-space justify="end"
+          ><n-button @click="showMove = false">取消</n-button
+          ><n-button type="primary" :loading="moving" @click="moveToRecord"
+            >确认转入</n-button
+          ></n-space
         ></template
       >
     </n-modal>

@@ -178,12 +178,16 @@ export interface PurchaseMaterial {
   unit_id: number
   unit_name: string
   actual_demand_person: string
-  purchase_responsible_id: number
-  purchase_responsible_name: string
+  purchase_responsible: string
+  planned_qty: string
+  usage: string
+  project_subitem_id?: number
+  project_subitem_name?: string
   remark?: string
   stock_material_id?: number
   stock_material_name?: string
   code_state: CodeState
+  moved_to_record: boolean
   enabled: boolean
   images: FileObject[]
   created_at: string
@@ -196,7 +200,10 @@ export interface PurchaseMaterialWrite {
   model_spec: string
   unit_id: number | null
   actual_demand_person?: string
-  purchase_responsible_id?: number
+  purchase_responsible?: string
+  planned_qty: string
+  usage: string
+  project_subitem_id?: number
   remark?: string
   stock_material_id?: number
   image_ids: number[]
@@ -232,6 +239,7 @@ export interface PurchaseRequest {
   status: PurchaseRequestStatus
   applicant_name: string
   handler_name?: string
+  salesperson?: string
   remark?: string
   return_reason?: string
   close_reason?: string
@@ -241,6 +249,30 @@ export interface PurchaseRequest {
   version: number
   lines: PurchaseRequestLine[]
   events: BusinessEvent[]
+}
+export interface PurchaseRecord {
+  line_id: number
+  purchase_request_id: number
+  purchase_material_id: number
+  request_no: string
+  status: PurchaseRequestStatus
+  material_code: string
+  material_name: string
+  model_spec: string
+  unit_name: string
+  planned_qty: string
+  received_qty: string
+  remaining_qty: string
+  actual_demand_person: string
+  purchase_responsible: string
+  salesperson?: string
+  remark?: string
+  usage: string
+  project_subitem_name: string
+  stock_material_id?: number
+  submitted_at?: string
+  created_at: string
+  version: number
 }
 export interface PurchaseRequestWrite {
   request_no?: string

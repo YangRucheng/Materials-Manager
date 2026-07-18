@@ -682,6 +682,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/inventory/balances/{material_id}:
+    get:
+      tags:
+      - 库存
+      summary: Balance Detail
+      operationId: balance_detail_api_v1_inventory_balances__material_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: material_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Material Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryBalanceRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/inventory/inbounds:
     post:
       tags:
@@ -1226,7 +1284,7 @@ paths:
   /api/v1/purchase-materials:
     get:
       tags:
-      - 申购物资
+      - 申购计划
       summary: List Materials
       operationId: list_materials_api_v1_purchase_materials_get
       security:
@@ -1273,6 +1331,14 @@ paths:
           - type: boolean
           - type: 'null'
           title: Coded
+      - name: moved
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Moved
       responses:
         '200':
           description: Successful Response
@@ -1318,7 +1384,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     post:
       tags:
-      - 申购物资
+      - 申购计划
       summary: Create Material
       operationId: create_material_api_v1_purchase_materials_post
       security:
@@ -1375,7 +1441,7 @@ paths:
   /api/v1/purchase-materials/{material_id}:
     get:
       tags:
-      - 申购物资
+      - 申购计划
       summary: Material Detail
       operationId: material_detail_api_v1_purchase_materials__material_id__get
       security:
@@ -1432,7 +1498,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     patch:
       tags:
-      - 申购物资
+      - 申购计划
       summary: Update Material
       operationId: update_material_api_v1_purchase_materials__material_id__patch
       security:
@@ -1496,7 +1562,7 @@ paths:
   /api/v1/purchase-materials/{material_id}/link-stock-material:
     post:
       tags:
-      - 申购物资
+      - 申购计划
       summary: Link Stock Material
       operationId: link_stock_material_api_v1_purchase_materials__material_id__link_stock_material_post
       security:
@@ -1557,10 +1623,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-materials/{material_id}/move-to-record:
+    post:
+      tags:
+      - 申购计划
+      summary: Move To Record
+      operationId: move_to_record_api_v1_purchase_materials__material_id__move_to_record_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: material_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Material Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MovePurchasePlanRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseRecordRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/purchase-requests:
     get:
       tags:
-      - 请购
+      - 申购记录
       summary: Requests
       operationId: requests_api_v1_purchase_requests_get
       security:
@@ -1644,7 +1774,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Create
       operationId: create_api_v1_purchase_requests_post
       security:
@@ -1701,7 +1831,7 @@ paths:
   /api/v1/purchase-requests/{request_id}:
     get:
       tags:
-      - 请购
+      - 申购记录
       summary: Detail
       operationId: detail_api_v1_purchase_requests__request_id__get
       security:
@@ -1758,7 +1888,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     patch:
       tags:
-      - 请购
+      - 申购记录
       summary: Update
       operationId: update_api_v1_purchase_requests__request_id__patch
       security:
@@ -1822,7 +1952,7 @@ paths:
   /api/v1/purchase-requests/{request_id}/submit:
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Submit
       operationId: submit_api_v1_purchase_requests__request_id__submit_post
       security:
@@ -1886,7 +2016,7 @@ paths:
   /api/v1/purchase-requests/{request_id}/accept:
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Accept
       operationId: accept_api_v1_purchase_requests__request_id__accept_post
       security:
@@ -1950,7 +2080,7 @@ paths:
   /api/v1/purchase-requests/{request_id}/return:
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Return Item
       operationId: return_item_api_v1_purchase_requests__request_id__return_post
       security:
@@ -2014,7 +2144,7 @@ paths:
   /api/v1/purchase-requests/{request_id}/cancel:
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Cancel
       operationId: cancel_api_v1_purchase_requests__request_id__cancel_post
       security:
@@ -2078,7 +2208,7 @@ paths:
   /api/v1/purchase-requests/{request_id}/close:
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Close
       operationId: close_api_v1_purchase_requests__request_id__close_post
       security:
@@ -2142,7 +2272,7 @@ paths:
   /api/v1/purchase-requests/{request_id}/receipts:
     get:
       tags:
-      - 请购
+      - 申购记录
       summary: Receipts
       operationId: receipts_api_v1_purchase_requests__request_id__receipts_get
       security:
@@ -2204,7 +2334,7 @@ paths:
   /api/v1/purchase-request-lines/{line_id}/prepare-inbound:
     post:
       tags:
-      - 请购
+      - 申购记录
       summary: Prepare Inbound
       operationId: prepare_inbound_api_v1_purchase_request_lines__line_id__prepare_inbound_post
       security:
@@ -2223,6 +2353,212 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PreparedInboundRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-records:
+    get:
+      tags:
+      - 申购记录
+      summary: Purchase Records
+      operationId: purchase_records_api_v1_purchase_records_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/PurchaseRequestStatus'
+          - type: 'null'
+          title: Status
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Keyword
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_PurchaseRecordRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-records/{line_id}:
+    get:
+      tags:
+      - 申购记录
+      summary: Purchase Record
+      operationId: purchase_record_api_v1_purchase_records__line_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: line_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Line Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseRecordRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      tags:
+      - 申购记录
+      summary: Edit Purchase Record
+      operationId: edit_purchase_record_api_v1_purchase_records__line_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: line_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Line Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRecordUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseRecordRead'
         '400':
           description: 业务校验失败
           content:
@@ -3447,6 +3783,31 @@ components:
       required:
       - version
       title: MeasurementUnitUpdate
+    MovePurchasePlanRequest:
+      properties:
+        request_no:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Request No
+        salesperson:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Salesperson
+        remark:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Remark
+      additionalProperties: false
+      type: object
+      required:
+      - request_no
+      title: MovePurchasePlanRequest
     OperationCreate:
       properties:
         client_request_id:
@@ -3463,8 +3824,8 @@ components:
         business_reason:
           type: string
           maxLength: 500
-          minLength: 1
           title: Business Reason
+          default: ''
         receiver_name:
           anyOf:
           - type: string
@@ -3488,7 +3849,6 @@ components:
       - client_request_id
       - occurred_at
       - source_type
-      - business_reason
       - lines
       title: OperationCreate
     OperationLineWrite:
@@ -3536,8 +3896,8 @@ components:
         business_reason:
           type: string
           maxLength: 500
-          minLength: 1
           title: Business Reason
+          default: ''
         receiver_name:
           anyOf:
           - type: string
@@ -3562,7 +3922,6 @@ components:
       - operation_type
       - occurred_at
       - source_type
-      - business_reason
       - lines
       title: OperationUpdate
     Page_InventoryBalanceRead_:
@@ -3657,6 +4016,29 @@ components:
       - page_size
       - total
       title: Page[PurchaseMaterialRead]
+    Page_PurchaseRecordRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PurchaseRecordRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[PurchaseRecordRead]
     Page_PurchaseRequestRead_:
       properties:
         items:
@@ -3927,11 +4309,30 @@ components:
             minLength: 1
           - type: 'null'
           title: Actual Demand Person
-        purchase_responsible_id:
+        purchase_responsible:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Purchase Responsible
+        planned_qty:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
+          title: Planned Qty
+        usage:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Usage
+        project_subitem_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Purchase Responsible Id
+          title: Project Subitem Id
         remark:
           anyOf:
           - type: string
@@ -3955,6 +4356,8 @@ components:
       - name
       - model_spec
       - unit_id
+      - planned_qty
+      - usage
       title: PurchaseMaterialCreate
     PurchaseMaterialRead:
       properties:
@@ -3981,12 +4384,26 @@ components:
         actual_demand_person:
           type: string
           title: Actual Demand Person
-        purchase_responsible_id:
-          type: integer
-          title: Purchase Responsible Id
-        purchase_responsible_name:
+        purchase_responsible:
           type: string
-          title: Purchase Responsible Name
+          title: Purchase Responsible
+        planned_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Planned Qty
+        usage:
+          type: string
+          title: Usage
+        project_subitem_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Project Subitem Id
+        project_subitem_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Project Subitem Name
         remark:
           anyOf:
           - type: string
@@ -4004,6 +4421,9 @@ components:
           title: Stock Material Name
         code_state:
           $ref: '#/components/schemas/CodeState'
+        moved_to_record:
+          type: boolean
+          title: Moved To Record
         enabled:
           type: boolean
           title: Enabled
@@ -4031,9 +4451,11 @@ components:
       - unit_id
       - unit_name
       - actual_demand_person
-      - purchase_responsible_id
-      - purchase_responsible_name
+      - purchase_responsible
+      - planned_qty
+      - usage
       - code_state
+      - moved_to_record
       - enabled
       - images
       - created_at
@@ -4069,11 +4491,30 @@ components:
             minLength: 1
           - type: 'null'
           title: Actual Demand Person
-        purchase_responsible_id:
+        purchase_responsible:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Purchase Responsible
+        planned_qty:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
+          title: Planned Qty
+        usage:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Usage
+        project_subitem_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Purchase Responsible Id
+          title: Project Subitem Id
         remark:
           anyOf:
           - type: string
@@ -4100,8 +4541,141 @@ components:
       - name
       - model_spec
       - unit_id
+      - planned_qty
+      - usage
       - version
       title: PurchaseMaterialUpdate
+    PurchaseRecordRead:
+      properties:
+        line_id:
+          type: integer
+          title: Line Id
+        purchase_request_id:
+          type: integer
+          title: Purchase Request Id
+        purchase_material_id:
+          type: integer
+          title: Purchase Material Id
+        request_no:
+          type: string
+          title: Request No
+        status:
+          $ref: '#/components/schemas/PurchaseRequestStatus'
+        material_code:
+          type: string
+          title: Material Code
+        material_name:
+          type: string
+          title: Material Name
+        model_spec:
+          type: string
+          title: Model Spec
+        unit_name:
+          type: string
+          title: Unit Name
+        planned_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Planned Qty
+        received_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Received Qty
+        remaining_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Remaining Qty
+        actual_demand_person:
+          type: string
+          title: Actual Demand Person
+        purchase_responsible:
+          type: string
+          title: Purchase Responsible
+        salesperson:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Salesperson
+        remark:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Remark
+        usage:
+          type: string
+          title: Usage
+        project_subitem_name:
+          type: string
+          title: Project Subitem Name
+        stock_material_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Stock Material Id
+        submitted_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Submitted At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        version:
+          type: integer
+          title: Version
+      type: object
+      required:
+      - line_id
+      - purchase_request_id
+      - purchase_material_id
+      - request_no
+      - status
+      - material_code
+      - material_name
+      - model_spec
+      - unit_name
+      - planned_qty
+      - received_qty
+      - remaining_qty
+      - actual_demand_person
+      - purchase_responsible
+      - usage
+      - project_subitem_name
+      - created_at
+      - version
+      title: PurchaseRecordRead
+    PurchaseRecordUpdate:
+      properties:
+        request_no:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Request No
+        salesperson:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Salesperson
+        remark:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Remark
+        version:
+          type: integer
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - version
+      title: PurchaseRecordUpdate
     PurchaseRequestCreate:
       properties:
         request_no:
@@ -4236,6 +4810,11 @@ components:
           - type: string
           - type: 'null'
           title: Handler Name
+        salesperson:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Salesperson
         remark:
           anyOf:
           - type: string
