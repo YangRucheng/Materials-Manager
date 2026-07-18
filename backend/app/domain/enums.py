@@ -1,0 +1,43 @@
+from enum import StrEnum
+
+
+class Role(StrEnum):
+    SUPER_ADMIN = "SUPER_ADMIN"
+    WAREHOUSE_ADMIN = "WAREHOUSE_ADMIN"
+    PURCHASE_ADMIN = "PURCHASE_ADMIN"
+    READ_ONLY = "READ_ONLY"
+
+
+class OperationType(StrEnum):
+    INBOUND = "INBOUND"
+    OUTBOUND = "OUTBOUND"
+
+
+class SourceType(StrEnum):
+    MANUAL = "MANUAL"
+    PURCHASE_RECEIPT = "PURCHASE_RECEIPT"
+    REVERSAL = "REVERSAL"
+    INITIALIZATION = "INITIALIZATION"
+
+
+class PurchaseRequestStatus(StrEnum):
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+    PROCESSING = "PROCESSING"
+    RETURNED = "RETURNED"
+    PARTIALLY_RECEIVED = "PARTIALLY_RECEIVED"
+    COMPLETED = "COMPLETED"
+    CLOSED = "CLOSED"
+    CANCELED = "CANCELED"
+
+
+class CodeState(StrEnum):
+    UNCODED = "UNCODED"
+    CODED = "CODED"
+
+
+ON_ORDER_REQUEST_STATUSES = {
+    PurchaseRequestStatus.SUBMITTED,
+    PurchaseRequestStatus.PROCESSING,
+    PurchaseRequestStatus.PARTIALLY_RECEIVED,
+}

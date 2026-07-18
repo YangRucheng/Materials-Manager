@@ -1,0 +1,58 @@
+name: materials-manager
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ccr.ccs.tencentyun.com/yangrucheng/materials-manager-backend}:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      APP_ENVIRONMENT: production
+      APP_DATABASE_URL: ${APP_DATABASE_URL:?APP_DATABASE_URL must point to your external MySQL service}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be configured}
+      APP_ACCESS_TOKEN_MINUTES: ${APP_ACCESS_TOKEN_MINUTES:-480}
+      APP_UPLOAD_DIR: /app/data/uploads
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      ]
+    volumes:
+      - uploads:/app/data/uploads
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ccr.ccs.tencentyun.com/yangrucheng/materials-manager-frontend}:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      args:
+        VITE_USE_MOCK: "false"
+        VITE_API_BASE_URL: /api/v1
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  uploads:
