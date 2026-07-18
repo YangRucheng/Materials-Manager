@@ -43,12 +43,13 @@ def validate_version(expected: int | None, actual: int) -> None:
 
 
 def validate_quantity_precision(quantity: Decimal, decimal_places: int) -> None:
+    decimal_places = min(decimal_places, 1)
     raw_exponent = quantity.normalize().as_tuple().exponent
     exponent = -raw_exponent if isinstance(raw_exponent, int) else 0
     if exponent > decimal_places:
         raise AppError(
             "INVALID_QUANTITY_PRECISION",
-            "数量小数位超过计量单位允许范围",
+            "数量最多保留 1 位小数，且不能超过计量单位允许范围",
             details={"quantity": str(quantity), "decimal_places": decimal_places},
         )
 

@@ -31,7 +31,7 @@ const columns: DataTableColumns<PurchaseRequest> = [
         { default: () => r.request_no },
       ),
   },
-  { title: '申请人', key: 'applicant_name', width: 100 },
+  { title: '申购人', key: 'applicant_name', width: 100 },
   {
     title: '明细摘要',
     key: 'lines',

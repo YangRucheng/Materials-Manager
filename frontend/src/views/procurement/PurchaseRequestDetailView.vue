@@ -194,7 +194,7 @@ onMounted(() => {
     <n-card><StatusSteps :status="request.status" type="request" /></n-card
     ><n-card title="请购信息"
       ><n-descriptions bordered :column="3"
-        ><n-descriptions-item label="申请人">{{ request.applicant_name }}</n-descriptions-item
+        ><n-descriptions-item label="申购人">{{ request.applicant_name }}</n-descriptions-item
         ><n-descriptions-item label="受理人">{{ request.handler_name || '—' }}</n-descriptions-item
         ><n-descriptions-item label="提交时间">{{
           formatShanghaiTime(request.submitted_at)

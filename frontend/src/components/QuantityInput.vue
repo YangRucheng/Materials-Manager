@@ -10,7 +10,7 @@ const props = withDefaults(
     disabled?: boolean
     placeholder?: string
   }>(),
-  { decimalPlaces: 3, max: undefined, placeholder: '请输入数量' },
+  { decimalPlaces: 1, max: undefined, placeholder: '请输入数量' },
 )
 const emit = defineEmits<{ 'update:value': [value: string] }>()
 
@@ -22,7 +22,7 @@ const status = computed(() => {
 })
 
 function update(value: string) {
-  if (/^\d*(?:\.\d{0,3})?$/.test(value)) emit('update:value', value)
+  if (/^\d*(?:\.\d{0,1})?$/.test(value)) emit('update:value', value)
 }
 </script>
 

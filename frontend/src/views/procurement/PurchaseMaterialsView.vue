@@ -14,6 +14,7 @@ import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
+import PurchaseResponsibleSelector from '@/components/PurchaseResponsibleSelector.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -33,6 +34,8 @@ const form = reactive<PurchaseMaterialWrite>({
   name: '',
   model_spec: '',
   unit_id: null,
+  actual_demand_person: '',
+  purchase_responsible_id: auth.user?.id,
   remark: '',
   image_ids: [],
 })
@@ -40,6 +43,8 @@ const rules: FormRules = {
   name: { required: true, message: '请输入名称' },
   model_spec: { required: true, message: '请输入型号规格' },
   unit_id: { type: 'number', required: true, message: '请选择单位' },
+  actual_demand_person: { required: true, message: '请输入实际需求人' },
+  purchase_responsible_id: { type: 'number', required: true, message: '请选择申购负责人' },
 }
 const codeLabels = { UNCODED: '未编码', CODED: '已有编码' }
 const columns: DataTableColumns<PurchaseMaterial> = [
@@ -66,6 +71,8 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   },
   { title: '型号规格', key: 'model_spec' },
   { title: '单位', key: 'unit_name', width: 70 },
+  { title: '实际需求人', key: 'actual_demand_person', width: 110 },
+  { title: '申购负责人', key: 'purchase_responsible_name', width: 110 },
   {
     title: '编码状态',
     key: 'code_state',
@@ -131,6 +138,8 @@ function openCreate() {
     name: '',
     model_spec: '',
     unit_id: null,
+    actual_demand_person: '',
+    purchase_responsible_id: auth.user?.id,
     remark: '',
     image_ids: [],
   })
@@ -219,7 +228,18 @@ onMounted(() => {
           ><n-form-item label="型号规格" path="model_spec"
             ><n-input v-model:value="form.model_spec" maxlength="255" /></n-form-item
           ><n-form-item label="计量单位" path="unit_id"
-            ><n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions"
+            ><n-select
+              v-model:value="form.unit_id"
+              :options="dictionaries.unitOptions" /></n-form-item
+          ><n-form-item label="实际需求人" path="actual_demand_person"
+            ><n-input
+              v-model:value="form.actual_demand_person"
+              maxlength="128"
+              placeholder="填写提出实际需求的员工" /></n-form-item
+          ><n-form-item label="申购负责人" path="purchase_responsible_id"
+            ><PurchaseResponsibleSelector
+              :value="form.purchase_responsible_id ?? null"
+              @update:value="form.purchase_responsible_id = $event ?? undefined"
           /></n-form-item>
         </div>
         <n-form-item label="备注"

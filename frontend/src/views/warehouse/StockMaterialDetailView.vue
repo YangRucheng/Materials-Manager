@@ -30,8 +30,8 @@ async function load() {
 }
 async function savePolicy() {
   if (
-    !isDecimalString(policy.minimum_qty, 3, true) ||
-    !isDecimalString(policy.target_qty, 3, true) ||
+    !isDecimalString(policy.minimum_qty, 1, true) ||
+    !isDecimalString(policy.target_qty, 1, true) ||
     compareDecimal(policy.target_qty, policy.minimum_qty) < 0
   ) {
     message.error('目标库存必须大于或等于最低库存，且最多 3 位小数')

@@ -18,10 +18,12 @@ const options = computed(() =>
       value: x.id,
     })),
 )
-async function load() {
+async function load(keyword = '') {
   loading.value = true
   try {
-    materials.value = (await inventoryApi.materials({ page_size: 200, enabled: true })).items
+    materials.value = (
+      await inventoryApi.materials({ page_size: 200, enabled: true, keyword: keyword || undefined })
+    ).items
   } finally {
     loading.value = false
   }
@@ -43,8 +45,10 @@ onMounted(load)
     :loading="loading"
     :disabled="disabled"
     filterable
+    remote
     clearable
     placeholder="选择二级库物资"
+    @search="load"
     @update:value="update"
   />
 </template>

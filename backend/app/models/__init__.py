@@ -37,7 +37,7 @@ BIGINT_ID = BIGINT(unsigned=True).with_variant(Integer, "sqlite")
 UINT = MYSQL_INTEGER(unsigned=True).with_variant(Integer, "sqlite")
 UTINYINT = TINYINT(unsigned=True).with_variant(SmallInteger, "sqlite")
 UTC_DATETIME = DATETIME(fsp=6).with_variant(DateTime(timezone=False), "sqlite")
-QTY = Numeric(18, 3)
+QTY = Numeric(18, 1)
 
 
 def _utcnow() -> datetime:
@@ -77,7 +77,7 @@ class User(Base):
 class MeasurementUnit(AuditMixin, Base):
     __tablename__ = "measurement_unit"
     __table_args__ = (
-        CheckConstraint("decimal_places >= 0 AND decimal_places <= 3", name="decimal_places_range"),
+        CheckConstraint("decimal_places >= 0 AND decimal_places <= 1", name="decimal_places_range"),
     )
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
@@ -202,6 +202,10 @@ class PurchaseMaterial(AuditMixin, Base):
     unit_id: Mapped[int] = mapped_column(
         BIGINT_ID, ForeignKey("measurement_unit.id"), nullable=False
     )
+    actual_demand_person: Mapped[str] = mapped_column(String(128), nullable=False)
+    purchase_responsible_id: Mapped[int] = mapped_column(
+        BIGINT_ID, ForeignKey("user.id"), nullable=False, index=True
+    )
     remark: Mapped[str | None] = mapped_column(String(1000))
     stock_material_id: Mapped[int | None] = mapped_column(
         BIGINT_ID, ForeignKey("stock_material.id"), index=True
@@ -210,6 +214,9 @@ class PurchaseMaterial(AuditMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
+    purchase_responsible: Mapped[User] = relationship(
+        foreign_keys=[purchase_responsible_id], lazy="selectin"
+    )
     stock_material: Mapped[StockMaterial | None] = relationship(lazy="selectin")
     images: Mapped[list[PurchaseMaterialImage]] = relationship(
         back_populates="material",
