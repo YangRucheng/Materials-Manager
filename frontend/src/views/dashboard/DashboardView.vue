@@ -28,13 +28,13 @@ const cards = computed(() => [
   {
     label: '低库存',
     value: summary.value.low_stock_count,
-    hint: `待申购 ${summary.value.pending_purchase_count}`,
+    hint: `急需申购 ${summary.value.pending_purchase_count}`,
     color: '#d03050',
   },
   {
     label: '未编码物资',
     value: summary.value.uncoded_purchase_material_count,
-    hint: '可直接进入申购计划补充编码',
+    hint: '可直接进入申购计划编辑',
     color: '#f0a020',
   },
   {
@@ -122,7 +122,7 @@ onMounted(load)
             <td>{{ item.current_qty }} {{ item.unit_name }}</td>
             <td>
               <n-tag :type="item.warning_state === 'ON_ORDER' ? 'info' : 'error'">{{
-                item.warning_state === 'ON_ORDER' ? '已申购待入库' : '待申购'
+                item.warning_state === 'ON_ORDER' ? '已申购待入库' : '急需申购'
               }}</n-tag>
             </td>
             <td>

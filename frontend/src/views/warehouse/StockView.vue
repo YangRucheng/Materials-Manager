@@ -38,7 +38,7 @@ const columns: DataTableColumns<InventoryBalance> = [
         ? h(
             NTag,
             { type: r.warning_state === 'ON_ORDER' ? 'info' : 'error', size: 'small' },
-            { default: () => (r.warning_state === 'ON_ORDER' ? '已申购待入库' : '待申购') },
+            { default: () => (r.warning_state === 'ON_ORDER' ? '已申购待入库' : '急需申购') },
           )
         : h(NTag, { size: 'small' }, { default: () => '正常' }),
   },
@@ -68,6 +68,15 @@ const columns: DataTableColumns<InventoryBalance> = [
                 NButton,
                 {
                   size: 'small',
+                  disabled: !r.is_low_stock || r.suggested_purchase_qty === '0',
+                  onClick: () => replenish(r),
+                },
+                { default: () => '发起补库' },
+              ),
+              h(
+                NButton,
+                {
+                  size: 'small',
                   onClick: () =>
                     router.push({
                       name: 'inbound',
@@ -80,20 +89,11 @@ const columns: DataTableColumns<InventoryBalance> = [
                 NButton,
                 {
                   size: 'small',
+                  type: 'primary',
                   onClick: () =>
                     router.push({ name: 'outbound', query: { material_id: r.stock_material_id } }),
                 },
                 { default: () => '出库' },
-              ),
-              h(
-                NButton,
-                {
-                  size: 'small',
-                  type: 'primary',
-                  disabled: !r.is_low_stock || r.suggested_purchase_qty === '0',
-                  onClick: () => replenish(r),
-                },
-                { default: () => '发起补库' },
               ),
             ]
           : []),

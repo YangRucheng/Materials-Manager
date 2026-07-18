@@ -91,3 +91,4 @@ def test_init_sql_seeds_required_accounts_and_units() -> None:
         assert f"('{username}', '$argon2id$" in sql
     for code, decimal_places in (("PCS", 0), ("SET", 0), ("M", 1), ("KG", 1)):
         assert re.search(rf"\('{code}', '[^']+', {decimal_places}, 1,", sql)
+    assert "('PCS', '个', 0, 1," in sql

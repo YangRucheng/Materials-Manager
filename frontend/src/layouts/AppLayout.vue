@@ -41,7 +41,6 @@ const menuOptions = computed<MenuOption[]>(() => {
       key: 'settings-group',
       children: [
         link('计量单位', 'units'),
-        link('项目子项', 'project-subitems'),
         link('用户管理', 'users'),
       ],
     })

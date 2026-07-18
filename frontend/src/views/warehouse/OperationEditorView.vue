@@ -5,7 +5,6 @@ import { useDialog, useMessage } from 'naive-ui'
 import OperationLinesEditor, {
   type OperationLineModel,
 } from '@/components/OperationLinesEditor.vue'
-import ProjectSubitemSelector from '@/components/ProjectSubitemSelector.vue'
 import { inventoryApi } from '@/api/inventory'
 import { isDecimalString } from '@/utils/decimal'
 import { toIsoWithTimezone } from '@/utils/time'
@@ -21,7 +20,7 @@ const requestId = ref<string | null>(null)
 const model = reactive({
   business_reason: '',
   receiver_name: '',
-  project_subitem_id: null as number | null,
+  subitem_no: '',
   source_type: (props.operationType === 'INBOUND' ? 'MANUAL' : 'MANUAL') as
     'MANUAL' | 'PURCHASE_RECEIPT' | 'INITIALIZATION',
   lines: [{ stock_material_id: null, quantity: '' }] as OperationLineModel[],
@@ -29,6 +28,7 @@ const model = reactive({
 const title = computed(() => (props.operationType === 'INBOUND' ? '办理入库' : '办理出库'))
 function validate(): string | null {
   if (props.operationType === 'OUTBOUND' && !model.business_reason.trim()) return '请填写业务原因'
+  if (props.operationType === 'OUTBOUND' && !model.receiver_name.trim()) return '请填写领用人'
   if (
     !model.lines.length ||
     model.lines.some((x) => !x.stock_material_id || !isDecimalString(x.quantity, 1))
@@ -44,8 +44,8 @@ async function submit() {
       occurred_at: toIsoWithTimezone(occurredAt.value),
       source_type: model.source_type,
       business_reason: model.business_reason.trim(),
-      receiver_name: model.receiver_name || undefined,
-      project_subitem_id: model.project_subitem_id || undefined,
+      receiver_name: model.receiver_name.trim() || undefined,
+      subitem_no: model.subitem_no.trim() || undefined,
       lines: model.lines.map((x) => ({
         stock_material_id: x.stock_material_id!,
         quantity: x.quantity,
@@ -133,10 +133,10 @@ onMounted(async () => {
                 { label: '申购到货', value: 'PURCHASE_RECEIPT' },
                 { label: '初始化入库', value: 'INITIALIZATION' },
               ]" /></n-form-item
-          ><n-form-item v-if="operationType === 'OUTBOUND'" label="领用人"
+          ><n-form-item v-if="operationType === 'OUTBOUND'" label="领用人" required
             ><n-input v-model:value="model.receiver_name" maxlength="64" /></n-form-item
-          ><n-form-item v-if="operationType === 'OUTBOUND'" label="项目子项"
-            ><ProjectSubitemSelector v-model:value="model.project_subitem_id"
+          ><n-form-item v-if="operationType === 'OUTBOUND'" label="子项号"
+            ><n-input v-model:value="model.subitem_no" maxlength="64" placeholder="选填"
           /></n-form-item>
         </div>
         <n-form-item label="业务原因" :required="operationType === 'OUTBOUND'"

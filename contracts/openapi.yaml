@@ -2800,211 +2800,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/project-subitems:
-    get:
-      tags:
-      - 基础数据
-      summary: Projects
-      operationId: projects_api_v1_project_subitems_get
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          default: 1
-          title: Page
-      - name: page_size
-        in: query
-        required: false
-        schema:
-          type: integer
-          maximum: 200
-          minimum: 1
-          default: 20
-          title: Page Size
-      - name: keyword
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Keyword
-      - name: enabled
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Enabled
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Page_ProjectSubitemRead_'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-    post:
-      tags:
-      - 基础数据
-      summary: Add Project
-      operationId: add_project_api_v1_project_subitems_post
-      security:
-      - HTTPBearer: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProjectSubitemCreate'
-      responses:
-        '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProjectSubitemRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /api/v1/project-subitems/{item_id}:
-    patch:
-      tags:
-      - 基础数据
-      summary: Edit Project
-      operationId: edit_project_api_v1_project_subitems__item_id__patch
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: item_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Item Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProjectSubitemUpdate'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProjectSubitemRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
   /api/v1/users:
     get:
       tags:
@@ -3499,12 +3294,6 @@ components:
       - operator_name
       - occurred_at
       title: BusinessEventRead
-    CodeState:
-      type: string
-      enum:
-      - UNCODED
-      - CODED
-      title: CodeState
     DashboardSummaryRead:
       properties:
         stock_material_count:
@@ -3830,13 +3619,16 @@ components:
           anyOf:
           - type: string
             maxLength: 64
+            minLength: 1
           - type: 'null'
           title: Receiver Name
-        project_subitem_id:
+        subitem_no:
           anyOf:
-          - type: integer
+          - type: string
+            maxLength: 64
+            minLength: 1
           - type: 'null'
-          title: Project Subitem Id
+          title: Subitem No
         lines:
           items:
             $ref: '#/components/schemas/OperationLineWrite'
@@ -3902,13 +3694,16 @@ components:
           anyOf:
           - type: string
             maxLength: 64
+            minLength: 1
           - type: 'null'
           title: Receiver Name
-        project_subitem_id:
+        subitem_no:
           anyOf:
-          - type: integer
+          - type: string
+            maxLength: 64
+            minLength: 1
           - type: 'null'
-          title: Project Subitem Id
+          title: Subitem No
         lines:
           items:
             $ref: '#/components/schemas/OperationLineWrite'
@@ -3970,29 +3765,6 @@ components:
       - page_size
       - total
       title: Page[MeasurementUnitRead]
-    Page_ProjectSubitemRead_:
-      properties:
-        items:
-          items:
-            $ref: '#/components/schemas/ProjectSubitemRead'
-          type: array
-          title: Items
-        page:
-          type: integer
-          title: Page
-        page_size:
-          type: integer
-          title: Page Size
-        total:
-          type: integer
-          title: Total
-      type: object
-      required:
-      - items
-      - page
-      - page_size
-      - total
-      title: Page[ProjectSubitemRead]
     Page_PurchaseMaterialRead_:
       properties:
         items:
@@ -4170,116 +3942,6 @@ components:
       - unit_name
       - remaining_qty
       title: PreparedInboundRead
-    ProjectSubitemCreate:
-      properties:
-        project_code:
-          type: string
-          maxLength: 64
-          minLength: 1
-          title: Project Code
-        project_name:
-          type: string
-          maxLength: 128
-          minLength: 1
-          title: Project Name
-        subitem_no:
-          type: string
-          maxLength: 64
-          minLength: 1
-          title: Subitem No
-        subitem_name:
-          type: string
-          maxLength: 128
-          minLength: 1
-          title: Subitem Name
-        enabled:
-          type: boolean
-          title: Enabled
-          default: true
-      additionalProperties: false
-      type: object
-      required:
-      - project_code
-      - project_name
-      - subitem_no
-      - subitem_name
-      title: ProjectSubitemCreate
-    ProjectSubitemRead:
-      properties:
-        id:
-          type: integer
-          title: Id
-        project_code:
-          type: string
-          title: Project Code
-        project_name:
-          type: string
-          title: Project Name
-        subitem_no:
-          type: string
-          title: Subitem No
-        subitem_name:
-          type: string
-          title: Subitem Name
-        enabled:
-          type: boolean
-          title: Enabled
-        version:
-          type: integer
-          title: Version
-      type: object
-      required:
-      - id
-      - project_code
-      - project_name
-      - subitem_no
-      - subitem_name
-      - enabled
-      - version
-      title: ProjectSubitemRead
-    ProjectSubitemUpdate:
-      properties:
-        project_code:
-          anyOf:
-          - type: string
-            maxLength: 64
-            minLength: 1
-          - type: 'null'
-          title: Project Code
-        project_name:
-          anyOf:
-          - type: string
-            maxLength: 128
-            minLength: 1
-          - type: 'null'
-          title: Project Name
-        subitem_no:
-          anyOf:
-          - type: string
-            maxLength: 64
-            minLength: 1
-          - type: 'null'
-          title: Subitem No
-        subitem_name:
-          anyOf:
-          - type: string
-            maxLength: 128
-            minLength: 1
-          - type: 'null'
-          title: Subitem Name
-        enabled:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Enabled
-        version:
-          type: integer
-          title: Version
-      additionalProperties: false
-      type: object
-      required:
-      - version
-      title: ProjectSubitemUpdate
     PurchaseMaterialCreate:
       properties:
         material_code:
@@ -4328,11 +3990,13 @@ components:
           maxLength: 500
           minLength: 1
           title: Usage
-        project_subitem_id:
+        subitem_no:
           anyOf:
-          - type: integer
+          - type: string
+            maxLength: 64
+            minLength: 1
           - type: 'null'
-          title: Project Subitem Id
+          title: Subitem No
         remark:
           anyOf:
           - type: string
@@ -4394,16 +4058,11 @@ components:
         usage:
           type: string
           title: Usage
-        project_subitem_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Project Subitem Id
-        project_subitem_name:
+        subitem_no:
           anyOf:
           - type: string
           - type: 'null'
-          title: Project Subitem Name
+          title: Subitem No
         remark:
           anyOf:
           - type: string
@@ -4419,8 +4078,6 @@ components:
           - type: string
           - type: 'null'
           title: Stock Material Name
-        code_state:
-          $ref: '#/components/schemas/CodeState'
         moved_to_record:
           type: boolean
           title: Moved To Record
@@ -4454,7 +4111,6 @@ components:
       - purchase_responsible
       - planned_qty
       - usage
-      - code_state
       - moved_to_record
       - enabled
       - images
@@ -4510,11 +4166,13 @@ components:
           maxLength: 500
           minLength: 1
           title: Usage
-        project_subitem_id:
+        subitem_no:
           anyOf:
-          - type: integer
+          - type: string
+            maxLength: 64
+            minLength: 1
           - type: 'null'
-          title: Project Subitem Id
+          title: Subitem No
         remark:
           anyOf:
           - type: string
@@ -4604,9 +4262,11 @@ components:
         usage:
           type: string
           title: Usage
-        project_subitem_name:
-          type: string
-          title: Project Subitem Name
+        subitem_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No
         stock_material_id:
           anyOf:
           - type: integer
@@ -4642,7 +4302,6 @@ components:
       - actual_demand_person
       - purchase_responsible
       - usage
-      - project_subitem_name
       - created_at
       - version
       title: PurchaseRecordRead
@@ -4732,18 +4391,11 @@ components:
         usage:
           type: string
           title: Usage
-        project_subitem_id:
-          type: integer
-          title: Project Subitem Id
-        project_code_snapshot:
-          type: string
-          title: Project Code Snapshot
-        subitem_no_snapshot:
-          type: string
-          title: Subitem No Snapshot
-        subitem_name_snapshot:
-          type: string
-          title: Subitem Name Snapshot
+        subitem_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No
       type: object
       required:
       - id
@@ -4754,10 +4406,6 @@ components:
       - requested_qty
       - received_qty
       - usage
-      - project_subitem_id
-      - project_code_snapshot
-      - subitem_no_snapshot
-      - subitem_name_snapshot
       title: PurchaseRequestLineRead
     PurchaseRequestLineWrite:
       properties:
@@ -4781,16 +4429,19 @@ components:
           maxLength: 500
           minLength: 1
           title: Usage
-        project_subitem_id:
-          type: integer
-          title: Project Subitem Id
+        subitem_no:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Subitem No
       additionalProperties: false
       type: object
       required:
       - purchase_material_id
       - requested_qty
       - usage
-      - project_subitem_id
       title: PurchaseRequestLineWrite
     PurchaseRequestRead:
       properties:
@@ -5234,11 +4885,11 @@ components:
           - type: string
           - type: 'null'
           title: Receiver Name
-        project_subitem_id:
+        subitem_no:
           anyOf:
-          - type: integer
+          - type: string
           - type: 'null'
-          title: Project Subitem Id
+          title: Subitem No
         source_type:
           $ref: '#/components/schemas/SourceType'
         reversal_of_id:
