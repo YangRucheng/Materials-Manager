@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -8,6 +8,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -229,8 +230,8 @@ class PurchaseRequest(AuditMixin, Base):
     __table_args__ = (Index("ix_purchase_request_status_created", "status", "created_at"),)
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
-    trace_no: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     purchase_order_no: Mapped[str | None] = mapped_column(String(128), index=True)
+    trace_no: Mapped[str | None] = mapped_column(String(128), index=True)
     status: Mapped[PurchaseRequestStatus] = mapped_column(
         SAEnum(PurchaseRequestStatus), nullable=False
     )
@@ -240,7 +241,7 @@ class PurchaseRequest(AuditMixin, Base):
     remark: Mapped[str | None] = mapped_column(String(1000))
     return_reason: Mapped[str | None] = mapped_column(String(500))
     close_reason: Mapped[str | None] = mapped_column(String(500))
-    purchase_time: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+    purchase_date: Mapped[date | None] = mapped_column(Date)
     completed_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
 
     applicant: Mapped[User] = relationship(foreign_keys=[applicant_id], lazy="selectin")

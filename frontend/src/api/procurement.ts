@@ -39,6 +39,18 @@ export const procurementApi = {
         material_ids: materialIds,
       })
       .then((r) => r.data),
+  exportPurchaseApplication: (materialIds: number[]) =>
+    apiClient
+      .post<Blob>(
+        '/purchase-materials/export-purchase-application',
+        { material_ids: materialIds },
+        { responseType: 'blob' },
+      )
+      .then((r) => r.data),
+  exportUncodedMaterials: (params?: Record<string, unknown>) =>
+    apiClient
+      .get<Blob>('/purchase-materials/export-uncoded', { params, responseType: 'blob' })
+      .then((r) => r.data),
   uncodedMaterials: (params?: Record<string, unknown>) =>
     apiClient
       .get<Page<PurchaseMaterial>>('/purchase-materials', { params: { ...params, coded: false } })

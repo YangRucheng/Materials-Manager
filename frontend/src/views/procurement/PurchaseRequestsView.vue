@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import type { PurchaseRecord } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { requestStatusLabels, statusTagType } from '@/utils/status'
-import { formatShanghaiTime } from '@/utils/time'
+import { formatDate } from '@/utils/time'
 
 const router = useRouter()
 const items = ref<PurchaseRecord[]>([])
@@ -15,8 +15,8 @@ const page = ref(1)
 const filters = reactive({ keyword: '', status: null as string | null })
 const columns: DataTableColumns<PurchaseRecord> = [
   {
-    title: '追溯号',
-    key: 'trace_no',
+    title: '申购单号',
+    key: 'purchase_order_no',
     width: 170,
     render: (row) =>
       h(
@@ -26,14 +26,14 @@ const columns: DataTableColumns<PurchaseRecord> = [
           type: 'primary',
           onClick: () => router.push(`/procurement/records/${row.line_id}`),
         },
-        { default: () => row.trace_no },
+        { default: () => row.purchase_order_no || '未填写' },
       ),
   },
   {
-    title: '申购单号',
-    key: 'purchase_order_no',
+    title: '追溯号',
+    key: 'trace_no',
     width: 170,
-    render: (row) => row.purchase_order_no || '—',
+    render: (row) => row.trace_no || '—',
   },
   {
     title: '物资',
@@ -58,10 +58,10 @@ const columns: DataTableColumns<PurchaseRecord> = [
       ),
   },
   {
-    title: '申购时间',
-    key: 'purchase_time',
-    width: 170,
-    render: (row) => formatShanghaiTime(row.purchase_time),
+    title: '申购日期',
+    key: 'purchase_date',
+    width: 120,
+    render: (row) => formatDate(row.purchase_date),
   },
   {
     title: '操作',
@@ -112,7 +112,7 @@ onMounted(load)
       <div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
-          placeholder="追溯号、申购单号、编码、名称或业务员"
+          placeholder="申购单号、追溯号、编码、名称或业务员"
           clearable
           style="width: 300px"
         />

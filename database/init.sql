@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS `measurement_unit` (
 
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `trace_no` VARCHAR(128) NOT NULL,
   `purchase_order_no` VARCHAR(128) NULL,
+  `trace_no` VARCHAR(128) NULL,
   `status` ENUM(
     'DRAFT',
     'SUBMITTED',
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
   `remark` VARCHAR(1000) NULL,
   `return_reason` VARCHAR(500) NULL,
   `close_reason` VARCHAR(500) NULL,
-  `purchase_time` DATETIME(6) NULL,
+  `purchase_date` DATE NULL,
   `completed_at` DATETIME(6) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

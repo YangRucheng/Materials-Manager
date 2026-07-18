@@ -250,15 +250,15 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `trace_no` | VARCHAR(128) | 必填、可编辑；默认生成系统追溯号 |
-| `purchase_order_no` | VARCHAR(128) | 申购单号，可空 |
+| `purchase_order_no` | VARCHAR(128) | 申购单号，可空、可编辑；界面默认“申购 年/月/日” |
+| `trace_no` | VARCHAR(128) | 追溯号，可空、可编辑 |
 | `status` | ENUM | 见状态机 |
 | `applicant_id` | BIGINT UNSIGNED | 申请人 |
 | `handler_id` | BIGINT UNSIGNED | 受理人，可空 |
 | `remark` | VARCHAR(1000) | 可空 |
 | `return_reason` | VARCHAR(500) | 退回时必填 |
 | `close_reason` | VARCHAR(500) | 关闭时必填 |
-| `purchase_time` | DATETIME(6) | 申购时间，可空、可编辑 |
+| `purchase_date` | DATE | 申购日期，可空、可编辑 |
 | `completed_at` | DATETIME(6) | 可空 |
 
 #### `purchase_request_line`
@@ -462,7 +462,11 @@ backend/
 | GET/PATCH | `/purchase-materials/{id}` | 详情/修改 |
 | DELETE | `/purchase-materials/{id}` | 删除尚未转入申购记录的计划 |
 | POST | `/purchase-materials/{id}/link-stock-material` | 关联二级库物资 |
+| GET | `/purchase-materials/export-uncoded` | 按当前关键词导出未编码物资的物料编码申请表 |
+| POST | `/purchase-materials/export-purchase-application` | 按所选计划导出采购申请表 |
 | POST | `/purchase-materials/batch-move-to-record` | 将多条已编码计划批量转为同一批申购记录 |
+
+Excel 布局由 `backend/data/template/*.json` 描述，运行时生成工作簿；仓库不保存原始 XLSX 模板。
 
 补录编码直接修改申购计划：
 
@@ -495,9 +499,9 @@ backend/
 
 ```json
 {
-  "trace_no": "追溯-20260717-103000",
-  "purchase_order_no": "SG-20260717-001",
-  "purchase_time": "2026-07-17T10:30:00+08:00",
+  "purchase_order_no": "申购 2026/7/17",
+  "trace_no": null,
+  "purchase_date": "2026-07-17",
   "remark": "7 月检修备件",
   "lines": [
     {
