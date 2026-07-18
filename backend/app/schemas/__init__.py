@@ -14,7 +14,6 @@ from pydantic import (
 )
 
 from app.domain.enums import (
-    CodeState,
     OperationType,
     PurchaseRequestStatus,
     Role,
@@ -124,33 +123,6 @@ class MeasurementUnitUpdate(RequestModel):
     version: int
 
 
-class ProjectSubitemRead(ReadModel):
-    id: int
-    project_code: str
-    project_name: str
-    subitem_no: str
-    subitem_name: str
-    enabled: bool
-    version: int
-
-
-class ProjectSubitemCreate(RequestModel):
-    project_code: Annotated[str, StringConstraints(max_length=64, min_length=1)]
-    project_name: Annotated[str, StringConstraints(max_length=128, min_length=1)]
-    subitem_no: Annotated[str, StringConstraints(max_length=64, min_length=1)]
-    subitem_name: Annotated[str, StringConstraints(max_length=128, min_length=1)]
-    enabled: bool = True
-
-
-class ProjectSubitemUpdate(RequestModel):
-    project_code: Annotated[str, StringConstraints(max_length=64, min_length=1)] | None = None
-    project_name: Annotated[str, StringConstraints(max_length=128, min_length=1)] | None = None
-    subitem_no: Annotated[str, StringConstraints(max_length=64, min_length=1)] | None = None
-    subitem_name: Annotated[str, StringConstraints(max_length=128, min_length=1)] | None = None
-    enabled: bool | None = None
-    version: int
-
-
 class FileObjectRead(ReadModel):
     id: int
     original_name: str
@@ -251,8 +223,12 @@ class OperationCreate(RequestModel):
     occurred_at: datetime
     source_type: SourceType
     business_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
-    receiver_name: str | None = Field(default=None, max_length=64)
-    project_subitem_id: int | None = None
+    receiver_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
     lines: list[OperationLineWrite] = Field(min_length=1)
 
     @field_validator("occurred_at")
@@ -277,8 +253,12 @@ class OperationUpdate(RequestModel):
     occurred_at: datetime
     source_type: SourceType
     business_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
-    receiver_name: str | None = Field(default=None, max_length=64)
-    project_subitem_id: int | None = None
+    receiver_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
     lines: list[OperationLineWrite] = Field(min_length=1)
 
     _timezone = field_validator("occurred_at")(OperationCreate.require_timezone)
@@ -312,7 +292,7 @@ class StockOperationRead(ReadModel):
     operator_name: str
     business_reason: str
     receiver_name: str | None = None
-    project_subitem_id: int | None = None
+    subitem_no: str | None = None
     source_type: SourceType
     reversal_of_id: int | None = None
     purchase_request_no: str | None = None
@@ -341,7 +321,9 @@ class PurchaseMaterialBase(RequestModel):
     ) = None
     planned_qty: PositiveQuantity
     usage: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
-    project_subitem_id: int | None = None
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
     remark: str | None = Field(default=None, max_length=1000)
     stock_material_id: int | None = None
     image_ids: list[int] = Field(default_factory=list, max_length=9)
@@ -373,12 +355,10 @@ class PurchaseMaterialRead(ReadModel):
     purchase_responsible: str
     planned_qty: Decimal
     usage: str
-    project_subitem_id: int | None = None
-    project_subitem_name: str | None = None
+    subitem_no: str | None = None
     remark: str | None = None
     stock_material_id: int | None = None
     stock_material_name: str | None = None
-    code_state: CodeState
     moved_to_record: bool
     enabled: bool
     images: list[FileObjectRead]
@@ -415,7 +395,9 @@ class PurchaseRequestLineWrite(RequestModel):
     purchase_material_id: int
     requested_qty: PositiveQuantity
     usage: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
-    project_subitem_id: int
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
 
 
 class PurchaseRequestCreate(RequestModel):
@@ -441,10 +423,7 @@ class PurchaseRequestLineRead(ReadModel):
     requested_qty: Decimal
     received_qty: Decimal
     usage: str
-    project_subitem_id: int
-    project_code_snapshot: str
-    subitem_no_snapshot: str
-    subitem_name_snapshot: str
+    subitem_no: str | None = None
 
 
 class PurchaseRequestRead(ReadModel):
@@ -507,7 +486,7 @@ class PurchaseRecordRead(ReadModel):
     salesperson: str | None = None
     remark: str | None = None
     usage: str
-    project_subitem_name: str
+    subitem_no: str | None = None
     stock_material_id: int | None = None
     submitted_at: datetime | None = None
     created_at: datetime

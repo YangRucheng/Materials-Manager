@@ -8,9 +8,6 @@ from app.schemas import (
     MeasurementUnitRead,
     MeasurementUnitUpdate,
     Page,
-    ProjectSubitemCreate,
-    ProjectSubitemRead,
-    ProjectSubitemUpdate,
     UserCreate,
     UserRead,
     UserUpdate,
@@ -57,46 +54,6 @@ async def edit_unit(
 ) -> MeasurementUnitRead:
     return MeasurementUnitRead.model_validate(
         await dictionary_service.update_unit(session, item_id, data, user.id)
-    )
-
-
-@router.get("/project-subitems", response_model=Page[ProjectSubitemRead])
-async def projects(
-    session: DbSession,
-    user: CurrentUser,
-    page: PageNo = 1,
-    page_size: PageSize = 20,
-    keyword: str | None = None,
-    enabled: bool | None = None,
-) -> Page[ProjectSubitemRead]:
-    items, total = await dictionary_service.list_projects(
-        session, keyword, enabled, page, page_size
-    )
-    return Page(
-        items=[ProjectSubitemRead.model_validate(x) for x in items],
-        page=page,
-        page_size=page_size,
-        total=total,
-    )
-
-
-@router.post(
-    "/project-subitems", response_model=ProjectSubitemRead, status_code=status.HTTP_201_CREATED
-)
-async def add_project(
-    data: ProjectSubitemCreate, session: DbSession, user: SuperAdmin
-) -> ProjectSubitemRead:
-    return ProjectSubitemRead.model_validate(
-        await dictionary_service.create_project(session, data, user.id)
-    )
-
-
-@router.patch("/project-subitems/{item_id}", response_model=ProjectSubitemRead)
-async def edit_project(
-    item_id: int, data: ProjectSubitemUpdate, session: DbSession, user: SuperAdmin
-) -> ProjectSubitemRead:
-    return ProjectSubitemRead.model_validate(
-        await dictionary_service.update_project(session, item_id, data, user.id)
     )
 
 

@@ -213,8 +213,8 @@ onMounted(() => {
         <n-descriptions-item label="名称">{{ record.material_name }}</n-descriptions-item>
         <n-descriptions-item label="型号规格">{{ record.model_spec }}</n-descriptions-item>
         <n-descriptions-item label="用途">{{ record.usage }}</n-descriptions-item>
-        <n-descriptions-item label="项目子项" :span="2">{{
-          record.project_subitem_name
+        <n-descriptions-item label="子项号" :span="2">{{
+          record.subitem_no || '—'
         }}</n-descriptions-item>
       </n-descriptions>
     </n-card>

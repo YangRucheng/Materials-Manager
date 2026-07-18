@@ -9,12 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import Base
 from app.core.errors import AppError, not_found
 from app.core.security import hash_password
-from app.models import MeasurementUnit, ProjectSubitem, User
+from app.models import MeasurementUnit, User
 from app.schemas import (
     MeasurementUnitCreate,
     MeasurementUnitUpdate,
-    ProjectSubitemCreate,
-    ProjectSubitemUpdate,
     UserCreate,
     UserUpdate,
 )
@@ -82,60 +80,6 @@ async def update_unit(
         await session.flush()
     except IntegrityError as exc:
         raise AppError("DUPLICATE_DICTIONARY", "计量单位编码或名称已存在", status_code=409) from exc
-    return item
-
-
-async def list_projects(
-    session: AsyncSession, keyword: str | None, enabled: bool | None, page: int, page_size: int
-) -> tuple[list[ProjectSubitem], int]:
-    query = select(ProjectSubitem)
-    if keyword:
-        like = f"%{keyword}%"
-        query = query.where(
-            or_(
-                ProjectSubitem.project_code.like(like),
-                ProjectSubitem.project_name.like(like),
-                ProjectSubitem.subitem_no.like(like),
-                ProjectSubitem.subitem_name.like(like),
-            )
-        )
-    if enabled is not None:
-        query = query.where(ProjectSubitem.enabled == enabled)
-    items, total = await _paged(session, query, ProjectSubitem, page, page_size)
-    return items, total
-
-
-async def create_project(
-    session: AsyncSession, data: ProjectSubitemCreate, user_id: int
-) -> ProjectSubitem:
-    item = ProjectSubitem(**data.model_dump(), created_by=user_id, updated_by=user_id)
-    session.add(item)
-    try:
-        await session.flush()
-    except IntegrityError as exc:
-        raise AppError(
-            "DUPLICATE_DICTIONARY", "项目编码和子项号组合已存在", status_code=409
-        ) from exc
-    return item
-
-
-async def update_project(
-    session: AsyncSession, item_id: int, data: ProjectSubitemUpdate, user_id: int
-) -> ProjectSubitem:
-    item = await session.get(ProjectSubitem, item_id)
-    if item is None:
-        raise not_found("项目子项")
-    validate_version(data.version, item.version)
-    for key, value in data.model_dump(exclude={"version"}, exclude_none=True).items():
-        setattr(item, key, value)
-    item.updated_by = user_id
-    item.version += 1
-    try:
-        await session.flush()
-    except IntegrityError as exc:
-        raise AppError(
-            "DUPLICATE_DICTIONARY", "项目编码和子项号组合已存在", status_code=409
-        ) from exc
     return item
 
 

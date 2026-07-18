@@ -2,7 +2,7 @@ export interface PurchaseLineForValidation {
   purchase_material_id: number | null
   requested_qty: string
   usage: string
-  project_subitem_id: number | null
+  subitem_no?: string
   material?: { material_code?: string }
 }
 

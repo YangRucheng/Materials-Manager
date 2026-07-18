@@ -14,7 +14,6 @@ import {
   mockImageUrl,
   nextIds,
   operations,
-  projects,
   purchaseMaterials,
   purchaseRequests,
   stockMaterials,
@@ -50,7 +49,6 @@ const event = (action: string, old_status?: string, new_status?: string, remark?
   remark,
 })
 const unit = (id: number | null) => units.find((x) => x.id === id)
-const project = (id: number | null) => projects.find((x) => x.id === id)
 const recalcRequest = (lineId: number) => {
   const request = purchaseRequests.find((x) => x.lines.some((line) => line.id === lineId))
   if (!request) return
@@ -83,7 +81,7 @@ const purchaseRecord = (
     salesperson: request.salesperson,
     remark: request.remark,
     usage: line.usage,
-    project_subitem_name: `${line.project_code_snapshot} / ${line.subitem_no_snapshot} ${line.subitem_name_snapshot}`,
+    subitem_no: line.subitem_no,
     stock_material_id: material.stock_material_id,
     submitted_at: request.submitted_at,
     created_at: request.created_at,
@@ -175,7 +173,7 @@ const makeOperation = (
     operator_name: username,
     business_reason: payload.business_reason,
     receiver_name: payload.receiver_name,
-    project_subitem_id: payload.project_subitem_id,
+    subitem_no: payload.subitem_no,
     source_type: payload.source_type,
     purchase_request_no: purchaseRequest?.request_no,
     client_request_id: payload.client_request_id,
@@ -230,38 +228,6 @@ export const handlers = [
   http.patch(`${api}/measurement-units/:id`, async ({ params, request }) => {
     const item = units.find((x) => x.id === Number(params.id))
     if (!item) return error(404, 'NOT_FOUND', '计量单位不存在')
-    Object.assign(item, await request.json(), { version: item.version + 1 })
-    return HttpResponse.json(item)
-  }),
-  http.get(`${api}/project-subitems`, ({ request }) => {
-    const url = new URL(request.url)
-    const q = (url.searchParams.get('keyword') || '').toLowerCase()
-    return HttpResponse.json(
-      page(
-        projects.filter(
-          (x) => !q || Object.values(x).some((v) => String(v).toLowerCase().includes(q)),
-        ),
-        url,
-      ),
-    )
-  }),
-  http.post(`${api}/project-subitems`, async ({ request }) => {
-    const body = (await request.json()) as Partial<(typeof projects)[number]>
-    const item = {
-      id: nextIds.project++,
-      project_code: body.project_code!,
-      project_name: body.project_name!,
-      subitem_no: body.subitem_no!,
-      subitem_name: body.subitem_name!,
-      enabled: body.enabled ?? true,
-      version: 1,
-    }
-    projects.push(item)
-    return HttpResponse.json(item, { status: 201 })
-  }),
-  http.patch(`${api}/project-subitems/:id`, async ({ params, request }) => {
-    const item = projects.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '项目子项不存在')
     Object.assign(item, await request.json(), { version: item.version + 1 })
     return HttpResponse.json(item)
   }),
@@ -405,6 +371,7 @@ export const handlers = [
   }),
   http.post(`${api}/inventory/outbounds`, async ({ request }) => {
     const body = (await request.json()) as OperationWrite
+    if (!body.receiver_name?.trim()) return error(400, 'RECEIVER_REQUIRED', '出库必须填写领用人')
     return HttpResponse.json(makeOperation(body, 'OUTBOUND', actor(request).display_name), {
       status: 201,
     })
@@ -485,7 +452,7 @@ export const handlers = [
       source_type: body.source_type,
       business_reason: body.business_reason,
       receiver_name: body.receiver_name,
-      project_subitem_id: body.project_subitem_id,
+      subitem_no: body.subitem_no,
       version: item.version + 1,
     })
     affectedRequestLines.forEach(recalcRequest)
@@ -538,7 +505,6 @@ export const handlers = [
         .join('；'),
       stock_material_id: stock.id,
       stock_material_name: stock.name,
-      code_state: previous?.material_code ? ('CODED' as const) : ('UNCODED' as const),
       enabled: true,
       images: [...stock.images],
       created_at: now(),
@@ -586,11 +552,10 @@ export const handlers = [
       purchase_responsible: responsible,
       planned_qty: body.planned_qty,
       usage: body.usage,
-      project_subitem_id: body.project_subitem_id,
-      project_subitem_name: project(body.project_subitem_id || null)?.subitem_name,
+      subitem_no: body.subitem_no,
       remark: body.remark,
       stock_material_id: body.stock_material_id,
-      code_state: body.material_code ? ('CODED' as const) : ('UNCODED' as const),
+      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)?.name,
       moved_to_record: false,
       enabled: true,
       images: [],
@@ -608,8 +573,7 @@ export const handlers = [
     const selectedUnit = unit(body.unit_id)
     Object.assign(item, body, {
       unit_name: selectedUnit?.name || item.unit_name,
-      project_subitem_name: project(body.project_subitem_id || null)?.subitem_name,
-      code_state: body.material_code ? 'CODED' : 'UNCODED',
+      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)?.name,
       version: item.version + 1,
       updated_at: now(),
     })
@@ -637,7 +601,6 @@ export const handlers = [
       salesperson?: string
       remark?: string
     }
-    const selectedProject = project(material.project_subitem_id || null) || projects[0]
     const line = {
       id: nextIds.requestLine++,
       purchase_material_id: material.id,
@@ -648,10 +611,7 @@ export const handlers = [
       requested_qty: material.planned_qty,
       received_qty: '0',
       usage: material.usage,
-      project_subitem_id: selectedProject.id,
-      project_code_snapshot: selectedProject.project_code,
-      subitem_no_snapshot: selectedProject.subitem_no,
-      subitem_name_snapshot: selectedProject.subitem_name,
+      subitem_no: material.subitem_no,
     }
     const purchaseRequest = {
       id: nextIds.request++,
@@ -741,7 +701,6 @@ export const handlers = [
       return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
     const lines = body.lines.map((line) => {
       const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
-      const p = project(line.project_subitem_id)!
       return {
         id: nextIds.requestLine++,
         purchase_material_id: m.id,
@@ -752,10 +711,7 @@ export const handlers = [
         requested_qty: line.requested_qty,
         received_qty: '0',
         usage: line.usage,
-        project_subitem_id: p.id,
-        project_code_snapshot: p.project_code,
-        subitem_no_snapshot: p.subitem_no,
-        subitem_name_snapshot: p.subitem_name,
+        subitem_no: line.subitem_no,
       }
     })
     const item = {
@@ -795,7 +751,6 @@ export const handlers = [
     item.applicant_name = selectedMaterials[0]?.purchase_responsible || item.applicant_name
     item.lines = body.lines.map((line) => {
       const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
-      const p = project(line.project_subitem_id)!
       return {
         id: line.id || nextIds.requestLine++,
         purchase_material_id: m.id,
@@ -806,10 +761,7 @@ export const handlers = [
         requested_qty: line.requested_qty,
         received_qty: '0',
         usage: line.usage,
-        project_subitem_id: p.id,
-        project_code_snapshot: p.project_code,
-        subitem_no_snapshot: p.subitem_no,
-        subitem_name_snapshot: p.subitem_name,
+        subitem_no: line.subitem_no,
       }
     })
     item.version++

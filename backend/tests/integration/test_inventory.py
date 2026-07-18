@@ -46,6 +46,11 @@ async def test_inbound_reason_defaults_empty_but_outbound_still_requires_it(
     assert outbound.status_code == 400
     assert outbound.json()["code"] == "BUSINESS_REASON_REQUIRED"
 
+    payload["business_reason"] = "测试出库"
+    outbound = await client.post("/api/v1/inventory/outbounds", headers=headers, json=payload)
+    assert outbound.status_code == 400
+    assert outbound.json()["code"] == "RECEIVER_REQUIRED"
+
 
 @pytest.mark.asyncio
 async def test_idempotency_negative_stock_and_permissions(client: AsyncClient) -> None:
@@ -73,7 +78,10 @@ async def test_idempotency_negative_stock_and_permissions(client: AsyncClient) -
     outbound = await client.post(
         "/api/v1/inventory/outbounds",
         headers=warehouse,
-        json=operation_payload("outbound-too-much", material_id, "6", "2026-07-17T11:00:00+08:00"),
+        json=operation_payload(
+            "outbound-too-much", material_id, "6", "2026-07-17T11:00:00+08:00"
+        )
+        | {"receiver_name": "测试领用人"},
     )
     assert outbound.status_code == 201, outbound.text
     detail = await client.get(f"/api/v1/stock-materials/{material_id}", headers=warehouse)
@@ -92,7 +100,8 @@ async def test_edit_historical_operation_replays_snapshots(client: AsyncClient) 
     outbound = await client.post(
         "/api/v1/inventory/outbounds",
         headers=headers,
-        json=operation_payload("history-out", material_id, "3", "2026-07-18T10:00:00+08:00"),
+        json=operation_payload("history-out", material_id, "3", "2026-07-18T10:00:00+08:00")
+        | {"receiver_name": "测试领用人"},
     )
     assert inbound.status_code == outbound.status_code == 201
 
@@ -153,7 +162,8 @@ async def test_concurrent_outbound_allows_negative_without_lost_updates(
         return await client.post(
             "/api/v1/inventory/outbounds",
             headers=headers,
-            json=operation_payload(request_id, material_id, "4", "2026-07-17T11:00:00+08:00"),
+            json=operation_payload(request_id, material_id, "4", "2026-07-17T11:00:00+08:00")
+            | {"receiver_name": "测试领用人"},
         )
 
     if engine.dialect.name == "mysql":
@@ -206,7 +216,7 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
             "purchase_responsible": "李工",
             "planned_qty": "5",
             "usage": "低库存补库",
-            "project_subitem_id": 1,
+            "subitem_no": "01-01",
             "stock_material_id": material_id,
             "image_ids": [],
         },
@@ -220,7 +230,7 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
                     "purchase_material_id": purchase_material.json()["id"],
                     "requested_qty": "5",
                     "usage": "低库存补库",
-                    "project_subitem_id": 1,
+                    "subitem_no": "01-01",
                 }
             ]
         },

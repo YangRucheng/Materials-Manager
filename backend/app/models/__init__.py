@@ -87,18 +87,6 @@ class MeasurementUnit(AuditMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
 
-class ProjectSubitem(AuditMixin, Base):
-    __tablename__ = "project_subitem"
-    __table_args__ = (UniqueConstraint("project_code", "subitem_no"),)
-
-    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
-    project_code: Mapped[str] = mapped_column(String(64), nullable=False)
-    project_name: Mapped[str] = mapped_column(String(128), nullable=False)
-    subitem_no: Mapped[str] = mapped_column(String(64), nullable=False)
-    subitem_name: Mapped[str] = mapped_column(String(128), nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
-
-
 class FileObject(AuditMixin, Base):
     __tablename__ = "file_object"
 
@@ -206,9 +194,7 @@ class PurchaseMaterial(AuditMixin, Base):
     purchase_responsible: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     planned_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
-    project_subitem_id: Mapped[int | None] = mapped_column(
-        BIGINT_ID, ForeignKey("project_subitem.id"), index=True
-    )
+    subitem_no: Mapped[str | None] = mapped_column(String(64))
     remark: Mapped[str | None] = mapped_column(String(1000))
     stock_material_id: Mapped[int | None] = mapped_column(
         BIGINT_ID, ForeignKey("stock_material.id"), index=True
@@ -217,7 +203,6 @@ class PurchaseMaterial(AuditMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
-    project_subitem: Mapped[ProjectSubitem | None] = relationship(lazy="selectin")
     stock_material: Mapped[StockMaterial | None] = relationship(lazy="selectin")
     images: Mapped[list[PurchaseMaterialImage]] = relationship(
         back_populates="material",
@@ -272,9 +257,7 @@ class PurchaseRequestLine(AuditMixin, Base):
     __table_args__ = (
         CheckConstraint("requested_qty > 0", name="requested_positive"),
         CheckConstraint("received_qty >= 0", name="received_nonnegative"),
-        UniqueConstraint(
-            "purchase_request_id", "purchase_material_id", "project_subitem_id", "usage"
-        ),
+        UniqueConstraint("purchase_request_id", "purchase_material_id", "subitem_no", "usage"),
     )
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
@@ -291,16 +274,10 @@ class PurchaseRequestLine(AuditMixin, Base):
     requested_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     received_qty: Mapped[Decimal] = mapped_column(QTY, default=Decimal("0"), server_default="0")
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
-    project_subitem_id: Mapped[int] = mapped_column(
-        BIGINT_ID, ForeignKey("project_subitem.id"), nullable=False
-    )
-    project_code_snapshot: Mapped[str] = mapped_column(String(64), nullable=False)
-    subitem_no_snapshot: Mapped[str] = mapped_column(String(64), nullable=False)
-    subitem_name_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
+    subitem_no: Mapped[str | None] = mapped_column(String(64))
 
     request: Mapped[PurchaseRequest] = relationship(back_populates="lines", lazy="selectin")
     purchase_material: Mapped[PurchaseMaterial] = relationship(lazy="selectin")
-    project_subitem: Mapped[ProjectSubitem] = relationship(lazy="selectin")
 
 
 class StockOperation(AuditMixin, Base):
@@ -317,9 +294,7 @@ class StockOperation(AuditMixin, Base):
     operator_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=False)
     business_reason: Mapped[str] = mapped_column(String(500), nullable=False)
     receiver_name: Mapped[str | None] = mapped_column(String(64))
-    project_subitem_id: Mapped[int | None] = mapped_column(
-        BIGINT_ID, ForeignKey("project_subitem.id")
-    )
+    subitem_no: Mapped[str | None] = mapped_column(String(64))
     source_type: Mapped[SourceType] = mapped_column(SAEnum(SourceType), nullable=False)
     reversal_of_id: Mapped[int | None] = mapped_column(
         BIGINT_ID, ForeignKey("stock_operation.id"), unique=True
@@ -327,7 +302,6 @@ class StockOperation(AuditMixin, Base):
     client_request_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
 
     operator: Mapped[User] = relationship(foreign_keys=[operator_id], lazy="selectin")
-    project_subitem: Mapped[ProjectSubitem | None] = relationship(lazy="selectin")
     lines: Mapped[list[StockOperationLine]] = relationship(
         back_populates="operation",
         lazy="selectin",
@@ -392,7 +366,6 @@ __all__ = [
     "BusinessEventLog",
     "FileObject",
     "MeasurementUnit",
-    "ProjectSubitem",
     "PurchaseMaterial",
     "PurchaseMaterialImage",
     "PurchaseRequest",

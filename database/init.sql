@@ -84,26 +84,6 @@ CREATE TABLE IF NOT EXISTS `measurement_unit` (
     FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `project_subitem` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `project_code` VARCHAR(64) NOT NULL,
-  `project_name` VARCHAR(128) NOT NULL,
-  `subitem_no` VARCHAR(64) NOT NULL,
-  `subitem_name` VARCHAR(128) NOT NULL,
-  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
-  `version` INT UNSIGNED NOT NULL DEFAULT 1,
-  CONSTRAINT `pk_project_subitem` PRIMARY KEY (`id`),
-  CONSTRAINT `uq_project_subitem_project_code` UNIQUE (`project_code`, `subitem_no`),
-  CONSTRAINT `fk_project_subitem_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_project_subitem_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `request_no` VARCHAR(128) NOT NULL,
@@ -176,7 +156,7 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `operator_id` BIGINT UNSIGNED NOT NULL,
   `business_reason` VARCHAR(500) NOT NULL,
   `receiver_name` VARCHAR(64) NULL,
-  `project_subitem_id` BIGINT UNSIGNED NULL,
+  `subitem_no` VARCHAR(64) NULL,
   `source_type` ENUM('MANUAL', 'PURCHASE_RECEIPT', 'REVERSAL', 'INITIALIZATION') NOT NULL,
   `reversal_of_id` BIGINT UNSIGNED NULL,
   `client_request_id` VARCHAR(64) NOT NULL,
@@ -189,8 +169,6 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   CONSTRAINT `uq_stock_operation_operation_no` UNIQUE (`operation_no`),
   CONSTRAINT `fk_stock_operation_operator_id_user`
     FOREIGN KEY (`operator_id`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_stock_operation_project_subitem_id_project_subitem`
-    FOREIGN KEY (`project_subitem_id`) REFERENCES `project_subitem` (`id`),
   CONSTRAINT `uq_stock_operation_reversal_of_id` UNIQUE (`reversal_of_id`),
   CONSTRAINT `fk_stock_operation_reversal_of_id_stock_operation`
     FOREIGN KEY (`reversal_of_id`) REFERENCES `stock_operation` (`id`),
@@ -214,7 +192,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `purchase_responsible` VARCHAR(128) NOT NULL,
   `planned_qty` DECIMAL(18, 1) NOT NULL,
   `usage` VARCHAR(500) NOT NULL,
-  `project_subitem_id` BIGINT UNSIGNED NULL,
+  `subitem_no` VARCHAR(64) NULL,
   `remark` VARCHAR(1000) NULL,
   `stock_material_id` BIGINT UNSIGNED NULL,
   `identity_hash` VARCHAR(64) NOT NULL,
@@ -227,8 +205,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   CONSTRAINT `pk_purchase_material` PRIMARY KEY (`id`),
   CONSTRAINT `fk_purchase_material_unit_id_measurement_unit`
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
-  CONSTRAINT `fk_purchase_material_project_subitem_id_project_subitem`
-    FOREIGN KEY (`project_subitem_id`) REFERENCES `project_subitem` (`id`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
   CONSTRAINT `fk_purchase_material_created_by_user`
@@ -240,7 +216,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   INDEX `ix_purchase_material_model_spec` (`model_spec`),
   INDEX `ix_purchase_material_name` (`name`),
   INDEX `ix_purchase_material_purchase_responsible` (`purchase_responsible`),
-  INDEX `ix_purchase_material_project_subitem_id` (`project_subitem_id`),
   INDEX `ix_purchase_material_stock_material_id` (`stock_material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -310,10 +285,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   `requested_qty` DECIMAL(18, 1) NOT NULL,
   `received_qty` DECIMAL(18, 1) NOT NULL DEFAULT 0,
   `usage` VARCHAR(500) NOT NULL,
-  `project_subitem_id` BIGINT UNSIGNED NOT NULL,
-  `project_code_snapshot` VARCHAR(64) NOT NULL,
-  `subitem_no_snapshot` VARCHAR(64) NOT NULL,
-  `subitem_name_snapshot` VARCHAR(128) NOT NULL,
+  `subitem_no` VARCHAR(64) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `created_by` BIGINT UNSIGNED NULL,
@@ -323,13 +295,11 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   CONSTRAINT `ck_purchase_request_line_requested_positive` CHECK (`requested_qty` > 0),
   CONSTRAINT `ck_purchase_request_line_received_nonnegative` CHECK (`received_qty` >= 0),
   CONSTRAINT `uq_purchase_request_line_purchase_request_id`
-    UNIQUE (`purchase_request_id`, `purchase_material_id`, `project_subitem_id`, `usage`),
+    UNIQUE (`purchase_request_id`, `purchase_material_id`, `subitem_no`, `usage`),
   CONSTRAINT `fk_purchase_request_line_purchase_request_id_purchase_request`
     FOREIGN KEY (`purchase_request_id`) REFERENCES `purchase_request` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_purchase_request_line_purchase_material_id_purchase_material`
     FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`),
-  CONSTRAINT `fk_purchase_request_line_project_subitem_id_project_subitem`
-    FOREIGN KEY (`project_subitem_id`) REFERENCES `project_subitem` (`id`),
   CONSTRAINT `fk_purchase_request_line_created_by_user`
     FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
   CONSTRAINT `fk_purchase_request_line_updated_by_user`
@@ -391,7 +361,7 @@ INSERT INTO `measurement_unit` (
   `updated_by`
 )
 VALUES
-  ('PCS', '件', 0, 1, @admin_id, @admin_id),
+  ('PCS', '个', 0, 1, @admin_id, @admin_id),
   ('SET', '套', 0, 1, @admin_id, @admin_id),
   ('M', '米', 1, 1, @admin_id, @admin_id),
   ('KG', '千克', 1, 1, @admin_id, @admin_id)

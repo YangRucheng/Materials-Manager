@@ -15,6 +15,7 @@ async def create_purchase_plan(
     stock_material_id: int | None = None,
     planned_qty: str = "5",
     purchase_responsible: str = "李工",
+    subitem_no: str | None = "01-01",
 ) -> dict[str, object]:
     response = await client.post(
         "/api/v1/purchase-materials",
@@ -28,7 +29,7 @@ async def create_purchase_plan(
             "purchase_responsible": purchase_responsible,
             "planned_qty": planned_qty,
             "usage": "控制柜检修",
-            "project_subitem_id": 1,
+            "subitem_no": subitem_no,
             "remark": "新计划",
             "stock_material_id": stock_material_id,
             "image_ids": [],
@@ -38,6 +39,7 @@ async def create_purchase_plan(
     result = response.json()
     assert result["planned_qty"] == planned_qty
     assert result["purchase_responsible"] == purchase_responsible
+    assert "code_state" not in result
     return result
 
 
@@ -86,7 +88,7 @@ async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncC
             "purchase_responsible": plan["purchase_responsible"],
             "planned_qty": plan["planned_qty"],
             "usage": plan["usage"],
-            "project_subitem_id": plan["project_subitem_id"],
+            "subitem_no": plan["subitem_no"],
             "remark": plan["remark"],
             "stock_material_id": None,
             "image_ids": [],
@@ -97,6 +99,28 @@ async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncC
     assert record["material_code"] == "DQ-000500"
     assert record["planned_qty"] == "5"
     assert record["status"] == "PROCESSING"
+
+
+@pytest.mark.asyncio
+async def test_plan_allows_optional_subitem_and_manual_stock_link(client: AsyncClient) -> None:
+    purchase = await auth_headers(client, "purchase")
+    warehouse = await auth_headers(client, "warehouse")
+    stock_id = await create_stock(client, warehouse, "手动关联物资")
+
+    plan = await create_purchase_plan(
+        client,
+        purchase,
+        "手动关联物资",
+        code="DQ-LINK-001",
+        stock_material_id=stock_id,
+        subitem_no=None,
+    )
+
+    assert plan["subitem_no"] is None
+    assert plan["stock_material_id"] == stock_id
+    assert plan["stock_material_name"] == "手动关联物资"
+    record = await move_to_record(client, purchase, int(plan["id"]), "无子项申购")
+    assert record["subitem_no"] is None
 
 
 @pytest.mark.asyncio

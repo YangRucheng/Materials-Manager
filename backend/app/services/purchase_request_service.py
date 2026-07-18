@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError, invalid_transition, not_found
 from app.domain.enums import PurchaseRequestStatus
 from app.models import (
-    ProjectSubitem,
     PurchaseMaterial,
     PurchaseRequest,
     PurchaseRequestLine,
@@ -94,10 +93,7 @@ async def request_read(session: AsyncSession, item: PurchaseRequest) -> Purchase
                 requested_qty=line.requested_qty,
                 received_qty=line.received_qty,
                 usage=line.usage,
-                project_subitem_id=line.project_subitem_id,
-                project_code_snapshot=line.project_code_snapshot,
-                subitem_no_snapshot=line.subitem_no_snapshot,
-                subitem_name_snapshot=line.subitem_name_snapshot,
+                subitem_no=line.subitem_no,
             )
             for line in item.lines
         ],
@@ -106,14 +102,14 @@ async def request_read(session: AsyncSession, item: PurchaseRequest) -> Purchase
 
 
 def _merge_lines(lines: list[PurchaseRequestLineWrite]) -> list[PurchaseRequestLineWrite]:
-    grouped: dict[tuple[int, int, str], PurchaseRequestLineWrite] = {}
+    grouped: dict[tuple[int, str | None, str], PurchaseRequestLineWrite] = {}
     for line in lines:
-        key = (line.purchase_material_id, line.project_subitem_id, line.usage)
+        key = (line.purchase_material_id, line.subitem_no, line.usage)
         if key in grouped:
             existing = grouped[key]
             grouped[key] = PurchaseRequestLineWrite(
                 purchase_material_id=existing.purchase_material_id,
-                project_subitem_id=existing.project_subitem_id,
+                subitem_no=existing.subitem_no,
                 usage=existing.usage,
                 requested_qty=existing.requested_qty + line.requested_qty,
             )
@@ -130,7 +126,6 @@ async def _replace_lines(
 ) -> int | None:
     merged = _merge_lines(lines)
     material_ids = sorted({line.purchase_material_id for line in merged})
-    project_ids = sorted({line.project_subitem_id for line in merged})
     materials = (
         list(
             (
@@ -144,23 +139,9 @@ async def _replace_lines(
         if material_ids
         else []
     )
-    projects = (
-        list(
-            (
-                await session.scalars(
-                    select(ProjectSubitem).where(ProjectSubitem.id.in_(project_ids))
-                )
-            ).all()
-        )
-        if project_ids
-        else []
-    )
     material_map = {item.id: item for item in materials}
-    project_map = {item.id: item for item in projects}
     if len(material_map) != len(material_ids):
         raise not_found("申购物资")
-    if len(project_map) != len(project_ids):
-        raise not_found("项目子项")
     responsible_names = {item.purchase_responsible for item in materials}
     if len(responsible_names) > 1:
         raise AppError(
@@ -171,9 +152,8 @@ async def _replace_lines(
         )
     for line in merged:
         material = material_map[line.purchase_material_id]
-        project = project_map[line.project_subitem_id]
-        if not material.enabled or not project.enabled:
-            raise AppError("DISABLED_REFERENCE", "申购物资或项目子项已停用")
+        if not material.enabled:
+            raise AppError("DISABLED_REFERENCE", "申购物资已停用")
         validate_quantity_precision(line.requested_qty, material.unit.decimal_places)
 
     for old_line in list(request.lines):
@@ -189,10 +169,7 @@ async def _replace_lines(
             requested_qty=line.requested_qty,
             received_qty=ZERO,
             usage=line.usage,
-            project_subitem_id=line.project_subitem_id,
-            project_code_snapshot=project_map[line.project_subitem_id].project_code,
-            subitem_no_snapshot=project_map[line.project_subitem_id].subitem_no,
-            subitem_name_snapshot=project_map[line.project_subitem_id].subitem_name,
+            subitem_no=line.subitem_no,
             created_by=user_id,
             updated_by=user_id,
         )
@@ -501,10 +478,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         salesperson=request.salesperson,
         remark=request.remark,
         usage=line.usage,
-        project_subitem_name=(
-            f"{line.project_code_snapshot} / {line.subitem_no_snapshot} "
-            f"{line.subitem_name_snapshot}"
-        ),
+        subitem_no=line.subitem_no,
         stock_material_id=material.stock_material_id,
         submitted_at=utc_aware(request.submitted_at),
         created_at=utc_aware(request.created_at),
@@ -525,8 +499,6 @@ async def move_plan_to_record(
         raise not_found("申购计划")
     if not material.material_code:
         raise AppError("MATERIAL_CODE_REQUIRED", "物资编码完成后才能转入申购记录", status_code=409)
-    if material.project_subitem is None or not material.project_subitem.enabled:
-        raise AppError("PROJECT_SUBITEM_REQUIRED", "请先为申购计划选择有效的项目子项")
     existing = await session.scalar(
         select(PurchaseRequestLine)
         .where(PurchaseRequestLine.purchase_material_id == material.id)
@@ -535,7 +507,6 @@ async def move_plan_to_record(
     )
     if existing is not None:
         raise AppError("PLAN_ALREADY_MOVED", "该申购计划已转入申购记录", status_code=409)
-    project = material.project_subitem
     request = PurchaseRequest(
         request_no=data.request_no,
         status=PurchaseRequestStatus.PROCESSING,
@@ -557,11 +528,7 @@ async def move_plan_to_record(
         requested_qty=material.planned_qty,
         received_qty=ZERO,
         usage=material.usage,
-        project_subitem_id=project.id,
-        project_subitem=project,
-        project_code_snapshot=project.project_code,
-        subitem_no_snapshot=project.subitem_no,
-        subitem_name_snapshot=project.subitem_name,
+        subitem_no=material.subitem_no,
         created_by=user_id,
         updated_by=user_id,
     )
