@@ -19,15 +19,15 @@ env:
 
 jobs:
   build:
-    name: Build ${{ matrix.image }}
+    name: Build materials-manager:${{ matrix.component }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: materials-manager-backend
+          - component: backend
             context: ./backend
-          - image: materials-manager-frontend
+          - component: frontend
             context: ./frontend
 
     steps:
@@ -48,11 +48,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.CCR_NAMESPACE }}/${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ env.CCR_NAMESPACE }}/materials-manager
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=sha-
-            type=ref,event=tag
+            type=raw,value=${{ matrix.component }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=${{ matrix.component }}-sha-
+            type=ref,event=tag,prefix=${{ matrix.component }}-
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -62,7 +62,7 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
           provenance: false
           sbom: false

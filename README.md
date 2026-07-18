@@ -27,19 +27,19 @@ docker compose up -d
 
 ## 腾讯云 CCR 镜像
 
-GitHub Actions 在推送 `main`、推送 `v*` 标签或手工触发时构建并推送：
+GitHub Actions 在推送 `main`、推送 `v*` 标签或手工触发时，将两个镜像推送到同一个 CCR 仓库：
 
-- `ccr.ccs.tencentyun.com/yangrucheng/materials-manager-backend`
-- `ccr.ccs.tencentyun.com/yangrucheng/materials-manager-frontend`
+- `ccr.ccs.tencentyun.com/yangrucheng/materials-manager:backend`
+- `ccr.ccs.tencentyun.com/yangrucheng/materials-manager:frontend`
 
 仓库需要配置以下 GitHub Actions Secrets：
 
 - `CCR_USERNAME`：腾讯云 CCR 登录用户名
 - `CCR_PASSWORD`：腾讯云 CCR 登录密码
 
-当前仓库已配置这两个 Secret。腾讯云命名空间 `yangrucheng` 下需要允许创建或预先创建上述两个镜像仓库。
+当前仓库已配置这两个 Secret。腾讯云命名空间 `yangrucheng` 下需要允许创建或预先创建 `materials-manager` 镜像仓库。
 
-每次构建会推送 `latest`（仅 `main`）、`sha-<commit>` 和对应的 `v*` 标签。
+`main` 分支更新固定标签 `backend`、`frontend`；每次构建还会推送 `backend-sha-<commit>`、`frontend-sha-<commit>`，版本标签则生成 `backend-v*`、`frontend-v*`。
 
 ## 本地开发与验证
 
