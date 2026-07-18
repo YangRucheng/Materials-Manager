@@ -13,6 +13,7 @@ from app.schemas import (
     OperationCreate,
     OperationUpdate,
     Page,
+    ReplenishmentDraftCreate,
     ReplenishmentDraftRead,
     ReverseOperationRequest,
     StockOperationRead,
@@ -198,9 +199,14 @@ async def reverse_operation(
     response_model=ReplenishmentDraftRead,
 )
 async def replenish(
-    material_id: int, session: DbSession, user: WarehouseWriter
+    material_id: int,
+    data: ReplenishmentDraftCreate,
+    session: DbSession,
+    user: WarehouseWriter,
 ) -> ReplenishmentDraftRead:
-    return await replenishment_service.create_replenishment_draft(session, material_id, user.id)
+    return await replenishment_service.create_replenishment_draft(
+        session, material_id, data, user.id
+    )
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummaryRead)

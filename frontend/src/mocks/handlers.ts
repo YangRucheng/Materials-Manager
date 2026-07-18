@@ -5,6 +5,7 @@ import type {
   PurchaseMaterialWrite,
   PurchaseRequestStatus,
   PurchaseRequestWrite,
+  ReplenishmentDraftWrite,
   ReplenishmentPolicy,
   StockMaterialWrite,
   StockOperation,
@@ -480,40 +481,45 @@ export const handlers = [
     op.reversal_of_id = original.id
     return HttpResponse.json(op, { status: 201 })
   }),
-  http.post(`${api}/inventory/low-stock/:id/create-replenishment-draft`, ({ params }) => {
-    const stock = stockMaterials.find((x) => x.id === Number(params.id))
-    if (!stock) return error(404, 'NOT_FOUND', '物资不存在')
-    const suggested = inventoryBalance(stock).suggested_purchase_qty
-    const previousPlans = purchaseMaterials.filter(
-      (item) => item.stock_material_id === stock.id && item.material_code,
-    )
-    const previous = previousPlans[previousPlans.length - 1]
-    const purchase = {
-      id: nextIds.purchase++,
-      material_code: previous?.material_code,
-      name: stock.name,
-      model_spec: stock.model_spec,
-      unit_id: stock.unit_id,
-      unit_name: stock.unit_name,
-      actual_demand_person: '仓库管理员',
-      purchase_responsible: '仓库管理员',
-      planned_qty: suggested,
-      usage: '低库存补库',
-      moved_to_record: false,
-      remark: [stock.remark, `补库计划：建议申购 ${suggested} ${stock.unit_name}`]
-        .filter(Boolean)
-        .join('；'),
-      stock_material_id: stock.id,
-      stock_material_name: stock.name,
-      enabled: true,
-      images: [...stock.images],
-      created_at: now(),
-      updated_at: now(),
-      version: 1,
-    }
-    purchaseMaterials.unshift(purchase)
-    return HttpResponse.json({ next: 'purchase_material', resource_id: purchase.id })
-  }),
+  http.post(
+    `${api}/inventory/low-stock/:id/create-replenishment-draft`,
+    async ({ params, request }) => {
+      const stock = stockMaterials.find((x) => x.id === Number(params.id))
+      if (!stock) return error(404, 'NOT_FOUND', '物资不存在')
+      const body = (await request.json()) as ReplenishmentDraftWrite
+      const suggested = inventoryBalance(stock).suggested_purchase_qty
+      const previousPlans = purchaseMaterials.filter(
+        (item) => item.stock_material_id === stock.id && item.material_code,
+      )
+      const previous = previousPlans[previousPlans.length - 1]
+      const quantityNote = `补库计划：建议申购 ${suggested} ${stock.unit_name}${
+        body.planned_qty === suggested ? '' : `，确认计划 ${body.planned_qty} ${stock.unit_name}`
+      }`
+      const purchase = {
+        id: nextIds.purchase++,
+        material_code: previous?.material_code,
+        name: stock.name,
+        model_spec: stock.model_spec,
+        unit_id: stock.unit_id,
+        unit_name: stock.unit_name,
+        actual_demand_person: body.actual_demand_person,
+        purchase_responsible: body.purchase_responsible,
+        planned_qty: body.planned_qty,
+        usage: '低库存补库',
+        moved_to_record: false,
+        remark: [stock.remark, quantityNote].filter(Boolean).join('；'),
+        stock_material_id: stock.id,
+        stock_material_name: stock.name,
+        enabled: true,
+        images: [...stock.images],
+        created_at: now(),
+        updated_at: now(),
+        version: 1,
+      }
+      purchaseMaterials.unshift(purchase)
+      return HttpResponse.json({ next: 'purchase_material', resource_id: purchase.id })
+    },
+  ),
 
   http.get(`${api}/purchase-materials`, ({ request }) => {
     const url = new URL(request.url)
@@ -555,7 +561,8 @@ export const handlers = [
       subitem_no: body.subitem_no,
       remark: body.remark,
       stock_material_id: body.stock_material_id,
-      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)?.name,
+      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)
+        ?.name,
       moved_to_record: false,
       enabled: true,
       images: [],
@@ -573,11 +580,23 @@ export const handlers = [
     const selectedUnit = unit(body.unit_id)
     Object.assign(item, body, {
       unit_name: selectedUnit?.name || item.unit_name,
-      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)?.name,
+      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)
+        ?.name,
       version: item.version + 1,
       updated_at: now(),
     })
     return HttpResponse.json(item)
+  }),
+  http.delete(`${api}/purchase-materials/:id`, ({ params, request }) => {
+    const index = purchaseMaterials.findIndex((x) => x.id === Number(params.id))
+    if (index < 0) return error(404, 'NOT_FOUND', '申购物资不存在')
+    const item = purchaseMaterials[index]
+    const version = Number(new URL(request.url).searchParams.get('version'))
+    if (version !== item.version) return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改')
+    if (item.moved_to_record)
+      return error(409, 'PURCHASE_PLAN_IN_USE', '已转入申购记录的计划不能删除')
+    purchaseMaterials.splice(index, 1)
+    return new HttpResponse(null, { status: 204 })
   }),
   http.post(`${api}/purchase-materials/:id/link-stock-material`, async ({ params, request }) => {
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))

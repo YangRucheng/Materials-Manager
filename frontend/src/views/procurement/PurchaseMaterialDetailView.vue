@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
 import type {
   FileObject,
   PurchaseMaterial,
@@ -21,6 +21,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
 const dictionaries = useDictionaryStore()
 const material = ref<PurchaseMaterial | null>(null)
 const loading = ref(true)
@@ -29,6 +30,7 @@ const selectedStock = ref<number | null>(null)
 const stockPreview = ref<StockMaterial | undefined>()
 const showEdit = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
 const showMove = ref(false)
 const moving = ref(false)
 const moveForm = reactive({ request_no: defaultPurchaseRequestNo(), salesperson: '', remark: '' })
@@ -96,7 +98,7 @@ async function save() {
     !form.planned_qty ||
     !form.usage.trim()
   ) {
-    message.error('请完整填写物资、数量、用途和申购负责人')
+    message.error('请完整填写物资、数量、用途、实际需求人和申购负责人')
     return
   }
   saving.value = true
@@ -113,6 +115,34 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+async function deletePlan() {
+  if (!material.value) return
+  deleting.value = true
+  try {
+    await procurementApi.deleteMaterial(material.value.id, material.value.version)
+    message.success('申购计划已删除')
+    showEdit.value = false
+    await router.push('/procurement/materials')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '删除失败')
+  } finally {
+    deleting.value = false
+  }
+}
+function confirmDelete() {
+  if (!material.value) return
+  if (material.value.moved_to_record) {
+    message.warning('已转入申购记录的计划不能删除')
+    return
+  }
+  dialog.warning({
+    title: '删除申购计划',
+    content: `确认删除“${material.value.name}”的这条申购计划吗？删除后不可恢复。`,
+    positiveText: '确认删除',
+    negativeText: '取消',
+    onPositiveClick: deletePlan,
+  })
 }
 async function moveToRecord() {
   if (!material.value || !moveForm.request_no.trim()) {
@@ -147,7 +177,12 @@ onMounted(() => {
       <div>
         <n-button text @click="router.back()">← 返回申购计划</n-button>
         <h1 class="page-title">{{ material.name }}</h1>
-        <p class="page-subtitle">{{ material.material_code || '暂无物料编码' }}</p>
+        <n-space class="page-subtitle" size="small">
+          <span>{{ material.material_code || '暂无物料编码' }}</span>
+          <n-tag size="small" :type="material.moved_to_record ? 'success' : 'warning'">
+            {{ material.moved_to_record ? '已转入申购记录' : '申购计划中' }}
+          </n-tag>
+        </n-space>
       </div>
       <n-space v-if="auth.can('purchase:write')"
         ><n-button @click="openEdit">编辑计划</n-button
@@ -161,53 +196,67 @@ onMounted(() => {
         ></n-space
       >
     </div>
-    <n-card title="物资信息"
-      ><n-descriptions :column="3"
-        ><n-descriptions-item label="物料编码">{{
-          material.material_code || '—'
-        }}</n-descriptions-item
-        ><n-descriptions-item label="名称">{{ material.name }}</n-descriptions-item
-        ><n-descriptions-item label="型号规格">{{ material.model_spec }}</n-descriptions-item
-        ><n-descriptions-item label="单位">{{ material.unit_name }}</n-descriptions-item
-        ><n-descriptions-item label="实际需求人">{{
-          material.actual_demand_person
-        }}</n-descriptions-item
-        ><n-descriptions-item label="申购负责人">{{
-          material.purchase_responsible
-        }}</n-descriptions-item
-        ><n-descriptions-item label="计划数量"
-          >{{ material.planned_qty }} {{ material.unit_name }}</n-descriptions-item
-        ><n-descriptions-item label="用途">{{ material.usage }}</n-descriptions-item
-        ><n-descriptions-item label="子项号">{{
-          material.subitem_no || '—'
-        }}</n-descriptions-item
-        ><n-descriptions-item label="关联二级库">{{
-          material.stock_material_name || '—'
-        }}</n-descriptions-item
-        ><n-descriptions-item label="更新时间">{{
-          formatShanghaiTime(material.updated_at)
-        }}</n-descriptions-item
-        ><n-descriptions-item label="备注" :span="2">{{
-          material.remark || '—'
-        }}</n-descriptions-item></n-descriptions
-      ><n-divider>图片</n-divider
-      ><n-space v-if="material.images.length"
-        ><n-image
-          v-for="img in material.images"
-          :key="img.id"
-          :src="img.url"
-          width="120"
-          height="120"
-          object-fit="cover" /></n-space
-      ><n-empty v-else description="暂无图片"
-    /></n-card>
+    <div class="detail-grid">
+      <n-card title="物资信息">
+        <n-descriptions :column="2" label-placement="left">
+          <n-descriptions-item label="物料编码">{{
+            material.material_code || '—'
+          }}</n-descriptions-item>
+          <n-descriptions-item label="计量单位">{{ material.unit_name }}</n-descriptions-item>
+          <n-descriptions-item label="型号规格" :span="2">{{
+            material.model_spec
+          }}</n-descriptions-item>
+          <n-descriptions-item label="关联二级库">{{
+            material.stock_material_name || '—'
+          }}</n-descriptions-item>
+          <n-descriptions-item label="子项号">{{ material.subitem_no || '—' }}</n-descriptions-item>
+          <n-descriptions-item label="用途" :span="2">{{ material.usage }}</n-descriptions-item>
+          <n-descriptions-item label="备注" :span="2">{{
+            material.remark || '—'
+          }}</n-descriptions-item>
+        </n-descriptions>
+        <n-divider>物资图片</n-divider>
+        <div v-if="material.images.length" class="image-grid">
+          <n-image
+            v-for="img in material.images"
+            :key="img.id"
+            :src="img.url"
+            width="128"
+            height="128"
+            object-fit="cover"
+          />
+        </div>
+        <n-empty v-else description="暂无图片" size="small" />
+      </n-card>
+      <n-card title="计划概览" class="plan-summary-card">
+        <div class="plan-quantity">
+          <span class="muted">计划数量</span>
+          <strong>{{ material.planned_qty }}</strong>
+          <span>{{ material.unit_name }}</span>
+        </div>
+        <div class="plan-meta">
+          <div>
+            <span>实际需求人</span>
+            <strong>{{ material.actual_demand_person }}</strong>
+          </div>
+          <div>
+            <span>申购负责人</span>
+            <strong>{{ material.purchase_responsible }}</strong>
+          </div>
+          <div>
+            <span>更新时间</span>
+            <strong>{{ formatShanghaiTime(material.updated_at) }}</strong>
+          </div>
+        </div>
+      </n-card>
+    </div>
     <n-modal v-model:show="showLink" preset="card" title="关联已有二级库物资" style="width: 600px"
       ><n-alert type="info"
         >同一二级库物资可以关联多条申购计划，请确认名称、规格和单位一致。</n-alert
       ><br /><MaterialSelector
         v-model:value="selectedStock"
         @select="stockPreview = $event"
-      /><n-descriptions v-if="stockPreview" bordered :column="2" style="margin-top: 16px"
+      /><n-descriptions v-if="stockPreview" :column="2" style="margin-top: 16px"
         ><n-descriptions-item label="名称">{{ stockPreview.name }}</n-descriptions-item
         ><n-descriptions-item label="规格">{{ stockPreview.model_spec }}</n-descriptions-item
         ><n-descriptions-item label="单位">{{ stockPreview.unit_name }}</n-descriptions-item
@@ -273,12 +322,23 @@ onMounted(() => {
         /></n-form-item>
         <n-form-item label="图片"><ImageUploader v-model:files="images" /></n-form-item>
       </n-form>
-      <template #footer
-        ><n-space justify="end"
-          ><n-button @click="showEdit = false">取消</n-button
-          ><n-button type="primary" :loading="saving" @click="save">保存</n-button></n-space
-        ></template
-      >
+      <template #footer>
+        <div class="edit-footer">
+          <n-button
+            type="error"
+            ghost
+            :loading="deleting"
+            :disabled="material.moved_to_record"
+            @click="confirmDelete"
+          >
+            删除该计划
+          </n-button>
+          <n-space>
+            <n-button @click="showEdit = false">取消</n-button>
+            <n-button type="primary" :loading="saving" @click="save">保存</n-button>
+          </n-space>
+        </div>
+      </template>
     </n-modal>
     <n-modal
       v-model:show="showMove"
@@ -312,3 +372,49 @@ onMounted(() => {
     </n-modal>
   </div>
 </template>
+
+<style scoped>
+.plan-summary-card {
+  background: linear-gradient(145deg, #f3faf6 0%, #ffffff 58%);
+}
+.plan-quantity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0 24px;
+}
+.plan-quantity strong {
+  color: #18a058;
+  font-size: 36px;
+  line-height: 1;
+}
+.plan-meta {
+  display: grid;
+  gap: 18px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+.plan-meta > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.plan-meta span {
+  color: #6b7280;
+}
+.plan-meta strong {
+  text-align: right;
+}
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.edit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+</style>
