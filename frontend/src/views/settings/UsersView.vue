@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { NButton, NTag, useDialog, useMessage, type DataTableColumns } from 'naive-ui'
 import type { Role, User } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
 import { roleLabels } from '@/types/navigation'
 
 const message = useMessage()
+const dialog = useDialog()
 const items = ref<User[]>([])
 const loading = ref(false)
 const show = ref(false)
@@ -35,7 +36,15 @@ const columns: DataTableColumns<User> = [
   {
     title: '操作',
     key: 'action',
-    render: (r) => h(NButton, { size: 'small', onClick: () => open(r) }, { default: () => '编辑' }),
+    render: (r) =>
+      h('div', { style: 'display:flex;gap:8px' }, [
+        h(NButton, { size: 'small', onClick: () => open(r) }, { default: () => '编辑' }),
+        h(
+          NButton,
+          { size: 'small', type: 'error', secondary: true, onClick: () => remove(r) },
+          { default: () => '删除' },
+        ),
+      ]),
   },
 ]
 async function load() {
@@ -76,14 +85,42 @@ async function save() {
     return
   }
   try {
-    if (editing.value) await dictionaryApi.updateUser(editing.value.id, form)
-    else await dictionaryApi.createUser(form)
+    const payload = {
+      username: form.username,
+      display_name: form.display_name,
+      role: form.role,
+      enabled: form.enabled,
+      ...(form.password ? { password: form.password } : {}),
+    }
+    if (editing.value) {
+      await dictionaryApi.updateUser(editing.value.id, { ...payload, version: form.version })
+    } else {
+      await dictionaryApi.createUser({ ...payload, password: form.password })
+    }
     message.success('保存成功')
     show.value = false
     await load()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '保存失败')
   }
+}
+function remove(row: User) {
+  dialog.warning({
+    title: '删除用户',
+    content: `确认删除用户“${row.username}”吗？已有操作记录或业务数据关联的用户不能删除。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await dictionaryApi.deleteUser(row.id)
+        message.success('用户已删除')
+        await load()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+        return false
+      }
+    },
+  })
 }
 onMounted(load)
 </script>
@@ -109,8 +146,7 @@ onMounted(load)
       :title="editing ? '编辑用户' : '新建用户'"
       style="width: 520px"
       ><n-form label-placement="top"
-        ><n-form-item label="用户名" required
-          ><n-input v-model:value="form.username" :disabled="Boolean(editing)" /></n-form-item
+        ><n-form-item label="用户名" required><n-input v-model:value="form.username" /></n-form-item
         ><n-form-item label="显示名称" required
           ><n-input v-model:value="form.display_name" /></n-form-item
         ><n-form-item label="角色"
