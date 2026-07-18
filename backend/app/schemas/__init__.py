@@ -82,8 +82,7 @@ class UserCreate(RequestModel):
 
 class UserUpdate(RequestModel):
     username: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)]
-        | None
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)] | None
     ) = None
     display_name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -502,6 +501,16 @@ class PreparedInboundRead(ReadModel):
     unit_name: str
     remaining_qty: Decimal
     stock_material_id: int | None = None
+
+
+class ReplenishmentDraftCreate(RequestModel):
+    planned_qty: PositiveQuantity
+    actual_demand_person: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    purchase_responsible: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
 
 
 class ReplenishmentDraftRead(ReadModel):

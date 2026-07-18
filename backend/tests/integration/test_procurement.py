@@ -124,6 +124,30 @@ async def test_plan_allows_optional_subitem_and_manual_stock_link(client: AsyncC
 
 
 @pytest.mark.asyncio
+async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    deletable = await create_purchase_plan(client, headers, "待删除计划")
+    deleted = await client.delete(
+        f"/api/v1/purchase-materials/{deletable['id']}",
+        headers=headers,
+        params={"version": deletable["version"]},
+    )
+    assert deleted.status_code == 204, deleted.text
+    missing = await client.get(f"/api/v1/purchase-materials/{deletable['id']}", headers=headers)
+    assert missing.status_code == 404
+
+    moved = await create_purchase_plan(client, headers, "已转入计划", code="DQ-MOVED")
+    await move_to_record(client, headers, int(moved["id"]))
+    rejected = await client.delete(
+        f"/api/v1/purchase-materials/{moved['id']}",
+        headers=headers,
+        params={"version": moved["version"]},
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["code"] == "PURCHASE_PLAN_IN_USE"
+
+
+@pytest.mark.asyncio
 async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
     first = await create_purchase_plan(
@@ -135,9 +159,7 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
     first_record = await move_to_record(client, headers, int(first["id"]), "正式申购-A")
     await move_to_record(client, headers, int(second["id"]), "正式申购-B")
 
-    remaining_plans = await client.get(
-        "/api/v1/purchase-materials?moved=false", headers=headers
-    )
+    remaining_plans = await client.get("/api/v1/purchase-materials?moved=false", headers=headers)
     assert remaining_plans.json()["total"] == 0
 
     records = await client.get("/api/v1/purchase-records", headers=headers)
@@ -205,9 +227,7 @@ async def test_record_receipts_update_flat_arrival_progress(client: AsyncClient)
         json=receipt_payload("receipt-1", "2"),
     )
     assert partial.status_code == 201, partial.text
-    progress = await client.get(
-        f"/api/v1/purchase-records/{record['line_id']}", headers=purchase
-    )
+    progress = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=purchase)
     assert progress.json()["received_qty"] == "2"
     assert progress.json()["remaining_qty"] == "3"
     assert progress.json()["status"] == "PARTIALLY_RECEIVED"
@@ -218,9 +238,7 @@ async def test_record_receipts_update_flat_arrival_progress(client: AsyncClient)
         json=receipt_payload("receipt-2", "3"),
     )
     assert full.status_code == 201, full.text
-    progress = await client.get(
-        f"/api/v1/purchase-records/{record['line_id']}", headers=purchase
-    )
+    progress = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=purchase)
     assert progress.json()["received_qty"] == "5"
     assert progress.json()["remaining_qty"] == "0"
     assert progress.json()["status"] == "COMPLETED"

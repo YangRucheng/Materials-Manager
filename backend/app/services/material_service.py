@@ -261,6 +261,25 @@ async def update_purchase_material(
     return item
 
 
+async def delete_purchase_material(
+    session: AsyncSession, item: PurchaseMaterial, version: int
+) -> None:
+    validate_version(version, item.version)
+    referenced = await session.scalar(
+        select(PurchaseRequestLine.id)
+        .where(PurchaseRequestLine.purchase_material_id == item.id)
+        .limit(1)
+    )
+    if referenced is not None:
+        raise AppError(
+            "PURCHASE_PLAN_IN_USE",
+            "已转入申购记录的计划不能删除",
+            status_code=409,
+        )
+    await session.delete(item)
+    await session.flush()
+
+
 async def search_stock_materials(
     session: AsyncSession,
     *,

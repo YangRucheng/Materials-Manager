@@ -104,6 +104,11 @@ export interface InventoryBalance {
   suggested_purchase_qty: string
   updated_at: string
 }
+export interface ReplenishmentDraftWrite {
+  planned_qty: string
+  actual_demand_person: string
+  purchase_responsible: string
+}
 export interface StockOperationLine {
   id?: number
   stock_material_id: number

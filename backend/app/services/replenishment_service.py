@@ -16,6 +16,7 @@ from app.models import (
 )
 from app.schemas import (
     PurchaseMaterialCreate,
+    ReplenishmentDraftCreate,
     ReplenishmentDraftRead,
     ReplenishmentPolicyWrite,
 )
@@ -57,7 +58,10 @@ async def set_policy(
 
 
 async def create_replenishment_draft(
-    session: AsyncSession, stock_material_id: int, user_id: int
+    session: AsyncSession,
+    stock_material_id: int,
+    data: ReplenishmentDraftCreate,
+    user_id: int,
 ) -> ReplenishmentDraftRead:
     stock = await get_stock_material(session, stock_material_id)
     if stock.balance is None:
@@ -83,6 +87,7 @@ async def create_replenishment_draft(
             "现有在途数量已覆盖目标库存，无需重复发起",
             status_code=409,
         )
+    validate_quantity_precision(data.planned_qty, stock.unit.decimal_places)
 
     previous_code = await session.scalar(
         select(PurchaseMaterial.material_code)
@@ -93,11 +98,10 @@ async def create_replenishment_draft(
         .order_by(PurchaseMaterial.id.desc())
         .limit(1)
     )
-    note_parts = [
-        part
-        for part in [stock.remark, f"补库计划：建议申购 {suggested} {stock.unit.name}"]
-        if part
-    ]
+    quantity_note = f"补库计划：建议申购 {suggested} {stock.unit.name}"
+    if data.planned_qty != suggested:
+        quantity_note += f"，确认计划 {data.planned_qty} {stock.unit.name}"
+    note_parts = [part for part in [stock.remark, quantity_note] if part]
     purchase = await create_purchase_material(
         session,
         PurchaseMaterialCreate(
@@ -105,7 +109,9 @@ async def create_replenishment_draft(
             name=stock.name,
             model_spec=stock.model_spec,
             unit_id=stock.unit_id,
-            planned_qty=suggested,
+            actual_demand_person=data.actual_demand_person,
+            purchase_responsible=data.purchase_responsible,
+            planned_qty=data.planned_qty,
             usage="低库存补库",
             remark="；".join(note_parts),
             stock_material_id=stock.id,
