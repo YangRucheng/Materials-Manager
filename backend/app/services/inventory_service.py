@@ -526,9 +526,6 @@ async def update_operation(
         exclude_operation_id=item.id,
         additional_request_line_ids=old_request_line_ids,
     )
-    for old_line in list(item.lines):
-        await session.delete(old_line)
-    await session.flush()
     item.operation_type = data.operation_type
     item.occurred_at = utc_naive(data.occurred_at)
     item.source_type = data.source_type
@@ -537,21 +534,27 @@ async def update_operation(
     item.subitem_no = data.subitem_no
     item.updated_by = user_id
     item.version += 1
-    item.lines = [
-        StockOperationLine(
-            stock_material_id=line.stock_material_id,
-            quantity=line.quantity,
-            before_qty=ZERO,
-            after_qty=ZERO,
-            material_name_snapshot=materials[line.stock_material_id].name,
-            model_spec_snapshot=materials[line.stock_material_id].model_spec,
-            unit_name_snapshot=materials[line.stock_material_id].unit.name,
-            purchase_request_line_id=line.purchase_request_line_id,
-            created_by=user_id,
-            updated_by=user_id,
-        )
-        for line in data.lines
-    ]
+    existing_lines = {line.stock_material_id: line for line in item.lines}
+    updated_lines: list[StockOperationLine] = []
+    for line in data.lines:
+        material = materials[line.stock_material_id]
+        stored = existing_lines.get(line.stock_material_id)
+        if stored is None:
+            stored = StockOperationLine(
+                stock_material_id=line.stock_material_id,
+                before_qty=ZERO,
+                after_qty=ZERO,
+                created_by=user_id,
+            )
+        stored.quantity = line.quantity
+        stored.material_name_snapshot = material.name
+        stored.model_spec_snapshot = material.model_spec
+        stored.unit_name_snapshot = material.unit.name
+        stored.purchase_request_line_id = line.purchase_request_line_id
+        stored.updated_by = user_id
+        stored.version = stored.version + 1 if stored.id is not None else 1
+        updated_lines.append(stored)
+    item.lines = updated_lines
     await session.flush()
     await replay_materials(session, old_material_ids | set(materials))
     await recompute_receipts(session, old_request_line_ids | new_request_line_ids, user_id)
