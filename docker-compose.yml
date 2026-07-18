@@ -2,9 +2,7 @@ name: materials-manager
 
 services:
   backend:
-    image: ${DOCKER_IMAGE:-docker.io/yangrucheng/materials-manager}:${BACKEND_IMAGE_TAG:-backend}
-    build:
-      context: ./backend
+    image: docker.io/yangrucheng/materials-manager:backend
     restart: unless-stopped
     environment:
       APP_ENVIRONMENT: production
@@ -12,12 +10,6 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be configured}
       APP_ACCESS_TOKEN_MINUTES: ${APP_ACCESS_TOKEN_MINUTES:-480}
       APP_UPLOAD_DIR: /app/data/uploads
-    command:
-      [
-        "sh",
-        "-c",
-        "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000",
-      ]
     volumes:
       - uploads:/app/data/uploads
     ports:
@@ -34,14 +26,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - 1panel-network
 
   frontend:
-    image: ${DOCKER_IMAGE:-docker.io/yangrucheng/materials-manager}:${FRONTEND_IMAGE_TAG:-frontend}
-    build:
-      context: ./frontend
-      args:
-        VITE_USE_MOCK: "false"
-        VITE_API_BASE_URL: /api/v1
+    image: docker.io/yangrucheng/materials-manager:frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8080}:80"
@@ -53,6 +42,12 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    networks:
+      - 1panel-network
 
 volumes:
   uploads:
+
+networks:
+  1panel-network:
+    external: true
