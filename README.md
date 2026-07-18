@@ -1,47 +1,216 @@
-# Materials Manager
+# 电气车间备件管理系统
 
-电气车间二级库和申购管理系统。后端使用 FastAPI + MySQL，前端使用 Vue 3 + Naive UI。
+用于管理电气车间二级库库存和物资申购流程，不记录物资价格或成本。
 
-## Docker 部署
+## 系统功能
 
-项目不部署 MySQL 容器，必须连接已有的 MySQL 8.0 服务。
+- 二级库：物资档案、图片附件、入库、出库、库存余额和流水查询。
+- 库存预警：设置最低库存和目标库存，低库存时生成申购计划。
+- 申购物资：登记已有编码或待申请编码的新物资，查询未编码物资。
+- 请购管理：编制请购单、提交处理、到货入库以及关闭流程。
+- 流水修正：库存允许为负数，已产生的库存流水允许修改并自动重算后续库存。
+- 简单角色：超级管理员、仓库管理员、申购管理员和只读角色。
 
-1. 在 MySQL 中创建空数据库，并将 [database/init.sql](database/init.sql) 导入该数据库。
-2. 确认 MySQL 服务已加入外部 Docker 网络 `1panel-network`。
-3. 复制 `.env.example` 为 `.env`，修改 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。连接串中的主机名应填写 `1panel-network` 内可访问的 MySQL 容器名。
-4. 拉取并启动服务：
+## 部署组成
+
+| 组件   | 说明                                                                                               |
+| ------ | -------------------------------------------------------------------------------------------------- |
+| 前端   | Vue 3 静态站点；镜像为 `docker.io/yangrucheng/materials-manager:frontend`，并将 `/api/` 转发到后端 |
+| 后端   | FastAPI 服务；镜像为 `docker.io/yangrucheng/materials-manager:backend`                             |
+| 数据库 | 已有的 MySQL 8.0 或更高版本，本项目不会启动 MySQL 容器                                             |
+| 图片   | 保存在 Docker 卷 `materials-manager_uploads` 中                                                    |
+
+仓库中的 `docker-compose.yml` 直接使用 Docker Hub 已构建镜像，不需要在部署服务器上编译前后端。
+
+## 部署前准备
+
+- Docker Engine 和 Docker Compose v2。
+- 一个可用的 MySQL 8.0+ 数据库及应用账号。
+- Docker 外部网络 `1panel-network`。1Panel 通常已创建该网络。
+- 当前仓库中的 `docker-compose.yml`、`.env.example` 和 `database/init.sql`。
+
+获取部署文件：
 
 ```bash
-docker login docker.io
+git clone https://github.com/YangRucheng/Materials-Manager.git
+cd Materials-Manager
+```
+
+### 1. 准备 Docker 网络
+
+确认网络存在：
+
+```bash
+docker network inspect 1panel-network
+```
+
+如果不是通过 1Panel 部署，可手工创建：
+
+```bash
+docker network create 1panel-network
+```
+
+MySQL 运行在 Docker 中时，也要加入该网络：
+
+```bash
+docker network connect 1panel-network <MySQL容器名>
+```
+
+### 2. 初始化数据库
+
+先创建空数据库和应用账号，再将初始化脚本导入该数据库：
+
+```bash
+mysql -h <数据库地址> -P 3306 -u <数据库用户> -p <数据库名> < database/init.sql
+```
+
+也可以直接通过 1Panel 的数据库导入功能上传 `database/init.sql`。
+
+初始化脚本会创建表、基础计量单位和初始登录账号，但不会创建数据库或 MySQL 账号。后端启动时不会自动建表、执行迁移或写入初始数据，因此必须在首次启动前完成导入。
+
+`database/init.sql` 仅用于初始化空数据库，不要将它作为已有生产数据库的升级脚本重复导入。
+
+### 3. 配置运行参数
+
+复制环境变量示例：
+
+```bash
+cp .env.example .env
+```
+
+至少修改以下两项：
+
+```dotenv
+APP_DATABASE_URL=mysql+asyncmy://用户名:密码@MySQL容器名:3306/数据库名?charset=utf8mb4
+APP_JWT_SECRET=不少于32个随机字符
+```
+
+可使用以下命令生成 JWT 密钥：
+
+```bash
+openssl rand -hex 32
+```
+
+全部配置项：
+
+| 配置项                     | 必填 | 默认值 | 说明                                                        |
+| -------------------------- | ---- | ------ | ----------------------------------------------------------- |
+| `APP_DATABASE_URL`         | 是   | 无     | 后端数据库连接串；容器内主机名应使用 MySQL 容器名或内网地址 |
+| `APP_JWT_SECRET`           | 是   | 无     | 登录令牌签名密钥，至少 32 个随机字符                        |
+| `APP_ACCESS_TOKEN_MINUTES` | 否   | `480`  | 登录令牌有效期，单位为分钟                                  |
+| `FRONTEND_PORT`            | 否   | `8080` | 前端映射到宿主机的端口                                      |
+| `BACKEND_PORT`             | 否   | `8000` | 后端映射到宿主机的端口                                      |
+
+如果数据库密码包含 `@`、`:`、`/`、`#` 等字符，必须先进行 URL 编码。
+
+### 4. 启动服务
+
+```bash
 docker compose pull
 docker compose up -d
+docker compose ps
+```
+
+正常情况下，`backend` 和 `frontend` 最终都应显示为 `healthy`。
+
+### 5. 验证部署
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+正常响应：
+
+```json
+{ "status": "ok", "database": "ok" }
 ```
 
 默认访问地址：
 
-- 前端：`http://localhost:8080`
-- 后端接口文档：`http://localhost:8000/api/docs`
+- 系统页面：`http://服务器地址:8080`
+- 接口文档：`http://服务器地址:8000/api/docs`
 
-Compose 会直接使用 1Panel 已有的外部网络 `1panel-network`，不会创建或管理 MySQL 容器。远程 MySQL 也可填写其内网域名或 IP。密码中的 `@`、`:`、`/` 等字符必须进行 URL 编码。
+如果修改了 `FRONTEND_PORT` 或 `BACKEND_PORT`，请使用实际端口。
 
-后端容器不会自动建表、迁移或写入种子数据，数据库初始化与业务服务启动完全分离。初始化 SQL 会创建四个账号：`admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。首次登录后请立即修改密码，并在生产使用前修改 JWT 密钥。上传图片保存在 Compose 的 `uploads` 数据卷中。
+## 初始账号
 
-## Docker Hub 镜像
+| 用户名      | 角色       |
+| ----------- | ---------- |
+| `admin`     | 超级管理员 |
+| `warehouse` | 仓库管理员 |
+| `purchase`  | 申购管理员 |
+| `readonly`  | 只读角色   |
 
-GitHub Actions 在推送 `main`、推送 `v*` 标签或手工触发时，将两个镜像推送到同一个 Docker Hub 仓库：
+初始密码均为 `123456`。首次部署后请立即由超级管理员修改所有初始密码。
 
-- `docker.io/yangrucheng/materials-manager:backend`
-- `docker.io/yangrucheng/materials-manager:frontend`
+## 日常运维
 
-仓库需要配置以下 GitHub Actions Secrets：
+### 查看状态和日志
 
-- `CCR_USERNAME`：Docker Hub 登录用户名（沿用原 Secret 名称）
-- `CCR_PASSWORD`：Docker Hub 登录密码或访问令牌（沿用原 Secret 名称）
+```bash
+docker compose ps
+docker compose logs --tail=200 backend
+docker compose logs --tail=200 frontend
+```
 
-当前仓库已配置这两个 Secret。Docker Hub 账号 `yangrucheng` 下需要存在 `materials-manager` 镜像仓库，并允许该账号推送。
+持续查看日志：
 
-`main` 分支更新固定标签 `backend`、`frontend`；每次构建还会推送 `backend-sha-<commit>`、`frontend-sha-<commit>`，版本标签则生成 `backend-v*`、`frontend-v*`。
+```bash
+docker compose logs -f
+```
 
-## 本地开发与验证
+### 升级
 
-后端和前端的详细启动说明分别见 [backend/README.md](backend/README.md) 和 [frontend/README.md](frontend/README.md)。
+固定标签 `backend` 和 `frontend` 指向 `main` 分支最新构建。升级前先查看目标版本说明；如果版本包含数据库结构变更，应先按版本说明备份并迁移数据库，不能重新导入 `database/init.sql`。
+
+确认数据库准备完成后执行：
+
+```bash
+docker compose pull
+docker compose up -d --remove-orphans
+docker compose ps
+```
+
+升级后应重新检查 `/health` 并完成一次登录验证。
+
+### 停止服务
+
+```bash
+docker compose down
+```
+
+不要执行 `docker compose down -v`，否则会删除图片数据卷。
+
+### 备份
+
+必须同时备份：
+
+1. MySQL 数据库。
+2. Docker 卷 `materials-manager_uploads` 中的图片。
+
+查看图片卷的实际位置：
+
+```bash
+docker volume inspect materials-manager_uploads
+```
+
+数据库和图片应使用相同的备份周期，并尽量在同一时间点完成备份。
+
+## 常见故障
+
+| 现象                                         | 优先检查                                                        |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| 提示外部网络不存在                           | 执行 `docker network inspect 1panel-network`                    |
+| 后端状态为 `unhealthy` 或 `/health` 返回 503 | 检查数据库连接串、MySQL 网络、账号权限以及初始化脚本是否已导入  |
+| 前端出现 502                                 | 检查后端容器状态和 `docker compose logs backend`                |
+| 登录提示用户名或密码错误                     | 确认初始化脚本导入成功，并检查账号是否被停用或密码已被修改      |
+| 接口返回表不存在                             | 初始化脚本未导入目标数据库，或连接串指向了错误数据库            |
+| 图片无法上传或显示                           | 检查 `materials-manager_uploads` 卷是否存在以及 Docker 存储空间 |
+
+## 上线安全检查
+
+- 不要提交包含真实密码或密钥的 `.env` 文件。
+- 修改全部初始账号密码和 `APP_JWT_SECRET`。
+- 通过 1Panel 或其他反向代理启用 HTTPS。
+- 除非确有需要，不要将后端端口直接暴露到公网。
+- 定期验证数据库和图片备份可以恢复。
