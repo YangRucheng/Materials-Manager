@@ -185,7 +185,7 @@ onMounted(load)
           ><n-input v-model:value="edit.business_reason" maxlength="500"
         /></n-form-item>
       </n-form>
-      <n-descriptions v-else bordered :column="3">
+      <n-descriptions v-else :column="3">
         <n-descriptions-item label="类型">{{
           operation.operation_type === 'INBOUND' ? '入库' : '出库'
         }}</n-descriptions-item>
@@ -212,7 +212,7 @@ onMounted(load)
         :type="edit.operation_type"
         show-purchase-link
       />
-      <n-table v-else>
+      <n-table v-else :bordered="false">
         <thead>
           <tr>
             <th>物资</th>
