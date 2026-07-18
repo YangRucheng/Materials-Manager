@@ -4,11 +4,9 @@ import { NButton, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
-import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime } from '@/utils/time'
 
 const router = useRouter()
-const auth = useAuthStore()
 const items = ref<PurchaseMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -42,21 +40,6 @@ const columns: DataTableColumns<PurchaseMaterial> = [
     key: 'created_at',
     width: 170,
     render: (row) => formatShanghaiTime(row.created_at),
-  },
-  {
-    title: '操作',
-    key: 'actions',
-    width: 110,
-    render: (row) =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          type: auth.can('purchase:write') ? 'primary' : 'default',
-          onClick: () => router.push(`/procurement/materials/${row.id}`),
-        },
-        { default: () => (auth.can('purchase:write') ? '编辑' : '查看') },
-      ),
   },
 ]
 

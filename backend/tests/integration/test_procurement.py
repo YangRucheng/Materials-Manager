@@ -47,12 +47,18 @@ async def move_to_record(
     client: AsyncClient,
     headers: dict[str, str],
     plan_id: int,
-    request_no: str = "公司申购-2026-001",
+    trace_no: str = "ZS-2026-001",
 ) -> dict[str, object]:
     response = await client.post(
         f"/api/v1/purchase-materials/{plan_id}/move-to-record",
         headers=headers,
-        json={"request_no": request_no, "salesperson": "赵经理", "remark": "等待供应商发货"},
+        json={
+            "trace_no": trace_no,
+            "purchase_order_no": "SG-2026-001",
+            "purchase_time": "2026-07-18T10:00:00+08:00",
+            "salesperson": "赵经理",
+            "remark": "等待供应商发货",
+        },
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -70,7 +76,11 @@ async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncC
     rejected = await client.post(
         f"/api/v1/purchase-materials/{plan['id']}/move-to-record",
         headers=headers,
-        json={"request_no": "公司申购-未编码"},
+        json={
+            "trace_no": "ZS-UNCODED",
+            "purchase_order_no": "SG-UNCODED",
+            "purchase_time": "2026-07-18T10:00:00+08:00",
+        },
     )
     assert rejected.status_code == 409
     assert rejected.json()["code"] == "MATERIAL_CODE_REQUIRED"
@@ -148,6 +158,41 @@ async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) ->
 
 
 @pytest.mark.asyncio
+async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "批量计划一", code="DQ-BATCH-1")
+    second = await create_purchase_plan(
+        client,
+        headers,
+        "批量计划二",
+        code="DQ-BATCH-2",
+        purchase_responsible="另一负责人",
+    )
+    response = await client.post(
+        "/api/v1/purchase-materials/batch-move-to-record",
+        headers=headers,
+        json={
+            "material_ids": [first["id"], second["id"]],
+            "trace_no": "ZS-BATCH-001",
+            "purchase_order_no": "SG-BATCH-001",
+            "purchase_time": "2026-07-18T11:30:00+08:00",
+            "salesperson": "批量业务员",
+            "remark": "批量转入",
+        },
+    )
+    assert response.status_code == 200, response.text
+    records = response.json()
+    assert len(records) == 2
+    assert {record["purchase_material_id"] for record in records} == {
+        first["id"],
+        second["id"],
+    }
+    assert len({record["purchase_request_id"] for record in records}) == 1
+    assert {record["trace_no"] for record in records} == {"ZS-BATCH-001"}
+    assert {record["purchase_order_no"] for record in records} == {"SG-BATCH-001"}
+
+
+@pytest.mark.asyncio
 async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
     first = await create_purchase_plan(
@@ -173,19 +218,28 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
         headers=headers,
         json={
             "version": first_record["version"],
-            "request_no": "正式申购-A-修订",
+            "trace_no": "ZS-A-修订",
+            "purchase_order_no": "SG-A-修订",
+            "purchase_time": "2026-07-19T10:30:00+08:00",
             "salesperson": "钱经理",
             "remark": "预计下周到货",
         },
     )
     assert changed.status_code == 200, changed.text
+    assert changed.json()["trace_no"] == "ZS-A-修订"
+    assert changed.json()["purchase_order_no"] == "SG-A-修订"
+    assert changed.json()["purchase_time"] == "2026-07-19T02:30:00Z"
     assert changed.json()["salesperson"] == "钱经理"
     assert changed.json()["remark"] == "预计下周到货"
 
     duplicate = await client.post(
         f"/api/v1/purchase-materials/{first['id']}/move-to-record",
         headers=headers,
-        json={"request_no": "重复"},
+        json={
+            "trace_no": "ZS-REPEAT",
+            "purchase_order_no": "SG-REPEAT",
+            "purchase_time": "2026-07-18T10:00:00+08:00",
+        },
     )
     assert duplicate.status_code == 409
     assert duplicate.json()["code"] == "PLAN_ALREADY_MOVED"

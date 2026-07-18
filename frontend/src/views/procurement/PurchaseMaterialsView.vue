@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NTag,
@@ -16,6 +16,8 @@ import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
+import { defaultTraceNo } from '@/utils/purchase'
+import { toIsoWithTimezone } from '@/utils/time'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -26,10 +28,24 @@ const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
 const show = ref(false)
+const showBatch = ref(false)
 const saving = ref(false)
+const batchMoving = ref(false)
+const checkedRowKeys = ref<Array<string | number>>([])
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const filters = reactive({ keyword: '' })
+const batchForm = reactive({
+  trace_no: defaultTraceNo(),
+  purchase_order_no: '',
+  purchase_time: Date.now(),
+  salesperson: '',
+  remark: '',
+})
+const selectedPlans = computed(() => {
+  const selected = new Set(checkedRowKeys.value.map(Number))
+  return items.value.filter((item) => selected.has(item.id))
+})
 const form = reactive<PurchaseMaterialWrite>({
   material_code: '',
   name: '',
@@ -54,6 +70,10 @@ const rules: FormRules = {
   usage: { required: true, message: '请输入用途' },
 }
 const columns: DataTableColumns<PurchaseMaterial> = [
+  {
+    type: 'selection',
+    disabled: (row) => !auth.can('purchase:write') || !row.material_code,
+  },
   {
     title: '物料编码',
     key: 'material_code',
@@ -110,6 +130,7 @@ async function load() {
     })
     items.value = d.items
     total.value = d.total
+    checkedRowKeys.value = []
   } finally {
     loading.value = false
   }
@@ -154,6 +175,51 @@ async function save() {
     saving.value = false
   }
 }
+function openBatchMove() {
+  if (!selectedPlans.value.length) {
+    message.warning('请先选择至少一条已有编码的申购计划')
+    return
+  }
+  Object.assign(batchForm, {
+    trace_no: defaultTraceNo(),
+    purchase_order_no: '',
+    purchase_time: Date.now(),
+    salesperson: '',
+    remark: '',
+  })
+  showBatch.value = true
+}
+async function batchMove() {
+  if (
+    !batchForm.trace_no.trim() ||
+    !batchForm.purchase_order_no.trim() ||
+    !batchForm.purchase_time
+  ) {
+    message.error('请完整填写追溯号、申购单号和申购时间')
+    return
+  }
+  batchMoving.value = true
+  try {
+    await procurementApi.batchMovePlansToRecord(
+      selectedPlans.value.map((item) => item.id),
+      {
+        trace_no: batchForm.trace_no.trim(),
+        purchase_order_no: batchForm.purchase_order_no.trim(),
+        purchase_time: toIsoWithTimezone(batchForm.purchase_time),
+        salesperson: batchForm.salesperson.trim() || undefined,
+        remark: batchForm.remark.trim() || undefined,
+      },
+    )
+    message.success(`已将 ${selectedPlans.value.length} 条计划转为申购记录`)
+    checkedRowKeys.value = []
+    showBatch.value = false
+    await router.push('/procurement/records')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '批量转入失败')
+  } finally {
+    batchMoving.value = false
+  }
+}
 onMounted(() => {
   void dictionaries.load()
   void load()
@@ -165,11 +231,16 @@ onMounted(() => {
     <div class="page-header">
       <div>
         <h1 class="page-title">申购计划</h1>
-        <p class="page-subtitle">计划阶段确定物资、数量和用途，子项号按需填写，物料编码可暂时为空</p>
+        <p class="page-subtitle">
+          计划阶段确定物资、数量和用途，子项号按需填写，物料编码可暂时为空
+        </p>
       </div>
-      <n-button v-if="auth.can('purchase:write')" type="primary" @click="openCreate"
-        >新建申购计划</n-button
-      >
+      <n-space v-if="auth.can('purchase:write')">
+        <n-button :disabled="!selectedPlans.length" @click="openBatchMove">
+          批量转为申购记录（{{ selectedPlans.length }}）
+        </n-button>
+        <n-button type="primary" @click="openCreate">新建申购计划</n-button>
+      </n-space>
     </div>
     <n-card
       ><div class="filter-bar">
@@ -182,6 +253,7 @@ onMounted(() => {
       </div></n-card
     ><n-card
       ><n-data-table
+        v-model:checked-row-keys="checkedRowKeys"
         :bordered="false"
         :columns="columns"
         :data="items"
@@ -195,6 +267,46 @@ onMounted(() => {
           @update:page="load"
         /></div
     ></n-card>
+    <n-modal
+      v-model:show="showBatch"
+      preset="card"
+      title="批量转为申购记录"
+      style="width: 620px"
+      :mask-closable="false"
+    >
+      <n-alert type="info" style="margin-bottom: 16px">
+        已选择 {{ selectedPlans.length }} 条计划，将使用同一追溯号、申购单号和申购时间转入。
+      </n-alert>
+      <n-form label-placement="top">
+        <div class="form-grid">
+          <n-form-item label="追溯号" required>
+            <n-input v-model:value="batchForm.trace_no" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="申购单号" required>
+            <n-input v-model:value="batchForm.purchase_order_no" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="申购时间" required>
+            <n-date-picker
+              v-model:value="batchForm.purchase_time"
+              type="datetime"
+              class="full-width"
+            />
+          </n-form-item>
+          <n-form-item label="业务员">
+            <n-input v-model:value="batchForm.salesperson" maxlength="128" />
+          </n-form-item>
+        </div>
+        <n-form-item label="备注">
+          <n-input v-model:value="batchForm.remark" type="textarea" maxlength="1000" show-count />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showBatch = false">取消</n-button>
+          <n-button type="primary" :loading="batchMoving" @click="batchMove">确认转入</n-button>
+        </n-space>
+      </template>
+    </n-modal>
     <n-modal
       v-model:show="show"
       preset="card"

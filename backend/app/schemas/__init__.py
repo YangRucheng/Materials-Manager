@@ -400,12 +400,24 @@ class PurchaseRequestLineWrite(RequestModel):
 
 
 class PurchaseRequestCreate(RequestModel):
-    request_no: (
+    trace_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
+    purchase_order_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    purchase_time: datetime | None = None
     remark: str | None = Field(default=None, max_length=1000)
     lines: list[PurchaseRequestLineWrite] = Field(default_factory=list)
+
+    @field_validator("purchase_time")
+    @classmethod
+    def require_purchase_time_timezone(cls, value: datetime | None) -> datetime | None:
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise ValueError("purchase_time must include a timezone")
+        return value
 
 
 class PurchaseRequestUpdate(PurchaseRequestCreate):
@@ -427,7 +439,8 @@ class PurchaseRequestLineRead(ReadModel):
 
 class PurchaseRequestRead(ReadModel):
     id: int
-    request_no: str
+    trace_no: str
+    purchase_order_no: str | None = None
     status: PurchaseRequestStatus
     applicant_name: str
     handler_name: str | None = None
@@ -435,7 +448,7 @@ class PurchaseRequestRead(ReadModel):
     remark: str | None = None
     return_reason: str | None = None
     close_reason: str | None = None
-    submitted_at: datetime | None = None
+    purchase_time: datetime | None = None
     completed_at: datetime | None = None
     created_at: datetime
     version: int
@@ -444,21 +457,43 @@ class PurchaseRequestRead(ReadModel):
 
 
 class MovePurchasePlanRequest(RequestModel):
-    request_no: Annotated[
+    trace_no: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+    purchase_order_no: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
     ]
+    purchase_time: datetime
     salesperson: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
     remark: str | None = Field(default=None, max_length=1000)
 
+    _purchase_time_timezone = field_validator("purchase_time")(
+        PurchaseRequestCreate.require_purchase_time_timezone
+    )
+
+
+class BatchMovePurchasePlansRequest(MovePurchasePlanRequest):
+    material_ids: list[int] = Field(min_length=1, max_length=200)
+
+    @field_validator("material_ids")
+    @classmethod
+    def unique_material_ids(cls, value: list[int]) -> list[int]:
+        if len(value) != len(set(value)):
+            raise ValueError("material_ids must be unique")
+        return value
+
 
 class PurchaseRecordUpdate(RequestModel):
-    request_no: (
+    trace_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
+    purchase_order_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    purchase_time: datetime | None = None
     salesperson: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
@@ -466,12 +501,17 @@ class PurchaseRecordUpdate(RequestModel):
     remark: str | None = Field(default=None, max_length=1000)
     version: int
 
+    _purchase_time_timezone = field_validator("purchase_time")(
+        PurchaseRequestCreate.require_purchase_time_timezone
+    )
+
 
 class PurchaseRecordRead(ReadModel):
     line_id: int
     purchase_request_id: int
     purchase_material_id: int
-    request_no: str
+    trace_no: str
+    purchase_order_no: str | None = None
     status: PurchaseRequestStatus
     material_code: str
     material_name: str
@@ -487,7 +527,7 @@ class PurchaseRecordRead(ReadModel):
     usage: str
     subitem_no: str | None = None
     stock_material_id: int | None = None
-    submitted_at: datetime | None = None
+    purchase_time: datetime | None = None
     created_at: datetime
     version: int
 

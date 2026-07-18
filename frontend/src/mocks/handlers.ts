@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type {
   OperationUpdate,
   OperationWrite,
+  MovePurchasePlansWrite,
   PurchaseMaterialWrite,
   PurchaseRequestStatus,
   PurchaseRequestWrite,
@@ -10,7 +11,7 @@ import type {
   StockMaterialWrite,
   StockOperation,
 } from '@/api/generated'
-import { defaultPurchaseRequestNo } from '@/utils/purchase'
+import { defaultTraceNo } from '@/utils/purchase'
 import {
   mockImageUrl,
   nextIds,
@@ -68,7 +69,8 @@ const purchaseRecord = (
     line_id: line.id,
     purchase_request_id: request.id,
     purchase_material_id: line.purchase_material_id,
-    request_no: request.request_no,
+    trace_no: request.trace_no,
+    purchase_order_no: request.purchase_order_no,
     status: request.status,
     material_code: line.material_code_snapshot || '',
     material_name: line.material_name_snapshot,
@@ -84,10 +86,45 @@ const purchaseRecord = (
     usage: line.usage,
     subitem_no: line.subitem_no,
     stock_material_id: material.stock_material_id,
-    submitted_at: request.submitted_at,
+    purchase_time: request.purchase_time,
     created_at: request.created_at,
     version: request.version,
   }
+}
+const movePlansToRecords = (
+  materials: typeof purchaseMaterials,
+  body: MovePurchasePlansWrite,
+  request: Request,
+) => {
+  const lines = materials.map((material) => ({
+    id: nextIds.requestLine++,
+    purchase_material_id: material.id,
+    material_code_snapshot: material.material_code,
+    material_name_snapshot: material.name,
+    model_spec_snapshot: material.model_spec,
+    unit_name_snapshot: material.unit_name,
+    requested_qty: material.planned_qty,
+    received_qty: '0',
+    usage: material.usage,
+    subitem_no: material.subitem_no,
+  }))
+  const purchaseRequest: (typeof purchaseRequests)[number] = {
+    id: nextIds.request++,
+    trace_no: body.trace_no,
+    purchase_order_no: body.purchase_order_no,
+    status: 'PROCESSING',
+    applicant_name: actor(request).display_name,
+    salesperson: body.salesperson,
+    remark: body.remark,
+    purchase_time: body.purchase_time,
+    created_at: now(),
+    version: 1,
+    lines,
+    events: [event('由申购计划转入', undefined, 'PROCESSING')],
+  }
+  materials.forEach((material) => (material.moved_to_record = true))
+  purchaseRequests.unshift(purchaseRequest)
+  return lines.map((line) => purchaseRecord(purchaseRequest, line))
 }
 const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
   const purchaseIds = new Set(
@@ -176,7 +213,7 @@ const makeOperation = (
     receiver_name: payload.receiver_name,
     subitem_no: payload.subitem_no,
     source_type: payload.source_type,
-    purchase_request_no: purchaseRequest?.request_no,
+    purchase_request_no: purchaseRequest?.trace_no,
     client_request_id: payload.client_request_id,
     created_at: now(),
     version: 1,
@@ -608,6 +645,19 @@ export const handlers = [
     item.version++
     return HttpResponse.json(item)
   }),
+  http.post(`${api}/purchase-materials/batch-move-to-record`, async ({ request }) => {
+    const body = (await request.json()) as MovePurchasePlansWrite & { material_ids: number[] }
+    const materials = body.material_ids.map((id) =>
+      purchaseMaterials.find((item) => item.id === id),
+    )
+    if (materials.some((material) => !material)) return error(404, 'NOT_FOUND', '申购计划不存在')
+    const plans = materials.filter((material) => material !== undefined)
+    const uncoded = plans.filter((material) => !material.material_code)
+    if (uncoded.length) return error(409, 'MATERIAL_CODE_REQUIRED', '未编码物资不能转入申购记录')
+    if (plans.some((material) => material.moved_to_record))
+      return error(409, 'PLAN_ALREADY_MOVED', '部分申购计划已转入申购记录')
+    return HttpResponse.json(movePlansToRecords(plans, body, request))
+  }),
   http.post(`${api}/purchase-materials/:id/move-to-record`, async ({ params, request }) => {
     const material = purchaseMaterials.find((item) => item.id === Number(params.id))
     if (!material) return error(404, 'NOT_FOUND', '申购计划不存在')
@@ -615,39 +665,8 @@ export const handlers = [
       return error(409, 'MATERIAL_CODE_REQUIRED', '物资编码完成后才能转入申购记录')
     if (material.moved_to_record)
       return error(409, 'PLAN_ALREADY_MOVED', '该申购计划已转入申购记录')
-    const body = (await request.json()) as {
-      request_no: string
-      salesperson?: string
-      remark?: string
-    }
-    const line = {
-      id: nextIds.requestLine++,
-      purchase_material_id: material.id,
-      material_code_snapshot: material.material_code,
-      material_name_snapshot: material.name,
-      model_spec_snapshot: material.model_spec,
-      unit_name_snapshot: material.unit_name,
-      requested_qty: material.planned_qty,
-      received_qty: '0',
-      usage: material.usage,
-      subitem_no: material.subitem_no,
-    }
-    const purchaseRequest = {
-      id: nextIds.request++,
-      request_no: body.request_no,
-      status: 'PROCESSING' as const,
-      applicant_name: actor(request).display_name,
-      salesperson: body.salesperson,
-      remark: body.remark,
-      submitted_at: now(),
-      created_at: now(),
-      version: 1,
-      lines: [line],
-      events: [event('由申购计划转入', undefined, 'PROCESSING')],
-    }
-    material.moved_to_record = true
-    purchaseRequests.unshift(purchaseRequest)
-    return HttpResponse.json(purchaseRecord(purchaseRequest, line))
+    const body = (await request.json()) as MovePurchasePlansWrite
+    return HttpResponse.json(movePlansToRecords([material], body, request)[0])
   }),
   http.get(`${api}/purchase-records`, ({ request }) => {
     const url = new URL(request.url)
@@ -661,7 +680,7 @@ export const handlers = [
         records.filter(
           (record) =>
             (!keyword ||
-              `${record.request_no}${record.material_code}${record.material_name}${record.salesperson || ''}${record.remark || ''}`
+              `${record.trace_no}${record.purchase_order_no || ''}${record.material_code}${record.material_name}${record.salesperson || ''}${record.remark || ''}`
                 .toLowerCase()
                 .includes(keyword)) &&
             (!status || record.status === status),
@@ -681,11 +700,7 @@ export const handlers = [
     for (const purchaseRequest of purchaseRequests) {
       const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
       if (!line) continue
-      const body = (await request.json()) as {
-        request_no?: string
-        salesperson?: string
-        remark?: string
-      }
+      const body = (await request.json()) as MovePurchasePlansWrite
       Object.assign(purchaseRequest, body, { version: purchaseRequest.version + 1 })
       return HttpResponse.json(purchaseRecord(purchaseRequest, line))
     }
@@ -700,7 +715,7 @@ export const handlers = [
         purchaseRequests.filter(
           (x) =>
             (!q ||
-              `${x.request_no}${x.lines.map((l) => l.material_name_snapshot).join('')}`
+              `${x.trace_no}${x.purchase_order_no || ''}${x.lines.map((l) => l.material_name_snapshot).join('')}`
                 .toLowerCase()
                 .includes(q)) &&
             (!status || x.status === status),
@@ -735,7 +750,9 @@ export const handlers = [
     })
     const item = {
       id,
-      request_no: body.request_no || defaultPurchaseRequestNo(),
+      trace_no: body.trace_no || defaultTraceNo(),
+      purchase_order_no: body.purchase_order_no,
+      purchase_time: body.purchase_time,
       status: 'DRAFT' as const,
       applicant_name: selectedMaterials[0]?.purchase_responsible || actor(request).display_name,
       remark: body.remark,
@@ -765,7 +782,9 @@ export const handlers = [
     )
     if (responsibles.size > 1)
       return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
-    item.request_no = body.request_no || item.request_no
+    item.trace_no = body.trace_no || item.trace_no
+    item.purchase_order_no = body.purchase_order_no
+    item.purchase_time = body.purchase_time
     item.remark = body.remark
     item.applicant_name = selectedMaterials[0]?.purchase_responsible || item.applicant_name
     item.lines = body.lines.map((line) => {
@@ -821,7 +840,7 @@ export const handlers = [
           (m) => m.id === line.purchase_material_id,
         )?.material_code
       })
-      item.submitted_at = now()
+      item.purchase_time ||= now()
     }
     if (action === 'accept') item.handler_name = actor(request).display_name
     if (action === 'return') item.return_reason = body.reason
@@ -847,7 +866,7 @@ export const handlers = [
     const material = purchaseMaterials.find((x) => x.id === line?.purchase_material_id)
     if (!line || !request || !material) return error(404, 'NOT_FOUND', '请购行不存在')
     return HttpResponse.json({
-      purchase_request_no: request.request_no,
+      purchase_request_no: request.trace_no,
       line_id: line.id,
       purchase_material_id: material.id,
       material_name: material.name,

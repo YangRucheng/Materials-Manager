@@ -15,8 +15,8 @@ const page = ref(1)
 const filters = reactive({ keyword: '', status: null as string | null })
 const columns: DataTableColumns<PurchaseRecord> = [
   {
-    title: '申购记录号',
-    key: 'request_no',
+    title: '追溯号',
+    key: 'trace_no',
     width: 170,
     render: (row) =>
       h(
@@ -26,8 +26,14 @@ const columns: DataTableColumns<PurchaseRecord> = [
           type: 'primary',
           onClick: () => router.push(`/procurement/records/${row.line_id}`),
         },
-        { default: () => row.request_no },
+        { default: () => row.trace_no },
       ),
+  },
+  {
+    title: '申购单号',
+    key: 'purchase_order_no',
+    width: 170,
+    render: (row) => row.purchase_order_no || '—',
   },
   {
     title: '物资',
@@ -37,13 +43,6 @@ const columns: DataTableColumns<PurchaseRecord> = [
         h('strong', row.material_name),
         h('div', { class: 'muted' }, `${row.material_code}｜${row.model_spec}`),
       ]),
-  },
-  {
-    title: '计划 / 已到 / 未到',
-    key: 'quantity',
-    width: 190,
-    render: (row) =>
-      `${row.planned_qty} / ${row.received_qty} / ${row.remaining_qty} ${row.unit_name}`,
   },
   { title: '申购负责人', key: 'purchase_responsible', width: 110 },
   { title: '业务员', key: 'salesperson', width: 110, render: (row) => row.salesperson || '—' },
@@ -59,10 +58,10 @@ const columns: DataTableColumns<PurchaseRecord> = [
       ),
   },
   {
-    title: '提交时间',
-    key: 'submitted_at',
+    title: '申购时间',
+    key: 'purchase_time',
     width: 170,
-    render: (row) => formatShanghaiTime(row.submitted_at),
+    render: (row) => formatShanghaiTime(row.purchase_time),
   },
   {
     title: '操作',
@@ -106,14 +105,14 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">申购记录</h1>
-        <p class="page-subtitle">按物资展平跟踪正式申购的计划量、到货量和未到数量</p>
+        <p class="page-subtitle">按物资跟踪正式申购记录、单号和到货状态</p>
       </div>
     </div>
     <n-card>
       <div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
-          placeholder="记录号、编码、名称、业务员或备注"
+          placeholder="追溯号、申购单号、编码、名称或业务员"
           clearable
           style="width: 300px"
         />

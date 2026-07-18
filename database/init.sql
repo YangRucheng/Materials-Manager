@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS `measurement_unit` (
 
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `request_no` VARCHAR(128) NOT NULL,
+  `trace_no` VARCHAR(128) NOT NULL,
+  `purchase_order_no` VARCHAR(128) NULL,
   `status` ENUM(
     'DRAFT',
     'SUBMITTED',
@@ -103,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
   `remark` VARCHAR(1000) NULL,
   `return_reason` VARCHAR(500) NULL,
   `close_reason` VARCHAR(500) NULL,
-  `submitted_at` DATETIME(6) NULL,
+  `purchase_time` DATETIME(6) NULL,
   `completed_at` DATETIME(6) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -119,7 +120,8 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
     FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
   CONSTRAINT `fk_purchase_request_updated_by_user`
     FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
-  INDEX `ix_purchase_request_request_no` (`request_no`),
+  INDEX `ix_purchase_request_trace_no` (`trace_no`),
+  INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`),
   INDEX `ix_purchase_request_status_created` (`status`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

@@ -262,12 +262,13 @@ export const purchaseMaterials: PurchaseMaterial[] = [
 export const purchaseRequests: PurchaseRequest[] = [
   {
     id: 1,
-    request_no: '申购单-2026年7月15日',
+    trace_no: 'ZS-20260715-001',
+    purchase_order_no: 'SG-20260715-001',
     status: 'PARTIALLY_RECEIVED',
     applicant_name: '申购管理员',
     handler_name: '申购管理员',
     remark: '7 月检修备件',
-    submitted_at: '2026-07-15T02:00:00Z',
+    purchase_time: '2026-07-15T02:00:00Z',
     created_at: '2026-07-15T01:00:00Z',
     version: 3,
     lines: [
@@ -312,12 +313,13 @@ export const purchaseRequests: PurchaseRequest[] = [
   },
   {
     id: 2,
-    request_no: '申购单-2026年7月16日',
+    trace_no: 'ZS-20260716-001',
+    purchase_order_no: 'SG-20260716-001',
     status: 'PROCESSING',
     applicant_name: '申购管理员',
     handler_name: '申购管理员',
     remark: '配电室改造',
-    submitted_at: '2026-07-16T01:00:00Z',
+    purchase_time: '2026-07-16T01:00:00Z',
     created_at: '2026-07-16T00:30:00Z',
     version: 2,
     lines: [
@@ -363,7 +365,7 @@ export const operations: StockOperation[] = [
     operator_name: '仓库管理员',
     business_reason: '请购物资部分到货',
     source_type: 'PURCHASE_RECEIPT',
-    purchase_request_no: '申购单-2026年7月15日',
+    purchase_request_no: 'ZS-20260715-001',
     client_request_id: 'seed-inbound-0001',
     created_at: now,
     version: 1,
