@@ -118,6 +118,7 @@ async def test_edit_historical_operation_replays_snapshots(client: AsyncClient) 
         },
     )
     assert changed.status_code == 200, changed.text
+    assert changed.json()["lines"][0]["id"] == inbound.json()["lines"][0]["id"]
     later = await client.get(
         f"/api/v1/inventory/operations/{outbound.json()['id']}", headers=headers
     )
@@ -144,6 +145,26 @@ async def test_edit_historical_operation_replays_snapshots(client: AsyncClient) 
     assert later.json()["lines"][0]["after_qty"] == "-1"
     detail = await client.get(f"/api/v1/stock-materials/{material_id}", headers=headers)
     assert detail.json()["current_qty"] == "-1"
+
+    changed_outbound = await client.patch(
+        f"/api/v1/inventory/operations/{outbound.json()['id']}",
+        headers=headers,
+        json={
+            "version": outbound.json()["version"],
+            "operation_type": "OUTBOUND",
+            "occurred_at": "2026-07-18T10:00:00+08:00",
+            "source_type": "MANUAL",
+            "business_reason": "扩大负库存",
+            "receiver_name": "测试领用人",
+            "lines": [{"stock_material_id": material_id, "quantity": "5"}],
+        },
+    )
+    assert changed_outbound.status_code == 200, changed_outbound.text
+    assert changed_outbound.json()["lines"][0]["id"] == outbound.json()["lines"][0]["id"]
+    assert changed_outbound.json()["lines"][0]["before_qty"] == "2"
+    assert changed_outbound.json()["lines"][0]["after_qty"] == "-3"
+    detail = await client.get(f"/api/v1/stock-materials/{material_id}", headers=headers)
+    assert detail.json()["current_qty"] == "-3"
 
 
 @pytest.mark.asyncio
