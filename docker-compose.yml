@@ -10,12 +10,6 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be configured}
       APP_ACCESS_TOKEN_MINUTES: ${APP_ACCESS_TOKEN_MINUTES:-480}
       APP_UPLOAD_DIR: /app/data/uploads
-    command:
-      [
-        "sh",
-        "-c",
-        "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000",
-      ]
     volumes:
       - uploads:/app/data/uploads
     ports:
@@ -32,6 +26,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - 1panel-network
 
   frontend:
     image: docker.io/yangrucheng/materials-manager:frontend
@@ -46,6 +42,12 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    networks:
+      - 1panel-network
 
 volumes:
   uploads:
+
+networks:
+  1panel-network:
+    external: true
