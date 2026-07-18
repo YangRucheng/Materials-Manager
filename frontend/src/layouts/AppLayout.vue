@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { MenuOption } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import { roleLabels } from '@/types/navigation'
+import { LOGO_URL } from '@/constants/branding'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,10 +40,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     items.push({
       label: '系统设置',
       key: 'settings-group',
-      children: [
-        link('计量单位', 'units'),
-        link('用户管理', 'users'),
-      ],
+      children: [link('计量单位', 'units'), link('用户管理', 'users')],
     })
   return items
 })
@@ -66,7 +64,8 @@ function logout() {
       @expand="collapsed = false"
     >
       <div class="brand" :class="{ compact: collapsed }">
-        <span class="brand-mark">备</span><span v-if="!collapsed">电气车间备件</span>
+        <img class="brand-mark" :src="LOGO_URL" alt="系统 Logo" />
+        <span v-if="!collapsed">电气车间备件</span>
       </div>
       <n-menu
         :collapsed="collapsed"
@@ -122,11 +121,7 @@ function logout() {
 .brand-mark {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  background: #18a058;
-  color: white;
-  display: grid;
-  place-items: center;
+  object-fit: contain;
   flex: none;
 }
 .topbar {

@@ -109,6 +109,144 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/agent/database/schema:
+    get:
+      tags:
+      - Agent 数据库
+      summary: Database Schema
+      operationId: database_schema_api_v1_agent_database_schema_get
+      parameters:
+      - name: X-Agent-Username
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Agent-Username
+      - name: X-Agent-Password
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Agent-Password
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDatabaseSchemaRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/agent/database/execute:
+    post:
+      tags:
+      - Agent 数据库
+      summary: Execute Database Sql
+      operationId: execute_database_sql_api_v1_agent_database_execute_post
+      parameters:
+      - name: X-Agent-Username
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Agent-Username
+      - name: X-Agent-Password
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Agent-Password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentDatabaseExecuteRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDatabaseExecuteRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/stock-materials:
     get:
       tags:
@@ -3467,6 +3605,90 @@ components:
       additionalProperties: false
       type: object
       title: ActionVersion
+    AgentDatabaseExecuteRead:
+      properties:
+        statement_type:
+          type: string
+          enum:
+          - SELECT
+          - INSERT
+          - UPDATE
+          - DELETE
+          title: Statement Type
+        columns:
+          items:
+            type: string
+          type: array
+          title: Columns
+        rows:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Rows
+        row_count:
+          type: integer
+          title: Row Count
+        affected_rows:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Affected Rows
+        last_insert_id:
+          anyOf:
+          - type: string
+          - type: integer
+          - type: 'null'
+          title: Last Insert Id
+        truncated:
+          type: boolean
+          title: Truncated
+          default: false
+      type: object
+      required:
+      - statement_type
+      - row_count
+      title: AgentDatabaseExecuteRead
+    AgentDatabaseExecuteRequest:
+      properties:
+        sql:
+          type: string
+          maxLength: 100000
+          minLength: 1
+          title: Sql
+        parameters:
+          additionalProperties:
+            anyOf:
+            - type: string
+            - type: integer
+            - type: number
+            - type: boolean
+            - type: 'null'
+          type: object
+          title: Parameters
+        max_rows:
+          type: integer
+          maximum: 5000.0
+          minimum: 1.0
+          title: Max Rows
+          default: 1000
+      additionalProperties: false
+      type: object
+      required:
+      - sql
+      title: AgentDatabaseExecuteRequest
+    AgentDatabaseSchemaRead:
+      properties:
+        tables:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Tables
+      type: object
+      required:
+      - tables
+      title: AgentDatabaseSchemaRead
     ApiError:
       properties:
         code:
