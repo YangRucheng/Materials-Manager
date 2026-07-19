@@ -1,7 +1,11 @@
 import logging
 from pathlib import Path
 
-from app.core.logging import IgnoreHealthCheckFilter, MonthlyTimedRotatingFileHandler
+from app.core.logging import (
+    IgnoreHealthCheckFilter,
+    MonthlyTimedRotatingFileHandler,
+    console_formatter,
+)
 
 
 def test_daily_log_rotation_uses_month_directory(tmp_path: Path) -> None:
@@ -49,3 +53,15 @@ def test_health_check_filter_only_suppresses_health_requests() -> None:
 
     assert not log_filter.filter(health)
     assert log_filter.filter(normal)
+
+
+def test_console_colors_are_enabled_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+
+    assert "\033[32m" in console_formatter()._fmt
+
+
+def test_console_colors_can_be_disabled(monkeypatch) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
+
+    assert "\033[" not in console_formatter()._fmt

@@ -49,27 +49,26 @@ class IgnoreHealthCheckFilter(logging.Filter):
         return "/health" not in record.getMessage()
 
 
+def console_formatter() -> logging.Formatter:
+    if os.getenv("NO_COLOR") is None:
+        log_format = (
+            "\033[32m%(asctime)s\033[0m | "
+            "\033[33m%(levelname)-8s\033[0m | "
+            "\033[36m%(name)s\033[0m | %(message)s"
+        )
+    else:
+        log_format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    return logging.Formatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
+
+
 def configure_logging(log_dir: Path, backup_count: int = 90) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     plain_format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     plain_formatter = logging.Formatter(plain_format, datefmt="%Y-%m-%d %H:%M:%S")
 
-    use_color = bool(getattr(sys.stdout, "isatty", lambda: False)()) or os.getenv(
-        "FORCE_COLOR"
-    ) == "1"
-    if use_color and os.getenv("NO_COLOR") is None:
-        color_format = (
-            "\033[32m%(asctime)s\033[0m | "
-            "\033[33m%(levelname)-8s\033[0m | "
-            "\033[36m%(name)s\033[0m | %(message)s"
-        )
-        console_formatter = logging.Formatter(color_format, datefmt="%Y-%m-%d %H:%M:%S")
-    else:
-        console_formatter = plain_formatter
-
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(console_formatter())
     console_handler.addFilter(IgnoreHealthCheckFilter())
 
     file_handler = MonthlyTimedRotatingFileHandler(
