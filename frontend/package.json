@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
-    "generate:api": "openapi-typescript ../contracts/openapi.yaml -o src/api/generated.ts"
+    "generate:api": "openapi-typescript ../docs/openapi.yaml -o src/api/generated.ts"
   },
   "dependencies": {
     "@vueuse/core": "^13.5.0",
