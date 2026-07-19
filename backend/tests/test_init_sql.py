@@ -45,9 +45,7 @@ def test_init_sql_matches_current_model_schema() -> None:
         sql_constraint_names = set(re.findall(r"CONSTRAINT `([^`]+)`", block))
         model_ddl = str(CreateTable(table).compile(dialect=mysql.dialect()))
         model_constraint_names = set(re.findall(r"CONSTRAINT `?([^`\s]+)`?", model_ddl))
-        assert sql_constraint_names == model_constraint_names, (
-            f"{table_name} 的约束与 ORM 不一致"
-        )
+        assert sql_constraint_names == model_constraint_names, f"{table_name} 的约束与 ORM 不一致"
 
         sql_index_names = set(re.findall(r"^  INDEX `([^`]+)`", block, re.MULTILINE))
         model_index_names = {index.name for index in table.indexes}
@@ -92,6 +90,18 @@ def test_init_sql_seeds_required_accounts_and_units() -> None:
     for code, decimal_places in (("PCS", 0), ("SET", 0), ("M", 1), ("KG", 1)):
         assert re.search(rf"\('{code}', '[^']+', {decimal_places}, 1,", sql)
     assert "('PCS', '个', 0, 1," in sql
+
+
+def test_file_identifiers_are_uuid_strings() -> None:
+    blocks = _table_blocks()
+
+    assert _column_definition(blocks["file_object"], "id").startswith("VARCHAR(36) NOT NULL")
+    assert _column_definition(blocks["stock_material_image"], "file_id").startswith(
+        "VARCHAR(36) NOT NULL"
+    )
+    assert _column_definition(blocks["purchase_material_image"], "file_id").startswith(
+        "VARCHAR(36) NOT NULL"
+    )
 
 
 def test_excel_templates_are_json_specs_not_binary_workbooks() -> None:

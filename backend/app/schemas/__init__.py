@@ -23,6 +23,12 @@ from app.domain.enums import (
 PositiveQuantity = Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=1)]
 NonnegativeQuantity = Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=1)]
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+FileId = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    ),
+]
 
 
 class RequestModel(BaseModel):
@@ -59,7 +65,7 @@ class AgentDatabaseExecuteRequest(RequestModel):
 
 
 class AgentDatabaseExecuteRead(ReadModel):
-    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE"]
+    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"]
     columns: list[str] = Field(default_factory=list)
     rows: list[dict[str, object]] = Field(default_factory=list)
     row_count: int
@@ -145,7 +151,7 @@ class MeasurementUnitUpdate(RequestModel):
 
 
 class FileObjectRead(ReadModel):
-    id: int
+    id: FileId
     original_name: str
     url: str
     mime_type: Literal["image/png"] = "image/png"
@@ -181,11 +187,11 @@ class StockMaterialBase(RequestModel):
     ]
     unit_id: int
     remark: str | None = Field(default=None, max_length=1000)
-    image_ids: list[int] = Field(default_factory=list, max_length=9)
+    image_ids: list[FileId] = Field(default_factory=list, max_length=9)
 
     @field_validator("image_ids")
     @classmethod
-    def unique_images(cls, value: list[int]) -> list[int]:
+    def unique_images(cls, value: list[str]) -> list[str]:
         if len(value) != len(set(value)):
             raise ValueError("image_ids contains duplicates")
         return value
@@ -347,7 +353,7 @@ class PurchaseMaterialBase(RequestModel):
     ) = None
     remark: str | None = Field(default=None, max_length=1000)
     stock_material_id: int | None = None
-    image_ids: list[int] = Field(default_factory=list, max_length=9)
+    image_ids: list[FileId] = Field(default_factory=list, max_length=9)
 
     _unique_images = field_validator("image_ids")(StockMaterialBase.unique_images)
 
@@ -423,12 +429,9 @@ class PurchaseRequestLineWrite(RequestModel):
 
 class PurchaseRequestCreate(RequestModel):
     purchase_order_no: (
-        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)]
-        | None
-    ) = None
-    trace_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
+    trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
     purchase_date: date | None = None
     remark: str | None = Field(default=None, max_length=1000)
     lines: list[PurchaseRequestLineWrite] = Field(default_factory=list)
@@ -474,15 +477,14 @@ class MovePurchasePlanRequest(RequestModel):
     purchase_order_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
-    trace_no: (
-        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
-    ) = None
+    trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
     purchase_date: date
     salesperson: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
     remark: str | None = Field(default=None, max_length=1000)
+
 
 class BatchMovePurchasePlansRequest(MovePurchasePlanRequest):
     material_ids: list[int] = Field(min_length=1, max_length=200)
@@ -508,12 +510,9 @@ class PurchasePlanExportRequest(RequestModel):
 
 class PurchaseRecordUpdate(RequestModel):
     purchase_order_no: (
-        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)]
-        | None
-    ) = None
-    trace_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
+    trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
     purchase_date: date | None = None
     salesperson: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -521,6 +520,7 @@ class PurchaseRecordUpdate(RequestModel):
     ) = None
     remark: str | None = Field(default=None, max_length=1000)
     version: int
+
 
 class PurchaseRecordRead(ReadModel):
     line_id: int

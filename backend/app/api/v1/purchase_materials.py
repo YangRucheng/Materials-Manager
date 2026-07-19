@@ -8,6 +8,7 @@ from app.core.permissions import CurrentUser, DbSession, PurchaseWriter, require
 from app.domain.enums import Role
 from app.models import User
 from app.schemas import (
+    ApiError,
     BatchMovePurchasePlansRequest,
     LinkStockMaterialRequest,
     MovePurchasePlanRequest,
@@ -74,7 +75,10 @@ def _excel_response(content: bytes, filename: str) -> Response:
     )
 
 
-@router.get("/export-uncoded")
+@router.get(
+    "/export-uncoded",
+    responses={400: {"model": ApiError, "description": "Excel 导出模板缺失或格式错误"}},
+)
 async def export_uncoded_materials(
     session: DbSession,
     user: CurrentUser,
@@ -90,9 +94,7 @@ async def export_uncoded_materials(
             "model_spec": item.model_spec,
             "unit_name": item.unit.name,
             "actual_demand_person": item.actual_demand_person,
-            "application_reason": "；".join(
-                value for value in (item.usage, item.remark) if value
-            ),
+            "application_reason": "；".join(value for value in (item.usage, item.remark) if value),
         }
         for index, item in enumerate(materials, start=1)
     ]
@@ -101,7 +103,10 @@ async def export_uncoded_materials(
     )
 
 
-@router.post("/export-purchase-application")
+@router.post(
+    "/export-purchase-application",
+    responses={400: {"model": ApiError, "description": "Excel 导出模板缺失或格式错误"}},
+)
 async def export_purchase_application(
     data: PurchasePlanExportRequest,
     session: DbSession,

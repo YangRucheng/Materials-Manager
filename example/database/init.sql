@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `business_event_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `file_object` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id` VARCHAR(36) NOT NULL,
   `file_name` VARCHAR(64) NOT NULL,
   `original_name` VARCHAR(255) NOT NULL,
   `relative_path` VARCHAR(255) NOT NULL,
@@ -233,7 +233,7 @@ CREATE TABLE IF NOT EXISTS `stock_balance` (
 
 CREATE TABLE IF NOT EXISTS `stock_material_image` (
   `material_id` BIGINT UNSIGNED NOT NULL,
-  `file_id` BIGINT UNSIGNED NOT NULL,
+  `file_id` VARCHAR(36) NOT NULL,
   `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   CONSTRAINT `pk_stock_material_image` PRIMARY KEY (`material_id`, `file_id`),
   CONSTRAINT `fk_stock_material_image_material_id_stock_material`
@@ -267,7 +267,7 @@ CREATE TABLE IF NOT EXISTS `stock_replenishment_policy` (
 
 CREATE TABLE IF NOT EXISTS `purchase_material_image` (
   `material_id` BIGINT UNSIGNED NOT NULL,
-  `file_id` BIGINT UNSIGNED NOT NULL,
+  `file_id` VARCHAR(36) NOT NULL,
   `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   CONSTRAINT `pk_purchase_material_image` PRIMARY KEY (`material_id`, `file_id`),
   CONSTRAINT `fk_purchase_material_image_material_id_purchase_material`

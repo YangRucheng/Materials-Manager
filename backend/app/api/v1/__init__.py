@@ -17,7 +17,6 @@ router = APIRouter(
         400: {"model": ApiError, "description": "业务校验失败"},
         401: {"model": ApiError, "description": "未认证或凭证无效"},
         403: {"model": ApiError, "description": "权限不足"},
-        404: {"model": ApiError, "description": "资源不存在"},
         409: {"model": ApiError, "description": "版本、状态或业务数据冲突"},
         422: {"model": ApiError, "description": "请求参数校验失败"},
     }
