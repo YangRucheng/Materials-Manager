@@ -13,7 +13,7 @@ npm run dev
 
 ## 接入后端
 
-复制 `.env.example` 为 `.env.local`，设置：
+复制 `../example/frontend.env.example` 为 `.env.local`，设置：
 
 ```dotenv
 VITE_USE_MOCK=false
@@ -21,7 +21,7 @@ VITE_API_BASE_URL=/api/v1
 VITE_API_PROXY=http://localhost:8000
 ```
 
-仓库加入 `contracts/openapi.yaml` 后运行 `npm run generate:api`，由 OpenAPI 覆盖 `src/api/generated.ts`。当前文件是根据开发方案第 8 节建立的临时契约类型快照；页面和组件没有另建 DTO。
+运行 `npm run generate:api` 可依据 `../docs/openapi.yaml` 更新 `src/api/generated.ts`；页面和组件没有另建 DTO。
 
 ## 校验
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 os.environ["APP_DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ["APP_JWT_SECRET"] = "test-secret-that-is-long-enough-123456"
@@ -15,6 +16,8 @@ from app.core.security import hash_password
 from app.domain.enums import Role
 from app.main import app
 from app.models import MeasurementUnit, User
+
+settings.template_dir = Path(__file__).parents[2] / "example" / "template"
 
 
 @pytest_asyncio.fixture

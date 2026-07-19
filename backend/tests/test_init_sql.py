@@ -10,7 +10,7 @@ from sqlalchemy.schema import CreateTable
 import app.models  # noqa: F401
 from app.core.database import Base
 
-INIT_SQL = Path(__file__).parents[2] / "database" / "init.sql"
+INIT_SQL = Path(__file__).parents[2] / "example" / "database" / "init.sql"
 CREATE_TABLE = re.compile(
     r"CREATE TABLE IF NOT EXISTS `([^`]+)` \((.*?)\) ENGINE=",
     re.DOTALL,
@@ -95,7 +95,7 @@ def test_init_sql_seeds_required_accounts_and_units() -> None:
 
 
 def test_excel_templates_are_json_specs_not_binary_workbooks() -> None:
-    template_dir = Path(__file__).parents[1] / "data" / "template"
+    template_dir = Path(__file__).parents[2] / "example" / "template"
     assert {path.name for path in template_dir.iterdir()} == {
         "material-code-application.json",
         "purchase-application.json",

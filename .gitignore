@@ -8,6 +8,7 @@ backend/.ruff_cache/
 backend/data/uploads/*
 !backend/data/uploads/.gitkeep
 backend/data/logs/
+backend/data/template/
 
 # Frontend
 frontend/node_modules/
