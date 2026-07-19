@@ -91,7 +91,7 @@ class MeasurementUnit(AuditMixin, Base):
 class FileObject(AuditMixin, Base):
     __tablename__ = "file_object"
 
-    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
     file_name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     original_name: Mapped[str] = mapped_column(String(255), nullable=False)
     relative_path: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -136,7 +136,7 @@ class StockMaterialImage(Base):
     material_id: Mapped[int] = mapped_column(
         BIGINT_ID, ForeignKey("stock_material.id", ondelete="CASCADE"), primary_key=True
     )
-    file_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("file_object.id"), primary_key=True)
+    file_id: Mapped[str] = mapped_column(String(36), ForeignKey("file_object.id"), primary_key=True)
     sort_order: Mapped[int] = mapped_column(UTINYINT, nullable=False, default=0)
     material: Mapped[StockMaterial] = relationship(back_populates="images")
     file: Mapped[FileObject] = relationship(lazy="selectin")
@@ -219,7 +219,7 @@ class PurchaseMaterialImage(Base):
     material_id: Mapped[int] = mapped_column(
         BIGINT_ID, ForeignKey("purchase_material.id", ondelete="CASCADE"), primary_key=True
     )
-    file_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("file_object.id"), primary_key=True)
+    file_id: Mapped[str] = mapped_column(String(36), ForeignKey("file_object.id"), primary_key=True)
     sort_order: Mapped[int] = mapped_column(UTINYINT, nullable=False, default=0)
     material: Mapped[PurchaseMaterial] = relationship(back_populates="images")
     file: Mapped[FileObject] = relationship(lazy="selectin")

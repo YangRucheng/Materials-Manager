@@ -40,7 +40,7 @@ async def _unit(session: AsyncSession, unit_id: int) -> MeasurementUnit:
     return unit
 
 
-async def _files(session: AsyncSession, image_ids: list[int]) -> list[FileObject]:
+async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject]:
     if not image_ids:
         return []
     files = list(

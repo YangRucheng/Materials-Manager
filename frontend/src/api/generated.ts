@@ -53,7 +53,7 @@ export interface MeasurementUnit {
   version: number
 }
 export interface FileObject {
-  id: number
+  id: string
   original_name: string
   url: string
   mime_type: 'image/png'
@@ -86,7 +86,7 @@ export interface StockMaterialWrite {
   model_spec: string
   unit_id: number | null
   remark?: string
-  image_ids: number[]
+  image_ids: string[]
   version?: number
 }
 export interface InventoryBalance {
@@ -199,7 +199,7 @@ export interface PurchaseMaterialWrite {
   subitem_no?: string
   remark?: string
   stock_material_id?: number
-  image_ids: number[]
+  image_ids: string[]
   version?: number
 }
 export interface BusinessEvent {

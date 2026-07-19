@@ -164,7 +164,7 @@ async def _lock_and_validate_materials(
     by_id = {item.id: item for item in materials}
     missing = [item_id for item_id in material_ids if item_id not in by_id]
     if missing:
-        raise AppError("NOT_FOUND", "二级库物资不存在", status_code=404, details={"ids": missing})
+        raise AppError("NOT_FOUND", "二级库物资不存在", details={"ids": missing})
     disabled = [item.id for item in materials if item.id in new_material_ids and not item.enabled]
     if disabled:
         raise AppError("MATERIAL_DISABLED", "停用物资不能新增库存业务", details={"ids": disabled})

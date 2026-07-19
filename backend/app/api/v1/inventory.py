@@ -97,7 +97,7 @@ async def balance_detail(
         material_id=material_id,
     )
     if not items:
-        raise AppError("NOT_FOUND", "库存物资不存在", status_code=404)
+        raise AppError("NOT_FOUND", "库存物资不存在")
     return items[0]
 
 
