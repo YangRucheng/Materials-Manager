@@ -14,6 +14,7 @@ import type {
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
 import {
   mockImageUrl,
+  mockFileId,
   nextIds,
   operations,
   purchaseMaterials,
@@ -265,7 +266,7 @@ export const handlers = [
   }),
   http.patch(`${api}/measurement-units/:id`, async ({ params, request }) => {
     const item = units.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '计量单位不存在')
+    if (!item) return error(400, 'NOT_FOUND', '计量单位不存在')
     Object.assign(item, await request.json(), { version: item.version + 1 })
     return HttpResponse.json(item)
   }),
@@ -285,7 +286,7 @@ export const handlers = [
   }),
   http.patch(`${api}/users/:id`, async ({ params, request }) => {
     const item = users.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '用户不存在')
+    if (!item) return error(400, 'NOT_FOUND', '用户不存在')
     const body = (await request.json()) as Partial<(typeof users)[number]>
     if (body.username && users.some((x) => x.id !== item.id && x.username === body.username))
       return error(409, 'DUPLICATE_USERNAME', '用户名已存在')
@@ -294,7 +295,7 @@ export const handlers = [
   }),
   http.delete(`${api}/users/:id`, ({ params, request }) => {
     const item = users.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '用户不存在')
+    if (!item) return error(400, 'NOT_FOUND', '用户不存在')
     if (item.id === actor(request).id)
       return error(409, 'CANNOT_DELETE_CURRENT_USER', '不能删除当前登录用户')
     const referenced = operations.some((operation) => operation.operator_name === item.display_name)
@@ -316,7 +317,7 @@ export const handlers = [
   }),
   http.get(`${api}/stock-materials/:id`, ({ params }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
-    return item ? HttpResponse.json(item) : error(404, 'NOT_FOUND', '二级库物资不存在')
+    return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '二级库物资不存在')
   }),
   http.post(`${api}/stock-materials`, async ({ request }) => {
     const body = (await request.json()) as StockMaterialWrite
@@ -350,7 +351,7 @@ export const handlers = [
   }),
   http.patch(`${api}/stock-materials/:id`, async ({ params, request }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '物资不存在')
+    if (!item) return error(400, 'NOT_FOUND', '物资不存在')
     const body = (await request.json()) as StockMaterialWrite
     const u = unit(body.unit_id)
     Object.assign(item, body, {
@@ -362,14 +363,14 @@ export const handlers = [
   }),
   http.post(`${api}/stock-materials/:id/disable`, ({ params }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '物资不存在')
+    if (!item) return error(400, 'NOT_FOUND', '物资不存在')
     item.enabled = false
     item.version++
     return HttpResponse.json(item)
   }),
   http.put(`${api}/stock-materials/:id/replenishment-policy`, async ({ params, request }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '物资不存在')
+    if (!item) return error(400, 'NOT_FOUND', '物资不存在')
     item.replenishment_policy = (await request.json()) as ReplenishmentPolicy
     item.version++
     return HttpResponse.json(item)
@@ -390,7 +391,7 @@ export const handlers = [
     const material = stockMaterials.find((item) => item.id === Number(params.id))
     return material
       ? HttpResponse.json(inventoryBalance(material))
-      : error(404, 'NOT_FOUND', '库存物资不存在')
+      : error(400, 'NOT_FOUND', '库存物资不存在')
   }),
   http.get(`${api}/inventory/low-stock`, ({ request }) => {
     const url = new URL(request.url)
@@ -431,11 +432,11 @@ export const handlers = [
   }),
   http.get(`${api}/inventory/operations/:id`, ({ params }) => {
     const item = operations.find((x) => x.id === Number(params.id))
-    return item ? HttpResponse.json(item) : error(404, 'NOT_FOUND', '流水不存在')
+    return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '流水不存在')
   }),
   http.patch(`${api}/inventory/operations/:id`, async ({ params, request }) => {
     const item = operations.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '流水不存在')
+    if (!item) return error(400, 'NOT_FOUND', '流水不存在')
     const body = (await request.json()) as OperationUpdate
     const affectedRequestLines = new Set<number>()
     for (const line of item.lines) {
@@ -498,7 +499,7 @@ export const handlers = [
   }),
   http.post(`${api}/inventory/operations/:id/reverse`, async ({ params, request }) => {
     const original = operations.find((x) => x.id === Number(params.id))
-    if (!original) return error(404, 'NOT_FOUND', '流水不存在')
+    if (!original) return error(400, 'NOT_FOUND', '流水不存在')
     const body = (await request.json()) as { client_request_id: string; reason: string }
     const type = original.operation_type === 'INBOUND' ? 'OUTBOUND' : 'INBOUND'
     const op = makeOperation(
@@ -522,7 +523,7 @@ export const handlers = [
     `${api}/inventory/low-stock/:id/create-replenishment-draft`,
     async ({ params, request }) => {
       const stock = stockMaterials.find((x) => x.id === Number(params.id))
-      if (!stock) return error(404, 'NOT_FOUND', '物资不存在')
+      if (!stock) return error(400, 'NOT_FOUND', '物资不存在')
       const body = (await request.json()) as ReplenishmentDraftWrite
       const suggested = inventoryBalance(stock).suggested_purchase_qty
       const previousPlans = purchaseMaterials.filter(
@@ -577,7 +578,7 @@ export const handlers = [
   }),
   http.get(`${api}/purchase-materials/:id`, ({ params }) => {
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))
-    return item ? HttpResponse.json(item) : error(404, 'NOT_FOUND', '申购物资不存在')
+    return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '申购物资不存在')
   }),
   http.post(`${api}/purchase-materials`, async ({ request }) => {
     const body = (await request.json()) as PurchaseMaterialWrite
@@ -612,7 +613,7 @@ export const handlers = [
   }),
   http.patch(`${api}/purchase-materials/:id`, async ({ params, request }) => {
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '申购物资不存在')
+    if (!item) return error(400, 'NOT_FOUND', '申购物资不存在')
     const body = (await request.json()) as PurchaseMaterialWrite
     const selectedUnit = unit(body.unit_id)
     Object.assign(item, body, {
@@ -626,7 +627,7 @@ export const handlers = [
   }),
   http.delete(`${api}/purchase-materials/:id`, ({ params, request }) => {
     const index = purchaseMaterials.findIndex((x) => x.id === Number(params.id))
-    if (index < 0) return error(404, 'NOT_FOUND', '申购物资不存在')
+    if (index < 0) return error(400, 'NOT_FOUND', '申购物资不存在')
     const item = purchaseMaterials[index]
     const version = Number(new URL(request.url).searchParams.get('version'))
     if (version !== item.version) return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改')
@@ -639,7 +640,7 @@ export const handlers = [
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))
     const body = (await request.json()) as { stock_material_id: number }
     const stock = stockMaterials.find((x) => x.id === body.stock_material_id)
-    if (!item || !stock) return error(404, 'NOT_FOUND', '物资不存在')
+    if (!item || !stock) return error(400, 'NOT_FOUND', '物资不存在')
     item.stock_material_id = stock.id
     item.stock_material_name = stock.name
     item.version++
@@ -650,7 +651,7 @@ export const handlers = [
     const materials = body.material_ids.map((id) =>
       purchaseMaterials.find((item) => item.id === id),
     )
-    if (materials.some((material) => !material)) return error(404, 'NOT_FOUND', '申购计划不存在')
+    if (materials.some((material) => !material)) return error(400, 'NOT_FOUND', '申购计划不存在')
     const plans = materials.filter((material) => material !== undefined)
     const uncoded = plans.filter((material) => !material.material_code)
     if (uncoded.length) return error(409, 'MATERIAL_CODE_REQUIRED', '未编码物资不能转入申购记录')
@@ -660,7 +661,7 @@ export const handlers = [
   }),
   http.post(`${api}/purchase-materials/:id/move-to-record`, async ({ params, request }) => {
     const material = purchaseMaterials.find((item) => item.id === Number(params.id))
-    if (!material) return error(404, 'NOT_FOUND', '申购计划不存在')
+    if (!material) return error(400, 'NOT_FOUND', '申购计划不存在')
     if (!material.material_code)
       return error(409, 'MATERIAL_CODE_REQUIRED', '物资编码完成后才能转入申购记录')
     if (material.moved_to_record)
@@ -694,7 +695,7 @@ export const handlers = [
       const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
       if (line) return HttpResponse.json(purchaseRecord(purchaseRequest, line))
     }
-    return error(404, 'NOT_FOUND', '申购记录不存在')
+    return error(400, 'NOT_FOUND', '申购记录不存在')
   }),
   http.patch(`${api}/purchase-records/:id`, async ({ params, request }) => {
     for (const purchaseRequest of purchaseRequests) {
@@ -704,7 +705,7 @@ export const handlers = [
       Object.assign(purchaseRequest, body, { version: purchaseRequest.version + 1 })
       return HttpResponse.json(purchaseRecord(purchaseRequest, line))
     }
-    return error(404, 'NOT_FOUND', '申购记录不存在')
+    return error(400, 'NOT_FOUND', '申购记录不存在')
   }),
   http.get(`${api}/purchase-requests`, ({ request }) => {
     const url = new URL(request.url)
@@ -766,11 +767,11 @@ export const handlers = [
   }),
   http.get(`${api}/purchase-requests/:id`, ({ params }) => {
     const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    return item ? HttpResponse.json(item) : error(404, 'NOT_FOUND', '请购单不存在')
+    return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '请购单不存在')
   }),
   http.patch(`${api}/purchase-requests/:id`, async ({ params, request }) => {
     const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '请购单不存在')
+    if (!item) return error(400, 'NOT_FOUND', '请购单不存在')
     if (!['DRAFT', 'RETURNED'].includes(item.status))
       return error(409, 'INVALID_STATUS_TRANSITION', '当前状态不可编辑')
     const body = (await request.json()) as PurchaseRequestWrite
@@ -807,7 +808,7 @@ export const handlers = [
   }),
   http.post(`${api}/purchase-requests/:id/:action`, async ({ params, request }) => {
     const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    if (!item) return error(404, 'NOT_FOUND', '请购单不存在')
+    if (!item) return error(400, 'NOT_FOUND', '请购单不存在')
     const action = String(params.action)
     const body = (await request.json().catch(() => ({}))) as Record<string, string>
     const transitions: Record<string, PurchaseRequestStatus> = {
@@ -864,7 +865,7 @@ export const handlers = [
     const line = purchaseRequests.flatMap((x) => x.lines).find((x) => x.id === Number(params.id))
     const request = purchaseRequests.find((x) => x.lines.some((l) => l.id === line?.id))
     const material = purchaseMaterials.find((x) => x.id === line?.purchase_material_id)
-    if (!line || !request || !material) return error(404, 'NOT_FOUND', '请购行不存在')
+    if (!line || !request || !material) return error(400, 'NOT_FOUND', '请购行不存在')
     return HttpResponse.json({
       purchase_request_no: request.trace_no,
       line_id: line.id,
@@ -879,7 +880,7 @@ export const handlers = [
   http.post(`${api}/files/images`, async ({ request }) => {
     const form = await request.formData()
     const file = form.get('file') as File
-    const id = nextIds.file++
+    const id = mockFileId(nextIds.file++)
     return HttpResponse.json(
       {
         id,

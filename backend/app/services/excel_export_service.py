@@ -20,6 +20,7 @@ from openpyxl.worksheet.datavalidation import (  # type: ignore[import-untyped]
 )
 
 from app.core.config import settings
+from app.core.errors import AppError
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
@@ -27,7 +28,28 @@ ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
 
 def _load_spec(file_name: str) -> dict[str, Any]:
     path = settings.template_dir / file_name
-    return json.loads(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_MISSING",
+            f"Excel 导出模板缺失：{file_name}，请检查运行目录 data/template",
+            details={"template": file_name, "template_dir": str(settings.template_dir)},
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_INVALID",
+            f"Excel 导出模板编码错误：{file_name}",
+            details={"template": file_name},
+        ) from exc
+    try:
+        return json.loads(content)  # type: ignore[no-any-return]
+    except json.JSONDecodeError as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_INVALID",
+            f"Excel 导出模板格式错误：{file_name}",
+            details={"template": file_name},
+        ) from exc
 
 
 def _style(cell: Any, style: dict[str, Any]) -> None:
@@ -117,9 +139,7 @@ def _material_code_workbook(spec: dict[str, Any], rows: list[dict[str, Any]]) ->
     return workbook
 
 
-def _purchase_application_workbook(
-    spec: dict[str, Any], rows: list[dict[str, Any]]
-) -> Workbook:
+def _purchase_application_workbook(spec: dict[str, Any], rows: list[dict[str, Any]]) -> Workbook:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = spec["sheet"]["title"]
@@ -163,7 +183,7 @@ def _purchase_application_workbook(
         red_fill = PatternFill("solid", fgColor="FFFCE8E6")
         sheet.conditional_formatting.add(
             f"A{data_start}:K{last_row}",
-            FormulaRule(formula=[f'LEN($A{data_start})=0'], fill=red_fill),
+            FormulaRule(formula=[f"LEN($A{data_start})=0"], fill=red_fill),
         )
     sheet.auto_filter.ref = f"A{header_row}:K{last_row}"
     sheet.print_area = f"A{header_row}:K{last_row}"
@@ -172,11 +192,18 @@ def _purchase_application_workbook(
 
 def render_excel(template_file: str, rows: list[dict[str, Any]]) -> tuple[bytes, str]:
     spec = _load_spec(template_file)
-    if template_file == "material-code-application.json":
-        workbook = _material_code_workbook(spec, rows)
-    else:
-        workbook = _purchase_application_workbook(spec, rows)
-    output = BytesIO()
-    workbook.save(output)
-    filename = spec["output_filename"].format(date=date.today().isoformat())
+    try:
+        if template_file == "material-code-application.json":
+            workbook = _material_code_workbook(spec, rows)
+        else:
+            workbook = _purchase_application_workbook(spec, rows)
+        output = BytesIO()
+        workbook.save(output)
+        filename = spec["output_filename"].format(date=date.today().isoformat())
+    except (KeyError, TypeError, ValueError) as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_INVALID",
+            f"Excel 导出模板内容不完整或无效：{template_file}",
+            details={"template": template_file},
+        ) from exc
     return output.getvalue(), filename

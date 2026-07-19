@@ -152,11 +152,11 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 
 #### `file_object`
 
-图片统一保存在后端 `data/uploads/` 目录，不在 MySQL 中保存二进制。上传后使用 Pillow 解码并转换为 PNG，移除原图片元数据，再以 UUID v4 重命名为 `uuid.png`，例如 `data/uploads/550e8400-e29b-41d4-a716-446655440000.png`。不能只修改扩展名而保留原编码格式。
+图片统一保存在后端 `data/uploads/` 目录，不在 MySQL 中保存二进制。上传后使用 Pillow 解码并转换为 PNG，移除原图片元数据，再以可按字符串排序的 UUIDv7 作为主键和文件名。不能只修改扩展名而保留原编码格式。
 
 数据库保存：`file_name`、`original_name`、`relative_path`、`mime_type`、`size_bytes`、`width`、`height`、`sha256`。其中 `file_name` 全局唯一，`mime_type` 固定为 `image/png`，`relative_path` 只保存相对路径，禁止由客户端传入磁盘路径。
 
-上传入口可接受 `image/jpeg`、`image/png`、`image/webp`；单图建议不超过 10 MB，每个物资最多 9 张。应用启动时自动确保 `backend/data/uploads/` 存在，并通过统一的图片读取接口返回文件。
+上传入口可接受 `image/jpeg`、`image/png`、`image/webp`；单图建议不超过 10 MB，每个物资最多 9 张。应用启动时自动确保 `backend/data/uploads/` 存在。图片读取无需鉴权，并可通过 `size` 指定最大边长，按比例生成 WebP 预览以降低传输量。
 
 通过 `stock_material_image` 和 `purchase_material_image` 两张关联表绑定图片，字段为 `material_id`、`file_id`、`sort_order`，从而保留外键完整性。
 
@@ -523,8 +523,8 @@ Excel 布局示例位于 `example/template/*.json`，部署时复制到运行目
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| POST | `/files/images` | 上传并转换为 `data/uploads/{uuid}.png`，返回 `file_id` 和访问 URL |
-| GET | `/files/images/{id}` | 读取图片 |
+| POST | `/files/images` | 上传并转换为 `data/uploads/{uuid7}.png`，返回 UUIDv7 `file_id` 和访问 URL |
+| GET | `/files/images/{id}` | 公开读取图片；可传 `size=16..2048` 获取等比例 WebP 预览 |
 | DELETE | `/files/images/{id}` | 删除尚未被业务引用的图片 |
 | GET | `/measurement-units` | 计量单位下拉选项 |
 | GET | `/dashboard/summary` | 库存总项数、低库存、待编码、待处理请购统计 |

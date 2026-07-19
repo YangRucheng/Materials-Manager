@@ -6,6 +6,7 @@ import pytest
 from httpx import AsyncClient
 from openpyxl import load_workbook
 
+from app.core.config import settings
 from tests.conftest import auth_headers, create_stock
 
 
@@ -147,7 +148,7 @@ async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) ->
     )
     assert deleted.status_code == 204, deleted.text
     missing = await client.get(f"/api/v1/purchase-materials/{deletable['id']}", headers=headers)
-    assert missing.status_code == 404
+    assert missing.status_code == 400
 
     moved = await create_purchase_plan(client, headers, "已转入计划", code="DQ-MOVED")
     await move_to_record(client, headers, int(moved["id"]))
@@ -350,9 +351,7 @@ async def test_purchase_tracking_numbers_are_optional_and_order_number_defaults(
 async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
     uncoded = await create_purchase_plan(client, headers, "待编码\u000b接触器")
-    coded = await create_purchase_plan(
-        client, headers, "已编码\u000c接触器", code="DQ-XLSX-1"
-    )
+    coded = await create_purchase_plan(client, headers, "已编码\u000c接触器", code="DQ-XLSX-1")
 
     code_export = await client.get(
         "/api/v1/purchase-materials/export-uncoded",
@@ -378,3 +377,17 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert purchase_sheet["A2"].value == coded["material_code"]
     assert purchase_sheet["B2"].value == "已编码接触器"
     assert str(purchase_sheet["C2"].value) == coded["planned_qty"]
+
+
+@pytest.mark.asyncio
+async def test_missing_excel_template_returns_readable_400(
+    client: AsyncClient, monkeypatch, tmp_path
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    monkeypatch.setattr(settings, "template_dir", tmp_path)
+
+    response = await client.get("/api/v1/purchase-materials/export-uncoded", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "EXPORT_TEMPLATE_MISSING"
+    assert "material-code-application.json" in response.json()["message"]

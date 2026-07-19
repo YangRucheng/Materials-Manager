@@ -40,12 +40,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -85,12 +79,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -157,12 +145,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -225,12 +207,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -314,12 +290,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -366,12 +336,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -424,12 +388,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -487,12 +445,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -557,12 +509,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -617,12 +563,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -725,12 +665,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -802,12 +736,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -856,12 +784,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -915,12 +837,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -968,12 +884,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1107,12 +1017,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1161,12 +1065,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1224,12 +1122,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1292,12 +1184,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1356,12 +1242,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1401,12 +1281,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1508,12 +1382,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1564,12 +1432,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1606,7 +1468,7 @@ paths:
             application/json:
               schema: {}
         '400':
-          description: 业务校验失败
+          description: Excel 导出模板缺失或格式错误
           content:
             application/json:
               schema:
@@ -1619,12 +1481,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1660,7 +1516,7 @@ paths:
             application/json:
               schema: {}
         '400':
-          description: 业务校验失败
+          description: Excel 导出模板缺失或格式错误
           content:
             application/json:
               schema:
@@ -1673,12 +1529,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1738,12 +1588,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1794,12 +1638,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1861,12 +1699,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -1916,12 +1748,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -1984,12 +1810,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2044,12 +1864,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2133,12 +1947,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2185,12 +1993,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2243,12 +2045,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2306,12 +2102,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2374,12 +2164,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2434,12 +2218,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2502,12 +2280,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2562,12 +2334,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2630,12 +2396,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2692,12 +2452,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2746,12 +2500,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2835,12 +2583,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -2889,12 +2631,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -2952,12 +2688,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3041,12 +2771,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -3093,12 +2817,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3157,12 +2875,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3238,12 +2950,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -3290,12 +2996,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3358,12 +3058,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -3407,12 +3101,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3466,12 +3154,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
         '409':
           description: 版本、状态或业务数据冲突
           content:
@@ -3492,18 +3174,30 @@ paths:
       - 图片
       summary: Read Image
       operationId: read_image_api_v1_files_images__file_id__get
-      security:
-      - HTTPBearer: []
       parameters:
       - name: file_id
         in: path
         required: true
         schema:
-          type: integer
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           title: File Id
+      - name: size
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            maximum: 2048
+            minimum: 16
+          - type: 'null'
+          title: Size
       responses:
         '200':
           description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '400':
           description: 业务校验失败
           content:
@@ -3518,12 +3212,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3552,7 +3240,8 @@ paths:
         in: path
         required: true
         schema:
-          type: integer
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           title: File Id
       responses:
         '204':
@@ -3571,12 +3260,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '403':
           description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '404':
-          description: 资源不存在
           content:
             application/json:
               schema:
@@ -3614,6 +3297,7 @@ components:
           - INSERT
           - UPDATE
           - DELETE
+          - ALTER
           title: Statement Type
         columns:
           items:
@@ -3837,7 +3521,8 @@ components:
     FileObjectRead:
       properties:
         id:
-          type: integer
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           title: Id
         original_name:
           type: string
@@ -4529,7 +4214,8 @@ components:
           title: Stock Material Id
         image_ids:
           items:
-            type: integer
+            type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           type: array
           maxItems: 9
           title: Image Ids
@@ -4705,7 +4391,8 @@ components:
           title: Stock Material Id
         image_ids:
           items:
-            type: integer
+            type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           type: array
           maxItems: 9
           title: Image Ids
@@ -5307,7 +4994,8 @@ components:
           title: Remark
         image_ids:
           items:
-            type: integer
+            type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           type: array
           maxItems: 9
           title: Image Ids
@@ -5404,7 +5092,8 @@ components:
           title: Remark
         image_ids:
           items:
-            type: integer
+            type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
           type: array
           maxItems: 9
           title: Image Ids

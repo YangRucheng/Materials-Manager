@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
-import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import AppError, not_found
+from app.core.identifiers import uuid7_string
 from app.models import (
     FileObject,
     PurchaseMaterialImage,
@@ -21,6 +22,16 @@ from app.schemas import FileObjectRead
 from app.services.common import file_read
 
 ACCEPTED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+PREVIEW_MIME_TYPE = "image/webp"
+
+
+def _render_preview(source: Path, size: int) -> bytes:
+    output = io.BytesIO()
+    with Image.open(source) as image:
+        image.thumbnail((size, size), Image.Resampling.LANCZOS)
+        converted = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+        converted.save(output, format="WEBP", quality=82, method=6)
+    return output.getvalue()
 
 
 async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) -> FileObjectRead:
@@ -40,11 +51,13 @@ async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) ->
         raise AppError("INVALID_IMAGE", "图片无法解码") from exc
 
     data = output.getvalue()
-    file_name = f"{uuid.uuid4()}.png"
+    file_id = uuid7_string()
+    file_name = f"{file_id}.png"
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     target = settings.upload_dir / file_name
     target.write_bytes(data)
     item = FileObject(
+        id=file_id,
         file_name=file_name,
         original_name=Path(upload.filename or "image").name[:255],
         relative_path=f"data/uploads/{file_name}",
@@ -65,17 +78,24 @@ async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) ->
     return file_read(item)
 
 
-async def get_image(session: AsyncSession, file_id: int) -> tuple[FileObject, Path]:
+async def get_image(session: AsyncSession, file_id: str) -> tuple[FileObject, Path]:
     item = await session.get(FileObject, file_id)
     if item is None:
         raise not_found("图片")
     path = settings.upload_dir / item.file_name
     if not path.is_file():
-        raise AppError("FILE_MISSING", "图片文件不存在", status_code=404)
+        raise AppError("FILE_MISSING", "图片文件不存在")
     return item, path
 
 
-async def delete_image(session: AsyncSession, file_id: int) -> None:
+async def render_preview(path: Path, size: int) -> bytes:
+    try:
+        return await asyncio.to_thread(_render_preview, path, size)
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise AppError("INVALID_IMAGE", "图片无法生成预览") from exc
+
+
+async def delete_image(session: AsyncSession, file_id: str) -> None:
     item = await session.get(FileObject, file_id)
     if item is None:
         raise not_found("图片")
