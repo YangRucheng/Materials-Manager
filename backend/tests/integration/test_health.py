@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import logging
 from typing import Self
 
 from httpx import AsyncClient
-from pytest import MonkeyPatch
+from pytest import LogCaptureFixture, MonkeyPatch
 
 from app import main
 
@@ -26,6 +27,16 @@ async def test_health_checks_database(client: AsyncClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
+
+
+async def test_request_log_uses_real_ip_from_proxy(
+    client: AsyncClient, caplog: LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.INFO, logger="spare_parts.api"):
+        response = await client.get("/health", headers={"EO-Connecting-IP": "203.0.113.10"})
+
+    assert response.status_code == 200
+    assert any("client_ip=203.0.113.10" in record.getMessage() for record in caplog.records)
 
 
 async def test_health_reports_database_failure(

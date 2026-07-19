@@ -21,6 +21,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.core.errors import AppError
 from app.core.logging import configure_logging
+from app.core.middleware import RealIPMiddleware
 from app.core.schema import schema_differences
 
 logger = logging.getLogger("spare_parts.api")
@@ -80,12 +81,14 @@ async def request_context(request: Request, call_next: RequestResponseEndpoint) 
     started = time.perf_counter()
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
+    client_ip = request.client.host if request.client else "unknown"
     logger.info(
-        "HTTP %s %s -> %s | %.2f ms | user=%s | request_id=%s",
+        "HTTP %s %s -> %s | %.2f ms | client_ip=%s | user=%s | request_id=%s",
         request.method,
         request.url.path,
         response.status_code,
         (time.perf_counter() - started) * 1000,
+        client_ip,
         getattr(request.state, "username", "anonymous"),
         request_id,
     )
@@ -181,4 +184,5 @@ async def health(request: Request) -> JSONResponse:
     return JSONResponse(content={"status": "ok", "database": "ok"})
 
 
+app.add_middleware(RealIPMiddleware)
 app.include_router(api_router, prefix="/api/v1")
