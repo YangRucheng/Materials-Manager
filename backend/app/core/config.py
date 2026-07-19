@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 480
     upload_dir: Path = BACKEND_DIR / "data" / "uploads"
     template_dir: Path = BACKEND_DIR / "data" / "template"
+    log_dir: Path = BACKEND_DIR / "data" / "logs"
+    log_backup_count: int = Field(default=90, ge=1)
     max_image_bytes: int = 10 * 1024 * 1024
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 

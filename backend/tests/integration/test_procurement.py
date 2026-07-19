@@ -349,8 +349,10 @@ async def test_purchase_tracking_numbers_are_optional_and_order_number_defaults(
 @pytest.mark.asyncio
 async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
-    uncoded = await create_purchase_plan(client, headers, "待编码接触器")
-    coded = await create_purchase_plan(client, headers, "已编码接触器", code="DQ-XLSX-1")
+    uncoded = await create_purchase_plan(client, headers, "待编码\u000b接触器")
+    coded = await create_purchase_plan(
+        client, headers, "已编码\u000c接触器", code="DQ-XLSX-1"
+    )
 
     code_export = await client.get(
         "/api/v1/purchase-materials/export-uncoded",
@@ -361,7 +363,7 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     code_sheet = load_workbook(BytesIO(code_export.content)).active
-    assert code_sheet["D7"].value == uncoded["name"]
+    assert code_sheet["D7"].value == "待编码接触器"
     assert code_sheet["E7"].value == uncoded["model_spec"]
     assert code_sheet["I7"].value == uncoded["unit_name"]
 
@@ -374,5 +376,5 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     purchase_sheet = load_workbook(BytesIO(purchase_export.content)).active
     assert purchase_sheet["A1"].value == "物料编码（必填）"
     assert purchase_sheet["A2"].value == coded["material_code"]
-    assert purchase_sheet["B2"].value == coded["name"]
+    assert purchase_sheet["B2"].value == "已编码接触器"
     assert str(purchase_sheet["C2"].value) == coded["planned_qty"]
