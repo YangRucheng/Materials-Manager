@@ -50,3 +50,6 @@ python scripts/export_openapi.py
 ```
 
 生产部署前必须修改 `APP_JWT_SECRET`。图片位于 `backend/data/uploads/`，应与 MySQL 使用相同备份周期。
+
+运行日志默认写入 `backend/data/logs/spare-parts-api.log`。日志每天轮转，历史文件按
+`YYYY-MM` 目录归档并保留 90 天；可通过 `APP_LOG_DIR` 和 `APP_LOG_BACKUP_COUNT` 调整。

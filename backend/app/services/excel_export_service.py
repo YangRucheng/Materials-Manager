@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 from openpyxl import Workbook  # type: ignore[import-untyped]
@@ -21,10 +23,14 @@ from openpyxl.worksheet.datavalidation import (  # type: ignore[import-untyped]
 from app.core.config import settings
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+PACKAGED_TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "data" / "template"
+ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
 
 
 def _load_spec(file_name: str) -> dict[str, Any]:
     path = settings.template_dir / file_name
+    if not path.is_file():
+        path = PACKAGED_TEMPLATE_DIR / file_name
     return json.loads(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
 
@@ -60,8 +66,10 @@ def _cell_value(row: dict[str, Any], column: dict[str, Any]) -> Any:
     field = column.get("field")
     value = row.get(field) if field else None
     result = value if value not in (None, "") else column.get("default")
-    if isinstance(result, str) and result.startswith(("=", "+", "-", "@")):
-        return f"'{result}"
+    if isinstance(result, str):
+        result = ILLEGAL_EXCEL_CHARACTERS.sub("", result)
+        if result.startswith(("=", "+", "-", "@")):
+            return f"'{result}"
     return result
 
 

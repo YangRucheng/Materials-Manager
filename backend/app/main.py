@@ -20,6 +20,7 @@ from app.api.v1 import router as api_router
 from app.core.config import settings
 from app.core.database import engine
 from app.core.errors import AppError
+from app.core.logging import configure_logging
 from app.core.schema import schema_differences
 
 logger = logging.getLogger("spare_parts.api")
@@ -47,6 +48,12 @@ def error_response(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
+    configure_logging(settings.log_dir, settings.log_backup_count)
+    logger.info(
+        "service started environment=%s log_dir=%s",
+        settings.environment,
+        settings.log_dir,
+    )
     yield
 
 
@@ -74,13 +81,13 @@ async def request_context(request: Request, call_next: RequestResponseEndpoint) 
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     logger.info(
-        "request method=%s path=%s status=%s duration_ms=%.2f request_id=%s user=%s",
+        "HTTP %s %s -> %s | %.2f ms | user=%s | request_id=%s",
         request.method,
         request.url.path,
         response.status_code,
         (time.perf_counter() - started) * 1000,
-        request_id,
         getattr(request.state, "username", "anonymous"),
+        request_id,
     )
     return response
 

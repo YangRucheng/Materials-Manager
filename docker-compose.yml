@@ -10,8 +10,10 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be configured}
       APP_ACCESS_TOKEN_MINUTES: ${APP_ACCESS_TOKEN_MINUTES:-480}
       APP_UPLOAD_DIR: /app/data/uploads
+      APP_LOG_DIR: /app/data/logs
     volumes:
       - uploads:/app/data/uploads
+      - logs:/app/data/logs
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
@@ -47,6 +49,7 @@ services:
 
 volumes:
   uploads:
+  logs:
 
 networks:
   1panel-network:
