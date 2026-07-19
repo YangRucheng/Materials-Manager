@@ -55,3 +55,5 @@ python scripts/export_openapi.py
 
 运行日志默认写入 `backend/data/logs/spare-parts-api.log`。日志每天轮转，历史文件按
 `YYYY-MM` 目录归档并保留 90 天；可通过 `APP_LOG_DIR` 和 `APP_LOG_BACKUP_COUNT` 调整。
+控制台默认输出 ANSI 颜色，设置 `NO_COLOR=1` 可关闭。请求日志依次采用
+`EO-Connecting-IP`、`X-Real-IP`、`X-Forwarded-For` 中的有效 IP；部署时应由可信反向代理覆盖这些请求头。
