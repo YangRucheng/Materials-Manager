@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage, type FormInst, type FormRules } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
+import { LOGO_URL } from '@/constants/branding'
 
 const router = useRouter()
 const route = useRoute()
@@ -34,6 +35,7 @@ async function submit() {
   <main class="login-page">
     <section class="login-intro">
       <div class="intro-content">
+        <img class="login-logo" :src="LOGO_URL" alt="系统 Logo" />
         <span class="eyebrow">ELECTRICAL WORKSHOP</span>
         <h1>电气车间<br />备件管理系统</h1>
         <p>库存、申购计划与申购到货闭环管理</p>
@@ -100,6 +102,13 @@ async function submit() {
 .eyebrow {
   letter-spacing: 3px;
   opacity: 0.75;
+}
+.login-logo {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin-bottom: 24px;
+  object-fit: contain;
 }
 h1 {
   font-size: 48px;

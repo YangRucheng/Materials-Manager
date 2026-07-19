@@ -50,6 +50,28 @@ class ApiError(ReadModel):
     request_id: str
 
 
+class AgentDatabaseExecuteRequest(RequestModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+
+    sql: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100000)]
+    parameters: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    max_rows: int = Field(default=1000, ge=1, le=5000)
+
+
+class AgentDatabaseExecuteRead(ReadModel):
+    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE"]
+    columns: list[str] = Field(default_factory=list)
+    rows: list[dict[str, object]] = Field(default_factory=list)
+    row_count: int
+    affected_rows: int | None = None
+    last_insert_id: str | int | None = None
+    truncated: bool = False
+
+
+class AgentDatabaseSchemaRead(ReadModel):
+    tables: list[dict[str, object]]
+
+
 class UserRead(ReadModel):
     id: int
     username: str
