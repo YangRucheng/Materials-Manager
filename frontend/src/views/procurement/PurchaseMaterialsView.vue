@@ -164,13 +164,14 @@ async function save() {
   saving.value = true
   try {
     form.image_ids = images.value.map((x) => x.id)
-    const created = await procurementApi.createMaterial({
+    await procurementApi.createMaterial({
       ...form,
       subitem_no: form.subitem_no?.trim() || undefined,
     })
     message.success('申购计划已创建')
     show.value = false
-    await router.push(`/procurement/materials/${created.id}`)
+    page.value = 1
+    await load()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '创建失败')
   } finally {
