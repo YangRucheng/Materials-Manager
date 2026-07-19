@@ -305,7 +305,7 @@ suggested_purchase_qty = max(target_qty - current_qty - on_order_qty, 0)
 - Pydantic v2
 - SQLAlchemy 2.x async ORM
 - `asyncmy` MySQL 驱动
-- `database/init.sql` 空库初始化
+- `example/database/init.sql` 空库初始化
 - JWT access token；密码使用 Argon2
 - Pillow，用于校验图片并统一转换为 PNG
 - pytest、pytest-asyncio、httpx
@@ -468,7 +468,8 @@ backend/
 | POST | `/purchase-materials/export-purchase-application` | 按所选计划导出采购申请表 |
 | POST | `/purchase-materials/batch-move-to-record` | 将多条已编码计划批量转为同一批申购记录 |
 
-Excel 布局由 `backend/data/template/*.json` 描述，运行时生成工作簿；仓库不保存原始 XLSX 模板。
+Excel 布局示例位于 `example/template/*.json`，部署时复制到运行目录的
+`data/template/`，运行时生成工作簿；仓库不保存原始 XLSX 模板。
 
 补录编码直接修改申购计划：
 
@@ -658,16 +659,16 @@ frontend/
 
 1. 枚举值和状态流转表。
 2. 本文第 8 节的 URL、请求体、响应体和错误体。
-3. OpenAPI 文件 `contracts/openapi.yaml`。
+3. OpenAPI 文件 `docs/openapi.yaml`。
 4. 统一的分页、时间、Decimal 字符串、错误码规则。
 5. 10~20 条用于前后端联调的种子数据。
 
 ### 11.2 后端 agent
 
-负责 `backend/`、`contracts/openapi.yaml` 和 `docker-compose.yml`：
+负责 `backend/`、`docs/openapi.yaml` 和 `docker-compose.yml`：
 
 1. 项目脚手架、认证和四角色简单校验。
-2. SQLAlchemy 模型、`database/init.sql` 和种子数据。
+2. SQLAlchemy 模型、`example/database/init.sql` 和种子数据。
 3. 二级库物资、库存余额和流水事务。
 4. 安全库存与缺货计算。
 5. 申购计划、未编码查询和编码直接补录。
@@ -681,7 +682,7 @@ frontend/
 
 1. Vue3/Vite/Router/Naive UI/Pinia 脚手架。
 2. 登录、布局和四角色菜单。
-3. 依据 `contracts/openapi.yaml` 生成类型。
+3. 依据 `docs/openapi.yaml` 生成类型。
 4. 二级库物资、库存、入出库和流水页面。
 5. 低库存工作台与补库入口。
 6. 申购计划、未编码物资、请购页面。

@@ -4,7 +4,6 @@ import json
 import re
 from datetime import date
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 
 from openpyxl import Workbook  # type: ignore[import-untyped]
@@ -23,14 +22,11 @@ from openpyxl.worksheet.datavalidation import (  # type: ignore[import-untyped]
 from app.core.config import settings
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-PACKAGED_TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "data" / "template"
 ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
 
 
 def _load_spec(file_name: str) -> dict[str, Any]:
     path = settings.template_dir / file_name
-    if not path.is_file():
-        path = PACKAGED_TEMPLATE_DIR / file_name
     return json.loads(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
 

@@ -1,5 +1,5 @@
 /**
- * 临时契约类型快照。仓库补充 contracts/openapi.yaml 后运行 `npm run generate:api` 覆盖本文件。
+ * 临时契约类型快照。OpenAPI 契约位于 docs/openapi.yaml。
  * 页面与组件只引用这里的 DTO，避免各自定义不一致的接口结构。
  */
 export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_ONLY'

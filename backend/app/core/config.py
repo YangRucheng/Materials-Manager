@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 480
     upload_dir: Path = BACKEND_DIR / "data" / "uploads"
-    template_dir: Path = BACKEND_DIR / "data" / "template"
+    template_dir: Path = Path.cwd() / "data" / "template"
     log_dir: Path = BACKEND_DIR / "data" / "logs"
     log_backup_count: int = Field(default=90, ge=1)
     max_image_bytes: int = 10 * 1024 * 1024
