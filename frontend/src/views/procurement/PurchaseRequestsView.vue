@@ -14,7 +14,6 @@ const total = ref(0)
 const page = ref(1)
 const filters = reactive({ keyword: '', status: null as string | null })
 const columns: DataTableColumns<PurchaseRecord> = [
-  { title: '计划 ID', key: 'plan_no', width: 175 },
   {
     title: '计划日期',
     key: 'plan_date',
@@ -119,7 +118,7 @@ onMounted(load)
       <div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
-          placeholder="计划 ID、申购单号、追溯号、编码、名称或业务员"
+          placeholder="申购单号、追溯号、编码、名称或业务员"
           clearable
           style="width: 300px"
         />
@@ -139,7 +138,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1500"
+        :scroll-x="1325"
         :row-key="(row: PurchaseRecord) => row.line_id"
       />
       <div class="pagination-bar">
