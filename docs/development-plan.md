@@ -236,6 +236,8 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 
 | 字段 | 类型 | 约束/说明 |
 | --- | --- | --- |
+| `plan_no` | VARCHAR(32) | 唯一业务 ID，格式 `PLAN-YYYYMMDD-001`，序号按计划日期递增 |
+| `plan_date` | DATE | 必填；转入申购记录后仍通过原计划保留 |
 | `material_code` | VARCHAR(64) | 可空；同一编码可出现在多次申购计划中 |
 | `name` | VARCHAR(128) | 必填 |
 | `model_spec` | VARCHAR(255) | 必填 |

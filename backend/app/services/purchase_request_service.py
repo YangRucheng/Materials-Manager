@@ -474,6 +474,8 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         line_id=line.id,
         purchase_request_id=request.id,
         purchase_material_id=line.purchase_material_id,
+        plan_no=material.plan_no,
+        plan_date=material.plan_date,
         purchase_order_no=request.purchase_order_no,
         trace_no=request.trace_no,
         status=request.status,
@@ -674,6 +676,7 @@ async def search_purchase_records(
                 PurchaseRequestLine.material_code_snapshot.like(like),
                 PurchaseRequestLine.material_name_snapshot.like(like),
                 PurchaseRequestLine.model_spec_snapshot.like(like),
+                PurchaseMaterial.plan_no.like(like),
             )
         )
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)

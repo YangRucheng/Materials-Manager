@@ -20,11 +20,13 @@ async def create_purchase_plan(
     planned_qty: str = "5",
     purchase_responsible: str = "李工",
     subitem_no: str | None = "01-01",
+    plan_date: str = "2026-07-01",
 ) -> dict[str, object]:
     response = await client.post(
         "/api/v1/purchase-materials",
         headers=headers,
         json={
+            "plan_date": plan_date,
             "material_code": code,
             "name": name,
             "model_spec": "M60-2P 5A",
@@ -43,6 +45,7 @@ async def create_purchase_plan(
     result = response.json()
     assert result["planned_qty"] == planned_qty
     assert result["purchase_responsible"] == purchase_responsible
+    assert result["plan_date"] == plan_date
     assert "code_state" not in result
     return result
 
@@ -66,6 +69,30 @@ async def move_to_record(
     )
     assert response.status_code == 200, response.text
     return response.json()
+
+
+@pytest.mark.asyncio
+async def test_plan_number_uses_date_sequence_and_record_keeps_plan_date(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "同日计划一", code="DQ-PLAN-1")
+    second = await create_purchase_plan(client, headers, "同日计划二", code="DQ-PLAN-2")
+    other_day = await create_purchase_plan(
+        client,
+        headers,
+        "次日计划",
+        code="DQ-PLAN-3",
+        plan_date="2026-07-02",
+    )
+
+    assert first["plan_no"] == "PLAN-20260701-001"
+    assert second["plan_no"] == "PLAN-20260701-002"
+    assert other_day["plan_no"] == "PLAN-20260702-001"
+
+    record = await move_to_record(client, headers, int(first["id"]))
+    assert record["plan_no"] == first["plan_no"]
+    assert record["plan_date"] == "2026-07-01"
 
 
 @pytest.mark.asyncio

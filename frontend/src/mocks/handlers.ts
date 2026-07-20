@@ -71,6 +71,8 @@ const purchaseRecord = (
     line_id: line.id,
     purchase_request_id: request.id,
     purchase_material_id: line.purchase_material_id,
+    plan_no: material.plan_no,
+    plan_date: material.plan_date,
     purchase_order_no: request.purchase_order_no,
     trace_no: request.trace_no,
     status: request.status,
@@ -534,8 +536,12 @@ export const handlers = [
       const quantityNote = `补库计划：建议申购 ${suggested} ${stock.unit_name}${
         body.planned_qty === suggested ? '' : `，确认计划 ${body.planned_qty} ${stock.unit_name}`
       }`
+      const planDate = new Date().toISOString().slice(0, 10)
+      const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
       const purchase = {
         id: nextIds.purchase++,
+        plan_no: `PLAN-${planDate.replace(/-/g, '')}-${String(planIndex).padStart(3, '0')}`,
+        plan_date: planDate,
         material_code: previous?.material_code,
         name: stock.name,
         model_spec: stock.model_spec,
@@ -569,7 +575,10 @@ export const handlers = [
       page(
         purchaseMaterials.filter(
           (x) =>
-            (!q || `${x.material_code || ''}${x.name}${x.model_spec}`.toLowerCase().includes(q)) &&
+            (!q ||
+              `${x.plan_no}${x.material_code || ''}${x.name}${x.model_spec}`
+                .toLowerCase()
+                .includes(q)) &&
             (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
             (moved === null || x.moved_to_record === (moved === 'true')),
         ),
@@ -586,8 +595,12 @@ export const handlers = [
     const u = unit(body.unit_id)
     if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
     const responsible = body.purchase_responsible || actor(request).display_name
+    const planDate = body.plan_date || new Date().toISOString().slice(0, 10)
+    const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
     const item = {
       id: nextIds.purchase++,
+      plan_no: `PLAN-${planDate.replace(/-/g, '')}-${String(planIndex).padStart(3, '0')}`,
+      plan_date: planDate,
       material_code: body.material_code || undefined,
       name: body.name,
       model_spec: body.model_spec,
@@ -682,7 +695,7 @@ export const handlers = [
         records.filter(
           (record) =>
             (!keyword ||
-              `${record.trace_no}${record.purchase_order_no || ''}${record.material_code}${record.material_name}${record.salesperson || ''}${record.remark || ''}`
+              `${record.plan_no}${record.trace_no}${record.purchase_order_no || ''}${record.material_code}${record.material_name}${record.salesperson || ''}${record.remark || ''}`
                 .toLowerCase()
                 .includes(keyword)) &&
             (!status || record.status === status),

@@ -17,7 +17,7 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
-import { toShanghaiDate } from '@/utils/time'
+import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 
 const router = useRouter()
@@ -36,6 +36,7 @@ const batchExporting = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
+const createPlanDate = ref(Date.now())
 const filters = reactive({ keyword: '' })
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
@@ -76,6 +77,13 @@ const columns: DataTableColumns<PurchaseMaterial> = [
     type: 'selection',
     disabled: (row) => !auth.can('purchase:write') || !row.material_code,
   },
+  { title: '计划 ID', key: 'plan_no', width: 175 },
+  {
+    title: '计划日期',
+    key: 'plan_date',
+    width: 110,
+    render: (row) => formatDate(row.plan_date),
+  },
   {
     title: '物料编码',
     key: 'material_code',
@@ -102,11 +110,6 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   { title: '计划数量', key: 'planned_qty', width: 100 },
   { title: '实际需求人', key: 'actual_demand_person', width: 110 },
   { title: '申购负责人', key: 'purchase_responsible', width: 110 },
-  {
-    title: '关联二级库物资',
-    key: 'stock_material_name',
-    render: (r) => r.stock_material_name || '—',
-  },
   {
     title: '操作',
     key: 'action',
@@ -157,15 +160,21 @@ function openCreate() {
     image_ids: [],
   })
   images.value = []
+  createPlanDate.value = Date.now()
   show.value = true
 }
 async function save() {
+  if (!createPlanDate.value) {
+    message.error('请选择计划日期')
+    return
+  }
   await formRef.value?.validate()
   saving.value = true
   try {
     form.image_ids = images.value.map((x) => x.id)
     await procurementApi.createMaterial({
       ...form,
+      plan_date: toShanghaiDate(createPlanDate.value),
       subitem_no: form.subitem_no?.trim() || undefined,
     })
     message.success('申购计划已创建')
@@ -267,7 +276,7 @@ onMounted(() => {
       ><div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
-          placeholder="编码、名称或规格"
+          placeholder="计划 ID、编码、名称或规格"
           clearable
           style="width: 240px"
         /><n-button type="primary" @click="query">查询</n-button>
@@ -341,6 +350,11 @@ onMounted(() => {
               v-model:value="form.material_code"
               maxlength="64"
               placeholder="没有编码可留空" /></n-form-item
+          ><n-form-item label="计划日期" required
+            ><n-date-picker
+              v-model:value="createPlanDate"
+              type="date"
+              class="full-width" /></n-form-item
           ><n-form-item label="名称" path="name"
             ><n-input v-model:value="form.name" maxlength="128" /></n-form-item
           ><n-form-item label="型号规格" path="model_spec"

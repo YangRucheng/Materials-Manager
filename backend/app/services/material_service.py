@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta, timezone
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +33,8 @@ from app.services.common import (
     validate_quantity_precision,
     validate_version,
 )
+
+SHANGHAI = timezone(timedelta(hours=8))
 
 
 async def _unit(session: AsyncSession, unit_id: int) -> MeasurementUnit:
@@ -154,6 +158,8 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
     )
     return PurchaseMaterialRead(
         id=item.id,
+        plan_no=item.plan_no,
+        plan_date=item.plan_date,
         material_code=item.material_code,
         name=item.name,
         model_spec=item.model_spec,
@@ -187,6 +193,25 @@ async def _validate_stock_link(
     return stock
 
 
+async def _next_plan_no(session: AsyncSession, plan_date: date) -> str:
+    prefix = f"PLAN-{plan_date:%Y%m%d}-"
+    previous = await session.scalar(
+        select(PurchaseMaterial.plan_no)
+        .where(PurchaseMaterial.plan_date == plan_date)
+        .order_by(PurchaseMaterial.plan_no.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    index = int(previous.rsplit("-", 1)[-1]) + 1 if previous else 1
+    if index > 999:
+        raise AppError(
+            "PLAN_DAILY_LIMIT_EXCEEDED",
+            "同一计划日期最多创建 999 条申购计划",
+            status_code=409,
+        )
+    return f"{prefix}{index:03d}"
+
+
 async def create_purchase_material(
     session: AsyncSession, data: PurchaseMaterialCreate, user_id: int
 ) -> PurchaseMaterial:
@@ -196,7 +221,10 @@ async def create_purchase_material(
     validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
+    plan_date = data.plan_date or datetime.now(SHANGHAI).date()
     item = PurchaseMaterial(
+        plan_no=await _next_plan_no(session, plan_date),
+        plan_date=plan_date,
         material_code=data.material_code,
         name=data.name,
         model_spec=data.model_spec,
@@ -245,6 +273,9 @@ async def update_purchase_material(
         "stock_material_id",
     ):
         setattr(item, key, getattr(data, key))
+    if data.plan_date is not None and data.plan_date != item.plan_date:
+        item.plan_no = await _next_plan_no(session, data.plan_date)
+        item.plan_date = data.plan_date
     if data.actual_demand_person is not None:
         item.actual_demand_person = data.actual_demand_person
     item.purchase_responsible = responsible
@@ -327,6 +358,7 @@ async def search_purchase_materials(
                 PurchaseMaterial.name.like(like),
                 PurchaseMaterial.model_spec.like(like),
                 PurchaseMaterial.material_code.like(like),
+                PurchaseMaterial.plan_no.like(like),
             )
         )
     if enabled is not None:
@@ -375,6 +407,7 @@ async def purchase_materials_for_export(
                 PurchaseMaterial.name.like(like),
                 PurchaseMaterial.model_spec.like(like),
                 PurchaseMaterial.material_code.like(like),
+                PurchaseMaterial.plan_no.like(like),
             )
         )
     if coded is True:

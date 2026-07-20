@@ -350,6 +350,7 @@ class StockOperationRead(ReadModel):
 
 
 class PurchaseMaterialBase(RequestModel):
+    plan_date: date | None = None
     material_code: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
@@ -393,6 +394,8 @@ class PurchaseMaterialUpdate(PurchaseMaterialBase):
 
 class PurchaseMaterialRead(ReadModel):
     id: int
+    plan_no: str
+    plan_date: date
     material_code: str | None = None
     name: str
     model_spec: str
@@ -546,6 +549,8 @@ class PurchaseRecordRead(ReadModel):
     line_id: int
     purchase_request_id: int
     purchase_material_id: int
+    plan_no: str
+    plan_date: date
     purchase_order_no: str | None = None
     trace_no: str | None = None
     status: PurchaseRequestStatus
