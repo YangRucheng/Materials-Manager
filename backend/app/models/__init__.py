@@ -183,6 +183,8 @@ class PurchaseMaterial(AuditMixin, Base):
     __tablename__ = "purchase_material"
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    plan_no: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    plan_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     material_code: Mapped[str | None] = mapped_column(String(64), index=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

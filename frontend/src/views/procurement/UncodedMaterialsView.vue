@@ -4,7 +4,7 @@ import { NButton, type DataTableColumns, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
-import { formatShanghaiTime } from '@/utils/time'
+import { formatDate, formatShanghaiTime } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 
 const router = useRouter()
@@ -17,6 +17,13 @@ const exporting = ref(false)
 const filters = reactive({ keyword: '' })
 
 const columns: DataTableColumns<PurchaseMaterial> = [
+  { title: '计划 ID', key: 'plan_no', width: 175 },
+  {
+    title: '计划日期',
+    key: 'plan_date',
+    width: 110,
+    render: (row) => formatDate(row.plan_date),
+  },
   {
     title: '物资名称',
     key: 'name',
@@ -33,11 +40,6 @@ const columns: DataTableColumns<PurchaseMaterial> = [
   },
   { title: '型号规格', key: 'model_spec' },
   { title: '单位', key: 'unit_name', width: 80 },
-  {
-    title: '关联二级库物资',
-    key: 'stock_material_name',
-    render: (row) => row.stock_material_name || '—',
-  },
   {
     title: '创建时间',
     key: 'created_at',

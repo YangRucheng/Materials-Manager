@@ -4332,6 +4332,12 @@ components:
       title: PreparedInboundRead
     PurchaseMaterialCreate:
       properties:
+        plan_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Plan Date
         material_code:
           anyOf:
           - type: string
@@ -4417,6 +4423,13 @@ components:
         id:
           type: integer
           title: Id
+        plan_no:
+          type: string
+          title: Plan No
+        plan_date:
+          type: string
+          format: date
+          title: Plan Date
         material_code:
           anyOf:
           - type: string
@@ -4492,6 +4505,8 @@ components:
       type: object
       required:
       - id
+      - plan_no
+      - plan_date
       - name
       - model_spec
       - unit_id
@@ -4509,6 +4524,12 @@ components:
       title: PurchaseMaterialRead
     PurchaseMaterialUpdate:
       properties:
+        plan_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Plan Date
         material_code:
           anyOf:
           - type: string
@@ -4618,6 +4639,13 @@ components:
         purchase_material_id:
           type: integer
           title: Purchase Material Id
+        plan_no:
+          type: string
+          title: Plan No
+        plan_date:
+          type: string
+          format: date
+          title: Plan Date
         purchase_order_no:
           anyOf:
           - type: string
@@ -4701,6 +4729,8 @@ components:
       - line_id
       - purchase_request_id
       - purchase_material_id
+      - plan_no
+      - plan_date
       - status
       - material_code
       - material_name

@@ -222,6 +222,10 @@ onMounted(() => {
     </n-card>
     <n-card title="物资与计划信息">
       <n-descriptions :column="3">
+        <n-descriptions-item label="计划 ID">{{ record.plan_no }}</n-descriptions-item>
+        <n-descriptions-item label="计划日期">{{
+          formatDate(record.plan_date)
+        }}</n-descriptions-item>
         <n-descriptions-item label="物料编码">{{ record.material_code }}</n-descriptions-item>
         <n-descriptions-item label="名称">{{ record.material_name }}</n-descriptions-item>
         <n-descriptions-item label="型号规格">{{ record.model_spec }}</n-descriptions-item>
