@@ -11,7 +11,7 @@ import type {
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import MaterialSelector from '@/components/MaterialSelector.vue'
-import { formatShanghaiTime, toShanghaiDate } from '@/utils/time'
+import { dateToTimestamp, formatDate, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
@@ -40,6 +40,7 @@ const moveForm = reactive({
   remark: '',
 })
 const images = ref<FileObject[]>([])
+const planDate = ref<number | null>(null)
 const form = reactive<PurchaseMaterialWrite>({
   material_code: '',
   name: '',
@@ -90,6 +91,7 @@ function syncForm(value: PurchaseMaterial) {
     image_ids: value.images.map((image) => image.id),
     version: value.version,
   })
+  planDate.value = dateToTimestamp(value.plan_date)
   images.value = [...value.images]
 }
 async function save() {
@@ -101,9 +103,10 @@ async function save() {
     !form.actual_demand_person?.trim() ||
     !form.purchase_responsible?.trim() ||
     !form.planned_qty ||
-    !form.usage.trim()
+    !form.usage.trim() ||
+    !planDate.value
   ) {
-    message.error('请完整填写物资、数量、用途、实际需求人和申购负责人')
+    message.error('请完整填写计划日期、物资、数量、用途、实际需求人和申购负责人')
     return
   }
   saving.value = true
@@ -111,6 +114,7 @@ async function save() {
     form.image_ids = images.value.map((image) => image.id)
     material.value = await procurementApi.updateMaterial(material.value.id, {
       ...form,
+      plan_date: toShanghaiDate(planDate.value),
       subitem_no: form.subitem_no?.trim() || undefined,
     })
     syncForm(material.value)
@@ -194,6 +198,8 @@ onMounted(() => {
         <n-button text @click="router.back()">← 返回申购计划</n-button>
         <h1 class="page-title">{{ material.name }}</h1>
         <n-space class="page-subtitle" size="small">
+          <span>{{ material.plan_no }}</span>
+          <span>{{ formatDate(material.plan_date) }}</span>
           <span>{{ material.material_code || '暂无物料编码' }}</span>
           <n-tag size="small" :type="material.moved_to_record ? 'success' : 'warning'">
             {{ material.moved_to_record ? '已转入申购记录' : '申购计划中' }}
@@ -221,6 +227,12 @@ onMounted(() => {
     <n-card title="申购计划信息">
       <n-form label-placement="top" :disabled="!auth.can('purchase:write')">
         <div class="form-grid">
+          <n-form-item label="计划 ID">
+            <n-input :value="material.plan_no" disabled />
+          </n-form-item>
+          <n-form-item label="计划日期" required>
+            <n-date-picker v-model:value="planDate" type="date" class="full-width" />
+          </n-form-item>
           <n-form-item label="物料编码">
             <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
           </n-form-item>

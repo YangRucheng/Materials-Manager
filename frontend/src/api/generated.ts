@@ -166,6 +166,8 @@ export interface DashboardSummary {
 }
 export interface PurchaseMaterial {
   id: number
+  plan_no: string
+  plan_date: string
   material_code?: string
   name: string
   model_spec: string
@@ -187,6 +189,7 @@ export interface PurchaseMaterial {
   version: number
 }
 export interface PurchaseMaterialWrite {
+  plan_date?: string
   material_code?: string
   name: string
   model_spec: string
@@ -244,6 +247,8 @@ export interface PurchaseRecord {
   line_id: number
   purchase_request_id: number
   purchase_material_id: number
+  plan_no: string
+  plan_date: string
   purchase_order_no?: string | null
   trace_no?: string | null
   status: PurchaseRequestStatus

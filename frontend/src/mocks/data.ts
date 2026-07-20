@@ -153,6 +153,8 @@ export const stockMaterials: StockMaterial[] = [
 export const purchaseMaterials: PurchaseMaterial[] = [
   {
     id: 1,
+    plan_no: 'PLAN-20260701-001',
+    plan_date: '2026-07-01',
     material_code: 'DQ-000101',
     name: '交流接触器',
     model_spec: 'CJX2-2510 220V',
@@ -175,6 +177,8 @@ export const purchaseMaterials: PurchaseMaterial[] = [
   },
   {
     id: 2,
+    plan_no: 'PLAN-20260701-002',
+    plan_date: '2026-07-01',
     material_code: 'DQ-000102',
     name: '铜芯控制电缆',
     model_spec: 'KVV 4×1.5mm²',
@@ -197,6 +201,8 @@ export const purchaseMaterials: PurchaseMaterial[] = [
   },
   {
     id: 3,
+    plan_no: 'PLAN-20260702-001',
+    plan_date: '2026-07-02',
     name: '智能电机保护器',
     model_spec: 'M60-2P 5A',
     unit_id: 1,
@@ -216,6 +222,8 @@ export const purchaseMaterials: PurchaseMaterial[] = [
   },
   {
     id: 4,
+    plan_no: 'PLAN-20260703-001',
+    plan_date: '2026-07-03',
     material_code: 'DQ-000188',
     name: '温湿度控制器',
     model_spec: 'WSK-SH',
@@ -236,6 +244,8 @@ export const purchaseMaterials: PurchaseMaterial[] = [
   },
   {
     id: 5,
+    plan_no: 'PLAN-20260704-001',
+    plan_date: '2026-07-04',
     name: '熔断器芯',
     model_spec: 'RT18-32 10A',
     unit_id: 1,

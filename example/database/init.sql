@@ -183,6 +183,8 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
 
 CREATE TABLE IF NOT EXISTS `purchase_material` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `plan_no` VARCHAR(32) NOT NULL,
+  `plan_date` DATE NOT NULL,
   `material_code` VARCHAR(64) NULL,
   `name` VARCHAR(128) NOT NULL,
   `model_spec` VARCHAR(255) NOT NULL,
@@ -202,6 +204,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_material` PRIMARY KEY (`id`),
+  CONSTRAINT `uq_purchase_material_plan_no` UNIQUE (`plan_no`),
   CONSTRAINT `fk_purchase_material_unit_id_measurement_unit`
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
@@ -211,6 +214,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   CONSTRAINT `fk_purchase_material_updated_by_user`
     FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_purchase_material_identity_hash` (`identity_hash`),
+  INDEX `ix_purchase_material_plan_date` (`plan_date`),
   INDEX `ix_purchase_material_material_code` (`material_code`),
   INDEX `ix_purchase_material_model_spec` (`model_spec`),
   INDEX `ix_purchase_material_name` (`name`),
