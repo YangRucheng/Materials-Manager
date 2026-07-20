@@ -19,7 +19,6 @@ const message = useMessage()
 const record = ref<PurchaseRecord | null>(null)
 const loading = ref(true)
 const saving = ref(false)
-const showEdit = ref(false)
 const edit = reactive({
   purchase_order_no: '',
   trace_no: '',
@@ -42,21 +41,16 @@ async function load() {
   loading.value = true
   try {
     record.value = await procurementApi.record(Number(route.params.id))
+    Object.assign(edit, {
+      purchase_order_no: record.value.purchase_order_no || '',
+      trace_no: record.value.trace_no || '',
+      purchase_date: dateToTimestamp(record.value.purchase_date),
+      salesperson: record.value.salesperson || '',
+      remark: record.value.remark || '',
+    })
   } finally {
     loading.value = false
   }
-}
-
-function openEdit() {
-  if (!record.value) return
-  Object.assign(edit, {
-    purchase_order_no: record.value.purchase_order_no || '',
-    trace_no: record.value.trace_no || '',
-    purchase_date: dateToTimestamp(record.value.purchase_date),
-    salesperson: record.value.salesperson || '',
-    remark: record.value.remark || '',
-  })
-  showEdit.value = true
 }
 
 async function saveTracking() {
@@ -74,8 +68,7 @@ async function saveTracking() {
       remark: edit.remark || undefined,
       version: record.value.version,
     })
-    message.success('跟踪信息已保存')
-    showEdit.value = false
+    message.success('申购记录已保存')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
@@ -174,7 +167,13 @@ onMounted(() => {
         </p>
       </div>
       <n-space>
-        <n-button v-if="auth.can('purchase:write')" @click="openEdit">编辑跟踪信息</n-button>
+        <n-button
+          v-if="auth.can('purchase:write')"
+          type="primary"
+          :loading="saving"
+          @click="saveTracking"
+          >保存</n-button
+        >
         <n-button
           v-if="
             auth.can('warehouse:write') &&
@@ -187,17 +186,27 @@ onMounted(() => {
         >
       </n-space>
     </div>
-    <n-card title="到货跟踪">
+    <n-card title="申购记录信息">
+      <n-form label-placement="top" :disabled="!auth.can('purchase:write')">
+        <div class="form-grid">
+          <n-form-item label="申购单号">
+            <n-input v-model:value="edit.purchase_order_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="追溯号">
+            <n-input v-model:value="edit.trace_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="申购日期" required>
+            <n-date-picker v-model:value="edit.purchase_date" type="date" class="full-width" />
+          </n-form-item>
+        </div>
+        <n-form-item label="业务员"><n-input v-model:value="edit.salesperson" /></n-form-item>
+        <n-form-item label="跟踪备注">
+          <n-input v-model:value="edit.remark" type="textarea" maxlength="1000" show-count />
+        </n-form-item>
+      </n-form>
       <n-descriptions :column="3">
-        <n-descriptions-item label="申购单号">{{
-          record.purchase_order_no || '—'
-        }}</n-descriptions-item>
-        <n-descriptions-item label="追溯号">{{ record.trace_no || '—' }}</n-descriptions-item>
         <n-descriptions-item label="状态">{{
           requestStatusLabels[record.status]
-        }}</n-descriptions-item>
-        <n-descriptions-item label="申购日期">{{
-          formatDate(record.purchase_date)
         }}</n-descriptions-item>
         <n-descriptions-item label="计划数量"
           >{{ record.planned_qty }} {{ record.unit_name }}</n-descriptions-item
@@ -208,15 +217,11 @@ onMounted(() => {
         <n-descriptions-item label="未到数量"
           >{{ record.remaining_qty }} {{ record.unit_name }}</n-descriptions-item
         >
-        <n-descriptions-item label="业务员">{{ record.salesperson || '—' }}</n-descriptions-item>
         <n-descriptions-item label="申购负责人">{{
           record.purchase_responsible
         }}</n-descriptions-item>
         <n-descriptions-item label="实际需求人">{{
           record.actual_demand_person
-        }}</n-descriptions-item>
-        <n-descriptions-item label="跟踪备注" :span="3">{{
-          record.remark || '—'
         }}</n-descriptions-item>
       </n-descriptions>
     </n-card>
@@ -242,31 +247,6 @@ onMounted(() => {
       @click="router.push({ name: 'operations', query: { purchase_request_no: record.trace_no } })"
       >查看关联入库流水 →</n-button
     >
-    <n-modal v-model:show="showEdit" preset="card" title="编辑跟踪信息" style="width: 560px">
-      <n-form label-placement="top">
-        <div class="form-grid">
-          <n-form-item label="申购单号">
-            <n-input v-model:value="edit.purchase_order_no" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="追溯号">
-            <n-input v-model:value="edit.trace_no" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="申购日期" required>
-            <n-date-picker v-model:value="edit.purchase_date" type="date" class="full-width" />
-          </n-form-item>
-        </div>
-        <n-form-item label="业务员"><n-input v-model:value="edit.salesperson" /></n-form-item>
-        <n-form-item label="跟踪备注">
-          <n-input v-model:value="edit.remark" type="textarea" maxlength="1000" show-count />
-        </n-form-item>
-      </n-form>
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="showEdit = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="saveTracking">保存</n-button>
-        </n-space>
-      </template>
-    </n-modal>
     <n-modal
       v-model:show="linkModal.show"
       preset="card"
