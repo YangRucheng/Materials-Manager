@@ -13,7 +13,6 @@ import type {
 } from '@/api/generated'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
 import {
-  mockImageUrl,
   mockFileId,
   nextIds,
   operations,
@@ -26,6 +25,8 @@ import {
 
 const api = '/api/v1'
 const now = () => new Date().toISOString()
+const mockImage = (id: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="100%" height="100%" fill="#e8f5ee"/><text x="160" y="125" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#456">备件图片 ${id}</text></svg>`
 const page = <T>(items: T[], url: URL) => {
   const current = Number(url.searchParams.get('page') || 1)
   const size = Number(url.searchParams.get('page_size') || 20)
@@ -877,6 +878,13 @@ export const handlers = [
       stock_material_id: material.stock_material_id,
     })
   }),
+  http.get(
+    `${api}/files/images/:id`,
+    ({ params }) =>
+      new HttpResponse(mockImage(String(params.id)), {
+        headers: { 'Content-Type': 'image/svg+xml' },
+      }),
+  ),
   http.post(`${api}/files/images`, async ({ request }) => {
     const form = await request.formData()
     const file = form.get('file') as File
@@ -885,7 +893,6 @@ export const handlers = [
       {
         id,
         original_name: file.name,
-        url: mockImageUrl(id),
         mime_type: 'image/png',
         size_bytes: file.size,
         width: 800,
