@@ -1,11 +1,12 @@
 export const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const maxImageBytes = 10 * 1024 * 1024
 
-export function imagePreviewUrl(url: string, size: number): string {
-  if (url.startsWith('data:') || url.startsWith('blob:')) return url
-  const [pathAndQuery, fragment] = url.split('#', 2)
-  const separator = pathAndQuery.includes('?') ? '&' : '?'
-  return `${pathAndQuery}${separator}size=${size}${fragment ? `#${fragment}` : ''}`
+export function imageUrl(fileId: string): string {
+  return `/api/v1/files/images/${encodeURIComponent(fileId)}`
+}
+
+export function imagePreviewUrl(fileId: string, size: number): string {
+  return `${imageUrl(fileId)}?size=${size}`
 }
 
 export function validateImageSelection(

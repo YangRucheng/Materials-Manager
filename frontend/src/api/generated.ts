@@ -55,7 +55,6 @@ export interface MeasurementUnit {
 export interface FileObject {
   id: string
   original_name: string
-  url: string
   mime_type: 'image/png'
   size_bytes: number
   width: number

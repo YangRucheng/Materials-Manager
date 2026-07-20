@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { fileApi } from '@/api/files'
 import type { FileObject } from '@/api/generated'
-import { imagePreviewUrl, validateImageSelection } from '@/utils/image'
+import { imagePreviewUrl, imageUrl, validateImageSelection } from '@/utils/image'
 
 const props = withDefaults(
   defineProps<{ files: FileObject[]; disabled?: boolean; max?: number }>(),
@@ -50,8 +50,8 @@ async function remove(file: FileObject) {
   <div class="image-uploader">
     <div v-for="file in files" :key="file.id" class="image-item">
       <n-image
-        :src="imagePreviewUrl(file.url, 192)"
-        :preview-src="file.url"
+        :src="imagePreviewUrl(file.id, 192)"
+        :preview-src="imageUrl(file.id)"
         :alt="file.original_name"
         object-fit="cover"
         width="96"

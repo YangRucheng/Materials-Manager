@@ -3168,6 +3168,115 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/files/images/orphans:
+    get:
+      tags:
+      - 图片
+      summary: Orphan Report
+      operationId: orphan_report_api_v1_files_images_orphans_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: older_than_hours
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 87600
+          minimum: 0
+          default: 24
+          title: Older Than Hours
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrphanFileReportRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - 图片
+      summary: Remove Orphans
+      operationId: remove_orphans_api_v1_files_images_orphans_delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: older_than_hours
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 87600
+          minimum: 0
+          default: 24
+          title: Older Than Hours
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrphanFileCleanupRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/files/images/{file_id}:
     get:
       tags:
@@ -3527,9 +3636,6 @@ components:
         original_name:
           type: string
           title: Original Name
-        url:
-          type: string
-          title: Url
         mime_type:
           type: string
           const: image/png
@@ -3548,7 +3654,6 @@ components:
       required:
       - id
       - original_name
-      - url
       - size_bytes
       - width
       - height
@@ -3922,6 +4027,85 @@ components:
       - source_type
       - lines
       title: OperationUpdate
+    OrphanFileCleanupRead:
+      properties:
+        cutoff:
+          type: string
+          format: date-time
+          title: Cutoff
+        deleted_record_ids:
+          items:
+            type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          type: array
+          title: Deleted Record Ids
+        deleted_file_names:
+          items:
+            type: string
+          type: array
+          title: Deleted File Names
+      type: object
+      required:
+      - cutoff
+      - deleted_record_ids
+      - deleted_file_names
+      title: OrphanFileCleanupRead
+    OrphanFileRead:
+      properties:
+        id:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          title: Id
+        original_name:
+          type: string
+          title: Original Name
+        size_bytes:
+          type: integer
+          title: Size Bytes
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        file_exists:
+          type: boolean
+          title: File Exists
+      type: object
+      required:
+      - id
+      - original_name
+      - size_bytes
+      - created_at
+      - file_exists
+      title: OrphanFileRead
+    OrphanFileReportRead:
+      properties:
+        cutoff:
+          type: string
+          format: date-time
+          title: Cutoff
+        unreferenced_records:
+          items:
+            $ref: '#/components/schemas/OrphanFileRead'
+          type: array
+          title: Unreferenced Records
+        untracked_file_names:
+          items:
+            type: string
+          type: array
+          title: Untracked File Names
+        missing_file_ids:
+          items:
+            type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          type: array
+          title: Missing File Ids
+      type: object
+      required:
+      - cutoff
+      - unreferenced_records
+      - untracked_file_names
+      - missing_file_ids
+      title: OrphanFileReportRead
     Page_InventoryBalanceRead_:
       properties:
         items:

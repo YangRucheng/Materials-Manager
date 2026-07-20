@@ -71,7 +71,6 @@ def file_read(file: FileObject) -> FileObjectRead:
     return FileObjectRead(
         id=file.id,
         original_name=file.original_name,
-        url=f"/api/v1/files/images/{file.id}",
         mime_type="image/png",
         size_bytes=file.size_bytes,
         width=file.width,

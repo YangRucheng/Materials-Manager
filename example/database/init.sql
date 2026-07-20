@@ -40,9 +40,7 @@ CREATE TABLE IF NOT EXISTS `business_event_log` (
 
 CREATE TABLE IF NOT EXISTS `file_object` (
   `id` VARCHAR(36) NOT NULL,
-  `file_name` VARCHAR(64) NOT NULL,
   `original_name` VARCHAR(255) NOT NULL,
-  `relative_path` VARCHAR(255) NOT NULL,
   `mime_type` VARCHAR(32) NOT NULL,
   `size_bytes` BIGINT UNSIGNED NOT NULL,
   `width` INT NOT NULL,
@@ -54,7 +52,6 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_file_object` PRIMARY KEY (`id`),
-  CONSTRAINT `uq_file_object_file_name` UNIQUE (`file_name`),
   CONSTRAINT `fk_file_object_created_by_user`
     FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
   CONSTRAINT `fk_file_object_updated_by_user`

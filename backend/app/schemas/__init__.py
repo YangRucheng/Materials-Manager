@@ -153,11 +153,31 @@ class MeasurementUnitUpdate(RequestModel):
 class FileObjectRead(ReadModel):
     id: FileId
     original_name: str
-    url: str
     mime_type: Literal["image/png"] = "image/png"
     size_bytes: int
     width: int
     height: int
+
+
+class OrphanFileRead(ReadModel):
+    id: FileId
+    original_name: str
+    size_bytes: int
+    created_at: datetime
+    file_exists: bool
+
+
+class OrphanFileReportRead(ReadModel):
+    cutoff: datetime
+    unreferenced_records: list[OrphanFileRead]
+    untracked_file_names: list[str]
+    missing_file_ids: list[FileId]
+
+
+class OrphanFileCleanupRead(ReadModel):
+    cutoff: datetime
+    deleted_record_ids: list[FileId]
+    deleted_file_names: list[str]
 
 
 class ReplenishmentPolicyRead(ReadModel):

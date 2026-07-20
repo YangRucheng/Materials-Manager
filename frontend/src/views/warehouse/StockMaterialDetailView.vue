@@ -7,7 +7,7 @@ import type { InventoryBalance, StockMaterial } from '@/api/generated'
 import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime } from '@/utils/time'
 import { compareDecimal, isDecimalString } from '@/utils/decimal'
-import { imagePreviewUrl } from '@/utils/image'
+import { imagePreviewUrl, imageUrl } from '@/utils/image'
 
 const route = useRoute()
 const router = useRouter()
@@ -106,8 +106,8 @@ onMounted(load)
           ><n-image
             v-for="image in material.images"
             :key="image.id"
-            :src="imagePreviewUrl(image.url, 320)"
-            :preview-src="image.url"
+            :src="imagePreviewUrl(image.id, 320)"
+            :preview-src="imageUrl(image.id)"
             width="120"
             height="120"
             object-fit="cover" /></n-space

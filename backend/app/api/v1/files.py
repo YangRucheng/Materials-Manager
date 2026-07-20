@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 
-from app.core.permissions import DbSession, require_roles
+from app.core.permissions import DbSession, SuperAdmin, require_roles
 from app.domain.enums import Role
 from app.models import User
-from app.schemas import FileId, FileObjectRead
+from app.schemas import FileId, FileObjectRead, OrphanFileCleanupRead, OrphanFileReportRead
 from app.services import file_service
 
 router = APIRouter(prefix="/files/images", tags=["图片"])
@@ -20,6 +20,24 @@ FileWriter = Annotated[
 @router.post("", response_model=FileObjectRead, status_code=status.HTTP_201_CREATED)
 async def upload(file: UploadFile, session: DbSession, user: FileWriter) -> FileObjectRead:
     return await file_service.save_image(session, file, user.id)
+
+
+@router.get("/orphans", response_model=OrphanFileReportRead)
+async def orphan_report(
+    session: DbSession,
+    user: SuperAdmin,
+    older_than_hours: Annotated[int, Query(ge=0, le=87600)] = 24,
+) -> OrphanFileReportRead:
+    return await file_service.inspect_orphans(session, older_than_hours)
+
+
+@router.delete("/orphans", response_model=OrphanFileCleanupRead)
+async def remove_orphans(
+    session: DbSession,
+    user: SuperAdmin,
+    older_than_hours: Annotated[int, Query(ge=0, le=87600)] = 24,
+) -> OrphanFileCleanupRead:
+    return await file_service.cleanup_orphans(session, older_than_hours)
 
 
 @router.get("/{file_id}")
@@ -39,7 +57,7 @@ async def read_image(
     return FileResponse(
         path,
         media_type=item.mime_type,
-        filename=item.file_name,
+        filename=f"{item.id}.png",
         content_disposition_type="inline",
         headers=headers,
     )

@@ -3,12 +3,15 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import io
+import re
+from datetime import UTC, timedelta
 from pathlib import Path
 
 from fastapi import UploadFile
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.config import settings
 from app.core.errors import AppError, not_found
@@ -18,11 +21,38 @@ from app.models import (
     PurchaseMaterialImage,
     StockMaterialImage,
 )
-from app.schemas import FileObjectRead
-from app.services.common import file_read
+from app.schemas import (
+    FileObjectRead,
+    OrphanFileCleanupRead,
+    OrphanFileRead,
+    OrphanFileReportRead,
+)
+from app.services.common import file_read, utc_aware, utcnow
 
 ACCEPTED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 PREVIEW_MIME_TYPE = "image/webp"
+MANAGED_FILE_NAME = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$"
+)
+
+
+def file_path(file_id: str) -> Path:
+    return settings.upload_dir / f"{file_id}.png"
+
+
+def _unreferenced() -> ColumnElement[bool]:
+    return ~exists().where(StockMaterialImage.file_id == FileObject.id) & ~exists().where(
+        PurchaseMaterialImage.file_id == FileObject.id
+    )
+
+
+def _managed_disk_files() -> dict[str, Path]:
+    settings.upload_dir.mkdir(parents=True, exist_ok=True)
+    return {
+        path.name: path
+        for path in settings.upload_dir.iterdir()
+        if path.is_file() and MANAGED_FILE_NAME.fullmatch(path.name)
+    }
 
 
 def _render_preview(source: Path, size: int) -> bytes:
@@ -52,15 +82,12 @@ async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) ->
 
     data = output.getvalue()
     file_id = uuid7_string()
-    file_name = f"{file_id}.png"
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
-    target = settings.upload_dir / file_name
-    target.write_bytes(data)
+    target = file_path(file_id)
+    await asyncio.to_thread(target.write_bytes, data)
     item = FileObject(
         id=file_id,
-        file_name=file_name,
         original_name=Path(upload.filename or "image").name[:255],
-        relative_path=f"data/uploads/{file_name}",
         mime_type="image/png",
         size_bytes=len(data),
         width=width,
@@ -72,8 +99,11 @@ async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) ->
     session.add(item)
     try:
         await session.flush()
+        # 上传是独立事务。只有数据库记录真正提交后才向客户端返回成功。
+        await session.commit()
     except Exception:
-        target.unlink(missing_ok=True)
+        await session.rollback()
+        await asyncio.to_thread(target.unlink, missing_ok=True)
         raise
     return file_read(item)
 
@@ -82,7 +112,7 @@ async def get_image(session: AsyncSession, file_id: str) -> tuple[FileObject, Pa
     item = await session.get(FileObject, file_id)
     if item is None:
         raise not_found("图片")
-    path = settings.upload_dir / item.file_name
+    path = file_path(file_id)
     if not path.is_file():
         raise AppError("FILE_MISSING", "图片文件不存在")
     return item, path
@@ -106,7 +136,88 @@ async def delete_image(session: AsyncSession, file_id: str) -> None:
             break
     if referenced:
         raise AppError("FILE_IN_USE", "图片已被业务引用，不能删除", status_code=409)
-    path = settings.upload_dir / item.file_name
+    path = file_path(file_id)
     await session.delete(item)
-    await session.flush()
-    path.unlink(missing_ok=True)
+    await session.commit()
+    await asyncio.to_thread(path.unlink, missing_ok=True)
+
+
+async def inspect_orphans(
+    session: AsyncSession, older_than_hours: int
+) -> OrphanFileReportRead:
+    cutoff = utcnow() - timedelta(hours=older_than_hours)
+    unreferenced = list(
+        (
+            await session.scalars(
+                select(FileObject)
+                .where(FileObject.created_at <= cutoff, _unreferenced())
+                .order_by(FileObject.created_at, FileObject.id)
+            )
+        ).all()
+    )
+    all_records = list(
+        (await session.execute(select(FileObject.id, FileObject.created_at))).all()
+    )
+    disk_files = await asyncio.to_thread(_managed_disk_files)
+    cutoff_timestamp = cutoff.replace(tzinfo=UTC).timestamp()
+    record_ids = {file_id for file_id, _ in all_records}
+    untracked = sorted(
+        name
+        for name, path in disk_files.items()
+        if name.removesuffix(".png") not in record_ids and path.stat().st_mtime <= cutoff_timestamp
+    )
+    missing = sorted(
+        file_id
+        for file_id, created_at in all_records
+        if created_at <= cutoff and f"{file_id}.png" not in disk_files
+    )
+    return OrphanFileReportRead(
+        cutoff=utc_aware(cutoff),
+        unreferenced_records=[
+            OrphanFileRead(
+                id=item.id,
+                original_name=item.original_name,
+                size_bytes=item.size_bytes,
+                created_at=utc_aware(item.created_at),
+                file_exists=f"{item.id}.png" in disk_files,
+            )
+            for item in unreferenced
+        ],
+        untracked_file_names=untracked,
+        missing_file_ids=missing,
+    )
+
+
+async def cleanup_orphans(
+    session: AsyncSession, older_than_hours: int
+) -> OrphanFileCleanupRead:
+    report = await inspect_orphans(session, older_than_hours)
+    record_ids = [item.id for item in report.unreferenced_records]
+    if record_ids:
+        records = list(
+            (
+                await session.scalars(
+                    select(FileObject).where(FileObject.id.in_(record_ids), _unreferenced())
+                )
+            ).all()
+        )
+        deleted_record_ids = [item.id for item in records]
+        for item in records:
+            await session.delete(item)
+        await session.commit()
+    else:
+        deleted_record_ids = []
+
+    candidates = [f"{file_id}.png" for file_id in deleted_record_ids]
+    candidates.extend(report.untracked_file_names)
+    deleted_file_names: list[str] = []
+    for name in sorted(set(candidates)):
+        path = settings.upload_dir / name
+        if path.is_file():
+            await asyncio.to_thread(path.unlink)
+            deleted_file_names.append(name)
+    return OrphanFileCleanupRead(
+        cutoff=report.cutoff,
+        deleted_record_ids=deleted_record_ids,
+        deleted_file_names=deleted_file_names,
+    )
