@@ -9,9 +9,6 @@ import type {
 
 const now = '2026-07-17T02:30:00.000Z'
 export const mockFileId = (id: number) => `01900000-0000-7000-8000-${String(id).padStart(12, '0')}`
-export const mockImageUrl = (id: string) =>
-  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="100%" height="100%" fill="#e8f5ee"/><circle cx="160" cy="105" r="48" fill="#18a058" opacity=".25"/><path d="M105 180l38-43 28 24 25-31 35 50z" fill="#18a058" opacity=".55"/><text x="160" y="215" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#456">备件图片 ${id}</text></svg>`)}`
-
 export const users: User[] = [
   {
     id: 1,
@@ -66,7 +63,6 @@ export const stockMaterials: StockMaterial[] = [
       {
         id: mockFileId(1),
         original_name: '接触器.jpg',
-        url: mockImageUrl(mockFileId(1)),
         mime_type: 'image/png',
         size_bytes: 42312,
         width: 800,

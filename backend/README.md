@@ -10,7 +10,7 @@ X-Agent-Password: <超级管理员密码>
 ```
 
 - `GET /api/v1/agent/database/schema`：读取全库表、字段、主键和外键结构。
-- `POST /api/v1/agent/database/execute`：执行单条参数化 `SELECT`、`INSERT`、`UPDATE` 或 `DELETE`。
+- `POST /api/v1/agent/database/execute`：执行单条参数化 `SELECT`、`INSERT`、`UPDATE`、`DELETE` 或 `ALTER TABLE`。
 
 请求示例：
 
@@ -22,7 +22,16 @@ X-Agent-Password: <超级管理员密码>
 }
 ```
 
-接口不接受分号、SQL 注释、DDL 或数据库服务器文件操作。数据库账号本身也应只授予当前业务库的数据读写权限。生产环境必须使用 HTTPS，避免请求头密码在传输过程中泄露。
+接口不接受分号、SQL 注释、`ALTER TABLE` 以外的 DDL 或数据库服务器文件操作。数据库账号本身也应只授予当前业务库所需的最小权限。生产环境必须使用 HTTPS，避免请求头密码在传输过程中泄露。
+
+## 图片一致性与悬空文件
+
+上传接口会在 `file_object` 记录提交成功后才返回 201；提交失败时同步回收已写入的磁盘文件。业务关联表只保存 `file_id`，文件名固定为 `<file_id>.png`，前端按 ID 拼接 `/api/v1/files/images/{file_id}`。
+
+- `GET /api/v1/files/images/orphans?older_than_hours=24`：超级管理员查看未引用记录、无记录磁盘文件及磁盘缺失记录。
+- `DELETE /api/v1/files/images/orphans?older_than_hours=24`：删除未引用记录和无记录磁盘文件；默认 24 小时保护期，避免误删刚上传但尚未绑定的图片。
+
+数据库结构以最新版 `../example/database/init.sql` 为准，每次使用该脚本重新初始化。
 
 FastAPI + SQLAlchemy 2.x async + MySQL 8.0，按 `docs/development-plan.md` 实现。
 

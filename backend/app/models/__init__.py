@@ -92,9 +92,7 @@ class FileObject(AuditMixin, Base):
     __tablename__ = "file_object"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    file_name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     original_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    relative_path: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(32), nullable=False, default="image/png")
     size_bytes: Mapped[int] = mapped_column(BIGINT_ID, nullable=False)
     width: Mapped[int] = mapped_column(Integer, nullable=False)
