@@ -77,7 +77,7 @@ const columns: DataTableColumns<PurchaseRecord> = [
       h(
         NButton,
         { size: 'small', onClick: () => router.push(`/procurement/records/${row.line_id}`) },
-        { default: () => '跟踪' },
+        { default: () => '编辑' },
       ),
   },
 ]
