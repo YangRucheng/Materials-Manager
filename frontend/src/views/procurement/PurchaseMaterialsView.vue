@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  NTag,
   useMessage,
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -9,7 +8,12 @@ import {
   type FormRules,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import type { FileObject, PurchaseMaterial, PurchaseMaterialWrite } from '@/api/generated'
+import type {
+  FileObject,
+  PurchaseFilterOptions,
+  PurchaseMaterial,
+  PurchaseMaterialWrite,
+} from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
@@ -42,8 +46,15 @@ const createPlanDate = ref(Date.now())
 const filters = reactive({
   name: '',
   model_spec: '',
-  purchase_responsible: '',
+  purchase_responsible: null as string | null,
 })
+const filterOptions = ref<PurchaseFilterOptions>({
+  actual_demand_persons: [],
+  purchase_responsibles: [],
+})
+const purchaseResponsibleOptions = computed(() =>
+  filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
+)
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
   trace_no: '',
@@ -113,9 +124,7 @@ const availableColumns: Array<{
       title: '物料编码',
       key: 'material_code',
       width: 140,
-      render: (row) =>
-        row.material_code ||
-        h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
+      render: (row) => row.material_code || '\\',
     },
   },
   { key: 'name', label: '名称', column: { title: '名称', key: 'name' } },
@@ -129,12 +138,22 @@ const availableColumns: Array<{
   {
     key: 'actual_demand_person',
     label: '实际需求人',
-    column: { title: '实际需求人', key: 'actual_demand_person', width: 110 },
+    column: {
+      title: '实际需求人',
+      key: 'actual_demand_person',
+      width: 110,
+      render: (row) => row.actual_demand_person || '\\',
+    },
   },
   {
     key: 'purchase_responsible',
     label: '申购负责人',
-    column: { title: '申购负责人', key: 'purchase_responsible', width: 110 },
+    column: {
+      title: '申购负责人',
+      key: 'purchase_responsible',
+      width: 110,
+      render: (row) => row.purchase_responsible || '\\',
+    },
   },
 ]
 const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
@@ -172,7 +191,7 @@ async function load() {
       moved: false,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
-      purchase_responsible: filters.purchase_responsible.trim() || undefined,
+      purchase_responsible: filters.purchase_responsible?.trim() || undefined,
     })
     items.value = d.items
     total.value = d.total
@@ -181,6 +200,9 @@ async function load() {
     loading.value = false
   }
 }
+async function loadFilterOptions() {
+  filterOptions.value = await procurementApi.materialFilterOptions({ moved: false })
+}
 function query() {
   page.value = 1
   void load()
@@ -188,7 +210,7 @@ function query() {
 function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
-  filters.purchase_responsible = ''
+  filters.purchase_responsible = null
   query()
 }
 function changePageSize() {
@@ -231,7 +253,7 @@ async function save() {
     message.success('申购计划已创建')
     show.value = false
     page.value = 1
-    await load()
+    await Promise.all([load(), loadFilterOptions()])
   } catch (e) {
     message.error(e instanceof Error ? e.message : '创建失败')
   } finally {
@@ -298,6 +320,7 @@ async function exportPurchaseApplication() {
 }
 onMounted(() => {
   void dictionaries.load()
+  void loadFilterOptions()
   void load()
 })
 </script>
@@ -341,12 +364,13 @@ onMounted(() => {
           style="width: 200px"
           @keyup.enter="query"
         />
-        <n-input
+        <n-select
           v-model:value="filters.purchase_responsible"
+          :options="purchaseResponsibleOptions"
           placeholder="申购人"
+          filterable
           clearable
           style="width: 180px"
-          @keyup.enter="query"
         />
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"

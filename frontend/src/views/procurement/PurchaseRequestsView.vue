@@ -17,7 +17,7 @@ const EMPTY_STATUS_FILTER = '__empty_status__'
 const filters = reactive({
   name: '',
   model_spec: '',
-  purchase_responsible: '',
+  purchase_responsible: null as string | null,
   status: null as string | null,
 })
 const filterOptions = ref<PurchaseRecordFilterOptions>({
@@ -25,6 +25,9 @@ const filterOptions = ref<PurchaseRecordFilterOptions>({
   purchase_responsibles: [],
   statuses: [],
 })
+const purchaseResponsibleOptions = computed(() =>
+  filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
+)
 const statusOptions = computed(() => [
   { label: '空状态', value: EMPTY_STATUS_FILTER },
   ...filterOptions.value.statuses.map((value) => ({ label: value, value })),
@@ -73,7 +76,7 @@ const availableColumns: Array<{
       title: '申购单号',
       key: 'purchase_order_no',
       width: 170,
-      render: (row) => row.purchase_order_no || '未填写',
+      render: (row) => row.purchase_order_no || '\\',
     },
   },
   {
@@ -83,7 +86,7 @@ const availableColumns: Array<{
       title: '追溯号',
       key: 'trace_no',
       width: 170,
-      render: (row) => row.trace_no || '—',
+      render: (row) => row.trace_no || '\\',
     },
   },
   {
@@ -95,19 +98,29 @@ const availableColumns: Array<{
       render: (row) =>
         h('div', [
           h('strong', row.material_name),
-          h('div', { class: 'muted' }, `${row.material_code}｜${row.model_spec}`),
+          h('div', { class: 'muted' }, `${row.material_code || '\\'}｜${row.model_spec}`),
         ]),
     },
   },
   {
     key: 'actual_demand_person',
     label: '实际需求人',
-    column: { title: '实际需求人', key: 'actual_demand_person', width: 110 },
+    column: {
+      title: '实际需求人',
+      key: 'actual_demand_person',
+      width: 110,
+      render: (row) => row.actual_demand_person || '\\',
+    },
   },
   {
     key: 'purchase_responsible',
     label: '申购负责人',
-    column: { title: '申购负责人', key: 'purchase_responsible', width: 110 },
+    column: {
+      title: '申购负责人',
+      key: 'purchase_responsible',
+      width: 110,
+      render: (row) => row.purchase_responsible || '\\',
+    },
   },
   {
     key: 'salesperson',
@@ -116,7 +129,7 @@ const availableColumns: Array<{
       title: '业务员',
       key: 'salesperson',
       width: 110,
-      render: (row) => row.salesperson || '—',
+      render: (row) => row.salesperson || '\\',
     },
   },
   {
@@ -126,7 +139,7 @@ const availableColumns: Array<{
       title: '状态',
       key: 'status',
       width: 120,
-      render: (row) => h(NTag, null, { default: () => row.status }),
+      render: (row) => h(NTag, null, { default: () => row.status || '\\' }),
     },
   },
   {
@@ -136,7 +149,7 @@ const availableColumns: Array<{
       title: '申购日期',
       key: 'purchase_date',
       width: 120,
-      render: (row) => formatDate(row.purchase_date),
+      render: (row) => (row.purchase_date ? formatDate(row.purchase_date) : '\\'),
     },
   },
 ]
@@ -167,7 +180,7 @@ async function load() {
       page_size: pageSize.value,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
-      purchase_responsible: filters.purchase_responsible.trim() || undefined,
+      purchase_responsible: filters.purchase_responsible?.trim() || undefined,
       status:
         filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
       empty_status: filters.status === EMPTY_STATUS_FILTER || undefined,
@@ -191,7 +204,7 @@ function query() {
 function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
-  filters.purchase_responsible = ''
+  filters.purchase_responsible = null
   filters.status = null
   query()
 }
@@ -231,12 +244,13 @@ onMounted(() => {
           style="width: 200px"
           @keyup.enter="query"
         />
-        <n-input
+        <n-select
           v-model:value="filters.purchase_responsible"
+          :options="purchaseResponsibleOptions"
           placeholder="申购人"
+          filterable
           clearable
           style="width: 180px"
-          @keyup.enter="query"
         />
         <n-select
           v-model:value="filters.status"

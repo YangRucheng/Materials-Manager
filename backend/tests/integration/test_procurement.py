@@ -57,6 +57,29 @@ async def create_purchase_plan(
 
 
 @pytest.mark.asyncio
+async def test_empty_purchase_people_use_backslash_placeholder(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    response = await client.post(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        json={
+            "plan_date": "2026-07-21",
+            "name": "空负责人测试",
+            "model_spec": "TEST-EMPTY",
+            "unit_id": 1,
+            "planned_qty": "1",
+            "usage": "空值占位符测试",
+            "image_ids": [],
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    result = response.json()
+    assert result["actual_demand_person"] == "\\"
+    assert result["purchase_responsible"] == "\\"
+
+
+@pytest.mark.asyncio
 async def test_purchase_lists_support_field_like_and_person_filters(
     client: AsyncClient,
 ) -> None:
