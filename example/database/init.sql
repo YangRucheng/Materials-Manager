@@ -246,7 +246,6 @@ CREATE TABLE IF NOT EXISTS `stock_material_image` (
 CREATE TABLE IF NOT EXISTS `stock_replenishment_policy` (
   `stock_material_id` BIGINT UNSIGNED NOT NULL,
   `minimum_qty` DECIMAL(18, 1) NOT NULL,
-  `target_qty` DECIMAL(18, 1) NOT NULL,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -256,8 +255,6 @@ CREATE TABLE IF NOT EXISTS `stock_replenishment_policy` (
   CONSTRAINT `pk_stock_replenishment_policy` PRIMARY KEY (`stock_material_id`),
   CONSTRAINT `ck_stock_replenishment_policy_minimum_nonnegative`
     CHECK (`minimum_qty` >= 0),
-  CONSTRAINT `ck_stock_replenishment_policy_target_at_least_minimum`
-    CHECK (`target_qty` >= `minimum_qty`),
   CONSTRAINT `fk_stock_replenishment_policy_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stock_replenishment_policy_created_by_user`

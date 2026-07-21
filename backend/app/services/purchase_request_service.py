@@ -12,8 +12,6 @@ from app.models import (
     PurchaseMaterial,
     PurchaseRequest,
     PurchaseRequestLine,
-    StockOperation,
-    StockOperationLine,
     User,
 )
 from app.schemas import (
@@ -32,6 +30,7 @@ from app.schemas import (
 )
 from app.services.common import (
     event_reads,
+    file_read,
     log_event,
     utc_aware,
     utcnow,
@@ -418,23 +417,6 @@ async def prepare_inbound(session: AsyncSession, line_id: int) -> PreparedInboun
     )
 
 
-async def receipt_operations(session: AsyncSession, request_id: int) -> list[StockOperation]:
-    await get_request(session, request_id)
-    return list(
-        (
-            await session.scalars(
-                select(StockOperation)
-                .join(StockOperationLine)
-                .join(PurchaseRequestLine)
-                .where(PurchaseRequestLine.purchase_request_id == request_id)
-                .order_by(StockOperation.occurred_at.desc())
-            )
-        )
-        .unique()
-        .all()
-    )
-
-
 async def search_requests(
     session: AsyncSession,
     *,
@@ -492,6 +474,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         remark=request.remark,
         usage=line.usage,
         subitem_no=line.subitem_no,
+        images=[file_read(link.file) for link in material.images],
         stock_material_id=material.stock_material_id,
         purchase_date=request.purchase_date,
         created_at=utc_aware(request.created_at),

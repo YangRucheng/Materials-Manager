@@ -5,6 +5,7 @@ from io import BytesIO
 import pytest
 from httpx import AsyncClient
 from openpyxl import load_workbook
+from PIL import Image
 
 from app.core.config import settings
 from tests.conftest import auth_headers, create_stock
@@ -21,6 +22,7 @@ async def create_purchase_plan(
     purchase_responsible: str = "李工",
     subitem_no: str | None = "01-01",
     plan_date: str = "2026-07-01",
+    image_ids: list[str] | None = None,
 ) -> dict[str, object]:
     response = await client.post(
         "/api/v1/purchase-materials",
@@ -38,7 +40,7 @@ async def create_purchase_plan(
             "subitem_no": subitem_no,
             "remark": "新计划",
             "stock_material_id": stock_material_id,
-            "image_ids": [],
+            "image_ids": image_ids or [],
         },
     )
     assert response.status_code == 201, response.text
@@ -93,6 +95,34 @@ async def test_plan_number_uses_date_sequence_and_record_keeps_plan_date(
     record = await move_to_record(client, headers, int(first["id"]))
     assert record["plan_no"] == first["plan_no"]
     assert record["plan_date"] == "2026-07-01"
+
+
+@pytest.mark.asyncio
+async def test_record_keeps_purchase_plan_attachments(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    source = BytesIO()
+    Image.new("RGB", (24, 16), "blue").save(source, format="PNG")
+    uploaded = await client.post(
+        "/api/v1/files/images",
+        headers=headers,
+        files={"file": ("motor.png", source.getvalue(), "image/png")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    file_id = uploaded.json()["id"]
+    plan = await create_purchase_plan(
+        client,
+        headers,
+        "带附件申购计划",
+        code="DQ-IMAGE-001",
+        image_ids=[file_id],
+    )
+
+    record = await move_to_record(client, headers, int(plan["id"]))
+
+    assert [image["id"] for image in record["images"]] == [file_id]
+    detail = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert [image["id"] for image in detail.json()["images"]] == [file_id]
 
 
 @pytest.mark.asyncio

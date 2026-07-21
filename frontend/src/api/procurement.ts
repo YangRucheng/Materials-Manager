@@ -8,7 +8,6 @@ import type {
   PurchaseRecord,
   PurchaseRequest,
   PurchaseRequestWrite,
-  StockOperation,
 } from './generated'
 
 export const procurementApi = {
@@ -67,8 +66,6 @@ export const procurementApi = {
     apiClient
       .post<PurchaseRequest>(`/purchase-requests/${id}/${action}`, payload)
       .then((r) => r.data),
-  receipts: (id: number) =>
-    apiClient.get<StockOperation[]>(`/purchase-requests/${id}/receipts`).then((r) => r.data),
   prepareInbound: (lineId: number) =>
     apiClient
       .post<PreparedInbound>(`/purchase-request-lines/${lineId}/prepare-inbound`)
