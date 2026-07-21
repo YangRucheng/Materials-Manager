@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         华友何佳 - 备件管理系统状态同步
 // @namespace    https://quick-hejia.qcloud.19890605.xyz/hjerp/
-// @version      1.1.0
-// @description  在华友何佳系统中查询“物资状态查询”，自动补全备件管理系统中的业务员和当前状态。
+// @version      1.2.0
+// @description  在华友何佳系统中查询“物资状态查询”，同步备件管理系统中的状态、业务员和申购日期。
 // @match        https://quick-hejia.qcloud.19890605.xyz/hjerp/*
 // @connect      materials-manager.qcloud.19890605.xyz
 // @grant        GM_xmlhttpRequest
@@ -213,16 +213,25 @@ LIMIT ${limit}`,
     );
     return Array.isArray(result.rows) ? result.rows : [];
   }
-  async function updateTarget(traceNo, status, salesperson) {
+  async function updateTarget(traceNo, status, salesperson, purchaseDate) {
     const set = [];
     const parameters = { trace_no: traceNo };
+    let purchaseRequestChanged = false;
     if (salesperson) {
+      set.push("pr.salesperson = :salesperson");
+      parameters.salesperson = salesperson;
+      purchaseRequestChanged = true;
+    }
+    if (purchaseDate) {
+      set.push("pr.purchase_date = :purchase_date");
+      parameters.purchase_date = purchaseDate;
+      purchaseRequestChanged = true;
+    }
+    if (purchaseRequestChanged) {
       set.push(
-        "pr.salesperson = :salesperson",
         "pr.version = pr.version + 1",
         "pr.updated_at = CURRENT_TIMESTAMP(6)",
       );
-      parameters.salesperson = salesperson;
     }
     if (status) {
       set.push(
@@ -315,6 +324,28 @@ WHERE pr.trace_no = :trace_no
     const text = [...new Set(values.map(clean).filter(Boolean))].join(" / ");
     return text.length <= 128 ? text : `${text.slice(0, 127)}…`;
   }
+  function validDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    );
+  }
+  function singleDate(values) {
+    const dates = [...new Set(values.map(clean).filter(Boolean))];
+    const invalid = dates.filter((value) => !validDate(value));
+    if (invalid.length)
+      throw new Error(`何佳申购日期格式异常：${invalid.join(" / ")}`);
+    if (dates.length > 1)
+      throw new Error(`同一追溯号存在多个申购日期：${dates.join(" / ")}`);
+    return dates[0] || "";
+  }
   async function queryTrace(source, traceNo) {
     const fields = array(source.fields.field);
     const aliases = Object.fromEntries(
@@ -332,11 +363,15 @@ WHERE pr.trace_no = :trace_no
       (row) => rowValue(row, aliases.var_trackno) === clean(traceNo),
     );
     const matched = exact.length ? exact : rows;
+    if (!aliases.date_req) throw new Error("何佳配置缺少申购日期字段 date_req");
     return {
       count: matched.length,
       status: joined(matched.map((row) => rowValue(row, aliases.flag_prog))),
       salesperson: joined(
         matched.map((row) => rowValue(row, aliases.var_reqclerk)),
+      ),
+      purchaseDate: singleDate(
+        matched.map((row) => rowValue(row, aliases.date_req)),
       ),
     };
   }
@@ -416,13 +451,17 @@ WHERE pr.trace_no = :trace_no
           if (!result.count) {
             stats.skipped += 1;
             log(`${traceNo}：何佳未查询到记录`, "warn");
-          } else if (!result.status && !result.salesperson) {
+          } else if (
+            !result.status &&
+            !result.salesperson &&
+            !result.purchaseDate
+          ) {
             stats.found += 1;
             stats.skipped += 1;
-            log(`${traceNo}：业务员和状态均为空`, "warn");
+            log(`${traceNo}：状态、业务员和申购日期均为空`, "warn");
           } else {
             stats.found += 1;
-            const summary = `业务员=${result.salesperson || "空"}，状态=${result.status || "空"}`;
+            const summary = `业务员=${result.salesperson || "空"}，状态=${result.status || "空"}，申购日期=${result.purchaseDate || "空"}`;
             if (config.dryRun) {
               stats.skipped += 1;
               log(`${traceNo}：演练模式，${summary}`);
@@ -431,6 +470,7 @@ WHERE pr.trace_no = :trace_no
                 traceNo,
                 result.status,
                 result.salesperson,
+                result.purchaseDate,
               );
               if (Number(updated.affected_rows || 0) > 0) {
                 stats.updated += 1;
