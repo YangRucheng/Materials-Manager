@@ -9,7 +9,12 @@ import {
   type FormRules,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import type { FileObject, PurchaseMaterial, PurchaseMaterialWrite } from '@/api/generated'
+import type {
+  FileObject,
+  PurchaseFilterOptions,
+  PurchaseMaterial,
+  PurchaseMaterialWrite,
+} from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
@@ -28,6 +33,7 @@ const message = useMessage()
 const items = ref<PurchaseMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
+const pageSize = ref(20)
 const loading = ref(false)
 const show = ref(false)
 const showBatch = ref(false)
@@ -38,7 +44,45 @@ const checkedRowKeys = ref<Array<string | number>>([])
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
-const filters = reactive({ keyword: '' })
+type PlanSearchField =
+  | 'plan_no'
+  | 'plan_date'
+  | 'material_code'
+  | 'name'
+  | 'model_spec'
+  | 'unit_name'
+  | 'planned_qty'
+  | 'usage'
+  | 'subitem_no'
+  | 'remark'
+const filters = reactive({
+  search_field: 'name' as PlanSearchField,
+  search_value: '',
+  actual_demand_person: null as string | null,
+  purchase_responsible: null as string | null,
+})
+const filterOptions = ref<PurchaseFilterOptions>({
+  actual_demand_persons: [],
+  purchase_responsibles: [],
+})
+const searchFieldOptions: Array<{ label: string; value: PlanSearchField }> = [
+  { label: '计划 ID', value: 'plan_no' },
+  { label: '需求日期', value: 'plan_date' },
+  { label: '物料编码', value: 'material_code' },
+  { label: '名称', value: 'name' },
+  { label: '型号规格', value: 'model_spec' },
+  { label: '单位', value: 'unit_name' },
+  { label: '计划数量', value: 'planned_qty' },
+  { label: '用途', value: 'usage' },
+  { label: '子项号', value: 'subitem_no' },
+  { label: '备注', value: 'remark' },
+]
+const actualDemandPersonOptions = computed(() =>
+  filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
+)
+const purchaseResponsibleOptions = computed(() =>
+  filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
+)
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
   trace_no: '',
@@ -163,9 +207,12 @@ async function load() {
   try {
     const d = await procurementApi.materials({
       page: page.value,
-      page_size: 20,
+      page_size: pageSize.value,
       moved: false,
-      ...filters,
+      search_field: filters.search_field,
+      search_value: filters.search_value.trim() || undefined,
+      actual_demand_person: filters.actual_demand_person || undefined,
+      purchase_responsible: filters.purchase_responsible || undefined,
     })
     items.value = d.items
     total.value = d.total
@@ -174,7 +221,21 @@ async function load() {
     loading.value = false
   }
 }
+async function loadFilterOptions() {
+  filterOptions.value = await procurementApi.materialFilterOptions({ moved: false })
+}
 function query() {
+  page.value = 1
+  void load()
+}
+function resetFilters() {
+  filters.search_field = 'name'
+  filters.search_value = ''
+  filters.actual_demand_person = null
+  filters.purchase_responsible = null
+  query()
+}
+function changePageSize() {
   page.value = 1
   void load()
 }
@@ -214,7 +275,7 @@ async function save() {
     message.success('申购计划已创建')
     show.value = false
     page.value = 1
-    await load()
+    await Promise.all([load(), loadFilterOptions()])
   } catch (e) {
     message.error(e instanceof Error ? e.message : '创建失败')
   } finally {
@@ -281,6 +342,7 @@ async function exportPurchaseApplication() {
 }
 onMounted(() => {
   void dictionaries.load()
+  void loadFilterOptions()
   void load()
 })
 </script>
@@ -310,11 +372,33 @@ onMounted(() => {
     </div>
     <n-card
       ><div class="filter-bar">
+        <n-select
+          v-model:value="filters.search_field"
+          :options="searchFieldOptions"
+          style="width: 140px"
+        />
         <n-input
-          v-model:value="filters.keyword"
-          placeholder="计划 ID、编码、名称或规格"
+          v-model:value="filters.search_value"
+          placeholder="输入模糊搜索内容"
           clearable
-          style="width: 240px"
+          style="width: 220px"
+          @keyup.enter="query"
+        />
+        <n-select
+          v-model:value="filters.actual_demand_person"
+          :options="actualDemandPersonOptions"
+          placeholder="实际需求人"
+          filterable
+          clearable
+          style="width: 160px"
+        />
+        <n-select
+          v-model:value="filters.purchase_responsible"
+          :options="purchaseResponsibleOptions"
+          placeholder="申购负责人"
+          filterable
+          clearable
+          style="width: 160px"
         />
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
@@ -322,6 +406,7 @@ onMounted(() => {
           @update:value="setVisibleColumnKeys"
         />
         <n-button type="primary" @click="query">查询</n-button>
+        <n-button @click="resetFilters">重置</n-button>
       </div></n-card
     ><n-card
       ><n-data-table
@@ -335,9 +420,12 @@ onMounted(() => {
       <div class="pagination-bar">
         <n-pagination
           v-model:page="page"
-          :page-size="20"
+          v-model:page-size="pageSize"
           :item-count="total"
+          :page-sizes="[10, 20, 50, 100, 200]"
+          show-size-picker
           @update:page="load"
+          @update:page-size="changePageSize"
         /></div
     ></n-card>
     <n-modal
