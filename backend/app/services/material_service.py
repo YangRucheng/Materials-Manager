@@ -336,6 +336,8 @@ async def search_purchase_materials(
     keyword: str | None,
     search_field: str | None,
     search_value: str | None,
+    name: str | None,
+    model_spec: str | None,
     actual_demand_person: str | None,
     purchase_responsible: str | None,
     enabled: bool | None,
@@ -379,6 +381,10 @@ async def search_purchase_materials(
             "remark": PurchaseMaterial.remark,
         }
         query = query.where(search_columns[search_field].like(f"%{search_value}%"))
+    if name:
+        query = query.where(PurchaseMaterial.name.like(f"%{name}%"))
+    if model_spec:
+        query = query.where(PurchaseMaterial.model_spec.like(f"%{model_spec}%"))
     if actual_demand_person:
         query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
     if purchase_responsible:
