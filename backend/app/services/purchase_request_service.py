@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
-from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
+from app.models import MeasurementUnit, PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
 from app.schemas import (
     BatchMovePurchasePlansRequest,
     MovePurchasePlanRequest,
@@ -214,6 +214,10 @@ async def search_purchase_records(
     *,
     status: str | None,
     keyword: str | None,
+    search_field: str | None,
+    search_value: str | None,
+    actual_demand_person: str | None,
+    purchase_responsible: str | None,
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseRequestLine], int]:
@@ -221,9 +225,10 @@ async def search_purchase_records(
         select(PurchaseRequestLine)
         .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
         .join(PurchaseMaterial, PurchaseMaterial.id == PurchaseRequestLine.purchase_material_id)
+        .join(MeasurementUnit, MeasurementUnit.id == PurchaseMaterial.unit_id)
     )
     if status:
-        query = query.where(PurchaseRequestLine.status == status)
+        query = query.where(PurchaseRequestLine.status.like(f"%{status}%"))
     if keyword:
         like = f"%{keyword}%"
         query = query.where(
@@ -232,17 +237,46 @@ async def search_purchase_records(
                 PurchaseRequest.trace_no.like(like),
                 PurchaseRequest.salesperson.like(like),
                 PurchaseRequest.remark.like(like),
+                PurchaseMaterial.plan_no.like(like),
+                cast(PurchaseMaterial.plan_date, String).like(like),
                 PurchaseRequestLine.status.like(like),
-                PurchaseRequestLine.material_code_snapshot.like(like),
-                PurchaseRequestLine.material_name_snapshot.like(like),
-                PurchaseRequestLine.model_spec_snapshot.like(like),
+                PurchaseMaterial.material_code.like(like),
+                PurchaseMaterial.name.like(like),
+                PurchaseMaterial.model_spec.like(like),
+                MeasurementUnit.name.like(like),
+                cast(PurchaseRequestLine.purchase_qty, String).like(like),
                 PurchaseRequestLine.usage.like(like),
                 PurchaseRequestLine.subitem_no.like(like),
                 PurchaseMaterial.actual_demand_person.like(like),
                 PurchaseMaterial.purchase_responsible.like(like),
                 PurchaseMaterial.remark.like(like),
+                cast(PurchaseRequest.purchase_date, String).like(like),
             )
         )
+    if search_field and search_value:
+        search_columns = {
+            "plan_no": PurchaseMaterial.plan_no,
+            "plan_date": cast(PurchaseMaterial.plan_date, String),
+            "purchase_order_no": PurchaseRequest.purchase_order_no,
+            "trace_no": PurchaseRequest.trace_no,
+            "material_code": PurchaseMaterial.material_code,
+            "material_name": PurchaseMaterial.name,
+            "model_spec": PurchaseMaterial.model_spec,
+            "unit_name": MeasurementUnit.name,
+            "purchase_qty": cast(PurchaseRequestLine.purchase_qty, String),
+            "salesperson": PurchaseRequest.salesperson,
+            "status": PurchaseRequestLine.status,
+            "purchase_date": cast(PurchaseRequest.purchase_date, String),
+            "usage": PurchaseRequestLine.usage,
+            "subitem_no": PurchaseRequestLine.subitem_no,
+            "plan_remark": PurchaseMaterial.remark,
+            "record_remark": PurchaseRequest.remark,
+        }
+        query = query.where(search_columns[search_field].like(f"%{search_value}%"))
+    if actual_demand_person:
+        query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
+    if purchase_responsible:
+        query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
     items = list(
         (

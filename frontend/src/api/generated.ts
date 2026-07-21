@@ -145,6 +145,10 @@ export interface DashboardSummary {
   uncoded_purchase_material_count: number
   purchase_record_count: number
 }
+export interface PurchaseFilterOptions {
+  actual_demand_persons: string[]
+  purchase_responsibles: string[]
+}
 export interface PurchaseMaterial {
   id: number
   plan_no: string
