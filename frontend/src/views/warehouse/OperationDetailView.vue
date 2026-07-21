@@ -103,7 +103,7 @@ function confirmSave() {
   }
   dialog.warning({
     title: '确认修改流水',
-    content: '修改流水将重新计算受影响物资的库存、后续流水快照及关联申购到货数量。',
+    content: '修改流水将重新计算受影响物资的库存和后续流水快照。',
     positiveText: '确认修改',
     negativeText: '取消',
     onPositiveClick: save,
@@ -148,7 +148,7 @@ onMounted(load)
       </n-space>
     </div>
     <n-alert v-if="editing" type="warning" title="修改影响提示"
-      >保存后，后端会按发生时间重放相关物资的全部流水，并重算申购到货数量；允许形成负库存和超量到货。</n-alert
+      >保存后，后端会按发生时间重放相关物资的全部流水；允许形成负库存。</n-alert
     >
     <n-card title="单据信息">
       <n-form v-if="editing" label-placement="top">

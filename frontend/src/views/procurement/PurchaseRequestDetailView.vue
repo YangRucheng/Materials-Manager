@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { NInputGroup, useMessage } from 'naive-ui'
 import type { FileObject, PurchaseRecord, PurchaseRecordWrite } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
@@ -143,14 +143,23 @@ onMounted(() => {
       >
     </div>
 
-    <n-card title="申购计划信息">
+    <n-card title="申购记录信息">
       <n-form label-placement="top" :disabled="!auth.can('purchase:write')">
         <div class="form-grid">
+          <n-form-item label="需求日期" required>
+            <n-date-picker v-model:value="planDate" type="date" class="full-width" />
+          </n-form-item>
+          <n-form-item label="申购日期" required>
+            <n-date-picker v-model:value="purchaseDate" type="date" class="full-width" />
+          </n-form-item>
+          <n-form-item label="申购单号">
+            <n-input v-model:value="form.purchase_order_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="追溯号">
+            <n-input v-model:value="form.trace_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
           <n-form-item label="物料编码">
             <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="计划日期" required>
-            <n-date-picker v-model:value="planDate" type="date" class="full-width" />
           </n-form-item>
           <n-form-item label="名称" required>
             <n-input v-model:value="form.material_name" maxlength="128" />
@@ -158,8 +167,19 @@ onMounted(() => {
           <n-form-item label="型号规格" required>
             <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
-          <n-form-item label="计量单位" required>
-            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+          <n-form-item label="申购数量 / 计量单位" required>
+            <NInputGroup>
+              <QuantityInput
+                v-model:value="form.purchase_qty"
+                :decimal-places="1"
+                class="quantity-input"
+              />
+              <n-select
+                v-model:value="form.unit_id"
+                :options="dictionaries.unitOptions"
+                class="quantity-unit-select"
+              />
+            </NInputGroup>
           </n-form-item>
           <n-form-item label="实际需求人" required>
             <n-input v-model:value="form.actual_demand_person" maxlength="128" />
@@ -167,51 +187,39 @@ onMounted(() => {
           <n-form-item label="申购负责人" required>
             <n-input v-model:value="form.purchase_responsible" maxlength="128" />
           </n-form-item>
-          <n-form-item label="申购数量" required>
-            <QuantityInput v-model:value="form.purchase_qty" :decimal-places="1" />
-          </n-form-item>
-          <n-form-item label="子项号">
-            <n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填" />
-          </n-form-item>
-        </div>
-        <n-form-item label="关联二级库物资">
-          <MaterialSelector
-            :value="form.stock_material_id ?? null"
-            @update:value="form.stock_material_id = $event ?? undefined"
-          />
-        </n-form-item>
-        <n-form-item label="用途" required>
-          <n-input v-model:value="form.usage" maxlength="500" />
-        </n-form-item>
-        <n-form-item label="计划备注">
-          <n-input v-model:value="form.plan_remark" type="textarea" maxlength="1000" show-count />
-        </n-form-item>
-        <n-form-item label="附件"><ImageUploader v-model:files="images" /></n-form-item>
-      </n-form>
-    </n-card>
-
-    <n-card title="申购记录额外信息">
-      <n-form label-placement="top" :disabled="!auth.can('purchase:write')">
-        <div class="form-grid">
-          <n-form-item label="申购单号">
-            <n-input v-model:value="form.purchase_order_no" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="追溯号">
-            <n-input v-model:value="form.trace_no" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="申购日期" required>
-            <n-date-picker v-model:value="purchaseDate" type="date" class="full-width" />
-          </n-form-item>
           <n-form-item label="业务员">
             <n-input v-model:value="form.salesperson" maxlength="128" />
           </n-form-item>
           <n-form-item label="状态" required>
             <n-input v-model:value="form.status" maxlength="128" placeholder="可填写任意状态" />
           </n-form-item>
+          <n-form-item label="子项号">
+            <n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填" />
+          </n-form-item>
+          <n-form-item label="用途" required>
+            <n-input v-model:value="form.usage" maxlength="500" />
+          </n-form-item>
+          <n-form-item label="关联二级库物资" class="wide-form-item">
+            <MaterialSelector
+              :value="form.stock_material_id ?? null"
+              @update:value="form.stock_material_id = $event ?? undefined"
+            />
+          </n-form-item>
+          <n-form-item label="申购计划备注">
+            <n-input v-model:value="form.plan_remark" type="textarea" maxlength="1000" show-count />
+          </n-form-item>
+          <n-form-item label="申购记录备注">
+            <n-input
+              v-model:value="form.record_remark"
+              type="textarea"
+              maxlength="1000"
+              show-count
+            />
+          </n-form-item>
+          <n-form-item label="附件" class="wide-form-item attachment-form-item">
+            <ImageUploader v-model:files="images" />
+          </n-form-item>
         </div>
-        <n-form-item label="记录备注">
-          <n-input v-model:value="form.record_remark" type="textarea" maxlength="1000" show-count />
-        </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="space-between">
@@ -224,3 +232,21 @@ onMounted(() => {
     </n-card>
   </div>
 </template>
+
+<style scoped>
+.quantity-input {
+  flex: 1;
+}
+
+.quantity-unit-select {
+  width: 160px;
+}
+
+.wide-form-item {
+  grid-column: 1 / -1;
+}
+
+.attachment-form-item {
+  margin-bottom: 0;
+}
+</style>

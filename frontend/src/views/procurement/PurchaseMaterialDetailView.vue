@@ -107,7 +107,7 @@ async function save() {
     !form.usage.trim() ||
     !planDate.value
   ) {
-    message.error('请完整填写计划日期、物资、数量、用途、实际需求人和申购负责人')
+    message.error('请完整填写需求日期、物资、数量、用途、实际需求人和申购负责人')
     return
   }
   saving.value = true
@@ -233,7 +233,7 @@ onMounted(() => {
           <n-form-item label="计划 ID">
             <n-input :value="material.plan_no" disabled />
           </n-form-item>
-          <n-form-item label="计划日期" required>
+          <n-form-item label="需求日期" required>
             <n-date-picker v-model:value="planDate" type="date" class="full-width" />
           </n-form-item>
           <n-form-item label="物料编码">
