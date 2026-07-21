@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         华友何佳 - 备件管理系统状态同步
 // @namespace    https://quick-hejia.qcloud.19890605.xyz/hjerp/
-// @version      1.2.0
+// @version      1.3.0
 // @description  在华友何佳系统中查询“物资状态查询”，同步备件管理系统中的状态、业务员和申购日期。
 // @match        https://quick-hejia.qcloud.19890605.xyz/hjerp/*
+// @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
+// @downloadURL  https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
 // @connect      materials-manager.qcloud.19890605.xyz
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -21,11 +23,13 @@
   const MENU_ID = "820017687";
   const MENU_NAME = "物资状态查询";
   const PREFIX = "hejia_sync_";
+  const NOT_FOUND_CACHE_NAME = "notFoundCache";
+  const NOT_FOUND_TTL = 3 * 24 * 60 * 60 * 1000;
   const defaults = {
     adminUsername: "admin",
     adminPassword: "",
-    intervalMinutes: 10,
-    batchSize: 50,
+    intervalMinutes: 1,
+    batchSize: 100,
     autoEnabled: false,
     dryRun: false,
     minimized: false,
@@ -39,7 +43,14 @@
   let host;
   let ui;
   const logs = [];
-  let stats = { scanned: 0, found: 0, updated: 0, skipped: 0, failed: 0 };
+  let stats = {
+    scanned: 0,
+    found: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+    cached: 0,
+  };
 
   function key(name) {
     return `${PREFIX}${name}`;
@@ -85,6 +96,56 @@
     return String(value ?? "")
       .replace(/\s+/g, " ")
       .trim();
+  }
+  function notFoundCache(now = Date.now()) {
+    const stored = GM_getValue(key(NOT_FOUND_CACHE_NAME), {});
+    const source =
+      stored && typeof stored === "object" && !Array.isArray(stored)
+        ? stored
+        : {};
+    const active = {};
+    let changed = source !== stored;
+    Object.entries(source).forEach(([rawTraceNo, rawTimestamp]) => {
+      const traceNo = clean(rawTraceNo);
+      const timestamp = Number(rawTimestamp);
+      if (
+        !traceNo ||
+        !Number.isFinite(timestamp) ||
+        timestamp <= 0 ||
+        timestamp > now ||
+        now - timestamp >= NOT_FOUND_TTL
+      ) {
+        changed = true;
+        return;
+      }
+      if (traceNo !== rawTraceNo || active[traceNo]) changed = true;
+      active[traceNo] = Math.max(active[traceNo] || 0, timestamp);
+    });
+    if (changed) GM_setValue(key(NOT_FOUND_CACHE_NAME), active);
+    return active;
+  }
+  function notFoundTraceNos() {
+    return Object.keys(notFoundCache());
+  }
+  function rememberNotFound(traceNo) {
+    const value = clean(traceNo);
+    if (!value) return;
+    const cache = notFoundCache();
+    cache[value] = Date.now();
+    GM_setValue(key(NOT_FOUND_CACHE_NAME), cache);
+  }
+  function forgetNotFound(traceNo) {
+    const value = clean(traceNo);
+    const cache = notFoundCache();
+    if (!value || !(value in cache)) return;
+    delete cache[value];
+    GM_setValue(key(NOT_FOUND_CACHE_NAME), cache);
+  }
+  function clearNotFoundCache() {
+    GM_setValue(key(NOT_FOUND_CACHE_NAME), {});
+    stats.cached = 0;
+    renderStats();
+    log("已清空何佳无结果缓存", "success");
   }
   function reverse(value) {
     return String(value ?? "")
@@ -198,20 +259,30 @@
     return result;
   }
   async function targets() {
-    const limit = int(config.batchSize, 50, 1, 200);
+    const limit = int(config.batchSize, defaults.batchSize, 1, 200);
+    const excludedTraceNos = notFoundTraceNos();
+    const parameters = {};
+    const exclusion = excludedTraceNos.length
+      ? "\n  AND JSON_CONTAINS(:not_found_trace_nos, JSON_QUOTE(TRIM(pr.trace_no))) = 0"
+      : "";
+    if (excludedTraceNos.length)
+      parameters.not_found_trace_nos = JSON.stringify(excludedTraceNos);
     const result = await db(
       `SELECT pr.trace_no, COUNT(*) AS target_count
 FROM purchase_request pr
 JOIN purchase_request_line prl ON prl.purchase_request_id = pr.id
 WHERE pr.trace_no IS NOT NULL AND TRIM(pr.trace_no) <> ''
-  AND (pr.salesperson IS NULL OR TRIM(pr.salesperson) = '')
+  AND (pr.salesperson IS NULL OR TRIM(pr.salesperson) = '')${exclusion}
 GROUP BY pr.trace_no
 ORDER BY MAX(prl.id) DESC
 LIMIT ${limit}`,
-      {},
+      parameters,
       limit,
     );
-    return Array.isArray(result.rows) ? result.rows : [];
+    return {
+      rows: Array.isArray(result.rows) ? result.rows : [],
+      excludedCount: excludedTraceNos.length,
+    };
   }
   async function updateTarget(traceNo, status, salesperson, purchaseDate) {
     const set = [];
@@ -396,7 +467,7 @@ WHERE pr.trace_no = :trace_no
   }
   function renderStats() {
     if (ui)
-      ui.stats.textContent = `扫描 ${stats.scanned} · 命中 ${stats.found} · 更新 ${stats.updated} · 跳过 ${stats.skipped} · 失败 ${stats.failed}`;
+      ui.stats.textContent = `扫描 ${stats.scanned} · 命中 ${stats.found} · 更新 ${stats.updated} · 跳过 ${stats.skipped} · 失败 ${stats.failed} · 缓存 ${stats.cached}`;
   }
   function status(text, kind = "idle") {
     if (!ui) return;
@@ -419,8 +490,15 @@ WHERE pr.trace_no = :trace_no
   async function run(trigger = "manual") {
     if (running) return log("已有同步任务正在执行", "warn");
     running = true;
-    clearTimeout(timer);
-    stats = { scanned: 0, found: 0, updated: 0, skipped: 0, failed: 0 };
+    stopSchedule();
+    stats = {
+      scanned: 0,
+      found: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      cached: 0,
+    };
     renderStats();
     if (ui) {
       ui.run.disabled = true;
@@ -435,12 +513,20 @@ WHERE pr.trace_no = :trace_no
       log(
         `已复用当前何佳会话，加载“${source.headerText || MENU_NAME}”查询配置`,
       );
-      const rows = await targets();
+      const targetResult = await targets();
+      const rows = targetResult.rows;
       stats.scanned = rows.length;
+      stats.cached = targetResult.excludedCount;
       renderStats();
+      if (stats.cached)
+        log(`SQL 已排除 ${stats.cached} 个三天内无结果的追溯号`);
       if (!rows.length) {
         status("无需同步", "success");
-        log("没有缺失业务员且带追溯号的记录");
+        log(
+          stats.cached
+            ? "没有需要同步的记录，三天无结果缓存已在 SQL 中排除"
+            : "没有缺失业务员且带追溯号的记录",
+        );
         return;
       }
       for (let index = 0; index < rows.length; index += 1) {
@@ -449,17 +535,21 @@ WHERE pr.trace_no = :trace_no
         try {
           const result = await queryTrace(source, traceNo);
           if (!result.count) {
+            rememberNotFound(traceNo);
+            stats.cached = notFoundTraceNos().length;
             stats.skipped += 1;
-            log(`${traceNo}：何佳未查询到记录`, "warn");
+            log(`${traceNo}：何佳未查询到记录，三天内不再尝试`, "warn");
           } else if (
             !result.status &&
             !result.salesperson &&
             !result.purchaseDate
           ) {
+            forgetNotFound(traceNo);
             stats.found += 1;
             stats.skipped += 1;
             log(`${traceNo}：状态、业务员和申购日期均为空`, "warn");
           } else {
+            forgetNotFound(traceNo);
             stats.found += 1;
             const summary = `业务员=${result.salesperson || "空"}，状态=${result.status || "空"}，申购日期=${result.purchaseDate || "空"}`;
             if (config.dryRun) {
@@ -513,26 +603,52 @@ WHERE pr.trace_no = :trace_no
       if (config.autoEnabled) schedule();
     }
   }
-  function schedule(delay) {
+  function stopSchedule() {
     clearTimeout(timer);
+    timer = null;
+  }
+  function countdown(milliseconds) {
+    const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const short = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    return hours ? `${hours}:${short}` : short;
+  }
+  function schedule(delay) {
+    stopSchedule();
     if (!config.autoEnabled) return;
     if (isLoginPage()) {
       status("请先登录何佳系统", "warn");
       return;
     }
-    const milliseconds = int(config.intervalMinutes, 10, 1, 1440) * 60000;
-    timer = setTimeout(
-      () => run("auto"),
-      typeof delay === "number" ? delay : milliseconds,
-    );
-    status(`自动模式：${config.intervalMinutes} 分钟`);
+    const interval =
+      int(config.intervalMinutes, defaults.intervalMinutes, 1, 1440) * 60000;
+    const runAt = Date.now() + (typeof delay === "number" ? delay : interval);
+    const tick = () => {
+      if (!config.autoEnabled) return stopSchedule();
+      const remaining = runAt - Date.now();
+      if (remaining <= 0) {
+        timer = null;
+        run("auto");
+        return;
+      }
+      status(`自动同步倒计时 ${countdown(remaining)}`);
+      timer = setTimeout(tick, Math.min(1000, remaining));
+    };
+    tick();
   }
   function formConfig() {
     return {
       adminUsername: ui.adminUsername.value.trim(),
       adminPassword: ui.adminPassword.value,
-      intervalMinutes: int(ui.interval.value, 10, 1, 1440),
-      batchSize: int(ui.batch.value, 50, 1, 200),
+      intervalMinutes: int(
+        ui.interval.value,
+        defaults.intervalMinutes,
+        1,
+        1440,
+      ),
+      batchSize: int(ui.batch.value, defaults.batchSize, 1, 200),
       dryRun: ui.dryRun.checked,
       autoEnabled: ui.auto.checked,
     };
@@ -587,7 +703,7 @@ WHERE pr.trace_no = :trace_no
 <style>
 :host{all:initial;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2937}*{box-sizing:border-box}.panel{width:380px;overflow:hidden;border:1px solid #cbd5e1;border-radius:14px;background:#fff;box-shadow:0 18px 45px #0f172a38}.head{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 14px;color:#fff;background:linear-gradient(135deg,#0f766e,#2563eb);cursor:move;user-select:none}.title{flex:1;font-size:14px;font-weight:700}.status{max-width:170px;overflow:hidden;padding:3px 8px;border-radius:999px;background:#ffffff2e;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.status[data-kind=success]{background:#10b98155}.status[data-kind=warn]{background:#f59e0b66}.status[data-kind=error]{background:#ef444466}.mini{width:28px;height:28px;border:0;border-radius:8px;color:#fff;background:#ffffff22;cursor:pointer}.body{padding:12px}:host([data-minimized=true]) .body{display:none}:host([data-minimized=true]) .panel{width:260px}.toolbar{display:flex;align-items:center;gap:9px}.run,.save{height:34px;border-radius:9px;padding:0 14px;font-weight:650;cursor:pointer}.run{border:0;color:#fff;background:#2563eb}.save{border:1px solid #cbd5e1;color:#334155;background:#fff}.switch{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#475569}.switch input,.check input{accent-color:#2563eb}.stats{margin:10px 0;padding:8px 10px;border-radius:9px;color:#475569;background:#f1f5f9;font-size:12px}details{border:1px solid #e2e8f0;border-radius:10px}summary{padding:9px 10px;font-size:12px;font-weight:650;cursor:pointer}.settings{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 10px 10px}label{display:grid;gap:4px;color:#64748b;font-size:11px}input[type=text],input[type=password],input[type=number]{width:100%;height:31px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.full{grid-column:1/-1}.check{display:flex;align-items:center;gap:6px}.notice{grid-column:1/-1;color:#92400e;font-size:11px;line-height:1.5}.logs{height:170px;margin-top:10px;overflow:auto;border-radius:9px;padding:8px;color:#cbd5e1;background:#0f172a;font:11px/1.55 Consolas,"Microsoft YaHei",monospace}.logs div{margin-bottom:2px;overflow-wrap:anywhere}.logs .success{color:#6ee7b7}.logs .warn{color:#fcd34d}.logs .error{color:#fca5a5}button:disabled{opacity:.55;cursor:wait}
 </style>
-<section class="panel"><header class="head"><div class="title">华友何佳同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>本系统连接与同步设置</summary><div class="settings"><label>超管账号<input class="admin-user" type="text"></label><label>超管密码<input class="admin-pass" type="password"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">脚本直接复用当前何佳登录会话；超管密码保存在油猴脚本私有存储中。自动模式默认关闭，仅处理业务员为空且追溯号不为空的记录。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
+<section class="panel"><header class="head"><div class="title">华友何佳同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0 · 缓存 0</div><details><summary>本系统连接与同步设置</summary><div class="settings"><label>超管账号<input class="admin-user" type="text"></label><label>超管密码<input class="admin-pass" type="password"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">脚本直接复用当前何佳登录会话；超管密码保存在油猴脚本私有存储中。何佳明确无结果的追溯号缓存三天，并在 SQL 中排除；可通过油猴菜单手动清空。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
     document.documentElement.append(host);
     ui = {
       status: shadow.querySelector(".status"),
@@ -614,7 +730,7 @@ WHERE pr.trace_no = :trace_no
       log("设置已保存", "success");
       if (config.autoEnabled) schedule(1500);
       else {
-        clearTimeout(timer);
+        stopSchedule();
         status("待机");
       }
     });
@@ -624,7 +740,7 @@ WHERE pr.trace_no = :trace_no
         log("自动模式已开启");
         schedule(1500);
       } else {
-        clearTimeout(timer);
+        stopSchedule();
         status("自动模式已关闭");
         log("自动模式已关闭");
       }
@@ -638,10 +754,14 @@ WHERE pr.trace_no = :trace_no
     saveConfig({ autoEnabled: !config.autoEnabled });
     if (ui) ui.auto.checked = config.autoEnabled;
     if (config.autoEnabled) schedule(1000);
-    else clearTimeout(timer);
+    else stopSchedule();
     log(`自动模式已${config.autoEnabled ? "开启" : "关闭"}`);
   });
+  GM_registerMenuCommand("华友何佳同步：清空三天无结果缓存", () =>
+    clearNotFoundCache(),
+  );
 
+  stats.cached = notFoundTraceNos().length;
   createPanel();
   if (isLoginPage()) {
     status("请先登录何佳系统", "warn");
@@ -649,4 +769,5 @@ WHERE pr.trace_no = :trace_no
   } else {
     log("脚本已加载；当前何佳登录会话将用于查询，请填写本系统超管密码");
   }
+  if (stats.cached) log(`已加载 ${stats.cached} 个三天内无结果的追溯号缓存`);
 })();
