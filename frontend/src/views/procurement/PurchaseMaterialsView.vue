@@ -46,14 +46,14 @@ const createPlanDate = ref(Date.now())
 const filters = reactive({
   name: '',
   model_spec: '',
-  purchase_responsible: null as string | null,
+  actual_demand_person: null as string | null,
 })
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
 })
-const purchaseResponsibleOptions = computed(() =>
-  filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
+const actualDemandPersonOptions = computed(() =>
+  filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
 )
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
@@ -191,7 +191,7 @@ async function load() {
       moved: false,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
-      purchase_responsible: filters.purchase_responsible?.trim() || undefined,
+      actual_demand_person: filters.actual_demand_person?.trim() || undefined,
     })
     items.value = d.items
     total.value = d.total
@@ -210,7 +210,7 @@ function query() {
 function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
-  filters.purchase_responsible = null
+  filters.actual_demand_person = null
   query()
 }
 function changePageSize() {
@@ -365,9 +365,9 @@ onMounted(() => {
           @keyup.enter="query"
         />
         <n-select
-          v-model:value="filters.purchase_responsible"
-          :options="purchaseResponsibleOptions"
-          placeholder="申购人"
+          v-model:value="filters.actual_demand_person"
+          :options="actualDemandPersonOptions"
+          placeholder="实际需求人"
           filterable
           clearable
           style="width: 180px"
