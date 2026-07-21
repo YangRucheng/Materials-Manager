@@ -203,7 +203,7 @@ onMounted(() => {
         <n-space class="page-subtitle" size="small">
           <span>{{ material.plan_no }}</span>
           <span>{{ formatDate(material.plan_date) }}</span>
-          <span>{{ material.material_code || '暂无物料编码' }}</span>
+          <span>{{ material.material_code || '\\' }}</span>
           <n-tag size="small" :type="material.moved_to_record ? 'success' : 'warning'">
             {{ material.moved_to_record ? '已转入申购记录' : '申购计划中' }}
           </n-tag>

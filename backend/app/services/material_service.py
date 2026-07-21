@@ -210,7 +210,7 @@ async def create_purchase_material(
     session: AsyncSession, data: PurchaseMaterialCreate
 ) -> PurchaseMaterial:
     unit = await _unit(session, data.unit_id)
-    responsible = data.purchase_responsible or "待补充"
+    responsible = data.purchase_responsible or "\\"
     validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
