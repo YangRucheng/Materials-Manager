@@ -52,6 +52,10 @@ class PurchaseFilterOptions(ReadModel):
     purchase_responsibles: list[str]
 
 
+class PurchaseRecordFilterOptions(PurchaseFilterOptions):
+    statuses: list[str]
+
+
 class ApiError(ReadModel):
     code: str
     message: str

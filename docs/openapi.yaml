@@ -1999,6 +1999,13 @@ paths:
             maxLength: 128
           - type: 'null'
           title: Status
+      - name: empty_status
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Empty Status
       - name: keyword
         in: query
         required: false
@@ -2108,7 +2115,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PurchaseFilterOptions'
+                $ref: '#/components/schemas/PurchaseRecordFilterOptions'
         '400':
           description: 业务校验失败
           content:
@@ -4067,6 +4074,29 @@ components:
       required:
       - material_ids
       title: PurchasePlanExportRequest
+    PurchaseRecordFilterOptions:
+      properties:
+        actual_demand_persons:
+          items:
+            type: string
+          type: array
+          title: Actual Demand Persons
+        purchase_responsibles:
+          items:
+            type: string
+          type: array
+          title: Purchase Responsibles
+        statuses:
+          items:
+            type: string
+          type: array
+          title: Statuses
+      type: object
+      required:
+      - actual_demand_persons
+      - purchase_responsibles
+      - statuses
+      title: PurchaseRecordFilterOptions
     PurchaseRecordRead:
       properties:
         line_id:
