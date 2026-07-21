@@ -107,7 +107,7 @@ async def balance_detail(
 async def inbound(
     data: OperationCreate, session: DbSession, user: WarehouseWriter
 ) -> StockOperationRead:
-    item = await inventory_service.create_operation(session, data, OperationType.INBOUND, user.id)
+    item = await inventory_service.create_operation(session, data, OperationType.INBOUND)
     return await inventory_service.operation_read(session, item)
 
 
@@ -117,7 +117,7 @@ async def inbound(
 async def outbound(
     data: OperationCreate, session: DbSession, user: WarehouseWriter
 ) -> StockOperationRead:
-    item = await inventory_service.create_operation(session, data, OperationType.OUTBOUND, user.id)
+    item = await inventory_service.create_operation(session, data, OperationType.OUTBOUND)
     return await inventory_service.operation_read(session, item)
 
 
@@ -130,8 +130,6 @@ async def operations(
     operation_no: str | None = None,
     operation_type: OperationType | None = None,
     material_name: str | None = None,
-    operator_name: str | None = None,
-    purchase_request_no: str | None = None,
     source_type: SourceType | None = None,
     start_at: str | None = None,
     end_at: str | None = None,
@@ -145,8 +143,6 @@ async def operations(
         operation_no=operation_no,
         operation_type=operation_type,
         material_name=material_name,
-        operator_name=operator_name,
-        purchase_request_no=purchase_request_no,
         source_type=source_type,
         start_at=start_time,
         end_at=end_time,
@@ -178,7 +174,7 @@ async def edit_operation(
     user: WarehouseWriter,
 ) -> StockOperationRead:
     item = await inventory_service.get_operation(session, operation_id, for_update=True)
-    item = await inventory_service.update_operation(session, item, data, user.id)
+    item = await inventory_service.update_operation(session, item, data)
     return await inventory_service.operation_read(session, item)
 
 
@@ -190,7 +186,7 @@ async def reverse_operation(
     user: WarehouseWriter,
 ) -> StockOperationRead:
     original = await inventory_service.get_operation(session, operation_id, for_update=True)
-    item = await inventory_service.reverse_operation(session, original, data, user.id)
+    item = await inventory_service.reverse_operation(session, original, data)
     return await inventory_service.operation_read(session, item)
 
 
@@ -204,9 +200,7 @@ async def replenish(
     session: DbSession,
     user: WarehouseWriter,
 ) -> ReplenishmentDraftRead:
-    return await replenishment_service.create_replenishment_draft(
-        session, material_id, data, user.id
-    )
+    return await replenishment_service.create_replenishment_draft(session, material_id, data)
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummaryRead)

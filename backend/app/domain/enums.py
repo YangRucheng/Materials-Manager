@@ -15,24 +15,5 @@ class OperationType(StrEnum):
 
 class SourceType(StrEnum):
     MANUAL = "MANUAL"
-    PURCHASE_RECEIPT = "PURCHASE_RECEIPT"
     REVERSAL = "REVERSAL"
     INITIALIZATION = "INITIALIZATION"
-
-
-class PurchaseRequestStatus(StrEnum):
-    DRAFT = "DRAFT"
-    SUBMITTED = "SUBMITTED"
-    PROCESSING = "PROCESSING"
-    RETURNED = "RETURNED"
-    PARTIALLY_RECEIVED = "PARTIALLY_RECEIVED"
-    COMPLETED = "COMPLETED"
-    CLOSED = "CLOSED"
-    CANCELED = "CANCELED"
-
-
-ON_ORDER_REQUEST_STATUSES = {
-    PurchaseRequestStatus.SUBMITTED,
-    PurchaseRequestStatus.PROCESSING,
-    PurchaseRequestStatus.PARTIALLY_RECEIVED,
-}

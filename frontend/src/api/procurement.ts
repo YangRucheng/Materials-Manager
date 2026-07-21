@@ -2,12 +2,10 @@ import { apiClient } from './client'
 import type {
   Page,
   MovePurchasePlansWrite,
-  PreparedInbound,
   PurchaseMaterial,
   PurchaseMaterialWrite,
   PurchaseRecord,
-  PurchaseRequest,
-  PurchaseRequestWrite,
+  PurchaseRecordWrite,
 } from './generated'
 
 export const procurementApi = {
@@ -54,26 +52,10 @@ export const procurementApi = {
     apiClient
       .get<Page<PurchaseMaterial>>('/purchase-materials', { params: { ...params, coded: false } })
       .then((r) => r.data),
-  requests: (params?: Record<string, unknown>) =>
-    apiClient.get<Page<PurchaseRequest>>('/purchase-requests', { params }).then((r) => r.data),
-  request: (id: number) =>
-    apiClient.get<PurchaseRequest>(`/purchase-requests/${id}`).then((r) => r.data),
-  createRequest: (payload: PurchaseRequestWrite) =>
-    apiClient.post<PurchaseRequest>('/purchase-requests', payload).then((r) => r.data),
-  updateRequest: (id: number, payload: PurchaseRequestWrite) =>
-    apiClient.patch<PurchaseRequest>(`/purchase-requests/${id}`, payload).then((r) => r.data),
-  requestAction: (id: number, action: string, payload: Record<string, unknown> = {}) =>
-    apiClient
-      .post<PurchaseRequest>(`/purchase-requests/${id}/${action}`, payload)
-      .then((r) => r.data),
-  prepareInbound: (lineId: number) =>
-    apiClient
-      .post<PreparedInbound>(`/purchase-request-lines/${lineId}/prepare-inbound`)
-      .then((r) => r.data),
   records: (params?: Record<string, unknown>) =>
     apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
-  updateRecord: (lineId: number, payload: MovePurchasePlansWrite & { version: number }) =>
+  updateRecord: (lineId: number, payload: PurchaseRecordWrite) =>
     apiClient.patch<PurchaseRecord>(`/purchase-records/${lineId}`, payload).then((r) => r.data),
 }

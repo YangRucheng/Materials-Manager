@@ -62,9 +62,8 @@ async def test_agent_database_writes_all_application_tables(client: AsyncClient)
         json={
             "sql": (
                 "INSERT INTO measurement_unit "
-                "(code, name, decimal_places, enabled, created_at, updated_at, "
-                "created_by, updated_by, version) "
-                "VALUES (:code, :name, 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, 1)"
+                "(code, name, decimal_places, enabled, created_at, updated_at, version) "
+                "VALUES (:code, :name, 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)"
             ),
             "parameters": {"code": "BOX", "name": "箱"},
         },

@@ -113,7 +113,6 @@ onMounted(load)
           ><n-descriptions-item label="最低库存">{{
             balance?.minimum_qty ?? '—'
           }}</n-descriptions-item
-          ><n-descriptions-item label="在途">{{ balance?.on_order_qty ?? '0' }}</n-descriptions-item
           ><n-descriptions-item label="建议申购">{{
             balance?.suggested_purchase_qty ?? '0'
           }}</n-descriptions-item></n-descriptions
