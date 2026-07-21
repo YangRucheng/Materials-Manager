@@ -3,8 +3,6 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from app.core.database import SessionLocal
-from app.models import StockOperation
 from tests.conftest import auth_headers, create_stock
 
 
@@ -67,7 +65,7 @@ async def test_user_without_references_can_be_deleted(client: AsyncClient) -> No
 
 
 @pytest.mark.asyncio
-async def test_operation_keeps_hidden_user_id_and_prevents_user_deletion(
+async def test_operation_does_not_reference_authenticated_user(
     client: AsyncClient,
 ) -> None:
     admin = await auth_headers(client, "admin")
@@ -85,14 +83,8 @@ async def test_operation_keeps_hidden_user_id_and_prevents_user_deletion(
         },
     )
     assert response.status_code == 201, response.text
-    assert response.json()["operator_name"] == "仓库管理员"
     assert "operator_id" not in response.json()
-
-    async with SessionLocal() as session:
-        operation = await session.get(StockOperation, response.json()["id"])
-        assert operation is not None
-        assert operation.operator_id == 2
+    assert "operator_name" not in response.json()
 
     deleted = await client.delete("/api/v1/users/2", headers=admin)
-    assert deleted.status_code == 409
-    assert deleted.json()["code"] == "USER_IN_USE"
+    assert deleted.status_code == 204, deleted.text

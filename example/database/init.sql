@@ -27,14 +27,11 @@ CREATE TABLE IF NOT EXISTS `business_event_log` (
   `action` VARCHAR(64) NOT NULL,
   `old_status` VARCHAR(32) NULL,
   `new_status` VARCHAR(32) NULL,
-  `operator_id` BIGINT UNSIGNED NOT NULL,
   `occurred_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `remark` VARCHAR(1000) NULL,
   `before_data` JSON NULL,
   `after_data` JSON NULL,
   CONSTRAINT `pk_business_event_log` PRIMARY KEY (`id`),
-  CONSTRAINT `fk_business_event_log_operator_id_user`
-    FOREIGN KEY (`operator_id`) REFERENCES `user` (`id`),
   INDEX `ix_business_event_entity` (`business_type`, `business_id`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -48,14 +45,8 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `sha256` VARCHAR(64) NOT NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_file_object` PRIMARY KEY (`id`),
-  CONSTRAINT `fk_file_object_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_file_object_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_file_object_sha256` (`sha256`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -67,59 +58,27 @@ CREATE TABLE IF NOT EXISTS `measurement_unit` (
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_measurement_unit` PRIMARY KEY (`id`),
   CONSTRAINT `ck_measurement_unit_decimal_places_range`
     CHECK (`decimal_places` >= 0 AND `decimal_places` <= 1),
   CONSTRAINT `uq_measurement_unit_code` UNIQUE (`code`),
-  CONSTRAINT `uq_measurement_unit_name` UNIQUE (`name`),
-  CONSTRAINT `fk_measurement_unit_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_measurement_unit_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`)
+  CONSTRAINT `uq_measurement_unit_name` UNIQUE (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_order_no` VARCHAR(128) NULL,
   `trace_no` VARCHAR(128) NULL,
-  `status` ENUM(
-    'DRAFT',
-    'SUBMITTED',
-    'PROCESSING',
-    'RETURNED',
-    'PARTIALLY_RECEIVED',
-    'COMPLETED',
-    'CLOSED',
-    'CANCELED'
-  ) NOT NULL,
-  `applicant_id` BIGINT UNSIGNED NOT NULL,
-  `handler_id` BIGINT UNSIGNED NULL,
   `salesperson` VARCHAR(128) NULL,
   `remark` VARCHAR(1000) NULL,
-  `return_reason` VARCHAR(500) NULL,
-  `close_reason` VARCHAR(500) NULL,
   `purchase_date` DATE NULL,
-  `completed_at` DATETIME(6) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_request` PRIMARY KEY (`id`),
-  CONSTRAINT `fk_purchase_request_applicant_id_user`
-    FOREIGN KEY (`applicant_id`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_purchase_request_handler_id_user`
-    FOREIGN KEY (`handler_id`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_purchase_request_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_purchase_request_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_purchase_request_trace_no` (`trace_no`),
-  INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`),
-  INDEX `ix_purchase_request_status_created` (`status`, `created_at`)
+  INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_material` (
@@ -132,17 +91,11 @@ CREATE TABLE IF NOT EXISTS `stock_material` (
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_material` PRIMARY KEY (`id`),
   CONSTRAINT `fk_stock_material_unit_id_measurement_unit`
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
   CONSTRAINT `uq_stock_material_identity_hash` UNIQUE (`identity_hash`),
-  CONSTRAINT `fk_stock_material_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_stock_material_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_stock_material_model_spec` (`model_spec`),
   INDEX `ix_stock_material_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -152,30 +105,21 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `operation_no` VARCHAR(32) NOT NULL,
   `operation_type` ENUM('INBOUND', 'OUTBOUND') NOT NULL,
   `occurred_at` DATETIME(6) NOT NULL,
-  `operator_id` BIGINT UNSIGNED NOT NULL,
   `business_reason` VARCHAR(500) NOT NULL,
   `receiver_name` VARCHAR(64) NULL,
   `subitem_no` VARCHAR(64) NULL,
-  `source_type` ENUM('MANUAL', 'PURCHASE_RECEIPT', 'REVERSAL', 'INITIALIZATION') NOT NULL,
+  `source_type` ENUM('MANUAL', 'REVERSAL', 'INITIALIZATION') NOT NULL,
   `reversal_of_id` BIGINT UNSIGNED NULL,
   `client_request_id` VARCHAR(64) NOT NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_operation` PRIMARY KEY (`id`),
   CONSTRAINT `uq_stock_operation_operation_no` UNIQUE (`operation_no`),
-  CONSTRAINT `fk_stock_operation_operator_id_user`
-    FOREIGN KEY (`operator_id`) REFERENCES `user` (`id`),
   CONSTRAINT `uq_stock_operation_reversal_of_id` UNIQUE (`reversal_of_id`),
   CONSTRAINT `fk_stock_operation_reversal_of_id_stock_operation`
     FOREIGN KEY (`reversal_of_id`) REFERENCES `stock_operation` (`id`),
   CONSTRAINT `uq_stock_operation_client_request_id` UNIQUE (`client_request_id`),
-  CONSTRAINT `fk_stock_operation_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_stock_operation_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_stock_operation_occurred_at` (`occurred_at`),
   INDEX `ix_stock_operation_source_occurred` (`source_type`, `occurred_at`),
   INDEX `ix_stock_operation_type_occurred` (`operation_type`, `occurred_at`)
@@ -200,8 +144,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_material` PRIMARY KEY (`id`),
   CONSTRAINT `uq_purchase_material_plan_no` UNIQUE (`plan_no`),
@@ -209,10 +151,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
-  CONSTRAINT `fk_purchase_material_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_purchase_material_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_purchase_material_identity_hash` (`identity_hash`),
   INDEX `ix_purchase_material_plan_date` (`plan_date`),
   INDEX `ix_purchase_material_material_code` (`material_code`),
@@ -249,18 +187,12 @@ CREATE TABLE IF NOT EXISTS `stock_replenishment_policy` (
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_replenishment_policy` PRIMARY KEY (`stock_material_id`),
   CONSTRAINT `ck_stock_replenishment_policy_minimum_nonnegative`
     CHECK (`minimum_qty` >= 0),
   CONSTRAINT `fk_stock_replenishment_policy_stock_material_id_stock_material`
-    FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_stock_replenishment_policy_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_stock_replenishment_policy_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`)
+    FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `purchase_material_image` (
@@ -282,28 +214,21 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   `material_name_snapshot` VARCHAR(128) NOT NULL,
   `model_spec_snapshot` VARCHAR(255) NOT NULL,
   `unit_name_snapshot` VARCHAR(32) NOT NULL,
-  `requested_qty` DECIMAL(18, 1) NOT NULL,
-  `received_qty` DECIMAL(18, 1) NOT NULL DEFAULT 0,
+  `purchase_qty` DECIMAL(18, 1) NOT NULL,
+  `status` VARCHAR(128) NOT NULL DEFAULT '已申购',
   `usage` VARCHAR(500) NOT NULL,
   `subitem_no` VARCHAR(64) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_request_line` PRIMARY KEY (`id`),
-  CONSTRAINT `ck_purchase_request_line_requested_positive` CHECK (`requested_qty` > 0),
-  CONSTRAINT `ck_purchase_request_line_received_nonnegative` CHECK (`received_qty` >= 0),
+  CONSTRAINT `ck_purchase_request_line_purchase_positive` CHECK (`purchase_qty` > 0),
   CONSTRAINT `uq_purchase_request_line_purchase_request_id`
     UNIQUE (`purchase_request_id`, `purchase_material_id`, `subitem_no`, `usage`),
   CONSTRAINT `fk_purchase_request_line_purchase_request_id_purchase_request`
     FOREIGN KEY (`purchase_request_id`) REFERENCES `purchase_request` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_purchase_request_line_purchase_material_id_purchase_material`
-    FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`),
-  CONSTRAINT `fk_purchase_request_line_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_purchase_request_line_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`)
+    FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_operation_line` (
@@ -316,11 +241,8 @@ CREATE TABLE IF NOT EXISTS `stock_operation_line` (
   `material_name_snapshot` VARCHAR(128) NOT NULL,
   `model_spec_snapshot` VARCHAR(255) NOT NULL,
   `unit_name_snapshot` VARCHAR(32) NOT NULL,
-  `purchase_request_line_id` BIGINT UNSIGNED NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `created_by` BIGINT UNSIGNED NULL,
-  `updated_by` BIGINT UNSIGNED NULL,
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_operation_line` PRIMARY KEY (`id`),
   CONSTRAINT `ck_stock_operation_line_operation_quantity_positive` CHECK (`quantity` > 0),
@@ -329,12 +251,6 @@ CREATE TABLE IF NOT EXISTS `stock_operation_line` (
     FOREIGN KEY (`operation_id`) REFERENCES `stock_operation` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stock_operation_line_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
-  CONSTRAINT `fk_stock_operation_line_purchase_request_line_id_purchas_304e`
-    FOREIGN KEY (`purchase_request_line_id`) REFERENCES `purchase_request_line` (`id`),
-  CONSTRAINT `fk_stock_operation_line_created_by_user`
-    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
-  CONSTRAINT `fk_stock_operation_line_updated_by_user`
-    FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`),
   INDEX `ix_operation_line_material_operation` (`stock_material_id`, `operation_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -350,25 +266,20 @@ ON DUPLICATE KEY UPDATE
   `role` = VALUES(`role`),
   `enabled` = VALUES(`enabled`);
 
-SET @admin_id = (SELECT `id` FROM `user` WHERE `username` = 'admin' LIMIT 1);
-
 INSERT INTO `measurement_unit` (
   `code`,
   `name`,
   `decimal_places`,
-  `enabled`,
-  `created_by`,
-  `updated_by`
+  `enabled`
 )
 VALUES
-  ('PCS', '个', 0, 1, @admin_id, @admin_id),
-  ('SET', '套', 0, 1, @admin_id, @admin_id),
-  ('M', '米', 1, 1, @admin_id, @admin_id),
-  ('KG', '千克', 1, 1, @admin_id, @admin_id)
+  ('PCS', '个', 0, 1),
+  ('SET', '套', 0, 1),
+  ('M', '米', 1, 1),
+  ('KG', '千克', 1, 1)
 ON DUPLICATE KEY UPDATE
   `name` = VALUES(`name`),
   `decimal_places` = VALUES(`decimal_places`),
-  `enabled` = VALUES(`enabled`),
-  `updated_by` = VALUES(`updated_by`);
+  `enabled` = VALUES(`enabled`);
 
 SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;

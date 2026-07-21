@@ -44,7 +44,6 @@ async function resetEditor(value: StockOperation) {
     lines: value.lines.map((line, index) => ({
       stock_material_id: line.stock_material_id,
       quantity: line.quantity,
-      purchase_request_line_id: line.purchase_request_line_id,
       material: materials[index],
     })),
   })
@@ -85,10 +84,9 @@ async function save() {
       lines: edit.lines.map((line) => ({
         stock_material_id: line.stock_material_id!,
         quantity: line.quantity,
-        purchase_request_line_id: line.purchase_request_line_id,
       })),
     })
-    message.success('流水已修改，关联库存和申购到货数量已重新计算')
+    message.success('流水已修改，库存已重新计算')
     editing.value = false
     await load()
   } catch (error) {
@@ -170,7 +168,7 @@ onMounted(load)
             ><n-select
               v-model:value="edit.source_type"
               :options="
-                ['MANUAL', 'PURCHASE_RECEIPT', 'REVERSAL', 'INITIALIZATION'].map((value) => ({
+                ['MANUAL', 'REVERSAL', 'INITIALIZATION'].map((value) => ({
                   label: value,
                   value,
                 }))
@@ -192,7 +190,6 @@ onMounted(load)
           operation.operation_type === 'INBOUND' ? '入库' : '出库'
         }}</n-descriptions-item>
         <n-descriptions-item label="来源">{{ operation.source_type }}</n-descriptions-item>
-        <n-descriptions-item label="操作人">{{ operation.operator_name }}</n-descriptions-item>
         <n-descriptions-item label="业务原因" :span="2">{{
           operation.business_reason || '—'
         }}</n-descriptions-item>
@@ -200,21 +197,13 @@ onMounted(load)
           operation.receiver_name || '—'
         }}</n-descriptions-item>
         <n-descriptions-item label="子项号">{{ operation.subitem_no || '—' }}</n-descriptions-item>
-        <n-descriptions-item label="来源追溯号">{{
-          operation.purchase_request_no || '—'
-        }}</n-descriptions-item>
         <n-descriptions-item label="请求幂等 ID" :span="2">{{
           operation.client_request_id
         }}</n-descriptions-item>
       </n-descriptions>
     </n-card>
     <n-card title="物资明细">
-      <OperationLinesEditor
-        v-if="editing"
-        v-model:lines="edit.lines"
-        :type="edit.operation_type"
-        show-purchase-link
-      />
+      <OperationLinesEditor v-if="editing" v-model:lines="edit.lines" :type="edit.operation_type" />
       <n-table v-else :bordered="false">
         <thead>
           <tr>
@@ -223,7 +212,6 @@ onMounted(load)
             <th>数量</th>
             <th>操作前</th>
             <th>操作后</th>
-            <th>关联申购记录</th>
           </tr>
         </thead>
         <tbody>
@@ -233,7 +221,6 @@ onMounted(load)
             <td>{{ line.quantity }} {{ line.unit_name }}</td>
             <td>{{ line.before_qty }}</td>
             <td>{{ line.after_qty }}</td>
-            <td>{{ line.purchase_request_line_id || '—' }}</td>
           </tr>
         </tbody>
       </n-table>

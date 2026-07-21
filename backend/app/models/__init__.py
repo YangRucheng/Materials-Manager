@@ -29,7 +29,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.domain.enums import (
     OperationType,
-    PurchaseRequestStatus,
     Role,
     SourceType,
 )
@@ -52,8 +51,6 @@ class AuditMixin:
     updated_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now(), onupdate=_utcnow
     )
-    created_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=True)
-    updated_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=True)
     version: Mapped[int] = mapped_column(UINT, default=1, server_default="1")
 
 
@@ -155,8 +152,6 @@ class StockReplenishmentPolicy(Base):
     updated_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now(), onupdate=_utcnow
     )
-    created_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
-    updated_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
     version: Mapped[int] = mapped_column(UINT, default=1, server_default="1")
     material: Mapped[StockMaterial] = relationship(back_populates="replenishment_policy")
 
@@ -223,25 +218,14 @@ class PurchaseMaterialImage(Base):
 
 class PurchaseRequest(AuditMixin, Base):
     __tablename__ = "purchase_request"
-    __table_args__ = (Index("ix_purchase_request_status_created", "status", "created_at"),)
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     purchase_order_no: Mapped[str | None] = mapped_column(String(128), index=True)
     trace_no: Mapped[str | None] = mapped_column(String(128), index=True)
-    status: Mapped[PurchaseRequestStatus] = mapped_column(
-        SAEnum(PurchaseRequestStatus), nullable=False
-    )
-    applicant_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=False)
-    handler_id: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
     salesperson: Mapped[str | None] = mapped_column(String(128))
     remark: Mapped[str | None] = mapped_column(String(1000))
-    return_reason: Mapped[str | None] = mapped_column(String(500))
-    close_reason: Mapped[str | None] = mapped_column(String(500))
     purchase_date: Mapped[date | None] = mapped_column(Date)
-    completed_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
 
-    applicant: Mapped[User] = relationship(foreign_keys=[applicant_id], lazy="selectin")
-    handler: Mapped[User | None] = relationship(foreign_keys=[handler_id], lazy="selectin")
     lines: Mapped[list[PurchaseRequestLine]] = relationship(
         back_populates="request",
         lazy="selectin",
@@ -253,8 +237,7 @@ class PurchaseRequest(AuditMixin, Base):
 class PurchaseRequestLine(AuditMixin, Base):
     __tablename__ = "purchase_request_line"
     __table_args__ = (
-        CheckConstraint("requested_qty > 0", name="requested_positive"),
-        CheckConstraint("received_qty >= 0", name="received_nonnegative"),
+        CheckConstraint("purchase_qty > 0", name="purchase_positive"),
         UniqueConstraint("purchase_request_id", "purchase_material_id", "subitem_no", "usage"),
     )
 
@@ -269,8 +252,8 @@ class PurchaseRequestLine(AuditMixin, Base):
     material_name_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
     model_spec_snapshot: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_name_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
-    requested_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
-    received_qty: Mapped[Decimal] = mapped_column(QTY, default=Decimal("0"), server_default="0")
+    purchase_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
+    status: Mapped[str] = mapped_column(String(128), nullable=False, default="已申购")
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
     subitem_no: Mapped[str | None] = mapped_column(String(64))
 
@@ -289,7 +272,6 @@ class StockOperation(AuditMixin, Base):
     operation_no: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     operation_type: Mapped[OperationType] = mapped_column(SAEnum(OperationType), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(UTC_DATETIME, nullable=False, index=True)
-    operator_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=False)
     business_reason: Mapped[str] = mapped_column(String(500), nullable=False)
     receiver_name: Mapped[str | None] = mapped_column(String(64))
     subitem_no: Mapped[str | None] = mapped_column(String(64))
@@ -299,7 +281,6 @@ class StockOperation(AuditMixin, Base):
     )
     client_request_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
 
-    operator: Mapped[User] = relationship(foreign_keys=[operator_id], lazy="selectin")
     lines: Mapped[list[StockOperationLine]] = relationship(
         back_populates="operation",
         lazy="selectin",
@@ -329,13 +310,9 @@ class StockOperationLine(AuditMixin, Base):
     material_name_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
     model_spec_snapshot: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_name_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
-    purchase_request_line_id: Mapped[int | None] = mapped_column(
-        BIGINT_ID, ForeignKey("purchase_request_line.id")
-    )
 
     operation: Mapped[StockOperation] = relationship(back_populates="lines")
     stock_material: Mapped[StockMaterial] = relationship(lazy="selectin")
-    purchase_request_line: Mapped[PurchaseRequestLine | None] = relationship(lazy="selectin")
 
 
 class BusinessEventLog(Base):
@@ -348,15 +325,12 @@ class BusinessEventLog(Base):
     action: Mapped[str] = mapped_column(String(64), nullable=False)
     old_status: Mapped[str | None] = mapped_column(String(32))
     new_status: Mapped[str | None] = mapped_column(String(32))
-    operator_id: Mapped[int] = mapped_column(BIGINT_ID, ForeignKey("user.id"), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
     )
     remark: Mapped[str | None] = mapped_column(String(1000))
     before_data: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     after_data: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-
-    operator: Mapped[User] = relationship(lazy="selectin")
 
 
 __all__ = [

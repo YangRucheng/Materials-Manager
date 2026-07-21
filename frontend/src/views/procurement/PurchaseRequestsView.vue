@@ -4,7 +4,6 @@ import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseRecord } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
-import { requestStatusLabels, statusTagType } from '@/utils/status'
 import { formatDate } from '@/utils/time'
 
 const router = useRouter()
@@ -18,6 +17,7 @@ type RecordColumnKey =
   | 'purchase_order_no'
   | 'trace_no'
   | 'material_name'
+  | 'purchase_qty'
   | 'purchase_responsible'
   | 'salesperson'
   | 'status'
@@ -28,6 +28,16 @@ const availableColumns: Array<{
   label: string
   column: DataTableBaseColumn<PurchaseRecord>
 }> = [
+  {
+    key: 'purchase_qty',
+    label: '申购数量',
+    column: {
+      title: '申购数量',
+      key: 'purchase_qty',
+      width: 110,
+      render: (row) => `${row.purchase_qty} ${row.unit_name}`,
+    },
+  },
   {
     key: 'plan_date',
     label: '计划日期',
@@ -93,12 +103,7 @@ const availableColumns: Array<{
       title: '状态',
       key: 'status',
       width: 120,
-      render: (row) =>
-        h(
-          NTag,
-          { type: statusTagType(row.status) },
-          { default: () => requestStatusLabels[row.status] },
-        ),
+      render: (row) => h(NTag, null, { default: () => row.status }),
     },
   },
   {
@@ -166,7 +171,7 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">申购记录</h1>
-        <p class="page-subtitle">按物资跟踪正式申购记录、单号和到货状态</p>
+        <p class="page-subtitle">用于整理和统计正式申购信息</p>
       </div>
     </div>
     <n-card>
@@ -177,11 +182,10 @@ onMounted(load)
           clearable
           style="width: 300px"
         />
-        <n-select
+        <n-input
           v-model:value="filters.status"
           clearable
-          :options="Object.entries(requestStatusLabels).map(([value, label]) => ({ value, label }))"
-          placeholder="状态"
+          placeholder="状态（任意文本）"
           style="width: 150px"
         />
         <n-select

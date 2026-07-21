@@ -37,7 +37,8 @@ const moveForm = reactive({
   trace_no: '',
   purchase_date: Date.now(),
   salesperson: '',
-  remark: '',
+  status: '已申购',
+  record_remark: '',
 })
 const images = ref<FileObject[]>([])
 const planDate = ref<number | null>(null)
@@ -158,7 +159,8 @@ function openMove() {
     trace_no: '',
     purchase_date: Date.now(),
     salesperson: '',
-    remark: '',
+    status: '已申购',
+    record_remark: '',
   })
   showMove.value = true
 }
@@ -174,7 +176,8 @@ async function moveToRecord() {
       trace_no: moveForm.trace_no.trim() || null,
       purchase_date: toShanghaiDate(moveForm.purchase_date),
       salesperson: moveForm.salesperson || undefined,
-      remark: moveForm.remark || undefined,
+      status: moveForm.status.trim(),
+      record_remark: moveForm.record_remark || undefined,
     })
     message.success('已转入申购记录')
     showMove.value = false
@@ -311,7 +314,7 @@ onMounted(() => {
       :mask-closable="false"
     >
       <n-alert type="info" style="margin-bottom: 16px"
-        >表示已在公司系统正式提交申购；物资和计划数量会锁定带入到货跟踪。</n-alert
+        >计划信息将带入申购记录，转入后仍可继续修改和整理。</n-alert
       >
       <n-form label-placement="top">
         <div class="form-grid">
@@ -331,9 +334,16 @@ onMounted(() => {
           <n-form-item label="业务员">
             <n-input v-model:value="moveForm.salesperson" maxlength="128" />
           </n-form-item>
+          <n-form-item label="状态" required>
+            <n-input v-model:value="moveForm.status" maxlength="128" />
+          </n-form-item>
         </div>
-        <n-form-item label="跟踪备注"
-          ><n-input v-model:value="moveForm.remark" type="textarea" maxlength="1000" show-count
+        <n-form-item label="记录备注"
+          ><n-input
+            v-model:value="moveForm.record_remark"
+            type="textarea"
+            maxlength="1000"
+            show-count
         /></n-form-item>
       </n-form>
       <template #footer

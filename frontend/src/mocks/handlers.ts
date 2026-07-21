@@ -4,14 +4,12 @@ import type {
   OperationWrite,
   MovePurchasePlansWrite,
   PurchaseMaterialWrite,
-  PurchaseRequestStatus,
-  PurchaseRequestWrite,
+  PurchaseRecordWrite,
   ReplenishmentDraftWrite,
   ReplenishmentPolicy,
   StockMaterialWrite,
   StockOperation,
 } from '@/api/generated'
-import { defaultPurchaseOrderNo } from '@/utils/purchase'
 import {
   mockFileId,
   nextIds,
@@ -43,25 +41,7 @@ const actor = (request: Request) => {
   const token = request.headers.get('Authorization')?.replace('Bearer mock-', '')
   return users.find((x) => x.username === token) || users[0]
 }
-const event = (action: string, old_status?: string, new_status?: string, remark?: string) => ({
-  id: nextIds.event++,
-  action,
-  old_status,
-  new_status,
-  operator_name: '当前用户',
-  occurred_at: now(),
-  remark,
-})
 const unit = (id: number | null) => units.find((x) => x.id === id)
-const recalcRequest = (lineId: number) => {
-  const request = purchaseRequests.find((x) => x.lines.some((line) => line.id === lineId))
-  if (!request) return
-  if (request.lines.every((line) => Number(line.received_qty) >= Number(line.requested_qty)))
-    request.status = 'COMPLETED'
-  else if (request.lines.some((line) => Number(line.received_qty) > 0))
-    request.status = 'PARTIALLY_RECEIVED'
-  else request.status = request.handler_name ? 'PROCESSING' : 'SUBMITTED'
-}
 const purchaseRecord = (
   request: (typeof purchaseRequests)[number],
   line: (typeof purchaseRequests)[number]['lines'][number],
@@ -75,32 +55,29 @@ const purchaseRecord = (
     plan_date: material.plan_date,
     purchase_order_no: request.purchase_order_no,
     trace_no: request.trace_no,
-    status: request.status,
-    material_code: line.material_code_snapshot || '',
+    status: line.status,
+    material_code: line.material_code_snapshot,
     material_name: line.material_name_snapshot,
     model_spec: line.model_spec_snapshot,
+    unit_id: material.unit_id,
     unit_name: line.unit_name_snapshot,
-    planned_qty: line.requested_qty,
-    received_qty: line.received_qty,
-    remaining_qty: String(Number(line.requested_qty) - Number(line.received_qty)),
+    purchase_qty: line.purchase_qty,
     actual_demand_person: material.actual_demand_person,
     purchase_responsible: material.purchase_responsible,
     salesperson: request.salesperson,
-    remark: request.remark,
+    plan_remark: material.remark,
+    record_remark: request.record_remark,
     usage: line.usage,
     subitem_no: line.subitem_no,
     images: material.images,
     stock_material_id: material.stock_material_id,
     purchase_date: request.purchase_date,
     created_at: request.created_at,
+    updated_at: material.updated_at,
     version: request.version,
   }
 }
-const movePlansToRecords = (
-  materials: typeof purchaseMaterials,
-  body: MovePurchasePlansWrite,
-  request: Request,
-) => {
+const movePlansToRecords = (materials: typeof purchaseMaterials, body: MovePurchasePlansWrite) => {
   const lines = materials.map((material) => ({
     id: nextIds.requestLine++,
     purchase_material_id: material.id,
@@ -108,8 +85,8 @@ const movePlansToRecords = (
     material_name_snapshot: material.name,
     model_spec_snapshot: material.model_spec,
     unit_name_snapshot: material.unit_name,
-    requested_qty: material.planned_qty,
-    received_qty: '0',
+    purchase_qty: material.planned_qty,
+    status: body.status,
     usage: material.usage,
     subitem_no: material.subitem_no,
   }))
@@ -117,29 +94,18 @@ const movePlansToRecords = (
     id: nextIds.request++,
     purchase_order_no: body.purchase_order_no,
     trace_no: body.trace_no,
-    status: 'PROCESSING',
-    applicant_name: actor(request).display_name,
     salesperson: body.salesperson,
-    remark: body.remark,
+    record_remark: body.record_remark,
     purchase_date: body.purchase_date,
     created_at: now(),
     version: 1,
     lines,
-    events: [event('由申购计划转入', undefined, 'PROCESSING')],
   }
   materials.forEach((material) => (material.moved_to_record = true))
   purchaseRequests.unshift(purchaseRequest)
   return lines.map((line) => purchaseRecord(purchaseRequest, line))
 }
 const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
-  const purchaseIds = new Set(
-    purchaseMaterials.filter((x) => x.stock_material_id === material.id).map((x) => x.id),
-  )
-  const onOrder = purchaseRequests
-    .filter((r) => ['SUBMITTED', 'PROCESSING', 'PARTIALLY_RECEIVED'].includes(r.status))
-    .flatMap((r) => r.lines)
-    .filter((line) => purchaseIds.has(line.purchase_material_id))
-    .reduce((sum, line) => sum + Number(line.requested_qty) - Number(line.received_qty), 0)
   const minimum = material.replenishment_policy?.minimum_qty
   const low = Boolean(
     material.replenishment_policy?.enabled &&
@@ -154,24 +120,14 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
     decimal_places: unit(material.unit_id)?.decimal_places || 0,
     current_qty: material.current_qty,
     minimum_qty: minimum,
-    on_order_qty: String(onOrder),
     is_low_stock: low,
-    warning_state: low
-      ? onOrder > 0
-        ? ('ON_ORDER' as const)
-        : ('PENDING_PURCHASE' as const)
-      : undefined,
     suggested_purchase_qty: String(
-      Math.max(Number(minimum || 0) - Number(material.current_qty) - onOrder, 0),
+      Math.max(Number(minimum || 0) - Number(material.current_qty), 0),
     ),
     updated_at: material.updated_at,
   }
 }
-const makeOperation = (
-  payload: OperationWrite,
-  type: 'INBOUND' | 'OUTBOUND',
-  username: string,
-): StockOperation => {
+const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): StockOperation => {
   const existing = operations.find((x) => x.client_request_id === payload.client_request_id)
   if (existing) return existing
   const id = nextIds.operation++
@@ -183,14 +139,6 @@ const makeOperation = (
     material.current_qty = String(after)
     material.updated_at = now()
     material.version++
-    if (line.purchase_request_line_id && type === 'INBOUND') {
-      const requestLine = purchaseRequests
-        .flatMap((x) => x.lines)
-        .find((x) => x.id === line.purchase_request_line_id)
-      if (requestLine)
-        requestLine.received_qty = String(Number(requestLine.received_qty) + Number(line.quantity))
-      recalcRequest(line.purchase_request_line_id)
-    }
     return {
       id: id * 10 + index,
       stock_material_id: material.id,
@@ -200,23 +148,17 @@ const makeOperation = (
       quantity: line.quantity,
       before_qty: String(before),
       after_qty: String(after),
-      purchase_request_line_id: line.purchase_request_line_id,
     }
   })
-  const purchaseRequest = purchaseRequests.find((r) =>
-    r.lines.some((l) => payload.lines.some((x) => x.purchase_request_line_id === l.id)),
-  )
   const op: StockOperation = {
     id,
     operation_no: `${type === 'INBOUND' ? 'IN' : 'OUT'}20260717${String(id).padStart(4, '0')}`,
     operation_type: type,
     occurred_at: payload.occurred_at,
-    operator_name: username,
     business_reason: payload.business_reason,
     receiver_name: payload.receiver_name,
     subitem_no: payload.subitem_no,
     source_type: payload.source_type,
-    purchase_request_no: purchaseRequest?.trace_no || undefined,
     client_request_id: payload.client_request_id,
     created_at: now(),
     version: 1,
@@ -240,14 +182,8 @@ export const handlers = [
     return HttpResponse.json({
       stock_material_count: stockMaterials.length,
       low_stock_count: balances.filter((x) => x.is_low_stock).length,
-      pending_purchase_count: balances.filter((x) => x.warning_state === 'PENDING_PURCHASE').length,
-      on_order_count: balances.filter((x) => x.warning_state === 'ON_ORDER').length,
       uncoded_purchase_material_count: purchaseMaterials.filter((x) => !x.material_code).length,
-      pending_purchase_request_count: purchaseRequests.filter((x) =>
-        ['SUBMITTED', 'PROCESSING'].includes(x.status),
-      ).length,
-      partially_received_count: purchaseRequests.filter((x) => x.status === 'PARTIALLY_RECEIVED')
-        .length,
+      purchase_record_count: purchaseRequests.flatMap((item) => item.lines).length,
     })
   }),
   http.get(`${api}/measurement-units`, ({ request }) =>
@@ -300,8 +236,6 @@ export const handlers = [
     if (!item) return error(400, 'NOT_FOUND', '用户不存在')
     if (item.id === actor(request).id)
       return error(409, 'CANNOT_DELETE_CURRENT_USER', '不能删除当前登录用户')
-    const referenced = operations.some((operation) => operation.operator_name === item.display_name)
-    if (referenced) return error(409, 'USER_IN_USE', '该用户已有操作记录或业务数据关联，不能删除')
     users.splice(users.indexOf(item), 1)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -406,14 +340,14 @@ export const handlers = [
   }),
   http.post(`${api}/inventory/inbounds`, async ({ request }) => {
     const body = (await request.json()) as OperationWrite
-    return HttpResponse.json(makeOperation(body, 'INBOUND', actor(request).display_name), {
+    return HttpResponse.json(makeOperation(body, 'INBOUND'), {
       status: 201,
     })
   }),
   http.post(`${api}/inventory/outbounds`, async ({ request }) => {
     const body = (await request.json()) as OperationWrite
     if (!body.receiver_name?.trim()) return error(400, 'RECEIVER_REQUIRED', '出库必须填写领用人')
-    return HttpResponse.json(makeOperation(body, 'OUTBOUND', actor(request).display_name), {
+    return HttpResponse.json(makeOperation(body, 'OUTBOUND'), {
       status: 201,
     })
   }),
@@ -422,13 +356,11 @@ export const handlers = [
     const operationNo = url.searchParams.get('operation_no') || ''
     const type = url.searchParams.get('operation_type')
     const material = url.searchParams.get('material_name') || ''
-    const requestNo = url.searchParams.get('purchase_request_no') || ''
     const list = operations.filter(
       (x) =>
         (!operationNo || x.operation_no.includes(operationNo)) &&
         (!type || x.operation_type === type) &&
-        (!material || x.lines.some((l) => l.material_name.includes(material))) &&
-        (!requestNo || x.purchase_request_no?.includes(requestNo)),
+        (!material || x.lines.some((l) => l.material_name.includes(material))),
     )
     return HttpResponse.json(page(list, url))
   }),
@@ -440,24 +372,12 @@ export const handlers = [
     const item = operations.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '流水不存在')
     const body = (await request.json()) as OperationUpdate
-    const affectedRequestLines = new Set<number>()
     for (const line of item.lines) {
       const material = stockMaterials.find((candidate) => candidate.id === line.stock_material_id)
       if (material) {
         const signed =
           item.operation_type === 'INBOUND' ? Number(line.quantity) : -Number(line.quantity)
         material.current_qty = String(Number(material.current_qty) - signed)
-      }
-      if (line.purchase_request_line_id) {
-        const requestLine = purchaseRequests
-          .flatMap((candidate) => candidate.lines)
-          .find((candidate) => candidate.id === line.purchase_request_line_id)
-        if (requestLine) {
-          const signed =
-            item.operation_type === 'INBOUND' ? Number(line.quantity) : -Number(line.quantity)
-          requestLine.received_qty = String(Number(requestLine.received_qty) - signed)
-          affectedRequestLines.add(requestLine.id)
-        }
       }
     }
     item.lines = body.lines.map((line, index) => {
@@ -466,15 +386,6 @@ export const handlers = [
       const signed =
         body.operation_type === 'INBOUND' ? Number(line.quantity) : -Number(line.quantity)
       material.current_qty = String(before + signed)
-      if (line.purchase_request_line_id) {
-        const requestLine = purchaseRequests
-          .flatMap((candidate) => candidate.lines)
-          .find((candidate) => candidate.id === line.purchase_request_line_id)
-        if (requestLine) {
-          requestLine.received_qty = String(Number(requestLine.received_qty) + signed)
-          affectedRequestLines.add(requestLine.id)
-        }
-      }
       return {
         id: item.id * 10 + index,
         stock_material_id: material.id,
@@ -484,7 +395,6 @@ export const handlers = [
         quantity: line.quantity,
         before_qty: String(before),
         after_qty: material.current_qty,
-        purchase_request_line_id: line.purchase_request_line_id,
       }
     })
     Object.assign(item, {
@@ -496,7 +406,6 @@ export const handlers = [
       subitem_no: body.subitem_no,
       version: item.version + 1,
     })
-    affectedRequestLines.forEach(recalcRequest)
     return HttpResponse.json(item)
   }),
   http.post(`${api}/inventory/operations/:id/reverse`, async ({ params, request }) => {
@@ -516,7 +425,6 @@ export const handlers = [
         })),
       },
       type,
-      actor(request).display_name,
     )
     op.reversal_of_id = original.id
     return HttpResponse.json(op, { status: 201 })
@@ -593,7 +501,7 @@ export const handlers = [
     const body = (await request.json()) as PurchaseMaterialWrite
     const u = unit(body.unit_id)
     if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
-    const responsible = body.purchase_responsible || actor(request).display_name
+    const responsible = body.purchase_responsible || '待补充'
     const planDate = body.plan_date || new Date().toISOString().slice(0, 10)
     const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
     const item = {
@@ -670,7 +578,7 @@ export const handlers = [
     if (uncoded.length) return error(409, 'MATERIAL_CODE_REQUIRED', '未编码物资不能转入申购记录')
     if (plans.some((material) => material.moved_to_record))
       return error(409, 'PLAN_ALREADY_MOVED', '部分申购计划已转入申购记录')
-    return HttpResponse.json(movePlansToRecords(plans, body, request))
+    return HttpResponse.json(movePlansToRecords(plans, body))
   }),
   http.post(`${api}/purchase-materials/:id/move-to-record`, async ({ params, request }) => {
     const material = purchaseMaterials.find((item) => item.id === Number(params.id))
@@ -680,7 +588,7 @@ export const handlers = [
     if (material.moved_to_record)
       return error(409, 'PLAN_ALREADY_MOVED', '该申购计划已转入申购记录')
     const body = (await request.json()) as MovePurchasePlansWrite
-    return HttpResponse.json(movePlansToRecords([material], body, request)[0])
+    return HttpResponse.json(movePlansToRecords([material], body)[0])
   }),
   http.get(`${api}/purchase-records`, ({ request }) => {
     const url = new URL(request.url)
@@ -694,7 +602,7 @@ export const handlers = [
         records.filter(
           (record) =>
             (!keyword ||
-              `${record.plan_no}${record.trace_no}${record.purchase_order_no || ''}${record.material_code}${record.material_name}${record.salesperson || ''}${record.remark || ''}`
+              `${record.plan_no}${record.trace_no}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.salesperson || ''}${record.status}${record.plan_remark || ''}${record.record_remark || ''}`
                 .toLowerCase()
                 .includes(keyword)) &&
             (!status || record.status === status),
@@ -714,172 +622,59 @@ export const handlers = [
     for (const purchaseRequest of purchaseRequests) {
       const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
       if (!line) continue
-      const body = (await request.json()) as MovePurchasePlansWrite
-      Object.assign(purchaseRequest, body, { version: purchaseRequest.version + 1 })
+      const body = (await request.json()) as PurchaseRecordWrite
+      const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
+      const selectedUnit = unit(body.unit_id)
+      if (!selectedUnit) return error(422, 'VALIDATION_ERROR', '计量单位无效')
+      Object.assign(material, {
+        plan_date: body.plan_date,
+        material_code: body.material_code,
+        name: body.material_name,
+        model_spec: body.model_spec,
+        unit_id: selectedUnit.id,
+        unit_name: selectedUnit.name,
+        actual_demand_person: body.actual_demand_person,
+        purchase_responsible: body.purchase_responsible,
+        planned_qty: body.purchase_qty,
+        usage: body.usage,
+        subitem_no: body.subitem_no,
+        remark: body.plan_remark,
+        stock_material_id: body.stock_material_id,
+        images: body.image_ids.map(
+          (id) =>
+            material.images.find((image) => image.id === id) || {
+              id,
+              original_name: '申购附件.png',
+              mime_type: 'image/png' as const,
+              size_bytes: 0,
+              width: 800,
+              height: 600,
+            },
+        ),
+        updated_at: now(),
+        version: material.version + 1,
+      })
+      Object.assign(line, {
+        material_code_snapshot: material.material_code,
+        material_name_snapshot: material.name,
+        model_spec_snapshot: material.model_spec,
+        unit_name_snapshot: material.unit_name,
+        purchase_qty: body.purchase_qty,
+        status: body.status,
+        usage: body.usage,
+        subitem_no: body.subitem_no,
+      })
+      Object.assign(purchaseRequest, {
+        purchase_order_no: body.purchase_order_no,
+        trace_no: body.trace_no,
+        purchase_date: body.purchase_date,
+        salesperson: body.salesperson,
+        record_remark: body.record_remark,
+        version: purchaseRequest.version + 1,
+      })
       return HttpResponse.json(purchaseRecord(purchaseRequest, line))
     }
     return error(400, 'NOT_FOUND', '申购记录不存在')
-  }),
-  http.get(`${api}/purchase-requests`, ({ request }) => {
-    const url = new URL(request.url)
-    const q = (url.searchParams.get('keyword') || '').toLowerCase()
-    const status = url.searchParams.get('status')
-    return HttpResponse.json(
-      page(
-        purchaseRequests.filter(
-          (x) =>
-            (!q ||
-              `${x.trace_no}${x.purchase_order_no || ''}${x.lines.map((l) => l.material_name_snapshot).join('')}`
-                .toLowerCase()
-                .includes(q)) &&
-            (!status || x.status === status),
-        ),
-        url,
-      ),
-    )
-  }),
-  http.post(`${api}/purchase-requests`, async ({ request }) => {
-    const body = (await request.json()) as PurchaseRequestWrite
-    const id = nextIds.request++
-    const selectedMaterials = body.lines.map((line) =>
-      purchaseMaterials.find((item) => item.id === line.purchase_material_id),
-    )
-    const responsibles = new Set(selectedMaterials.map((item) => item?.purchase_responsible))
-    if (responsibles.size > 1)
-      return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
-    const lines = body.lines.map((line) => {
-      const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
-      return {
-        id: nextIds.requestLine++,
-        purchase_material_id: m.id,
-        material_code_snapshot: m.material_code,
-        material_name_snapshot: m.name,
-        model_spec_snapshot: m.model_spec,
-        unit_name_snapshot: m.unit_name,
-        requested_qty: line.requested_qty,
-        received_qty: '0',
-        usage: line.usage,
-        subitem_no: line.subitem_no,
-      }
-    })
-    const item = {
-      id,
-      purchase_order_no: body.purchase_order_no || defaultPurchaseOrderNo(),
-      trace_no: body.trace_no,
-      purchase_date: body.purchase_date,
-      status: 'DRAFT' as const,
-      applicant_name: selectedMaterials[0]?.purchase_responsible || actor(request).display_name,
-      remark: body.remark,
-      created_at: now(),
-      version: 1,
-      lines,
-      events: [event('创建请购草稿', undefined, 'DRAFT')],
-    }
-    purchaseRequests.unshift(item)
-    return HttpResponse.json(item, { status: 201 })
-  }),
-  http.get(`${api}/purchase-requests/:id`, ({ params }) => {
-    const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '请购单不存在')
-  }),
-  http.patch(`${api}/purchase-requests/:id`, async ({ params, request }) => {
-    const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    if (!item) return error(400, 'NOT_FOUND', '请购单不存在')
-    if (!['DRAFT', 'RETURNED'].includes(item.status))
-      return error(409, 'INVALID_STATUS_TRANSITION', '当前状态不可编辑')
-    const body = (await request.json()) as PurchaseRequestWrite
-    const selectedMaterials = body.lines.map((line) =>
-      purchaseMaterials.find((material) => material.id === line.purchase_material_id),
-    )
-    const responsibles = new Set(
-      selectedMaterials.map((material) => material?.purchase_responsible),
-    )
-    if (responsibles.size > 1)
-      return error(409, 'MULTIPLE_PURCHASE_RESPONSIBLES', '同一请购单只能包含同一申购负责人的计划')
-    item.purchase_order_no = body.purchase_order_no
-    item.trace_no = body.trace_no
-    item.purchase_date = body.purchase_date
-    item.remark = body.remark
-    item.applicant_name = selectedMaterials[0]?.purchase_responsible || item.applicant_name
-    item.lines = body.lines.map((line) => {
-      const m = purchaseMaterials.find((x) => x.id === line.purchase_material_id)!
-      return {
-        id: line.id || nextIds.requestLine++,
-        purchase_material_id: m.id,
-        material_code_snapshot: m.material_code,
-        material_name_snapshot: m.name,
-        model_spec_snapshot: m.model_spec,
-        unit_name_snapshot: m.unit_name,
-        requested_qty: line.requested_qty,
-        received_qty: '0',
-        usage: line.usage,
-        subitem_no: line.subitem_no,
-      }
-    })
-    item.version++
-    return HttpResponse.json(item)
-  }),
-  http.post(`${api}/purchase-requests/:id/:action`, async ({ params, request }) => {
-    const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    if (!item) return error(400, 'NOT_FOUND', '请购单不存在')
-    const action = String(params.action)
-    const body = (await request.json().catch(() => ({}))) as Record<string, string>
-    const transitions: Record<string, PurchaseRequestStatus> = {
-      submit: 'SUBMITTED',
-      accept: 'PROCESSING',
-      return: 'RETURNED',
-      cancel: 'CANCELED',
-      close: 'CLOSED',
-    }
-    const next = transitions[action]
-    const allowed: Record<string, string[]> = {
-      submit: ['DRAFT', 'RETURNED'],
-      accept: ['SUBMITTED'],
-      return: ['SUBMITTED', 'PROCESSING'],
-      cancel: ['DRAFT', 'RETURNED', 'SUBMITTED'],
-      close: ['PROCESSING', 'PARTIALLY_RECEIVED'],
-    }
-    if (!next || !allowed[action].includes(item.status))
-      return error(409, 'INVALID_STATUS_TRANSITION', '当前状态不允许此操作')
-    if (action === 'submit') {
-      const missing = item.lines.filter(
-        (x) => !purchaseMaterials.find((m) => m.id === x.purchase_material_id)?.material_code,
-      )
-      if (missing.length)
-        return error(409, 'MATERIAL_CODE_REQUIRED', '请购明细存在无编码物资', {
-          line_ids: missing.map((x) => x.id),
-        })
-      item.lines.forEach((line) => {
-        line.material_code_snapshot = purchaseMaterials.find(
-          (m) => m.id === line.purchase_material_id,
-        )?.material_code
-      })
-      item.purchase_date ||= now().slice(0, 10)
-    }
-    if (action === 'accept') item.handler_name = actor(request).display_name
-    if (action === 'return') item.return_reason = body.reason
-    if (action === 'close') item.close_reason = body.reason
-    const old = item.status
-    item.status = next
-    item.events.push(event(action, old, next, body.reason))
-    item.version++
-    return HttpResponse.json(item)
-  }),
-  http.post(`${api}/purchase-request-lines/:id/prepare-inbound`, ({ params }) => {
-    const line = purchaseRequests.flatMap((x) => x.lines).find((x) => x.id === Number(params.id))
-    const request = purchaseRequests.find((x) => x.lines.some((l) => l.id === line?.id))
-    const material = purchaseMaterials.find((x) => x.id === line?.purchase_material_id)
-    if (!line || !request || !material) return error(400, 'NOT_FOUND', '请购行不存在')
-    return HttpResponse.json({
-      purchase_request_no: request.trace_no,
-      line_id: line.id,
-      purchase_material_id: material.id,
-      material_name: material.name,
-      model_spec: material.model_spec,
-      unit_name: material.unit_name,
-      remaining_qty: String(Number(line.requested_qty) - Number(line.received_qty)),
-      stock_material_id: material.stock_material_id,
-    })
   }),
   http.get(
     `${api}/files/images/:id`,
