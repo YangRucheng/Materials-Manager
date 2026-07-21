@@ -23,6 +23,7 @@ import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
+import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 
@@ -30,6 +31,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const dictionaries = useDictionaryStore()
 const message = useMessage()
+const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -176,11 +178,9 @@ function setVisibleColumnKeys(value: string[]) {
 function rowProps(row: PurchaseMaterial) {
   return {
     style: 'cursor: pointer',
+    onMousedown: rowClickGuard.onMouseDown,
     onClick: (event: MouseEvent) => {
-      const target = event.target
-      if (target instanceof Element && target.closest('.n-checkbox, .n-data-table-td--selection')) {
-        return
-      }
+      if (rowClickGuard.shouldIgnore(event)) return
       void router.push(`/procurement/materials/${row.id}`)
     },
   }

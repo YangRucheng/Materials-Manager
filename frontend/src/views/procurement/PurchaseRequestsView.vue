@@ -5,9 +5,11 @@ import { useRouter } from 'vue-router'
 import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate } from '@/utils/time'
 
 const router = useRouter()
+const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseRecord[]>([])
 const loading = ref(false)
 const total = ref(0)
@@ -166,7 +168,9 @@ function setVisibleColumnKeys(value: string[]) {
 function rowProps(row: PurchaseRecord) {
   return {
     style: 'cursor: pointer',
-    onClick: () => {
+    onMousedown: rowClickGuard.onMouseDown,
+    onClick: (event: MouseEvent) => {
+      if (rowClickGuard.shouldIgnore(event)) return
       void router.push(`/procurement/records/${row.line_id}`)
     },
   }

@@ -7,10 +7,12 @@ import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import { formatDate, formatShanghaiTime } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
+import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 
 const router = useRouter()
 const dialog = useDialog()
 const message = useMessage()
+const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -89,7 +91,9 @@ function setVisibleColumnKeys(value: string[]) {
 function rowProps(row: PurchaseMaterial) {
   return {
     style: 'cursor: pointer',
-    onClick: () => {
+    onMousedown: rowClickGuard.onMouseDown,
+    onClick: (event: MouseEvent) => {
+      if (rowClickGuard.shouldIgnore(event)) return
       dialog.warning({
         title: '打开申购计划详情',
         content: `确认打开“${row.name}”对应的申购计划详情吗？`,
