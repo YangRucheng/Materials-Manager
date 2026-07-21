@@ -10,7 +10,6 @@ from pydantic import (
     Field,
     StringConstraints,
     field_validator,
-    model_validator,
 )
 
 from app.domain.enums import (
@@ -182,22 +181,14 @@ class OrphanFileCleanupRead(ReadModel):
 
 class ReplenishmentPolicyRead(ReadModel):
     minimum_qty: Decimal
-    target_qty: Decimal
     enabled: bool
     version: int = 1
 
 
 class ReplenishmentPolicyWrite(RequestModel):
     minimum_qty: NonnegativeQuantity
-    target_qty: NonnegativeQuantity
     enabled: bool = True
     version: int | None = None
-
-    @model_validator(mode="after")
-    def validate_range(self) -> ReplenishmentPolicyWrite:
-        if self.target_qty < self.minimum_qty:
-            raise ValueError("target_qty must be greater than or equal to minimum_qty")
-        return self
 
 
 class StockMaterialBase(RequestModel):
@@ -249,7 +240,6 @@ class InventoryBalanceRead(ReadModel):
     decimal_places: int
     current_qty: Decimal
     minimum_qty: Decimal | None = None
-    target_qty: Decimal | None = None
     on_order_qty: Decimal
     is_low_stock: bool
     warning_state: Literal["PENDING_PURCHASE", "ON_ORDER"] | None = None
@@ -567,6 +557,7 @@ class PurchaseRecordRead(ReadModel):
     remark: str | None = None
     usage: str
     subitem_no: str | None = None
+    images: list[FileObjectRead]
     stock_material_id: int | None = None
     purchase_date: date | None = None
     created_at: datetime

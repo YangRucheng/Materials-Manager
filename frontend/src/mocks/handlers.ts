@@ -89,6 +89,7 @@ const purchaseRecord = (
     remark: request.remark,
     usage: line.usage,
     subitem_no: line.subitem_no,
+    images: material.images,
     stock_material_id: material.stock_material_id,
     purchase_date: request.purchase_date,
     created_at: request.created_at,
@@ -140,7 +141,6 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
     .filter((line) => purchaseIds.has(line.purchase_material_id))
     .reduce((sum, line) => sum + Number(line.requested_qty) - Number(line.received_qty), 0)
   const minimum = material.replenishment_policy?.minimum_qty
-  const target = material.replenishment_policy?.target_qty
   const low = Boolean(
     material.replenishment_policy?.enabled &&
     minimum !== undefined &&
@@ -154,7 +154,6 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
     decimal_places: unit(material.unit_id)?.decimal_places || 0,
     current_qty: material.current_qty,
     minimum_qty: minimum,
-    target_qty: target,
     on_order_qty: String(onOrder),
     is_low_stock: low,
     warning_state: low
@@ -163,7 +162,7 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
         : ('PENDING_PURCHASE' as const)
       : undefined,
     suggested_purchase_qty: String(
-      Math.max(Number(target || 0) - Number(material.current_qty) - onOrder, 0),
+      Math.max(Number(minimum || 0) - Number(material.current_qty) - onOrder, 0),
     ),
     updated_at: material.updated_at,
   }
@@ -865,15 +864,6 @@ export const handlers = [
     item.events.push(event(action, old, next, body.reason))
     item.version++
     return HttpResponse.json(item)
-  }),
-  http.get(`${api}/purchase-requests/:id/receipts`, ({ params }) => {
-    const item = purchaseRequests.find((x) => x.id === Number(params.id))
-    const ids = new Set(item?.lines.map((x) => x.id) || [])
-    return HttpResponse.json(
-      operations.filter((x) =>
-        x.lines.some((l) => l.purchase_request_line_id && ids.has(l.purchase_request_line_id)),
-      ),
-    )
   }),
   http.post(`${api}/purchase-request-lines/:id/prepare-inbound`, ({ params }) => {
     const line = purchaseRequests.flatMap((x) => x.lines).find((x) => x.id === Number(params.id))

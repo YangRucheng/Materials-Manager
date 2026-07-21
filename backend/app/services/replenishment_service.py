@@ -33,13 +33,11 @@ async def set_policy(
     user_id: int,
 ) -> StockMaterial:
     validate_quantity_precision(data.minimum_qty, material.unit.decimal_places)
-    validate_quantity_precision(data.target_qty, material.unit.decimal_places)
     policy = material.replenishment_policy
     if policy is None:
         policy = StockReplenishmentPolicy(
             stock_material_id=material.id,
             minimum_qty=data.minimum_qty,
-            target_qty=data.target_qty,
             enabled=data.enabled,
             created_by=user_id,
             updated_by=user_id,
@@ -49,7 +47,6 @@ async def set_policy(
     else:
         validate_version(data.version, policy.version)
         policy.minimum_qty = data.minimum_qty
-        policy.target_qty = data.target_qty
         policy.enabled = data.enabled
         policy.updated_by = user_id
         policy.version += 1
@@ -80,11 +77,11 @@ async def create_replenishment_draft(
         )
     )
     on_order = sum((requested - received for requested, received in rows), start=ZERO)
-    suggested = max(policy.target_qty - stock.balance.quantity - on_order, ZERO)
+    suggested = max(policy.minimum_qty - stock.balance.quantity - on_order, ZERO)
     if suggested == ZERO:
         raise AppError(
             "REPLENISHMENT_NOT_REQUIRED",
-            "现有在途数量已覆盖目标库存，无需重复发起",
+            "现有在途数量已覆盖最低库存，无需重复发起",
             status_code=409,
         )
     validate_quantity_precision(data.planned_qty, stock.unit.decimal_places)

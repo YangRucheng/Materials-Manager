@@ -62,7 +62,6 @@ export interface FileObject {
 }
 export interface ReplenishmentPolicy {
   minimum_qty: string
-  target_qty: string
   enabled: boolean
 }
 export interface StockMaterial {
@@ -96,7 +95,6 @@ export interface InventoryBalance {
   decimal_places: number
   current_qty: string
   minimum_qty?: string
-  target_qty?: string
   on_order_qty: string
   is_low_stock: boolean
   warning_state?: 'PENDING_PURCHASE' | 'ON_ORDER'
@@ -265,6 +263,7 @@ export interface PurchaseRecord {
   remark?: string
   usage: string
   subitem_no?: string
+  images: FileObject[]
   stock_material_id?: number
   purchase_date?: string
   created_at: string

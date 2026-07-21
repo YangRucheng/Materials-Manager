@@ -142,16 +142,12 @@ class StockMaterialImage(Base):
 
 class StockReplenishmentPolicy(Base):
     __tablename__ = "stock_replenishment_policy"
-    __table_args__ = (
-        CheckConstraint("minimum_qty >= 0", name="minimum_nonnegative"),
-        CheckConstraint("target_qty >= minimum_qty", name="target_at_least_minimum"),
-    )
+    __table_args__ = (CheckConstraint("minimum_qty >= 0", name="minimum_nonnegative"),)
 
     stock_material_id: Mapped[int] = mapped_column(
         BIGINT_ID, ForeignKey("stock_material.id", ondelete="CASCADE"), primary_key=True
     )
     minimum_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
-    target_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     created_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now()
