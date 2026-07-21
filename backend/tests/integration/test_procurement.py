@@ -19,6 +19,7 @@ async def create_purchase_plan(
     code: str | None = None,
     stock_material_id: int | None = None,
     planned_qty: str = "5",
+    model_spec: str = "M60-2P 5A",
     actual_demand_person: str = "车间员工张三",
     purchase_responsible: str = "李工",
     subitem_no: str | None = "01-01",
@@ -32,7 +33,7 @@ async def create_purchase_plan(
             "plan_date": plan_date,
             "material_code": code,
             "name": name,
-            "model_spec": "M60-2P 5A",
+            "model_spec": model_spec,
             "unit_id": 1,
             "actual_demand_person": actual_demand_person,
             "purchase_responsible": purchase_responsible,
@@ -63,6 +64,7 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         headers,
         "智能断路器",
         code="DQ-FILTER-001",
+        model_spec="DZ47-2P 5A",
         actual_demand_person="张三",
         purchase_responsible="李工",
     )
@@ -71,6 +73,7 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         headers,
         "交流接触器",
         code="DQ-FILTER-002",
+        model_spec="CJX2-18 220V",
         actual_demand_person="李四",
         purchase_responsible="王工",
     )
@@ -90,6 +93,27 @@ async def test_purchase_lists_support_field_like_and_person_filters(
     )
     assert person_search.status_code == 200, person_search.text
     assert [item["id"] for item in person_search.json()["items"]] == [second["id"]]
+
+    combined_plan_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={
+            "name": "断路",
+            "model_spec": "2P",
+            "purchase_responsible": "李",
+            "moved": False,
+        },
+    )
+    assert combined_plan_search.status_code == 200, combined_plan_search.text
+    assert [item["id"] for item in combined_plan_search.json()["items"]] == [first["id"]]
+
+    mismatched_plan_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"name": "断路", "purchase_responsible": "王", "moved": False},
+    )
+    assert mismatched_plan_search.status_code == 200, mismatched_plan_search.text
+    assert mismatched_plan_search.json()["items"] == []
 
     plan_options = await client.get(
         "/api/v1/purchase-materials/filter-options",
@@ -118,6 +142,20 @@ async def test_purchase_lists_support_field_like_and_person_filters(
     assert [item["purchase_material_id"] for item in record_search.json()["items"]] == [
         first["id"]
     ]
+
+    combined_record_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={
+            "name": "接触",
+            "model_spec": "220V",
+            "purchase_responsible": "王",
+        },
+    )
+    assert combined_record_search.status_code == 200, combined_record_search.text
+    assert [
+        item["purchase_material_id"] for item in combined_record_search.json()["items"]
+    ] == [second["id"]]
 
     record_options = await client.get(
         "/api/v1/purchase-records/filter-options", headers=headers

@@ -1345,6 +1345,24 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Search Value
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name
+      - name: model_spec
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Model Spec
       - name: actual_demand_person
         in: query
         required: false
@@ -2041,6 +2059,24 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Search Value
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name
+      - name: model_spec
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Model Spec
       - name: actual_demand_person
         in: query
         required: false

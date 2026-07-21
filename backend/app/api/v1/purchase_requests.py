@@ -46,6 +46,8 @@ async def purchase_records(
     keyword: str | None = None,
     search_field: RecordSearchField | None = None,
     search_value: Annotated[str | None, Query(max_length=255)] = None,
+    name: Annotated[str | None, Query(max_length=128)] = None,
+    model_spec: Annotated[str | None, Query(max_length=255)] = None,
     actual_demand_person: Annotated[str | None, Query(max_length=128)] = None,
     purchase_responsible: Annotated[str | None, Query(max_length=128)] = None,
 ) -> Page[PurchaseRecordRead]:
@@ -55,6 +57,8 @@ async def purchase_records(
         keyword=keyword,
         search_field=search_field,
         search_value=search_value,
+        name=name,
+        model_spec=model_spec,
         actual_demand_person=actual_demand_person,
         purchase_responsible=purchase_responsible,
         page=page,
