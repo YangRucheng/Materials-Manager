@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ColumnVisibilityPicker: typeof import('./src/components/ColumnVisibilityPicker.vue')['default']
     ImageUploader: typeof import('./src/components/ImageUploader.vue')['default']
     MaterialSelector: typeof import('./src/components/MaterialSelector.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
@@ -49,6 +50,5 @@ declare module 'vue' {
     QuantityInput: typeof import('./src/components/QuantityInput.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    StatusSteps: typeof import('./src/components/StatusSteps.vue')['default']
   }
 }

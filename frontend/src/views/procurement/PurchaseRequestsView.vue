@@ -4,6 +4,7 @@ import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseRecord } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
+import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import { formatDate } from '@/utils/time'
 
 const router = useRouter()
@@ -40,9 +41,9 @@ const availableColumns: Array<{
   },
   {
     key: 'plan_date',
-    label: '计划日期',
+    label: '需求日期',
     column: {
-      title: '计划日期',
+      title: '需求日期',
       key: 'plan_date',
       width: 110,
       render: (row) => formatDate(row.plan_date),
@@ -118,20 +119,14 @@ const availableColumns: Array<{
   },
 ]
 const visibleColumnKeys = ref<RecordColumnKey[]>(availableColumns.map((item) => item.key))
-const fieldOptions = computed(() =>
-  availableColumns.map((item) => ({
-    label: item.label,
-    value: item.key,
-    disabled: visibleColumnKeys.value.length === 1 && visibleColumnKeys.value[0] === item.key,
-  })),
-)
+const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
 const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
   availableColumns
     .filter((item) => visibleColumnKeys.value.includes(item.key))
     .map((item) => item.column),
 )
-function setVisibleColumnKeys(value: RecordColumnKey[]) {
-  if (value.length) visibleColumnKeys.value = value
+function setVisibleColumnKeys(value: string[]) {
+  visibleColumnKeys.value = value as RecordColumnKey[]
 }
 function rowProps(row: PurchaseRecord) {
   return {
@@ -188,13 +183,9 @@ onMounted(load)
           placeholder="状态（任意文本）"
           style="width: 150px"
         />
-        <n-select
+        <ColumnVisibilityPicker
           :value="visibleColumnKeys"
-          multiple
           :options="fieldOptions"
-          max-tag-count="responsive"
-          placeholder="展示字段"
-          style="width: 360px"
           @update:value="setVisibleColumnKeys"
         />
         <n-button type="primary" @click="query">查询</n-button>
