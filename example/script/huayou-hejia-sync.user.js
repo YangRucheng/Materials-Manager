@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         华友何佳 - 备件管理系统状态同步
 // @namespace    https://quick-hejia.qcloud.19890605.xyz/hjerp/
-// @version      1.3.0
+// @version      1.4.0
 // @description  在华友何佳系统中查询“物资状态查询”，同步备件管理系统中的状态、业务员和申购日期。
 // @match        https://quick-hejia.qcloud.19890605.xyz/hjerp/*
 // @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
@@ -391,8 +391,8 @@ WHERE pr.trace_no = :trace_no
       cell && typeof cell === "object" && "val" in cell ? cell.val : cell,
     );
   }
-  function joined(values) {
-    const text = [...new Set(values.map(clean).filter(Boolean))].join(" / ");
+  function limited(value) {
+    const text = clean(value);
     return text.length <= 128 ? text : `${text.slice(0, 127)}…`;
   }
   function validDate(value) {
@@ -408,14 +408,32 @@ WHERE pr.trace_no = :trace_no
       date.getUTCDate() === day
     );
   }
-  function singleDate(values) {
-    const dates = [...new Set(values.map(clean).filter(Boolean))];
-    const invalid = dates.filter((value) => !validDate(value));
-    if (invalid.length)
-      throw new Error(`何佳申购日期格式异常：${invalid.join(" / ")}`);
-    if (dates.length > 1)
-      throw new Error(`同一追溯号存在多个申购日期：${dates.join(" / ")}`);
-    return dates[0] || "";
+  function requestDate(value) {
+    const date = clean(value);
+    if (date && !validDate(date))
+      throw new Error(`何佳申购日期格式异常：${date}`);
+    return date;
+  }
+  function selectBestRow(rows, aliases) {
+    const dataFields = [
+      ...new Set(Object.values(aliases).map(clean).filter(Boolean)),
+    ];
+    let selected = null;
+    let selectedNonEmptyCount = -1;
+    rows.forEach((row) => {
+      const nonEmptyCount = dataFields.reduce(
+        (count, dataField) => count + (rowValue(row, dataField) ? 1 : 0),
+        0,
+      );
+      if (nonEmptyCount > selectedNonEmptyCount) {
+        selected = row;
+        selectedNonEmptyCount = nonEmptyCount;
+      }
+    });
+    return {
+      row: selected,
+      nonEmptyCount: Math.max(0, selectedNonEmptyCount),
+    };
   }
   async function queryTrace(source, traceNo) {
     const fields = array(source.fields.field);
@@ -435,15 +453,13 @@ WHERE pr.trace_no = :trace_no
     );
     const matched = exact.length ? exact : rows;
     if (!aliases.date_req) throw new Error("何佳配置缺少申购日期字段 date_req");
+    const selected = selectBestRow(matched, aliases);
     return {
       count: matched.length,
-      status: joined(matched.map((row) => rowValue(row, aliases.flag_prog))),
-      salesperson: joined(
-        matched.map((row) => rowValue(row, aliases.var_reqclerk)),
-      ),
-      purchaseDate: singleDate(
-        matched.map((row) => rowValue(row, aliases.date_req)),
-      ),
+      selectedNonEmptyCount: selected.nonEmptyCount,
+      status: limited(rowValue(selected.row, aliases.flag_prog)),
+      salesperson: limited(rowValue(selected.row, aliases.var_reqclerk)),
+      purchaseDate: requestDate(rowValue(selected.row, aliases.date_req)),
     };
   }
 
@@ -534,6 +550,10 @@ WHERE pr.trace_no = :trace_no
         status(`${index + 1}/${rows.length} ${traceNo}`, "running");
         try {
           const result = await queryTrace(source, traceNo);
+          if (result.count > 1)
+            log(
+              `${traceNo}：何佳返回 ${result.count} 条，采用非空列最多的一条（${result.selectedNonEmptyCount} 列）`,
+            );
           if (!result.count) {
             rememberNotFound(traceNo);
             stats.cached = notFoundTraceNos().length;
