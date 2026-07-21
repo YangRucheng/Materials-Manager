@@ -6,6 +6,7 @@ import type {
   PurchaseMaterial,
   PurchaseMaterialWrite,
   PurchaseRecord,
+  PurchaseRecordFilterOptions,
   PurchaseRecordWrite,
 } from './generated'
 
@@ -60,7 +61,9 @@ export const procurementApi = {
   records: (params?: Record<string, unknown>) =>
     apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
   recordFilterOptions: () =>
-    apiClient.get<PurchaseFilterOptions>('/purchase-records/filter-options').then((r) => r.data),
+    apiClient
+      .get<PurchaseRecordFilterOptions>('/purchase-records/filter-options')
+      .then((r) => r.data),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
   updateRecord: (lineId: number, payload: PurchaseRecordWrite) =>

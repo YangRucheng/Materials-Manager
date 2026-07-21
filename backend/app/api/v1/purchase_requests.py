@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
 from app.schemas import (
     Page,
-    PurchaseFilterOptions,
+    PurchaseRecordFilterOptions,
     PurchaseRecordRead,
     PurchaseRecordUpdate,
 )
@@ -43,6 +43,7 @@ async def purchase_records(
     page: PageNo = 1,
     page_size: PageSize = 20,
     record_status: StatusFilter = None,
+    empty_status: bool = False,
     keyword: str | None = None,
     search_field: RecordSearchField | None = None,
     search_value: Annotated[str | None, Query(max_length=255)] = None,
@@ -52,6 +53,7 @@ async def purchase_records(
     items, total = await service.search_purchase_records(
         session,
         status=record_status,
+        empty_status=empty_status,
         keyword=keyword,
         search_field=search_field,
         search_value=search_value,
@@ -68,16 +70,17 @@ async def purchase_records(
     )
 
 
-@router.get("/purchase-records/filter-options", response_model=PurchaseFilterOptions)
+@router.get("/purchase-records/filter-options", response_model=PurchaseRecordFilterOptions)
 async def purchase_record_filter_options(
     session: DbSession, user: CurrentUser
-) -> PurchaseFilterOptions:
+) -> PurchaseRecordFilterOptions:
     actual_demand_persons, purchase_responsibles = (
         await material_service.purchase_filter_options(session, moved=True)
     )
-    return PurchaseFilterOptions(
+    return PurchaseRecordFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
+        statuses=await service.purchase_status_options(session),
     )
 
 
