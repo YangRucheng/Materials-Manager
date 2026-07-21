@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, status
@@ -13,6 +13,7 @@ from app.schemas import (
     LinkStockMaterialRequest,
     MovePurchasePlanRequest,
     Page,
+    PurchaseFilterOptions,
     PurchaseMaterialCreate,
     PurchaseMaterialRead,
     PurchaseMaterialUpdate,
@@ -25,6 +26,18 @@ from app.services.common import validate_version
 router = APIRouter(prefix="/purchase-materials", tags=["申购计划"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
+PlanSearchField = Literal[
+    "plan_no",
+    "plan_date",
+    "material_code",
+    "name",
+    "model_spec",
+    "unit_name",
+    "planned_qty",
+    "usage",
+    "subitem_no",
+    "remark",
+]
 LinkWriter = Annotated[
     User,
     Depends(require_roles(Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.PURCHASE_ADMIN)),
@@ -38,6 +51,10 @@ async def list_materials(
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: str | None = None,
+    search_field: PlanSearchField | None = None,
+    search_value: Annotated[str | None, Query(max_length=255)] = None,
+    actual_demand_person: Annotated[str | None, Query(max_length=128)] = None,
+    purchase_responsible: Annotated[str | None, Query(max_length=128)] = None,
     enabled: bool | None = None,
     coded: bool | None = None,
     moved: bool | None = None,
@@ -45,6 +62,10 @@ async def list_materials(
     items, total = await material_service.search_purchase_materials(
         session,
         keyword=keyword,
+        search_field=search_field,
+        search_value=search_value,
+        actual_demand_person=actual_demand_person,
+        purchase_responsible=purchase_responsible,
         enabled=enabled,
         coded=coded,
         moved=moved,
@@ -56,6 +77,21 @@ async def list_materials(
         page=page,
         page_size=page_size,
         total=total,
+    )
+
+
+@router.get("/filter-options", response_model=PurchaseFilterOptions)
+async def filter_options(
+    session: DbSession,
+    user: CurrentUser,
+    moved: bool | None = None,
+) -> PurchaseFilterOptions:
+    actual_demand_persons, purchase_responsibles = (
+        await material_service.purchase_filter_options(session, moved=moved)
+    )
+    return PurchaseFilterOptions(
+        actual_demand_persons=actual_demand_persons,
+        purchase_responsibles=purchase_responsibles,
     )
 
 

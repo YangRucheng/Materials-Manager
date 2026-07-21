@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   Page,
   MovePurchasePlansWrite,
+  PurchaseFilterOptions,
   PurchaseMaterial,
   PurchaseMaterialWrite,
   PurchaseRecord,
@@ -11,6 +12,10 @@ import type {
 export const procurementApi = {
   materials: (params?: Record<string, unknown>) =>
     apiClient.get<Page<PurchaseMaterial>>('/purchase-materials', { params }).then((r) => r.data),
+  materialFilterOptions: (params?: Record<string, unknown>) =>
+    apiClient
+      .get<PurchaseFilterOptions>('/purchase-materials/filter-options', { params })
+      .then((r) => r.data),
   material: (id: number) =>
     apiClient.get<PurchaseMaterial>(`/purchase-materials/${id}`).then((r) => r.data),
   createMaterial: (payload: PurchaseMaterialWrite) =>
@@ -54,6 +59,8 @@ export const procurementApi = {
       .then((r) => r.data),
   records: (params?: Record<string, unknown>) =>
     apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
+  recordFilterOptions: () =>
+    apiClient.get<PurchaseFilterOptions>('/purchase-records/filter-options').then((r) => r.data),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
   updateRecord: (lineId: number, payload: PurchaseRecordWrite) =>

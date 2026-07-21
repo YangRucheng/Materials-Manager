@@ -1317,6 +1317,52 @@ paths:
           - type: string
           - type: 'null'
           title: Keyword
+      - name: search_field
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - plan_no
+            - plan_date
+            - material_code
+            - name
+            - model_spec
+            - unit_name
+            - planned_qty
+            - usage
+            - subitem_no
+            - remark
+            type: string
+          - type: 'null'
+          title: Search Field
+      - name: search_value
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Search Value
+      - name: actual_demand_person
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Actual Demand Person
+      - name: purchase_responsible
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Purchase Responsible
       - name: enabled
         in: query
         required: false
@@ -1398,6 +1444,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PurchaseMaterialRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-materials/filter-options:
+    get:
+      tags:
+      - 申购计划
+      summary: Filter Options
+      operationId: filter_options_api_v1_purchase_materials_filter_options_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: moved
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Moved
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseFilterOptions'
         '400':
           description: 业务校验失败
           content:
@@ -1907,6 +2007,58 @@ paths:
           - type: string
           - type: 'null'
           title: Keyword
+      - name: search_field
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - plan_no
+            - plan_date
+            - purchase_order_no
+            - trace_no
+            - material_code
+            - material_name
+            - model_spec
+            - unit_name
+            - purchase_qty
+            - salesperson
+            - status
+            - purchase_date
+            - usage
+            - subitem_no
+            - plan_remark
+            - record_remark
+            type: string
+          - type: 'null'
+          title: Search Field
+      - name: search_value
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Search Value
+      - name: actual_demand_person
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Actual Demand Person
+      - name: purchase_responsible
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Purchase Responsible
       responses:
         '200':
           description: Successful Response
@@ -1944,6 +2096,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-records/filter-options:
+    get:
+      tags:
+      - 申购记录
+      summary: Purchase Record Filter Options
+      operationId: purchase_record_filter_options_api_v1_purchase_records_filter_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseFilterOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/purchase-records/{line_id}:
     get:
       tags:
@@ -3555,6 +3752,23 @@ components:
       - page_size
       - total
       title: Page[UserRead]
+    PurchaseFilterOptions:
+      properties:
+        actual_demand_persons:
+          items:
+            type: string
+          type: array
+          title: Actual Demand Persons
+        purchase_responsibles:
+          items:
+            type: string
+          type: array
+          title: Purchase Responsibles
+      type: object
+      required:
+      - actual_demand_persons
+      - purchase_responsibles
+      title: PurchaseFilterOptions
     PurchaseMaterialCreate:
       properties:
         plan_date:

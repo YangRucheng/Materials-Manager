@@ -19,6 +19,7 @@ async def create_purchase_plan(
     code: str | None = None,
     stock_material_id: int | None = None,
     planned_qty: str = "5",
+    actual_demand_person: str = "车间员工张三",
     purchase_responsible: str = "李工",
     subitem_no: str | None = "01-01",
     plan_date: str = "2026-07-01",
@@ -33,7 +34,7 @@ async def create_purchase_plan(
             "name": name,
             "model_spec": "M60-2P 5A",
             "unit_id": 1,
-            "actual_demand_person": "车间员工张三",
+            "actual_demand_person": actual_demand_person,
             "purchase_responsible": purchase_responsible,
             "planned_qty": planned_qty,
             "usage": "控制柜检修",
@@ -50,6 +51,79 @@ async def create_purchase_plan(
     assert result["plan_date"] == plan_date
     assert "code_state" not in result
     return result
+
+
+@pytest.mark.asyncio
+async def test_purchase_lists_support_field_like_and_person_filters(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(
+        client,
+        headers,
+        "智能断路器",
+        code="DQ-FILTER-001",
+        actual_demand_person="张三",
+        purchase_responsible="李工",
+    )
+    second = await create_purchase_plan(
+        client,
+        headers,
+        "交流接触器",
+        code="DQ-FILTER-002",
+        actual_demand_person="李四",
+        purchase_responsible="王工",
+    )
+
+    plan_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"search_field": "name", "search_value": "断路", "moved": False},
+    )
+    assert plan_search.status_code == 200, plan_search.text
+    assert [item["id"] for item in plan_search.json()["items"]] == [first["id"]]
+
+    person_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"purchase_responsible": "王", "moved": False},
+    )
+    assert person_search.status_code == 200, person_search.text
+    assert [item["id"] for item in person_search.json()["items"]] == [second["id"]]
+
+    plan_options = await client.get(
+        "/api/v1/purchase-materials/filter-options",
+        headers=headers,
+        params={"moved": False},
+    )
+    assert plan_options.status_code == 200, plan_options.text
+    assert set(plan_options.json()["actual_demand_persons"]) == {"张三", "李四"}
+    assert set(plan_options.json()["purchase_responsibles"]) == {"李工", "王工"}
+
+    await move_to_record(client, headers, int(first["id"]), trace_no="TRACE-LIKE-001")
+    await move_to_record(client, headers, int(second["id"]), trace_no="TRACE-OTHER-002")
+
+    record_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={
+            "search_field": "trace_no",
+            "search_value": "LIKE-00",
+            "actual_demand_person": "张",
+            "page_size": 10,
+        },
+    )
+    assert record_search.status_code == 200, record_search.text
+    assert record_search.json()["page_size"] == 10
+    assert [item["purchase_material_id"] for item in record_search.json()["items"]] == [
+        first["id"]
+    ]
+
+    record_options = await client.get(
+        "/api/v1/purchase-records/filter-options", headers=headers
+    )
+    assert record_options.status_code == 200, record_options.text
+    assert set(record_options.json()["actual_demand_persons"]) == {"张三", "李四"}
 
 
 async def move_to_record(

@@ -18,6 +18,9 @@ class FailingCommitSession:
     def add(self, item: object) -> None:
         pass
 
+    async def scalars(self, statement: object) -> EmptyScalarResult:
+        return EmptyScalarResult()
+
     async def flush(self) -> None:
         pass
 
@@ -26,6 +29,11 @@ class FailingCommitSession:
 
     async def rollback(self) -> None:
         self.rolled_back = True
+
+
+class EmptyScalarResult:
+    def all(self) -> list[object]:
+        return []
 
 
 @pytest.mark.asyncio

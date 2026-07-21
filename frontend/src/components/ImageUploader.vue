@@ -24,7 +24,12 @@ async function choose(event: Event) {
   uploading.value = true
   try {
     const uploaded = await Promise.all(selected.map(fileApi.uploadImage))
-    emit('update:files', [...props.files, ...uploaded])
+    const merged = [...props.files, ...uploaded]
+    const unique = Array.from(new Map(merged.map((file) => [file.id, file])).values())
+    if (unique.length < merged.length) {
+      message.info('已自动忽略重复图片')
+    }
+    emit('update:files', unique)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '图片上传失败')
   } finally {
@@ -86,7 +91,8 @@ async function remove(file: FileObject) {
     />
   </div>
   <p class="image-hint">
-    支持 JPG、PNG、WebP，单图不超过 10 MB，最多 {{ max }} 张；服务端统一转换为 PNG。
+    支持 JPG、PNG、WebP，单图不超过 10 MB，最多 {{ max }} 张；服务端统一转换为
+    PNG，相同图片自动复用。
   </p>
 </template>
 

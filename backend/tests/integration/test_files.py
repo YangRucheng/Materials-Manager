@@ -6,7 +6,7 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 from PIL import Image
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -29,6 +29,27 @@ async def test_uploaded_image_is_reencoded_as_png(client: AsyncClient) -> None:
     assert UUID(body["id"]).version == 7
     assert "url" not in body
     assert body["mime_type"] == "image/png"
+
+    duplicate = await client.post(
+        "/api/v1/files/images",
+        headers=headers,
+        files={"file": ("duplicate.jpg", source.getvalue(), "image/jpeg")},
+    )
+    assert duplicate.status_code == 201, duplicate.text
+    assert duplicate.json()["id"] == body["id"]
+    assert len(list(settings.upload_dir.glob("*.png"))) == 1
+
+    stored_path = settings.upload_dir / f'{body["id"]}.png'
+    stored_path.unlink()
+    repaired = await client.post(
+        "/api/v1/files/images",
+        headers=headers,
+        files={"file": ("repair.jpg", source.getvalue(), "image/jpeg")},
+    )
+    assert repaired.status_code == 201, repaired.text
+    assert repaired.json()["id"] == body["id"]
+    assert stored_path.is_file()
+
     image_url = f'/api/v1/files/images/{body["id"]}'
     downloaded = await client.get(image_url)
     assert downloaded.status_code == 200
@@ -65,7 +86,9 @@ async def test_uploaded_image_is_reencoded_as_png(client: AsyncClient) -> None:
         persisted_id = await session.scalar(
             select(FileObject.id).where(FileObject.id == body["id"])
         )
+        file_count = await session.scalar(select(func.count()).select_from(FileObject))
     assert persisted_id == body["id"]
+    assert file_count == 1
 
 
 @pytest.mark.asyncio

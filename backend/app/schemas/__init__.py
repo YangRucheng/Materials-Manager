@@ -47,6 +47,11 @@ class Page[T](ReadModel):
     total: int
 
 
+class PurchaseFilterOptions(ReadModel):
+    actual_demand_persons: list[str]
+    purchase_responsibles: list[str]
+
+
 class ApiError(ReadModel):
     code: str
     message: str

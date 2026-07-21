@@ -4,6 +4,10 @@ import asyncio
 import hashlib
 import io
 import re
+import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, timedelta
 from pathlib import Path
 
@@ -36,8 +40,33 @@ MANAGED_FILE_NAME = re.compile(
 )
 
 
+@dataclass
+class DigestLockEntry:
+    lock: asyncio.Lock
+    users: int = 0
+
+
+_digest_locks: dict[str, DigestLockEntry] = {}
+_digest_locks_guard = threading.Lock()
+
+
 def file_path(file_id: str) -> Path:
     return settings.upload_dir / f"{file_id}.png"
+
+
+@asynccontextmanager
+async def _digest_lock(digest: str) -> AsyncIterator[None]:
+    with _digest_locks_guard:
+        entry = _digest_locks.setdefault(digest, DigestLockEntry(lock=asyncio.Lock()))
+        entry.users += 1
+    try:
+        async with entry.lock:
+            yield
+    finally:
+        with _digest_locks_guard:
+            entry.users -= 1
+            if entry.users == 0:
+                _digest_locks.pop(digest, None)
 
 
 def _unreferenced() -> ColumnElement[bool]:
@@ -81,29 +110,68 @@ async def save_image(session: AsyncSession, upload: UploadFile) -> FileObjectRea
         raise AppError("INVALID_IMAGE", "图片无法解码") from exc
 
     data = output.getvalue()
-    file_id = uuid7_string()
-    settings.upload_dir.mkdir(parents=True, exist_ok=True)
-    target = file_path(file_id)
-    await asyncio.to_thread(target.write_bytes, data)
-    item = FileObject(
-        id=file_id,
-        original_name=Path(upload.filename or "image").name[:255],
-        mime_type="image/png",
-        size_bytes=len(data),
-        width=width,
-        height=height,
-        sha256=hashlib.sha256(data).hexdigest(),
-    )
-    session.add(item)
-    try:
-        await session.flush()
-        # 上传是独立事务。只有数据库记录真正提交后才向客户端返回成功。
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        await asyncio.to_thread(target.unlink, missing_ok=True)
-        raise
-    return file_read(item)
+    digest = hashlib.sha256(data).hexdigest()
+    async with _digest_lock(digest):
+        existing_items = list(
+            (
+                await session.scalars(
+                    select(FileObject)
+                    .where(FileObject.sha256 == digest)
+                    .order_by(FileObject.created_at, FileObject.id)
+                )
+            ).all()
+        )
+        missing_item: FileObject | None = None
+        for existing in existing_items:
+            existing_path = file_path(existing.id)
+            if not existing_path.is_file():
+                missing_item = missing_item or existing
+                continue
+            if existing.size_bytes != len(data):
+                continue
+            existing_data = await asyncio.to_thread(existing_path.read_bytes)
+            if existing_data == data:
+                return file_read(existing)
+
+        if missing_item is not None:
+            target = file_path(missing_item.id)
+            settings.upload_dir.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(target.write_bytes, data)
+            missing_item.mime_type = "image/png"
+            missing_item.size_bytes = len(data)
+            missing_item.width = width
+            missing_item.height = height
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                await asyncio.to_thread(target.unlink, missing_ok=True)
+                raise
+            return file_read(missing_item)
+
+        file_id = uuid7_string()
+        settings.upload_dir.mkdir(parents=True, exist_ok=True)
+        target = file_path(file_id)
+        await asyncio.to_thread(target.write_bytes, data)
+        item = FileObject(
+            id=file_id,
+            original_name=Path(upload.filename or "image").name[:255],
+            mime_type="image/png",
+            size_bytes=len(data),
+            width=width,
+            height=height,
+            sha256=digest,
+        )
+        session.add(item)
+        try:
+            await session.flush()
+            # 上传是独立事务。只有数据库记录真正提交后才向客户端返回成功。
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            await asyncio.to_thread(target.unlink, missing_ok=True)
+            raise
+        return file_read(item)
 
 
 async def get_image(session: AsyncSession, file_id: str) -> tuple[FileObject, Path]:

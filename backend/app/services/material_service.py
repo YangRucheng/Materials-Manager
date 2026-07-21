@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -334,23 +334,55 @@ async def search_purchase_materials(
     session: AsyncSession,
     *,
     keyword: str | None,
+    search_field: str | None,
+    search_value: str | None,
+    actual_demand_person: str | None,
+    purchase_responsible: str | None,
     enabled: bool | None,
     coded: bool | None,
     moved: bool | None,
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseMaterial], int]:
-    query = select(PurchaseMaterial)
+    query = select(PurchaseMaterial).join(
+        MeasurementUnit, MeasurementUnit.id == PurchaseMaterial.unit_id
+    )
     if keyword:
         like = f"%{keyword}%"
         query = query.where(
             or_(
+                PurchaseMaterial.plan_no.like(like),
+                cast(PurchaseMaterial.plan_date, String).like(like),
                 PurchaseMaterial.name.like(like),
                 PurchaseMaterial.model_spec.like(like),
                 PurchaseMaterial.material_code.like(like),
-                PurchaseMaterial.plan_no.like(like),
+                MeasurementUnit.name.like(like),
+                cast(PurchaseMaterial.planned_qty, String).like(like),
+                PurchaseMaterial.actual_demand_person.like(like),
+                PurchaseMaterial.purchase_responsible.like(like),
+                PurchaseMaterial.usage.like(like),
+                PurchaseMaterial.subitem_no.like(like),
+                PurchaseMaterial.remark.like(like),
             )
         )
+    if search_field and search_value:
+        search_columns = {
+            "plan_no": PurchaseMaterial.plan_no,
+            "plan_date": cast(PurchaseMaterial.plan_date, String),
+            "material_code": PurchaseMaterial.material_code,
+            "name": PurchaseMaterial.name,
+            "model_spec": PurchaseMaterial.model_spec,
+            "unit_name": MeasurementUnit.name,
+            "planned_qty": cast(PurchaseMaterial.planned_qty, String),
+            "usage": PurchaseMaterial.usage,
+            "subitem_no": PurchaseMaterial.subitem_no,
+            "remark": PurchaseMaterial.remark,
+        }
+        query = query.where(search_columns[search_field].like(f"%{search_value}%"))
+    if actual_demand_person:
+        query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
+    if purchase_responsible:
+        query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
     if enabled is not None:
         query = query.where(PurchaseMaterial.enabled == enabled)
     if coded is True:
@@ -377,6 +409,37 @@ async def search_purchase_materials(
         .all()
     )
     return items, int(count or 0)
+
+
+async def purchase_filter_options(
+    session: AsyncSession, *, moved: bool | None
+) -> tuple[list[str], list[str]]:
+    record_exists = (
+        select(PurchaseRequestLine.id)
+        .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+        .exists()
+    )
+    actual_demand_query = select(PurchaseMaterial.actual_demand_person).where(
+        func.trim(PurchaseMaterial.actual_demand_person) != ""
+    )
+    responsible_query = select(PurchaseMaterial.purchase_responsible).where(
+        func.trim(PurchaseMaterial.purchase_responsible) != ""
+    )
+    if moved is not None:
+        moved_filter = record_exists if moved else ~record_exists
+        actual_demand_query = actual_demand_query.where(moved_filter)
+        responsible_query = responsible_query.where(moved_filter)
+    actual_demand_persons = list(
+        await session.scalars(
+            actual_demand_query.distinct().order_by(PurchaseMaterial.actual_demand_person)
+        )
+    )
+    purchase_responsibles = list(
+        await session.scalars(
+            responsible_query.distinct().order_by(PurchaseMaterial.purchase_responsible)
+        )
+    )
+    return actual_demand_persons, purchase_responsibles
 
 
 async def purchase_materials_for_export(
