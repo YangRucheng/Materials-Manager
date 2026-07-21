@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, type DataTableColumns } from 'naive-ui'
+import { computed, h, onMounted, reactive, ref } from 'vue'
+import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseRecord } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -13,74 +13,129 @@ const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const filters = reactive({ keyword: '', status: null as string | null })
-const columns: DataTableColumns<PurchaseRecord> = [
+type RecordColumnKey =
+  | 'plan_date'
+  | 'purchase_order_no'
+  | 'trace_no'
+  | 'material_name'
+  | 'purchase_responsible'
+  | 'salesperson'
+  | 'status'
+  | 'purchase_date'
+
+const availableColumns: Array<{
+  key: RecordColumnKey
+  label: string
+  column: DataTableBaseColumn<PurchaseRecord>
+}> = [
   {
-    title: '计划日期',
     key: 'plan_date',
-    width: 110,
-    render: (row) => formatDate(row.plan_date),
+    label: '计划日期',
+    column: {
+      title: '计划日期',
+      key: 'plan_date',
+      width: 110,
+      render: (row) => formatDate(row.plan_date),
+    },
   },
   {
-    title: '申购单号',
     key: 'purchase_order_no',
-    width: 170,
-    render: (row) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'primary',
-          onClick: () => router.push(`/procurement/records/${row.line_id}`),
-        },
-        { default: () => row.purchase_order_no || '未填写' },
-      ),
+    label: '申购单号',
+    column: {
+      title: '申购单号',
+      key: 'purchase_order_no',
+      width: 170,
+      render: (row) => row.purchase_order_no || '未填写',
+    },
   },
   {
-    title: '追溯号',
     key: 'trace_no',
-    width: 170,
-    render: (row) => row.trace_no || '—',
+    label: '追溯号',
+    column: {
+      title: '追溯号',
+      key: 'trace_no',
+      width: 170,
+      render: (row) => row.trace_no || '—',
+    },
   },
   {
-    title: '物资',
     key: 'material_name',
-    render: (row) =>
-      h('div', [
-        h('strong', row.material_name),
-        h('div', { class: 'muted' }, `${row.material_code}｜${row.model_spec}`),
-      ]),
+    label: '物资',
+    column: {
+      title: '物资',
+      key: 'material_name',
+      render: (row) =>
+        h('div', [
+          h('strong', row.material_name),
+          h('div', { class: 'muted' }, `${row.material_code}｜${row.model_spec}`),
+        ]),
+    },
   },
-  { title: '申购负责人', key: 'purchase_responsible', width: 110 },
-  { title: '业务员', key: 'salesperson', width: 110, render: (row) => row.salesperson || '—' },
   {
-    title: '状态',
+    key: 'purchase_responsible',
+    label: '申购负责人',
+    column: { title: '申购负责人', key: 'purchase_responsible', width: 110 },
+  },
+  {
+    key: 'salesperson',
+    label: '业务员',
+    column: {
+      title: '业务员',
+      key: 'salesperson',
+      width: 110,
+      render: (row) => row.salesperson || '—',
+    },
+  },
+  {
     key: 'status',
-    width: 120,
-    render: (row) =>
-      h(
-        NTag,
-        { type: statusTagType(row.status) },
-        { default: () => requestStatusLabels[row.status] },
-      ),
+    label: '状态',
+    column: {
+      title: '状态',
+      key: 'status',
+      width: 120,
+      render: (row) =>
+        h(
+          NTag,
+          { type: statusTagType(row.status) },
+          { default: () => requestStatusLabels[row.status] },
+        ),
+    },
   },
   {
-    title: '申购日期',
     key: 'purchase_date',
-    width: 120,
-    render: (row) => formatDate(row.purchase_date),
-  },
-  {
-    title: '操作',
-    key: 'action',
-    width: 80,
-    render: (row) =>
-      h(
-        NButton,
-        { size: 'small', onClick: () => router.push(`/procurement/records/${row.line_id}`) },
-        { default: () => '编辑' },
-      ),
+    label: '申购日期',
+    column: {
+      title: '申购日期',
+      key: 'purchase_date',
+      width: 120,
+      render: (row) => formatDate(row.purchase_date),
+    },
   },
 ]
+const visibleColumnKeys = ref<RecordColumnKey[]>(availableColumns.map((item) => item.key))
+const fieldOptions = computed(() =>
+  availableColumns.map((item) => ({
+    label: item.label,
+    value: item.key,
+    disabled: visibleColumnKeys.value.length === 1 && visibleColumnKeys.value[0] === item.key,
+  })),
+)
+const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
+  availableColumns
+    .filter((item) => visibleColumnKeys.value.includes(item.key))
+    .map((item) => item.column),
+)
+function setVisibleColumnKeys(value: RecordColumnKey[]) {
+  if (value.length) visibleColumnKeys.value = value
+}
+function rowProps(row: PurchaseRecord) {
+  return {
+    style: 'cursor: pointer',
+    onClick: () => {
+      void router.push(`/procurement/records/${row.line_id}`)
+    },
+  }
+}
 
 async function load() {
   loading.value = true
@@ -129,6 +184,15 @@ onMounted(load)
           placeholder="状态"
           style="width: 150px"
         />
+        <n-select
+          :value="visibleColumnKeys"
+          multiple
+          :options="fieldOptions"
+          max-tag-count="responsive"
+          placeholder="展示字段"
+          style="width: 360px"
+          @update:value="setVisibleColumnKeys"
+        />
         <n-button type="primary" @click="query">查询</n-button>
       </div>
     </n-card>
@@ -138,7 +202,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1325"
+        :row-props="rowProps"
         :row-key="(row: PurchaseRecord) => row.line_id"
       />
       <div class="pagination-bar">

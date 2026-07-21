@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
-  NButton,
   NTag,
   useMessage,
+  type DataTableBaseColumn,
   type DataTableColumns,
   type FormInst,
   type FormRules,
@@ -72,58 +72,96 @@ const rules: FormRules = {
   planned_qty: { required: true, message: '请输入计划数量' },
   usage: { required: true, message: '请输入用途' },
 }
-const columns: DataTableColumns<PurchaseMaterial> = [
+type PlanColumnKey =
+  | 'plan_no'
+  | 'plan_date'
+  | 'material_code'
+  | 'name'
+  | 'model_spec'
+  | 'unit_name'
+  | 'planned_qty'
+  | 'actual_demand_person'
+  | 'purchase_responsible'
+
+const availableColumns: Array<{
+  key: PlanColumnKey
+  label: string
+  column: DataTableBaseColumn<PurchaseMaterial>
+}> = [
+  { key: 'plan_no', label: '计划 ID', column: { title: '计划 ID', key: 'plan_no', width: 175 } },
+  {
+    key: 'plan_date',
+    label: '计划日期',
+    column: {
+      title: '计划日期',
+      key: 'plan_date',
+      width: 110,
+      render: (row) => formatDate(row.plan_date),
+    },
+  },
+  {
+    key: 'material_code',
+    label: '物料编码',
+    column: {
+      title: '物料编码',
+      key: 'material_code',
+      width: 140,
+      render: (row) =>
+        row.material_code ||
+        h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
+    },
+  },
+  { key: 'name', label: '名称', column: { title: '名称', key: 'name' } },
+  { key: 'model_spec', label: '型号规格', column: { title: '型号规格', key: 'model_spec' } },
+  { key: 'unit_name', label: '单位', column: { title: '单位', key: 'unit_name', width: 70 } },
+  {
+    key: 'planned_qty',
+    label: '计划数量',
+    column: { title: '计划数量', key: 'planned_qty', width: 100 },
+  },
+  {
+    key: 'actual_demand_person',
+    label: '实际需求人',
+    column: { title: '实际需求人', key: 'actual_demand_person', width: 110 },
+  },
+  {
+    key: 'purchase_responsible',
+    label: '申购负责人',
+    column: { title: '申购负责人', key: 'purchase_responsible', width: 110 },
+  },
+]
+const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
+const fieldOptions = computed(() =>
+  availableColumns.map((item) => ({
+    label: item.label,
+    value: item.key,
+    disabled: visibleColumnKeys.value.length === 1 && visibleColumnKeys.value[0] === item.key,
+  })),
+)
+const columns = computed<DataTableColumns<PurchaseMaterial>>(() => [
   {
     type: 'selection',
     disabled: (row) => !auth.can('purchase:write') || !row.material_code,
   },
-  { title: '计划 ID', key: 'plan_no', width: 175 },
-  {
-    title: '计划日期',
-    key: 'plan_date',
-    width: 110,
-    render: (row) => formatDate(row.plan_date),
-  },
-  {
-    title: '物料编码',
-    key: 'material_code',
-    width: 140,
-    render: (r) =>
-      r.material_code || h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
-  },
-  {
-    title: '名称',
-    key: 'name',
-    render: (r) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'primary',
-          onClick: () => router.push(`/procurement/materials/${r.id}`),
-        },
-        { default: () => r.name },
-      ),
-  },
-  { title: '型号规格', key: 'model_spec' },
-  { title: '单位', key: 'unit_name', width: 70 },
-  { title: '计划数量', key: 'planned_qty', width: 100 },
-  { title: '实际需求人', key: 'actual_demand_person', width: 110 },
-  { title: '申购负责人', key: 'purchase_responsible', width: 110 },
-  {
-    title: '操作',
-    key: 'action',
-    width: 90,
-    render: (r) =>
-      h('div', { class: 'action-row' }, [
-        h(
-          NButton,
-          { size: 'small', onClick: () => router.push(`/procurement/materials/${r.id}`) },
-          { default: () => (auth.can('purchase:write') ? '编辑' : '查看') },
-        ),
-      ]),
-  },
-]
+  ...availableColumns
+    .filter((item) => visibleColumnKeys.value.includes(item.key))
+    .map((item) => item.column),
+])
+function setVisibleColumnKeys(value: PlanColumnKey[]) {
+  if (value.length) visibleColumnKeys.value = value
+}
+function rowProps(row: PurchaseMaterial) {
+  return {
+    style: 'cursor: pointer',
+    onClick: (event: MouseEvent) => {
+      const target = event.target
+      if (target instanceof Element && target.closest('.n-checkbox, .n-data-table-td--selection')) {
+        return
+      }
+      void router.push(`/procurement/materials/${row.id}`)
+    },
+  }
+}
 async function load() {
   loading.value = true
   try {
@@ -279,7 +317,17 @@ onMounted(() => {
           placeholder="计划 ID、编码、名称或规格"
           clearable
           style="width: 240px"
-        /><n-button type="primary" @click="query">查询</n-button>
+        />
+        <n-select
+          :value="visibleColumnKeys"
+          multiple
+          :options="fieldOptions"
+          max-tag-count="responsive"
+          placeholder="展示字段"
+          style="width: 360px"
+          @update:value="setVisibleColumnKeys"
+        />
+        <n-button type="primary" @click="query">查询</n-button>
       </div></n-card
     ><n-card
       ><n-data-table
@@ -288,6 +336,7 @@ onMounted(() => {
         :columns="columns"
         :data="items"
         :loading="loading"
+        :row-props="rowProps"
         :row-key="(r: PurchaseMaterial) => r.id" />
       <div class="pagination-bar">
         <n-pagination
