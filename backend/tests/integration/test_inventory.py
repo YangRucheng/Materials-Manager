@@ -197,7 +197,7 @@ async def test_concurrent_outbound_allows_negative_without_lost_updates(
 
 
 @pytest.mark.asyncio
-async def test_low_stock_on_order_calculation_and_disabled_material(client: AsyncClient) -> None:
+async def test_low_stock_uses_minimum_only_and_disabled_material(client: AsyncClient) -> None:
     warehouse = await auth_headers(client, "warehouse")
     purchase = await auth_headers(client, "purchase")
     material_id = await create_stock(client, warehouse, "低库存物资")
@@ -209,9 +209,10 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     assert policy.status_code == 200
     assert "target_qty" not in policy.json()["replenishment_policy"]
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
-    assert low.json()["items"][0]["warning_state"] == "PENDING_PURCHASE"
     assert low.json()["items"][0]["suggested_purchase_qty"] == "3"
     assert "target_qty" not in low.json()["items"][0]
+    assert "warning_state" not in low.json()["items"][0]
+    assert "on_order_qty" not in low.json()["items"][0]
 
     missing_confirmation = await client.post(
         f"/api/v1/inventory/low-stock/{material_id}/create-replenishment-draft",
@@ -238,48 +239,8 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     assert plan.json()["planned_qty"] == "9"
     assert plan.json()["actual_demand_person"] == "检修班张三"
     assert plan.json()["purchase_responsible"] == "采购李工"
-    requests = await client.get("/api/v1/purchase-requests", headers=purchase)
-    assert requests.json()["total"] == 0
-
-    purchase_material = await client.post(
-        "/api/v1/purchase-materials",
-        headers=purchase,
-        json={
-            "material_code": "DQ-LOW-001",
-            "name": "低库存物资",
-            "model_spec": "CJX2-2510 220V",
-            "unit_id": 1,
-            "purchase_responsible": "李工",
-            "planned_qty": "5",
-            "usage": "低库存补库",
-            "subitem_no": "01-01",
-            "stock_material_id": material_id,
-            "image_ids": [],
-        },
-    )
-    request = await client.post(
-        "/api/v1/purchase-requests",
-        headers=purchase,
-        json={
-            "lines": [
-                {
-                    "purchase_material_id": purchase_material.json()["id"],
-                    "requested_qty": "5",
-                    "usage": "低库存补库",
-                    "subitem_no": "01-01",
-                }
-            ]
-        },
-    )
-    await client.post(
-        f"/api/v1/purchase-requests/{request.json()['id']}/submit",
-        headers=purchase,
-        json={},
-    )
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
-    assert low.json()["items"][0]["warning_state"] == "ON_ORDER"
-    assert low.json()["items"][0]["on_order_qty"] == "5"
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "0"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "3"
 
     disabled = await client.post(
         f"/api/v1/stock-materials/{material_id}/disable", headers=warehouse, json={}

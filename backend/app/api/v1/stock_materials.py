@@ -42,7 +42,7 @@ async def list_materials(
 async def create_material(
     data: StockMaterialCreate, session: DbSession, user: WarehouseWriter
 ) -> StockMaterialRead:
-    item = await material_service.create_stock_material(session, data, user.id)
+    item = await material_service.create_stock_material(session, data)
     return material_service.stock_read(item)
 
 
@@ -63,7 +63,7 @@ async def update_material(
     user: WarehouseWriter,
 ) -> StockMaterialRead:
     item = await material_service.get_stock_material(session, material_id)
-    item = await material_service.update_stock_material(session, item, data, user.id)
+    item = await material_service.update_stock_material(session, item, data)
     return material_service.stock_read(item)
 
 
@@ -80,7 +80,6 @@ async def disable_material(
 
         validate_version(data.version, item.version)
     item.enabled = False
-    item.updated_by = user.id
     item.version += 1
     await session.flush()
     return material_service.stock_read(item)
@@ -94,5 +93,5 @@ async def save_policy(
     user: WarehouseWriter,
 ) -> StockMaterialRead:
     item = await material_service.get_stock_material(session, material_id)
-    item = await replenishment_service.set_policy(session, item, data, user.id)
+    item = await replenishment_service.set_policy(session, item, data)
     return material_service.stock_read(item)

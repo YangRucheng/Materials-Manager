@@ -8,7 +8,6 @@ import { compareDecimal, subtractDecimal } from '@/utils/decimal'
 export interface OperationLineModel {
   stock_material_id: number | null
   quantity: string
-  purchase_request_line_id?: number
   material?: StockMaterial
 }
 
@@ -17,9 +16,8 @@ const props = withDefaults(
     lines: OperationLineModel[]
     type: 'INBOUND' | 'OUTBOUND'
     disabled?: boolean
-    showPurchaseLink?: boolean
   }>(),
-  { disabled: false, showPurchaseLink: false },
+  { disabled: false },
 )
 const emit = defineEmits<{ 'update:lines': [lines: OperationLineModel[]] }>()
 const selectedIds = computed(() =>
@@ -31,7 +29,6 @@ const gridColumns = computed(() =>
     '120px',
     '180px',
     ...(props.type === 'OUTBOUND' ? ['100px'] : []),
-    ...(props.showPurchaseLink ? ['160px'] : []),
     '60px',
   ].join(' '),
 )
@@ -60,8 +57,7 @@ function remove(index: number) {
   <div class="line-table">
     <div class="line-head" :style="{ gridTemplateColumns: gridColumns }">
       <span>物资</span><span>当前库存</span><span>数量</span
-      ><span v-if="type === 'OUTBOUND'">出库后</span
-      ><span v-if="showPurchaseLink">关联请购行 ID</span><span>操作</span>
+      ><span v-if="type === 'OUTBOUND'">出库后</span><span>操作</span>
     </div>
     <div
       v-for="(line, index) in lines"
@@ -97,13 +93,6 @@ function remove(index: number) {
             : '—'
         }}</span
       >
-      <n-input-number
-        v-if="showPurchaseLink"
-        :value="line.purchase_request_line_id"
-        :show-button="false"
-        placeholder="可选"
-        @update:value="patch(index, { purchase_request_line_id: $event ?? undefined })"
-      />
       <n-button
         v-if="!disabled"
         text

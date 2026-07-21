@@ -63,7 +63,7 @@ async def list_materials(
 async def create_material(
     data: PurchaseMaterialCreate, session: DbSession, user: PurchaseWriter
 ) -> PurchaseMaterialRead:
-    item = await material_service.create_purchase_material(session, data, user.id)
+    item = await material_service.create_purchase_material(session, data)
     return await material_service.purchase_read(session, item)
 
 
@@ -136,7 +136,7 @@ async def batch_move_to_record(
     session: DbSession,
     user: PurchaseWriter,
 ) -> list[PurchaseRecordRead]:
-    lines = await purchase_request_service.batch_move_plans_to_record(session, data, user.id)
+    lines = await purchase_request_service.batch_move_plans_to_record(session, data)
     return [purchase_request_service.purchase_record_read(line) for line in lines]
 
 
@@ -157,7 +157,7 @@ async def update_material(
     user: PurchaseWriter,
 ) -> PurchaseMaterialRead:
     item = await material_service.get_purchase_material(session, material_id)
-    item = await material_service.update_purchase_material(session, item, data, user.id)
+    item = await material_service.update_purchase_material(session, item, data)
     return await material_service.purchase_read(session, item)
 
 
@@ -184,7 +184,6 @@ async def link_stock_material(
     stock = await material_service._validate_stock_link(session, data.stock_material_id)
     item.stock_material_id = data.stock_material_id
     item.stock_material = stock
-    item.updated_by = user.id
     item.version += 1
     await session.flush()
     return await material_service.purchase_read(session, item)
@@ -197,5 +196,5 @@ async def move_to_record(
     session: DbSession,
     user: PurchaseWriter,
 ) -> PurchaseRecordRead:
-    line = await purchase_request_service.move_plan_to_record(session, material_id, data, user.id)
+    line = await purchase_request_service.move_plan_to_record(session, material_id, data)
     return purchase_request_service.purchase_record_read(line)

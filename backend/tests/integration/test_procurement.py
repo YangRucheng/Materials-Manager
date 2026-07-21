@@ -66,7 +66,8 @@ async def move_to_record(
             "trace_no": trace_no,
             "purchase_date": "2026-07-18",
             "salesperson": "赵经理",
-            "remark": "等待供应商发货",
+            "status": "已申购",
+            "record_remark": "供应商信息待补充",
         },
     )
     assert response.status_code == 200, response.text
@@ -168,8 +169,8 @@ async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncC
     assert coded.status_code == 200, coded.text
     record = await move_to_record(client, headers, int(plan["id"]))
     assert record["material_code"] == "DQ-000500"
-    assert record["planned_qty"] == "5"
-    assert record["status"] == "PROCESSING"
+    assert record["purchase_qty"] == "5"
+    assert record["status"] == "已申购"
 
 
 @pytest.mark.asyncio
@@ -238,7 +239,8 @@ async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: Asyn
             "trace_no": "ZS-BATCH-001",
             "purchase_date": "2026-07-18",
             "salesperson": "批量业务员",
-            "remark": "批量转入",
+            "status": "采购处理中",
+            "record_remark": "批量转入",
         },
     )
     assert response.status_code == 200, response.text
@@ -251,10 +253,13 @@ async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: Asyn
     assert len({record["purchase_request_id"] for record in records}) == 1
     assert {record["trace_no"] for record in records} == {"ZS-BATCH-001"}
     assert {record["purchase_order_no"] for record in records} == {"SG-BATCH-001"}
+    assert {record["status"] for record in records} == {"采购处理中"}
 
 
 @pytest.mark.asyncio
-async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient) -> None:
+async def test_purchase_record_supports_full_edit_and_free_text_status(
+    client: AsyncClient,
+) -> None:
     headers = await auth_headers(client, "purchase")
     first = await create_purchase_plan(
         client, headers, "负责人一", code="DQ-1", purchase_responsible="外部负责人甲"
@@ -279,11 +284,25 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
         headers=headers,
         json={
             "version": first_record["version"],
+            "plan_date": "2026-07-20",
+            "material_code": "DQ-1-REV",
+            "material_name": "负责人一修订",
+            "model_spec": "M60-2P 10A",
+            "unit_id": 1,
+            "actual_demand_person": "检修班王五",
+            "purchase_responsible": "外部负责人丙",
+            "purchase_qty": "8",
+            "usage": "统计修订用途",
+            "subitem_no": "02-02",
+            "plan_remark": "计划备注修订",
+            "stock_material_id": None,
+            "image_ids": [],
             "purchase_order_no": "SG-A-修订",
             "trace_no": "ZS-A-修订",
             "purchase_date": "2026-07-19",
             "salesperson": "钱经理",
-            "remark": "预计下周到货",
+            "status": "供应商已确认，等待财务安排",
+            "record_remark": "仅用于整理统计",
         },
     )
     assert changed.status_code == 200, changed.text
@@ -291,7 +310,28 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
     assert changed.json()["purchase_order_no"] == "SG-A-修订"
     assert changed.json()["purchase_date"] == "2026-07-19"
     assert changed.json()["salesperson"] == "钱经理"
-    assert changed.json()["remark"] == "预计下周到货"
+    assert changed.json()["plan_date"] == "2026-07-20"
+    assert changed.json()["material_code"] == "DQ-1-REV"
+    assert changed.json()["material_name"] == "负责人一修订"
+    assert changed.json()["model_spec"] == "M60-2P 10A"
+    assert changed.json()["actual_demand_person"] == "检修班王五"
+    assert changed.json()["purchase_responsible"] == "外部负责人丙"
+    assert changed.json()["purchase_qty"] == "8"
+    assert changed.json()["usage"] == "统计修订用途"
+    assert changed.json()["subitem_no"] == "02-02"
+    assert changed.json()["plan_remark"] == "计划备注修订"
+    assert changed.json()["status"] == "供应商已确认，等待财务安排"
+    assert changed.json()["record_remark"] == "仅用于整理统计"
+    assert "received_qty" not in changed.json()
+    assert "remaining_qty" not in changed.json()
+
+    filtered = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"status": "供应商已确认，等待财务安排"},
+    )
+    assert filtered.status_code == 200, filtered.text
+    assert [item["line_id"] for item in filtered.json()["items"]] == [first_record["line_id"]]
 
     duplicate = await client.post(
         f"/api/v1/purchase-materials/{first['id']}/move-to-record",
@@ -307,7 +347,7 @@ async def test_flat_purchase_records_support_tracking_fields(client: AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_record_receipts_update_flat_arrival_progress(client: AsyncClient) -> None:
+async def test_inventory_inbound_does_not_change_purchase_record(client: AsyncClient) -> None:
     purchase = await auth_headers(client, "purchase")
     warehouse = await auth_headers(client, "warehouse")
     stock_id = await create_stock(client, warehouse, "智能电机保护器")
@@ -321,42 +361,26 @@ async def test_record_receipts_update_flat_arrival_progress(client: AsyncClient)
     )
     record = await move_to_record(client, purchase, int(plan["id"]))
 
-    def receipt_payload(request_id: str, quantity: str) -> dict[str, object]:
-        return {
-            "client_request_id": request_id,
+    inbound = await client.post(
+        "/api/v1/inventory/inbounds",
+        headers=warehouse,
+        json={
+            "client_request_id": "independent-inbound",
             "occurred_at": "2026-07-17T10:00:00+08:00",
-            "source_type": "PURCHASE_RECEIPT",
-            "business_reason": "",
-            "lines": [
-                {
-                    "stock_material_id": stock_id,
-                    "quantity": quantity,
-                    "purchase_request_line_id": record["line_id"],
-                }
-            ],
-        }
-
-    partial = await client.post(
-        "/api/v1/inventory/inbounds",
-        headers=warehouse,
-        json=receipt_payload("receipt-1", "2"),
+            "source_type": "MANUAL",
+            "business_reason": "普通入库，与申购记录无关",
+            "lines": [{"stock_material_id": stock_id, "quantity": "5"}],
+        },
     )
-    assert partial.status_code == 201, partial.text
-    progress = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=purchase)
-    assert progress.json()["received_qty"] == "2"
-    assert progress.json()["remaining_qty"] == "3"
-    assert progress.json()["status"] == "PARTIALLY_RECEIVED"
-
-    full = await client.post(
-        "/api/v1/inventory/inbounds",
-        headers=warehouse,
-        json=receipt_payload("receipt-2", "3"),
+    assert inbound.status_code == 201, inbound.text
+    unchanged = await client.get(
+        f"/api/v1/purchase-records/{record['line_id']}", headers=purchase
     )
-    assert full.status_code == 201, full.text
-    progress = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=purchase)
-    assert progress.json()["received_qty"] == "5"
-    assert progress.json()["remaining_qty"] == "0"
-    assert progress.json()["status"] == "COMPLETED"
+    assert unchanged.status_code == 200, unchanged.text
+    assert unchanged.json()["purchase_qty"] == "5"
+    assert unchanged.json()["status"] == "已申购"
+    assert "received_qty" not in unchanged.json()
+    assert "remaining_qty" not in unchanged.json()
 
 
 @pytest.mark.asyncio

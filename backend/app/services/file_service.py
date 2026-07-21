@@ -64,7 +64,7 @@ def _render_preview(source: Path, size: int) -> bytes:
     return output.getvalue()
 
 
-async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) -> FileObjectRead:
+async def save_image(session: AsyncSession, upload: UploadFile) -> FileObjectRead:
     if upload.content_type not in ACCEPTED_TYPES:
         raise AppError("INVALID_IMAGE_TYPE", "仅支持 JPEG、PNG 或 WebP 图片")
     raw = await upload.read(settings.max_image_bytes + 1)
@@ -93,8 +93,6 @@ async def save_image(session: AsyncSession, upload: UploadFile, user_id: int) ->
         width=width,
         height=height,
         sha256=hashlib.sha256(data).hexdigest(),
-        created_by=user_id,
-        updated_by=user_id,
     )
     session.add(item)
     try:

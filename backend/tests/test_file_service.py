@@ -43,7 +43,7 @@ async def test_upload_removes_disk_file_when_database_commit_fails(
     session = FailingCommitSession()
 
     with pytest.raises(RuntimeError, match="commit failed"):
-        await save_image(session, upload, 1)  # type: ignore[arg-type]
+        await save_image(session, upload)  # type: ignore[arg-type]
 
     assert session.rolled_back is True
     assert list(settings.upload_dir.glob("*.png")) == []

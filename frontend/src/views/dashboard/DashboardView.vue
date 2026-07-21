@@ -11,11 +11,8 @@ const loading = ref(true)
 const summary = ref<DashboardSummary>({
   stock_material_count: 0,
   low_stock_count: 0,
-  pending_purchase_count: 0,
-  on_order_count: 0,
   uncoded_purchase_material_count: 0,
-  pending_purchase_request_count: 0,
-  partially_received_count: 0,
+  purchase_record_count: 0,
 })
 const lowStock = ref<InventoryBalance[]>([])
 const cards = computed(() => [
@@ -28,7 +25,7 @@ const cards = computed(() => [
   {
     label: '低库存',
     value: summary.value.low_stock_count,
-    hint: `急需申购 ${summary.value.pending_purchase_count}`,
+    hint: '按最低库存阈值统计',
     color: '#d03050',
   },
   {
@@ -38,9 +35,9 @@ const cards = computed(() => [
     color: '#f0a020',
   },
   {
-    label: '待跟踪申购',
-    value: summary.value.pending_purchase_request_count,
-    hint: `部分到货 ${summary.value.partially_received_count}`,
+    label: '申购记录',
+    value: summary.value.purchase_record_count,
+    hint: '用于整理和统计',
     color: '#18a058',
   },
 ])
@@ -121,9 +118,7 @@ onMounted(load)
             </td>
             <td>{{ item.current_qty }} {{ item.unit_name }}</td>
             <td>
-              <n-tag :type="item.warning_state === 'ON_ORDER' ? 'info' : 'error'">{{
-                item.warning_state === 'ON_ORDER' ? '已申购待入库' : '急需申购'
-              }}</n-tag>
+              <n-tag type="error">低库存</n-tag>
             </td>
             <td>
               <n-button

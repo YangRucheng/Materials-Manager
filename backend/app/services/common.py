@@ -10,8 +10,8 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, version_conflict
-from app.models import BusinessEventLog, FileObject, User
-from app.schemas import BusinessEventRead, FileObjectRead, Page
+from app.models import BusinessEventLog, FileObject
+from app.schemas import FileObjectRead, Page
 
 
 def utcnow() -> datetime:
@@ -84,7 +84,6 @@ async def log_event(
     business_type: str,
     business_id: int,
     action: str,
-    user_id: int,
     old_status: str | None = None,
     new_status: str | None = None,
     remark: str | None = None,
@@ -97,7 +96,6 @@ async def log_event(
         action=action,
         old_status=old_status,
         new_status=new_status,
-        operator_id=user_id,
         occurred_at=utcnow(),
         remark=remark,
         before_data=before_data,
@@ -106,31 +104,3 @@ async def log_event(
     session.add(event)
     await session.flush()
     return event
-
-
-async def event_reads(
-    session: AsyncSession, business_type: str, business_id: int
-) -> list[BusinessEventRead]:
-    rows = (
-        await session.execute(
-            select(BusinessEventLog, User.display_name)
-            .join(User, User.id == BusinessEventLog.operator_id)
-            .where(
-                BusinessEventLog.business_type == business_type,
-                BusinessEventLog.business_id == business_id,
-            )
-            .order_by(BusinessEventLog.id)
-        )
-    ).all()
-    return [
-        BusinessEventRead(
-            id=event.id,
-            action=event.action,
-            old_status=event.old_status,
-            new_status=event.new_status,
-            operator_name=operator_name,
-            occurred_at=utc_aware(event.occurred_at),
-            remark=event.remark,
-        )
-        for event, operator_name in rows
-    ]

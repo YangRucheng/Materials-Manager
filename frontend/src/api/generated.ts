@@ -3,17 +3,8 @@
  * 页面与组件只引用这里的 DTO，避免各自定义不一致的接口结构。
  */
 export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_ONLY'
-export type PurchaseRequestStatus =
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'PROCESSING'
-  | 'RETURNED'
-  | 'PARTIALLY_RECEIVED'
-  | 'COMPLETED'
-  | 'CLOSED'
-  | 'CANCELED'
 export type OperationType = 'INBOUND' | 'OUTBOUND'
-export type SourceType = 'MANUAL' | 'PURCHASE_RECEIPT' | 'REVERSAL' | 'INITIALIZATION'
+export type SourceType = 'MANUAL' | 'REVERSAL' | 'INITIALIZATION'
 
 export interface ApiError {
   code: string
@@ -95,9 +86,7 @@ export interface InventoryBalance {
   decimal_places: number
   current_qty: string
   minimum_qty?: string
-  on_order_qty: string
   is_low_stock: boolean
-  warning_state?: 'PENDING_PURCHASE' | 'ON_ORDER'
   suggested_purchase_qty: string
   updated_at: string
 }
@@ -115,20 +104,17 @@ export interface StockOperationLine {
   quantity: string
   before_qty: string
   after_qty: string
-  purchase_request_line_id?: number
 }
 export interface StockOperation {
   id: number
   operation_no: string
   operation_type: OperationType
   occurred_at: string
-  operator_name: string
   business_reason: string
   receiver_name?: string
   subitem_no?: string
   source_type: SourceType
   reversal_of_id?: number
-  purchase_request_no?: string
   client_request_id: string
   lines: StockOperationLine[]
   created_at: string
@@ -141,7 +127,7 @@ export interface OperationWrite {
   business_reason: string
   receiver_name?: string
   subitem_no?: string
-  lines: Array<{ stock_material_id: number; quantity: string; purchase_request_line_id?: number }>
+  lines: Array<{ stock_material_id: number; quantity: string }>
 }
 export interface OperationUpdate {
   version: number
@@ -151,16 +137,13 @@ export interface OperationUpdate {
   business_reason: string
   receiver_name?: string
   subitem_no?: string
-  lines: Array<{ stock_material_id: number; quantity: string; purchase_request_line_id?: number }>
+  lines: Array<{ stock_material_id: number; quantity: string }>
 }
 export interface DashboardSummary {
   stock_material_count: number
   low_stock_count: number
-  pending_purchase_count: number
-  on_order_count: number
   uncoded_purchase_material_count: number
-  pending_purchase_request_count: number
-  partially_received_count: number
+  purchase_record_count: number
 }
 export interface PurchaseMaterial {
   id: number
@@ -202,15 +185,6 @@ export interface PurchaseMaterialWrite {
   image_ids: string[]
   version?: number
 }
-export interface BusinessEvent {
-  id: number
-  action: string
-  old_status?: string
-  new_status?: string
-  operator_name: string
-  occurred_at: string
-  remark?: string
-}
 export interface PurchaseRequestLine {
   id: number
   purchase_material_id: number
@@ -218,8 +192,8 @@ export interface PurchaseRequestLine {
   material_name_snapshot: string
   model_spec_snapshot: string
   unit_name_snapshot: string
-  requested_qty: string
-  received_qty: string
+  purchase_qty: string
+  status: string
   usage: string
   subitem_no?: string
 }
@@ -227,19 +201,12 @@ export interface PurchaseRequest {
   id: number
   purchase_order_no?: string | null
   trace_no?: string | null
-  status: PurchaseRequestStatus
-  applicant_name: string
-  handler_name?: string
   salesperson?: string
-  remark?: string
-  return_reason?: string
-  close_reason?: string
+  record_remark?: string
   purchase_date?: string
-  completed_at?: string
   created_at: string
   version: number
   lines: PurchaseRequestLine[]
-  events: BusinessEvent[]
 }
 export interface PurchaseRecord {
   line_id: number
@@ -249,54 +216,54 @@ export interface PurchaseRecord {
   plan_date: string
   purchase_order_no?: string | null
   trace_no?: string | null
-  status: PurchaseRequestStatus
-  material_code: string
+  status: string
+  material_code?: string
   material_name: string
   model_spec: string
+  unit_id: number
   unit_name: string
-  planned_qty: string
-  received_qty: string
-  remaining_qty: string
+  purchase_qty: string
   actual_demand_person: string
   purchase_responsible: string
   salesperson?: string
-  remark?: string
+  plan_remark?: string
+  record_remark?: string
   usage: string
   subitem_no?: string
   images: FileObject[]
   stock_material_id?: number
   purchase_date?: string
   created_at: string
+  updated_at: string
   version: number
 }
-export interface PurchaseRequestWrite {
+export interface PurchaseRecordWrite {
+  plan_date: string
+  material_code?: string
+  material_name: string
+  model_spec: string
+  unit_id: number | null
+  actual_demand_person: string
+  purchase_responsible: string
+  purchase_qty: string
+  usage: string
+  subitem_no?: string
+  plan_remark?: string
+  stock_material_id?: number
+  image_ids: string[]
   purchase_order_no?: string | null
   trace_no?: string | null
-  purchase_date?: string
-  remark?: string
-  version?: number
-  lines: Array<{
-    id?: number
-    purchase_material_id: number | null
-    requested_qty: string
-    usage: string
-    subitem_no?: string
-  }>
+  purchase_date: string
+  salesperson?: string
+  status: string
+  record_remark?: string
+  version: number
 }
 export interface MovePurchasePlansWrite {
   purchase_order_no?: string | null
   trace_no?: string | null
   purchase_date: string
   salesperson?: string
-  remark?: string
-}
-export interface PreparedInbound {
-  purchase_request_no?: string
-  line_id: number
-  purchase_material_id: number
-  material_name: string
-  model_spec: string
-  unit_name: string
-  remaining_qty: string
-  stock_material_id?: number
+  status: string
+  record_remark?: string
 }

@@ -43,7 +43,8 @@ const batchForm = reactive({
   trace_no: '',
   purchase_date: Date.now(),
   salesperson: '',
-  remark: '',
+  status: '已申购',
+  record_remark: '',
 })
 const selectedPlans = computed(() => {
   const selected = new Set(checkedRowKeys.value.map(Number))
@@ -235,7 +236,8 @@ function openBatchMove() {
     trace_no: '',
     purchase_date: Date.now(),
     salesperson: '',
-    remark: '',
+    status: '已申购',
+    record_remark: '',
   })
   showBatch.value = true
 }
@@ -253,7 +255,8 @@ async function batchMove() {
         trace_no: batchForm.trace_no.trim() || null,
         purchase_date: toShanghaiDate(batchForm.purchase_date),
         salesperson: batchForm.salesperson.trim() || undefined,
-        remark: batchForm.remark.trim() || undefined,
+        status: batchForm.status.trim(),
+        record_remark: batchForm.record_remark.trim() || undefined,
       },
     )
     message.success(`已将 ${selectedPlans.value.length} 条计划转为申购记录`)
@@ -374,9 +377,17 @@ onMounted(() => {
           <n-form-item label="业务员">
             <n-input v-model:value="batchForm.salesperson" maxlength="128" />
           </n-form-item>
+          <n-form-item label="状态" required>
+            <n-input v-model:value="batchForm.status" maxlength="128" />
+          </n-form-item>
         </div>
-        <n-form-item label="备注">
-          <n-input v-model:value="batchForm.remark" type="textarea" maxlength="1000" show-count />
+        <n-form-item label="记录备注">
+          <n-input
+            v-model:value="batchForm.record_remark"
+            type="textarea"
+            maxlength="1000"
+            show-count
+          />
         </n-form-item>
       </n-form>
       <template #footer>

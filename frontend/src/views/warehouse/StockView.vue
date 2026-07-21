@@ -41,15 +41,11 @@ const columns: DataTableColumns<InventoryBalance> = [
   { title: '当前库存', key: 'current_qty', width: 100 },
   {
     title: '预警状态',
-    key: 'warning_state',
+    key: 'is_low_stock',
     width: 140,
     render: (r) =>
       r.is_low_stock
-        ? h(
-            NTag,
-            { type: r.warning_state === 'ON_ORDER' ? 'info' : 'error', size: 'small' },
-            { default: () => (r.warning_state === 'ON_ORDER' ? '已申购待入库' : '急需申购') },
-          )
+        ? h(NTag, { type: 'error', size: 'small' }, { default: () => '低库存' })
         : h(NTag, { size: 'small' }, { default: () => '正常' }),
   },
   {

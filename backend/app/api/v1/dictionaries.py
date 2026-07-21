@@ -43,9 +43,7 @@ async def units(
 async def add_unit(
     data: MeasurementUnitCreate, session: DbSession, user: SuperAdmin
 ) -> MeasurementUnitRead:
-    return MeasurementUnitRead.model_validate(
-        await dictionary_service.create_unit(session, data, user.id)
-    )
+    return MeasurementUnitRead.model_validate(await dictionary_service.create_unit(session, data))
 
 
 @router.patch("/measurement-units/{item_id}", response_model=MeasurementUnitRead)
@@ -53,7 +51,7 @@ async def edit_unit(
     item_id: int, data: MeasurementUnitUpdate, session: DbSession, user: SuperAdmin
 ) -> MeasurementUnitRead:
     return MeasurementUnitRead.model_validate(
-        await dictionary_service.update_unit(session, item_id, data, user.id)
+        await dictionary_service.update_unit(session, item_id, data)
     )
 
 

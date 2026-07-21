@@ -6,11 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.domain.enums import ON_ORDER_REQUEST_STATUSES
 from app.models import (
     PurchaseMaterial,
-    PurchaseRequest,
-    PurchaseRequestLine,
     StockMaterial,
     StockReplenishmentPolicy,
 )
@@ -30,7 +27,6 @@ async def set_policy(
     session: AsyncSession,
     material: StockMaterial,
     data: ReplenishmentPolicyWrite,
-    user_id: int,
 ) -> StockMaterial:
     validate_quantity_precision(data.minimum_qty, material.unit.decimal_places)
     policy = material.replenishment_policy
@@ -39,8 +35,6 @@ async def set_policy(
             stock_material_id=material.id,
             minimum_qty=data.minimum_qty,
             enabled=data.enabled,
-            created_by=user_id,
-            updated_by=user_id,
         )
         session.add(policy)
         material.replenishment_policy = policy
@@ -48,7 +42,6 @@ async def set_policy(
         validate_version(data.version, policy.version)
         policy.minimum_qty = data.minimum_qty
         policy.enabled = data.enabled
-        policy.updated_by = user_id
         policy.version += 1
     await session.flush()
     return material
@@ -58,7 +51,6 @@ async def create_replenishment_draft(
     session: AsyncSession,
     stock_material_id: int,
     data: ReplenishmentDraftCreate,
-    user_id: int,
 ) -> ReplenishmentDraftRead:
     stock = await get_stock_material(session, stock_material_id)
     if stock.balance is None:
@@ -67,23 +59,9 @@ async def create_replenishment_draft(
     if policy is None or not policy.enabled or stock.balance.quantity > policy.minimum_qty:
         raise AppError("NOT_LOW_STOCK", "该物资当前不在低库存范围", status_code=409)
 
-    rows = await session.execute(
-        select(PurchaseRequestLine.requested_qty, PurchaseRequestLine.received_qty)
-        .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
-        .join(PurchaseMaterial, PurchaseMaterial.id == PurchaseRequestLine.purchase_material_id)
-        .where(
-            PurchaseMaterial.stock_material_id == stock.id,
-            PurchaseRequest.status.in_(ON_ORDER_REQUEST_STATUSES),
-        )
-    )
-    on_order = sum((requested - received for requested, received in rows), start=ZERO)
-    suggested = max(policy.minimum_qty - stock.balance.quantity - on_order, ZERO)
+    suggested = max(policy.minimum_qty - stock.balance.quantity, ZERO)
     if suggested == ZERO:
-        raise AppError(
-            "REPLENISHMENT_NOT_REQUIRED",
-            "现有在途数量已覆盖最低库存，无需重复发起",
-            status_code=409,
-        )
+        raise AppError("REPLENISHMENT_NOT_REQUIRED", "当前库存无需补库", status_code=409)
     validate_quantity_precision(data.planned_qty, stock.unit.decimal_places)
 
     previous_code = await session.scalar(
@@ -114,6 +92,5 @@ async def create_replenishment_draft(
             stock_material_id=stock.id,
             image_ids=[link.file_id for link in stock.images],
         ),
-        user_id,
     )
     return ReplenishmentDraftRead(next="purchase_material", resource_id=purchase.id)

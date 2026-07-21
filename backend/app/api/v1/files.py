@@ -19,7 +19,7 @@ FileWriter = Annotated[
 
 @router.post("", response_model=FileObjectRead, status_code=status.HTTP_201_CREATED)
 async def upload(file: UploadFile, session: DbSession, user: FileWriter) -> FileObjectRead:
-    return await file_service.save_image(session, file, user.id)
+    return await file_service.save_image(session, file)
 
 
 @router.get("/orphans", response_model=OrphanFileReportRead)

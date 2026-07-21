@@ -16,7 +16,6 @@ from app.models import (
     StockBalance,
     StockMaterial,
     StockMaterialImage,
-    User,
 )
 from app.schemas import (
     PurchaseMaterialCreate,
@@ -82,9 +81,7 @@ async def get_stock_material(session: AsyncSession, material_id: int) -> StockMa
     return item
 
 
-async def create_stock_material(
-    session: AsyncSession, data: StockMaterialCreate, user_id: int
-) -> StockMaterial:
+async def create_stock_material(session: AsyncSession, data: StockMaterialCreate) -> StockMaterial:
     unit = await _unit(session, data.unit_id)
     files = await _files(session, data.image_ids)
     item = StockMaterial(
@@ -94,8 +91,6 @@ async def create_stock_material(
         remark=data.remark,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
         enabled=True,
-        created_by=user_id,
-        updated_by=user_id,
     )
     item.unit = unit
     item.balance = StockBalance(quantity=0)
@@ -115,7 +110,7 @@ async def create_stock_material(
 
 
 async def update_stock_material(
-    session: AsyncSession, item: StockMaterial, data: StockMaterialUpdate, user_id: int
+    session: AsyncSession, item: StockMaterial, data: StockMaterialUpdate
 ) -> StockMaterial:
     validate_version(data.version, item.version)
     unit = await _unit(session, data.unit_id)
@@ -130,7 +125,6 @@ async def update_stock_material(
         StockMaterialImage(file_id=file.id, file=file, sort_order=index)
         for index, file in enumerate(files)
     ]
-    item.updated_by = user_id
     item.version += 1
     try:
         await session.flush()
@@ -213,11 +207,10 @@ async def _next_plan_no(session: AsyncSession, plan_date: date) -> str:
 
 
 async def create_purchase_material(
-    session: AsyncSession, data: PurchaseMaterialCreate, user_id: int
+    session: AsyncSession, data: PurchaseMaterialCreate
 ) -> PurchaseMaterial:
     unit = await _unit(session, data.unit_id)
-    current_user_name = await session.scalar(select(User.display_name).where(User.id == user_id))
-    responsible = data.purchase_responsible or current_user_name or "待补充"
+    responsible = data.purchase_responsible or "待补充"
     validate_quantity_precision(data.planned_qty, unit.decimal_places)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
@@ -238,8 +231,6 @@ async def create_purchase_material(
         stock_material_id=data.stock_material_id,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
         enabled=True,
-        created_by=user_id,
-        updated_by=user_id,
         images=[
             PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
             for index, file in enumerate(files)
@@ -253,7 +244,7 @@ async def create_purchase_material(
 
 
 async def update_purchase_material(
-    session: AsyncSession, item: PurchaseMaterial, data: PurchaseMaterialUpdate, user_id: int
+    session: AsyncSession, item: PurchaseMaterial, data: PurchaseMaterialUpdate
 ) -> PurchaseMaterial:
     validate_version(data.version, item.version)
     unit = await _unit(session, data.unit_id)
@@ -286,7 +277,6 @@ async def update_purchase_material(
         PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
         for index, file in enumerate(files)
     ]
-    item.updated_by = user_id
     item.version += 1
     await session.flush()
     return item

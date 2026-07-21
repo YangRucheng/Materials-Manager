@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
 import { NButton, NTag, type DataTableColumns } from 'naive-ui'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type { StockOperation } from '@/api/generated'
 import { inventoryApi } from '@/api/inventory'
 import { formatShanghaiTime } from '@/utils/time'
 
 const router = useRouter()
-const route = useRoute()
 const items = ref<StockOperation[]>([])
 const loading = ref(false)
 const total = ref(0)
@@ -17,8 +16,6 @@ const filters = reactive({
   operation_no: '',
   operation_type: null as string | null,
   material_name: '',
-  operator_name: '',
-  purchase_request_no: String(route.query.purchase_request_no || ''),
 })
 const columns: DataTableColumns<StockOperation> = [
   {
@@ -59,13 +56,6 @@ const columns: DataTableColumns<StockOperation> = [
     render: (r) => r.lines.map((x) => `${x.material_name} × ${x.quantity}`).join('；'),
   },
   { title: '原因', key: 'business_reason' },
-  { title: '操作人', key: 'operator_name', width: 100 },
-  {
-    title: '来源追溯号',
-    key: 'purchase_request_no',
-    width: 140,
-    render: (r) => r.purchase_request_no || '—',
-  },
   {
     title: '操作',
     key: 'action',
@@ -127,14 +117,6 @@ onMounted(load)
         /><n-input
           v-model:value="filters.material_name"
           placeholder="物资名称"
-          style="width: 150px"
-        /><n-input
-          v-model:value="filters.operator_name"
-          placeholder="操作人"
-          style="width: 120px"
-        /><n-input
-          v-model:value="filters.purchase_request_no"
-          placeholder="来源追溯号"
           style="width: 150px"
         /><n-date-picker v-model:value="dateRange" type="datetimerange" clearable /><n-button
           type="primary"

@@ -21,8 +21,7 @@ const model = reactive({
   business_reason: '',
   receiver_name: '',
   subitem_no: '',
-  source_type: (props.operationType === 'INBOUND' ? 'MANUAL' : 'MANUAL') as
-    'MANUAL' | 'PURCHASE_RECEIPT' | 'INITIALIZATION',
+  source_type: 'MANUAL' as 'MANUAL' | 'INITIALIZATION',
   lines: [{ stock_material_id: null, quantity: '' }] as OperationLineModel[],
 })
 const title = computed(() => (props.operationType === 'INBOUND' ? '办理入库' : '办理出库'))
@@ -49,7 +48,6 @@ async function submit() {
       lines: model.lines.map((x) => ({
         stock_material_id: x.stock_material_id!,
         quantity: x.quantity,
-        purchase_request_line_id: x.purchase_request_line_id,
       })),
     }
     const result =
@@ -94,16 +92,9 @@ onMounted(async () => {
       {
         stock_material_id: id,
         quantity: String(route.query.quantity || ''),
-        purchase_request_line_id: route.query.purchase_line_id
-          ? Number(route.query.purchase_line_id)
-          : undefined,
         material,
       },
     ]
-    if (route.query.purchase_line_id) {
-      model.source_type = 'PURCHASE_RECEIPT'
-      model.business_reason = `申购物资到货（${route.query.request_no || ''}）`
-    }
   }
 })
 </script>
@@ -130,7 +121,6 @@ onMounted(async () => {
               v-model:value="model.source_type"
               :options="[
                 { label: '手工入库', value: 'MANUAL' },
-                { label: '申购到货', value: 'PURCHASE_RECEIPT' },
                 { label: '初始化入库', value: 'INITIALIZATION' },
               ]" /></n-form-item
           ><n-form-item v-if="operationType === 'OUTBOUND'" label="领用人" required

@@ -66,12 +66,8 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
                     name="个",
                     decimal_places=0,
                     enabled=True,
-                    created_by=1,
-                    updated_by=1,
                 ),
-                MeasurementUnit(
-                    code="M", name="米", decimal_places=1, enabled=True, created_by=1, updated_by=1
-                ),
+                MeasurementUnit(code="M", name="米", decimal_places=1, enabled=True),
             ]
         )
         await session.commit()

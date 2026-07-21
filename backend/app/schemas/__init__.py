@@ -14,7 +14,6 @@ from pydantic import (
 
 from app.domain.enums import (
     OperationType,
-    PurchaseRequestStatus,
     Role,
     SourceType,
 )
@@ -240,9 +239,7 @@ class InventoryBalanceRead(ReadModel):
     decimal_places: int
     current_qty: Decimal
     minimum_qty: Decimal | None = None
-    on_order_qty: Decimal
     is_low_stock: bool
-    warning_state: Literal["PENDING_PURCHASE", "ON_ORDER"] | None = None
     suggested_purchase_qty: Decimal
     updated_at: datetime
 
@@ -250,7 +247,6 @@ class InventoryBalanceRead(ReadModel):
 class OperationLineWrite(RequestModel):
     stock_material_id: int
     quantity: PositiveQuantity
-    purchase_request_line_id: int | None = None
 
 
 class OperationCreate(RequestModel):
@@ -318,7 +314,6 @@ class StockOperationLineRead(ReadModel):
     quantity: Decimal
     before_qty: Decimal
     after_qty: Decimal
-    purchase_request_line_id: int | None = None
 
 
 class StockOperationRead(ReadModel):
@@ -326,13 +321,11 @@ class StockOperationRead(ReadModel):
     operation_no: str
     operation_type: OperationType
     occurred_at: datetime
-    operator_name: str
     business_reason: str
     receiver_name: str | None = None
     subitem_no: str | None = None
     source_type: SourceType
     reversal_of_id: int | None = None
-    purchase_request_no: str | None = None
     client_request_id: str
     lines: list[StockOperationLineRead]
     created_at: datetime
@@ -412,78 +405,8 @@ class LinkStockMaterialRequest(RequestModel):
     version: int | None = None
 
 
-class BusinessEventRead(ReadModel):
-    id: int
-    action: str
-    old_status: str | None = None
-    new_status: str | None = None
-    operator_name: str
-    occurred_at: datetime
-    remark: str | None = None
-
-
 class ActionVersion(RequestModel):
     version: int | None = None
-
-
-class ReasonAction(ActionVersion):
-    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
-
-
-class PurchaseRequestLineWrite(RequestModel):
-    id: int | None = None
-    purchase_material_id: int
-    requested_qty: PositiveQuantity
-    usage: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
-    subitem_no: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
-    ) = None
-
-
-class PurchaseRequestCreate(RequestModel):
-    purchase_order_no: (
-        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
-    ) = None
-    trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
-    purchase_date: date | None = None
-    remark: str | None = Field(default=None, max_length=1000)
-    lines: list[PurchaseRequestLineWrite] = Field(default_factory=list)
-
-
-class PurchaseRequestUpdate(PurchaseRequestCreate):
-    version: int
-
-
-class PurchaseRequestLineRead(ReadModel):
-    id: int
-    purchase_material_id: int
-    material_code_snapshot: str | None = None
-    material_name_snapshot: str
-    model_spec_snapshot: str
-    unit_name_snapshot: str
-    requested_qty: Decimal
-    received_qty: Decimal
-    usage: str
-    subitem_no: str | None = None
-
-
-class PurchaseRequestRead(ReadModel):
-    id: int
-    purchase_order_no: str | None = None
-    trace_no: str | None = None
-    status: PurchaseRequestStatus
-    applicant_name: str
-    handler_name: str | None = None
-    salesperson: str | None = None
-    remark: str | None = None
-    return_reason: str | None = None
-    close_reason: str | None = None
-    purchase_date: date | None = None
-    completed_at: datetime | None = None
-    created_at: datetime
-    version: int
-    lines: list[PurchaseRequestLineRead]
-    events: list[BusinessEventRead]
 
 
 class MovePurchasePlanRequest(RequestModel):
@@ -496,7 +419,10 @@ class MovePurchasePlanRequest(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
-    remark: str | None = Field(default=None, max_length=1000)
+    status: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ] = "已申购"
+    record_remark: str | None = Field(default=None, max_length=1000)
 
 
 class BatchMovePurchasePlansRequest(MovePurchasePlanRequest):
@@ -522,6 +448,31 @@ class PurchasePlanExportRequest(RequestModel):
 
 
 class PurchaseRecordUpdate(RequestModel):
+    plan_date: date
+    material_code: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    material_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    model_spec: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+    ]
+    unit_id: int
+    actual_demand_person: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    purchase_responsible: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    purchase_qty: PositiveQuantity
+    usage: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    plan_remark: str | None = Field(default=None, max_length=1000)
+    stock_material_id: int | None = None
+    image_ids: list[FileId] = Field(default_factory=list, max_length=9)
     purchase_order_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
@@ -531,8 +482,14 @@ class PurchaseRecordUpdate(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
-    remark: str | None = Field(default=None, max_length=1000)
+    status: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+    record_remark: str | None = Field(default=None, max_length=1000)
     version: int
+
+    _unique_images = field_validator("image_ids")(StockMaterialBase.unique_images)
+    _empty_code = field_validator("material_code", mode="before")(
+        PurchaseMaterialBase.empty_code_to_none
+    )
 
 
 class PurchaseRecordRead(ReadModel):
@@ -543,36 +500,26 @@ class PurchaseRecordRead(ReadModel):
     plan_date: date
     purchase_order_no: str | None = None
     trace_no: str | None = None
-    status: PurchaseRequestStatus
-    material_code: str
+    status: str
+    material_code: str | None = None
     material_name: str
     model_spec: str
+    unit_id: int
     unit_name: str
-    planned_qty: Decimal
-    received_qty: Decimal
-    remaining_qty: Decimal
+    purchase_qty: Decimal
     actual_demand_person: str
     purchase_responsible: str
     salesperson: str | None = None
-    remark: str | None = None
+    plan_remark: str | None = None
+    record_remark: str | None = None
     usage: str
     subitem_no: str | None = None
     images: list[FileObjectRead]
     stock_material_id: int | None = None
     purchase_date: date | None = None
     created_at: datetime
+    updated_at: datetime
     version: int
-
-
-class PreparedInboundRead(ReadModel):
-    purchase_request_no: str | None = None
-    line_id: int
-    purchase_material_id: int
-    material_name: str
-    model_spec: str
-    unit_name: str
-    remaining_qty: Decimal
-    stock_material_id: int | None = None
 
 
 class ReplenishmentDraftCreate(RequestModel):
@@ -593,11 +540,8 @@ class ReplenishmentDraftRead(ReadModel):
 class DashboardSummaryRead(ReadModel):
     stock_material_count: int
     low_stock_count: int
-    pending_purchase_count: int
-    on_order_count: int
     uncoded_purchase_material_count: int
-    pending_purchase_request_count: int
-    partially_received_count: int
+    purchase_record_count: int
 
 
 __all__ = [name for name in globals() if not name.startswith("_")]
