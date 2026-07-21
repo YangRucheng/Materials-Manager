@@ -153,7 +153,11 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         client, headers, int(first["id"]), trace_no="TRACE-LIKE-001"
     )
     second_record = await move_to_record(
-        client, headers, int(second["id"]), trace_no="TRACE-OTHER-002"
+        client,
+        headers,
+        int(second["id"]),
+        trace_no="TRACE-OTHER-002",
+        salesperson="钱经理",
     )
     async with SessionLocal() as session:
         line = await session.get(PurchaseRequestLine, int(first_record["line_id"]))
@@ -184,6 +188,7 @@ async def test_purchase_lists_support_field_like_and_person_filters(
             "name": "接触",
             "model_spec": "220V",
             "purchase_responsible": "王",
+            "salesperson": "钱",
         },
     )
     assert combined_record_search.status_code == 200, combined_record_search.text
@@ -191,11 +196,22 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         item["purchase_material_id"] for item in combined_record_search.json()["items"]
     ] == [second["id"]]
 
+    salesperson_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"salesperson": "钱"},
+    )
+    assert salesperson_search.status_code == 200, salesperson_search.text
+    assert [item["line_id"] for item in salesperson_search.json()["items"]] == [
+        second_record["line_id"]
+    ]
+
     record_options = await client.get(
         "/api/v1/purchase-records/filter-options", headers=headers
     )
     assert record_options.status_code == 200, record_options.text
     assert set(record_options.json()["actual_demand_persons"]) == {"张三", "李四"}
+    assert set(record_options.json()["salespersons"]) == {"赵经理", "钱经理"}
     assert record_options.json()["statuses"] == ["已申购"]
 
     selected_status = await client.get(
@@ -224,6 +240,7 @@ async def move_to_record(
     headers: dict[str, str],
     plan_id: int,
     trace_no: str = "ZS-2026-001",
+    salesperson: str = "赵经理",
 ) -> dict[str, object]:
     response = await client.post(
         f"/api/v1/purchase-materials/{plan_id}/move-to-record",
@@ -232,7 +249,7 @@ async def move_to_record(
             "purchase_order_no": "SG-2026-001",
             "trace_no": trace_no,
             "purchase_date": "2026-07-18",
-            "salesperson": "赵经理",
+            "salesperson": salesperson,
             "status": "已申购",
             "record_remark": "供应商信息待补充",
         },

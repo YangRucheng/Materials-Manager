@@ -150,6 +150,7 @@ export interface PurchaseFilterOptions {
   purchase_responsibles: string[]
 }
 export interface PurchaseRecordFilterOptions extends PurchaseFilterOptions {
+  salespersons: string[]
   statuses: string[]
 }
 export interface PurchaseMaterial {
