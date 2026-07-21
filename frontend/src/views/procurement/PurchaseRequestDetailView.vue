@@ -10,6 +10,7 @@ import { useDictionaryStore } from '@/stores/dictionaries'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import { requestStatusLabels, statusTagType } from '@/utils/status'
 import { dateToTimestamp, formatDate, toShanghaiDate } from '@/utils/time'
+import { imagePreviewUrl, imageUrl } from '@/utils/image'
 
 const route = useRoute()
 const router = useRouter()
@@ -239,14 +240,20 @@ onMounted(() => {
           record.subitem_no || '—'
         }}</n-descriptions-item>
       </n-descriptions>
+      <n-divider>附件</n-divider>
+      <n-space v-if="record.images.length">
+        <n-image
+          v-for="image in record.images"
+          :key="image.id"
+          :src="imagePreviewUrl(image.id, 320)"
+          :preview-src="imageUrl(image.id)"
+          width="120"
+          height="120"
+          object-fit="cover"
+        />
+      </n-space>
+      <n-empty v-else description="暂无附件" size="small" />
     </n-card>
-    <n-button
-      v-if="record.trace_no"
-      text
-      type="primary"
-      @click="router.push({ name: 'operations', query: { purchase_request_no: record.trace_no } })"
-      >查看关联入库流水 →</n-button
-    >
     <n-modal
       v-model:show="linkModal.show"
       preset="card"

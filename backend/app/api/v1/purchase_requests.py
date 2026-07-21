@@ -15,9 +15,7 @@ from app.schemas import (
     PurchaseRequestRead,
     PurchaseRequestUpdate,
     ReasonAction,
-    StockOperationRead,
 )
-from app.services import inventory_service
 from app.services import purchase_request_service as service
 
 router = APIRouter(tags=["申购记录"])
@@ -112,14 +110,6 @@ async def close(
 ) -> PurchaseRequestRead:
     item = await service.close_request(session, await _locked(session, request_id), data, user.id)
     return await service.request_read(session, item)
-
-
-@router.get("/purchase-requests/{request_id}/receipts", response_model=list[StockOperationRead])
-async def receipts(
-    request_id: int, session: DbSession, user: CurrentUser
-) -> list[StockOperationRead]:
-    items = await service.receipt_operations(session, request_id)
-    return [await inventory_service.operation_read(session, item) for item in items]
 
 
 @router.post(

@@ -204,12 +204,14 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     policy = await client.put(
         f"/api/v1/stock-materials/{material_id}/replenishment-policy",
         headers=warehouse,
-        json={"minimum_qty": "3", "target_qty": "10", "enabled": True},
+        json={"minimum_qty": "3", "enabled": True},
     )
     assert policy.status_code == 200
+    assert "target_qty" not in policy.json()["replenishment_policy"]
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
     assert low.json()["items"][0]["warning_state"] == "PENDING_PURCHASE"
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "10"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "3"
+    assert "target_qty" not in low.json()["items"][0]
 
     missing_confirmation = await client.post(
         f"/api/v1/inventory/low-stock/{material_id}/create-replenishment-draft",
@@ -277,7 +279,7 @@ async def test_low_stock_on_order_calculation_and_disabled_material(client: Asyn
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
     assert low.json()["items"][0]["warning_state"] == "ON_ORDER"
     assert low.json()["items"][0]["on_order_qty"] == "5"
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "5"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "0"
 
     disabled = await client.post(
         f"/api/v1/stock-materials/{material_id}/disable", headers=warehouse, json={}

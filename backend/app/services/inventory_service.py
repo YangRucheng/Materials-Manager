@@ -735,7 +735,7 @@ async def inventory_balances(
         current = balance.quantity if balance else ZERO
         order_qty = on_order[item.id]
         low = bool(policy and policy.enabled and current <= policy.minimum_qty)
-        suggested = max((policy.target_qty if policy else ZERO) - current - order_qty, ZERO)
+        suggested = max((policy.minimum_qty if policy else ZERO) - current - order_qty, ZERO)
         result.append(
             InventoryBalanceRead(
                 stock_material_id=item.id,
@@ -745,7 +745,6 @@ async def inventory_balances(
                 decimal_places=item.unit.decimal_places,
                 current_qty=current,
                 minimum_qty=policy.minimum_qty if policy else None,
-                target_qty=policy.target_qty if policy else None,
                 on_order_qty=order_qty,
                 is_low_stock=low,
                 warning_state=("ON_ORDER" if order_qty > ZERO else "PENDING_PURCHASE")

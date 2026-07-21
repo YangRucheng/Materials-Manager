@@ -2408,62 +2408,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/purchase-requests/{request_id}/receipts:
-    get:
-      tags:
-      - 申购记录
-      summary: Receipts
-      operationId: receipts_api_v1_purchase_requests__request_id__receipts_get
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: request_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Request Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/StockOperationRead'
-                title: Response Receipts Api V1 Purchase Requests  Request Id  Receipts
-                  Get
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
   /api/v1/purchase-request-lines/{line_id}/prepare-inbound:
     post:
       tags:
@@ -3685,12 +3629,6 @@ components:
             pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
           - type: 'null'
           title: Minimum Qty
-        target_qty:
-          anyOf:
-          - type: string
-            pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
-          - type: 'null'
-          title: Target Qty
         on_order_qty:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
@@ -4706,6 +4644,11 @@ components:
           - type: string
           - type: 'null'
           title: Subitem No
+        images:
+          items:
+            $ref: '#/components/schemas/FileObjectRead'
+          type: array
+          title: Images
         stock_material_id:
           anyOf:
           - type: integer
@@ -4742,6 +4685,7 @@ components:
       - actual_demand_person
       - purchase_responsible
       - usage
+      - images
       - created_at
       - version
       title: PurchaseRecordRead
@@ -5103,10 +5047,6 @@ components:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
           title: Minimum Qty
-        target_qty:
-          type: string
-          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
-          title: Target Qty
         enabled:
           type: boolean
           title: Enabled
@@ -5117,7 +5057,6 @@ components:
       type: object
       required:
       - minimum_qty
-      - target_qty
       - enabled
       title: ReplenishmentPolicyRead
     ReplenishmentPolicyWrite:
@@ -5129,13 +5068,6 @@ components:
           - type: string
             pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
           title: Minimum Qty
-        target_qty:
-          anyOf:
-          - type: number
-            minimum: 0.0
-          - type: string
-            pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
-          title: Target Qty
         enabled:
           type: boolean
           title: Enabled
@@ -5149,7 +5081,6 @@ components:
       type: object
       required:
       - minimum_qty
-      - target_qty
       title: ReplenishmentPolicyWrite
     ReverseOperationRequest:
       properties:

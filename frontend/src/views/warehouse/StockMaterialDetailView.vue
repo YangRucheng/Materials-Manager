@@ -6,7 +6,7 @@ import { inventoryApi } from '@/api/inventory'
 import type { InventoryBalance, StockMaterial } from '@/api/generated'
 import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime } from '@/utils/time'
-import { compareDecimal, isDecimalString } from '@/utils/decimal'
+import { isDecimalString } from '@/utils/decimal'
 import { imagePreviewUrl, imageUrl } from '@/utils/image'
 
 const route = useRoute()
@@ -17,7 +17,7 @@ const material = ref<StockMaterial | null>(null)
 const balance = ref<InventoryBalance | null>(null)
 const loading = ref(true)
 const saving = ref(false)
-const policy = reactive({ minimum_qty: '0', target_qty: '0', enabled: true })
+const policy = reactive({ minimum_qty: '0', enabled: true })
 async function load() {
   loading.value = true
   try {
@@ -30,19 +30,15 @@ async function load() {
     balance.value = nextBalance
     Object.assign(
       policy,
-      material.value.replenishment_policy || { minimum_qty: '0', target_qty: '0', enabled: true },
+      material.value.replenishment_policy || { minimum_qty: '0', enabled: true },
     )
   } finally {
     loading.value = false
   }
 }
 async function savePolicy() {
-  if (
-    !isDecimalString(policy.minimum_qty, 1, true) ||
-    !isDecimalString(policy.target_qty, 1, true) ||
-    compareDecimal(policy.target_qty, policy.minimum_qty) < 0
-  ) {
-    message.error('目标库存必须大于或等于最低库存，且最多 1 位小数')
+  if (!isDecimalString(policy.minimum_qty, 1, true)) {
+    message.error('最低库存必须为非负数，且最多 1 位小数')
     return
   }
   saving.value = true
@@ -53,7 +49,6 @@ async function savePolicy() {
     })
     if (balance.value) {
       balance.value.minimum_qty = policy.minimum_qty
-      balance.value.target_qty = policy.target_qty
     }
     message.success('安全库存策略已保存')
   } catch (e) {
@@ -118,9 +113,6 @@ onMounted(load)
           ><n-descriptions-item label="最低库存">{{
             balance?.minimum_qty ?? '—'
           }}</n-descriptions-item
-          ><n-descriptions-item label="目标库存">{{
-            balance?.target_qty ?? '—'
-          }}</n-descriptions-item
           ><n-descriptions-item label="在途">{{ balance?.on_order_qty ?? '0' }}</n-descriptions-item
           ><n-descriptions-item label="建议申购">{{
             balance?.suggested_purchase_qty ?? '0'
@@ -128,10 +120,6 @@ onMounted(load)
         ><n-form label-placement="top"
           ><n-form-item label="最低库存"
             ><n-input v-model:value="policy.minimum_qty" :disabled="!auth.can('warehouse:write')"
-              ><template #suffix>{{ material.unit_name }}</template></n-input
-            ></n-form-item
-          ><n-form-item label="目标库存"
-            ><n-input v-model:value="policy.target_qty" :disabled="!auth.can('warehouse:write')"
               ><template #suffix>{{ material.unit_name }}</template></n-input
             ></n-form-item
           ><n-form-item
