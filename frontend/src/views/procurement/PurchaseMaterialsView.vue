@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
+  NTag,
   useMessage,
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -124,7 +125,9 @@ const availableColumns: Array<{
       title: '物料编码',
       key: 'material_code',
       width: 140,
-      render: (row) => row.material_code || '\\',
+      render: (row) =>
+        row.material_code ||
+        h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
     },
   },
   { key: 'name', label: '名称', column: { title: '名称', key: 'name' } },
