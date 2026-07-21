@@ -38,7 +38,7 @@ async function submit() {
         <img class="login-logo" :src="LOGO_URL" alt="系统 Logo" />
         <span class="eyebrow">ELECTRICAL WORKSHOP</span>
         <h1>电气车间<br />备件管理系统</h1>
-        <p>库存、申购计划与申购到货闭环管理</p>
+        <p>库存、申购计划与申购记录统一管理</p>
       </div>
     </section>
     <section class="login-panel">

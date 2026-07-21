@@ -16,6 +16,7 @@ import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
+import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
@@ -92,9 +93,9 @@ const availableColumns: Array<{
   { key: 'plan_no', label: '计划 ID', column: { title: '计划 ID', key: 'plan_no', width: 175 } },
   {
     key: 'plan_date',
-    label: '计划日期',
+    label: '需求日期',
     column: {
-      title: '计划日期',
+      title: '需求日期',
       key: 'plan_date',
       width: 110,
       render: (row) => formatDate(row.plan_date),
@@ -132,13 +133,7 @@ const availableColumns: Array<{
   },
 ]
 const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
-const fieldOptions = computed(() =>
-  availableColumns.map((item) => ({
-    label: item.label,
-    value: item.key,
-    disabled: visibleColumnKeys.value.length === 1 && visibleColumnKeys.value[0] === item.key,
-  })),
-)
+const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
 const columns = computed<DataTableColumns<PurchaseMaterial>>(() => [
   {
     type: 'selection',
@@ -148,8 +143,8 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() => [
     .filter((item) => visibleColumnKeys.value.includes(item.key))
     .map((item) => item.column),
 ])
-function setVisibleColumnKeys(value: PlanColumnKey[]) {
-  if (value.length) visibleColumnKeys.value = value
+function setVisibleColumnKeys(value: string[]) {
+  visibleColumnKeys.value = value as PlanColumnKey[]
 }
 function rowProps(row: PurchaseMaterial) {
   return {
@@ -204,7 +199,7 @@ function openCreate() {
 }
 async function save() {
   if (!createPlanDate.value) {
-    message.error('请选择计划日期')
+    message.error('请选择需求日期')
     return
   }
   await formRef.value?.validate()
@@ -321,13 +316,9 @@ onMounted(() => {
           clearable
           style="width: 240px"
         />
-        <n-select
+        <ColumnVisibilityPicker
           :value="visibleColumnKeys"
-          multiple
           :options="fieldOptions"
-          max-tag-count="responsive"
-          placeholder="展示字段"
-          style="width: 360px"
           @update:value="setVisibleColumnKeys"
         />
         <n-button type="primary" @click="query">查询</n-button>
@@ -410,7 +401,7 @@ onMounted(() => {
               v-model:value="form.material_code"
               maxlength="64"
               placeholder="没有编码可留空" /></n-form-item
-          ><n-form-item label="计划日期" required
+          ><n-form-item label="需求日期" required
             ><n-date-picker
               v-model:value="createPlanDate"
               type="date"

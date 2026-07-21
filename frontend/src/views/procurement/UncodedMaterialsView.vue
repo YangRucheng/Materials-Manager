@@ -19,7 +19,7 @@ const filters = reactive({ keyword: '' })
 const columns: DataTableColumns<PurchaseMaterial> = [
   { title: '计划 ID', key: 'plan_no', width: 175 },
   {
-    title: '计划日期',
+    title: '需求日期',
     key: 'plan_date',
     width: 110,
     render: (row) => formatDate(row.plan_date),
