@@ -221,6 +221,7 @@ async def search_purchase_records(
     model_spec: str | None,
     actual_demand_person: str | None,
     purchase_responsible: str | None,
+    salesperson: str | None,
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseRequestLine], int]:
@@ -288,6 +289,8 @@ async def search_purchase_records(
         query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
     if purchase_responsible:
         query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
+    if salesperson:
+        query = query.where(PurchaseRequest.salesperson.like(f"%{salesperson}%"))
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
     items = list(
         (
@@ -301,6 +304,17 @@ async def search_purchase_records(
         .all()
     )
     return items, total
+
+
+async def purchase_salesperson_options(session: AsyncSession) -> list[str]:
+    salesperson = func.trim(PurchaseRequest.salesperson)
+    query = (
+        select(salesperson)
+        .where(PurchaseRequest.salesperson.is_not(None), salesperson != "")
+        .distinct()
+        .order_by(salesperson)
+    )
+    return list(await session.scalars(query))
 
 
 async def purchase_status_options(session: AsyncSession) -> list[str]:

@@ -590,10 +590,29 @@ export const handlers = [
     const body = (await request.json()) as MovePurchasePlansWrite
     return HttpResponse.json(movePlansToRecords([material], body)[0])
   }),
+  http.get(`${api}/purchase-records/filter-options`, () => {
+    const records = purchaseRequests.flatMap((purchaseRequest) =>
+      purchaseRequest.lines.map((line) => purchaseRecord(purchaseRequest, line)),
+    )
+    const uniqueOptions = (values: Array<string | null | undefined>) =>
+      [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])].sort()
+    return HttpResponse.json({
+      actual_demand_persons: uniqueOptions(records.map((record) => record.actual_demand_person)),
+      purchase_responsibles: uniqueOptions(records.map((record) => record.purchase_responsible)),
+      salespersons: uniqueOptions(records.map((record) => record.salesperson)),
+      statuses: uniqueOptions(records.map((record) => record.status)),
+    })
+  }),
   http.get(`${api}/purchase-records`, ({ request }) => {
     const url = new URL(request.url)
     const keyword = (url.searchParams.get('keyword') || '').toLowerCase()
+    const name = (url.searchParams.get('name') || '').toLowerCase()
+    const modelSpec = (url.searchParams.get('model_spec') || '').toLowerCase()
+    const actualDemandPerson = (url.searchParams.get('actual_demand_person') || '').toLowerCase()
+    const purchaseResponsible = (url.searchParams.get('purchase_responsible') || '').toLowerCase()
+    const salesperson = (url.searchParams.get('salesperson') || '').toLowerCase()
     const status = url.searchParams.get('status')
+    const emptyStatus = url.searchParams.get('empty_status') === 'true'
     const records = purchaseRequests.flatMap((purchaseRequest) =>
       purchaseRequest.lines.map((line) => purchaseRecord(purchaseRequest, line)),
     )
@@ -605,7 +624,15 @@ export const handlers = [
               `${record.plan_no}${record.trace_no}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.salesperson || ''}${record.status}${record.plan_remark || ''}${record.record_remark || ''}`
                 .toLowerCase()
                 .includes(keyword)) &&
-            (!status || record.status === status),
+            (!name || record.material_name.toLowerCase().includes(name)) &&
+            (!modelSpec || record.model_spec.toLowerCase().includes(modelSpec)) &&
+            (!actualDemandPerson ||
+              (record.actual_demand_person || '').toLowerCase().includes(actualDemandPerson)) &&
+            (!purchaseResponsible ||
+              (record.purchase_responsible || '').toLowerCase().includes(purchaseResponsible)) &&
+            (!salesperson || (record.salesperson || '').toLowerCase().includes(salesperson)) &&
+            (!status || record.status === status) &&
+            (!emptyStatus || !record.status?.trim()),
         ),
         url,
       ),

@@ -2102,6 +2102,15 @@ paths:
             maxLength: 128
           - type: 'null'
           title: Purchase Responsible
+      - name: salesperson
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Salesperson
       responses:
         '200':
           description: Successful Response
@@ -4122,6 +4131,11 @@ components:
             type: string
           type: array
           title: Purchase Responsibles
+        salespersons:
+          items:
+            type: string
+          type: array
+          title: Salespersons
         statuses:
           items:
             type: string
@@ -4131,6 +4145,7 @@ components:
       required:
       - actual_demand_persons
       - purchase_responsibles
+      - salespersons
       - statuses
       title: PurchaseRecordFilterOptions
     PurchaseRecordRead:

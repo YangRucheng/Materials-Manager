@@ -53,6 +53,7 @@ class PurchaseFilterOptions(ReadModel):
 
 
 class PurchaseRecordFilterOptions(PurchaseFilterOptions):
+    salespersons: list[str]
     statuses: list[str]
 
 
