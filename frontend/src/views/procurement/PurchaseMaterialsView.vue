@@ -403,6 +403,7 @@ onMounted(() => {
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
+          storage-key="procurement.purchase-materials.visible-columns.v1"
           @update:value="setVisibleColumnKeys"
         />
         <n-button type="primary" @click="query">查询</n-button>
