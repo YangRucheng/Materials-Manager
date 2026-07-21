@@ -501,7 +501,7 @@ export const handlers = [
     const body = (await request.json()) as PurchaseMaterialWrite
     const u = unit(body.unit_id)
     if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
-    const responsible = body.purchase_responsible || '待补充'
+    const responsible = body.purchase_responsible || '\\'
     const planDate = body.plan_date || new Date().toISOString().slice(0, 10)
     const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
     const item = {
