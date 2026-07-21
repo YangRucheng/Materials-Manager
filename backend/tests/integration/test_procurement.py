@@ -8,6 +8,8 @@ from openpyxl import load_workbook
 from PIL import Image
 
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.models import PurchaseRequestLine
 from tests.conftest import auth_headers, create_stock
 
 
@@ -100,8 +102,17 @@ async def test_purchase_lists_support_field_like_and_person_filters(
     assert set(plan_options.json()["actual_demand_persons"]) == {"张三", "李四"}
     assert set(plan_options.json()["purchase_responsibles"]) == {"李工", "王工"}
 
-    await move_to_record(client, headers, int(first["id"]), trace_no="TRACE-LIKE-001")
-    await move_to_record(client, headers, int(second["id"]), trace_no="TRACE-OTHER-002")
+    first_record = await move_to_record(
+        client, headers, int(first["id"]), trace_no="TRACE-LIKE-001"
+    )
+    second_record = await move_to_record(
+        client, headers, int(second["id"]), trace_no="TRACE-OTHER-002"
+    )
+    async with SessionLocal() as session:
+        line = await session.get(PurchaseRequestLine, int(first_record["line_id"]))
+        assert line is not None
+        line.status = ""
+        await session.commit()
 
     record_search = await client.get(
         "/api/v1/purchase-records",
@@ -124,6 +135,27 @@ async def test_purchase_lists_support_field_like_and_person_filters(
     )
     assert record_options.status_code == 200, record_options.text
     assert set(record_options.json()["actual_demand_persons"]) == {"张三", "李四"}
+    assert record_options.json()["statuses"] == ["已申购"]
+
+    selected_status = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"status": "已申购"},
+    )
+    assert selected_status.status_code == 200, selected_status.text
+    assert [item["line_id"] for item in selected_status.json()["items"]] == [
+        second_record["line_id"]
+    ]
+
+    empty_status = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"empty_status": True},
+    )
+    assert empty_status.status_code == 200, empty_status.text
+    assert [item["line_id"] for item in empty_status.json()["items"]] == [
+        first_record["line_id"]
+    ]
 
 
 async def move_to_record(

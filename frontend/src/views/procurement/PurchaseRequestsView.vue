@@ -2,7 +2,7 @@
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import type { PurchaseFilterOptions, PurchaseRecord } from '@/api/generated'
+import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import { formatDate } from '@/utils/time'
@@ -13,6 +13,7 @@ const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
+const EMPTY_STATUS_FILTER = '__empty_status__'
 type RecordSearchField =
   | 'plan_no'
   | 'plan_date'
@@ -35,11 +36,12 @@ const filters = reactive({
   search_value: '',
   actual_demand_person: null as string | null,
   purchase_responsible: null as string | null,
-  status: '',
+  status: null as string | null,
 })
-const filterOptions = ref<PurchaseFilterOptions>({
+const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
+  statuses: [],
 })
 const searchFieldOptions: Array<{ label: string; value: RecordSearchField }> = [
   { label: '计划 ID', value: 'plan_no' },
@@ -65,6 +67,10 @@ const actualDemandPersonOptions = computed(() =>
 const purchaseResponsibleOptions = computed(() =>
   filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
 )
+const statusOptions = computed(() => [
+  { label: '空状态', value: EMPTY_STATUS_FILTER },
+  ...filterOptions.value.statuses.map((value) => ({ label: value, value })),
+])
 type RecordColumnKey =
   | 'plan_date'
   | 'purchase_order_no'
@@ -205,7 +211,9 @@ async function load() {
       search_value: filters.search_value.trim() || undefined,
       actual_demand_person: filters.actual_demand_person || undefined,
       purchase_responsible: filters.purchase_responsible || undefined,
-      status: filters.status || undefined,
+      status:
+        filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
+      empty_status: filters.status === EMPTY_STATUS_FILTER || undefined,
     })
     items.value = data.items
     total.value = data.total
@@ -228,7 +236,7 @@ function resetFilters() {
   filters.search_value = ''
   filters.actual_demand_person = null
   filters.purchase_responsible = null
-  filters.status = ''
+  filters.status = null
   query()
 }
 
@@ -281,12 +289,13 @@ onMounted(() => {
           clearable
           style="width: 160px"
         />
-        <n-input
+        <n-select
           v-model:value="filters.status"
+          :options="statusOptions"
           clearable
-          placeholder="状态（模糊）"
+          filterable
+          placeholder="状态"
           style="width: 150px"
-          @keyup.enter="query"
         />
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"

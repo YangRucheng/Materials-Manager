@@ -50,8 +50,8 @@ type PlanSearchField =
   | 'material_code'
   | 'name'
   | 'model_spec'
-  | 'unit_name'
   | 'planned_qty'
+  | 'unit_name'
   | 'usage'
   | 'subitem_no'
   | 'remark'
@@ -159,12 +159,12 @@ const availableColumns: Array<{
   },
   { key: 'name', label: '名称', column: { title: '名称', key: 'name' } },
   { key: 'model_spec', label: '型号规格', column: { title: '型号规格', key: 'model_spec' } },
-  { key: 'unit_name', label: '单位', column: { title: '单位', key: 'unit_name', width: 70 } },
   {
     key: 'planned_qty',
     label: '计划数量',
     column: { title: '计划数量', key: 'planned_qty', width: 100 },
   },
+  { key: 'unit_name', label: '单位', column: { title: '单位', key: 'unit_name', width: 70 } },
   {
     key: 'actual_demand_person',
     label: '实际需求人',

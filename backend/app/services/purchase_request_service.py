@@ -213,6 +213,7 @@ async def search_purchase_records(
     session: AsyncSession,
     *,
     status: str | None,
+    empty_status: bool,
     keyword: str | None,
     search_field: str | None,
     search_value: str | None,
@@ -227,8 +228,12 @@ async def search_purchase_records(
         .join(PurchaseMaterial, PurchaseMaterial.id == PurchaseRequestLine.purchase_material_id)
         .join(MeasurementUnit, MeasurementUnit.id == PurchaseMaterial.unit_id)
     )
-    if status:
-        query = query.where(PurchaseRequestLine.status.like(f"%{status}%"))
+    if empty_status:
+        query = query.where(
+            or_(PurchaseRequestLine.status.is_(None), func.trim(PurchaseRequestLine.status) == "")
+        )
+    elif status:
+        query = query.where(PurchaseRequestLine.status == status)
     if keyword:
         like = f"%{keyword}%"
         query = query.where(
@@ -290,3 +295,16 @@ async def search_purchase_records(
         .all()
     )
     return items, total
+
+
+async def purchase_status_options(session: AsyncSession) -> list[str]:
+    query = (
+        select(PurchaseRequestLine.status)
+        .where(
+            PurchaseRequestLine.status.is_not(None),
+            func.trim(PurchaseRequestLine.status) != "",
+        )
+        .distinct()
+        .order_by(PurchaseRequestLine.status)
+    )
+    return list(await session.scalars(query))

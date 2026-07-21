@@ -149,6 +149,9 @@ export interface PurchaseFilterOptions {
   actual_demand_persons: string[]
   purchase_responsibles: string[]
 }
+export interface PurchaseRecordFilterOptions extends PurchaseFilterOptions {
+  statuses: string[]
+}
 export interface PurchaseMaterial {
   id: number
   plan_no: string
