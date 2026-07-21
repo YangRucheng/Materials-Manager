@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, watch } from 'vue'
 import { NButton, NCheckbox, NPopover } from 'naive-ui'
 
 interface ColumnOption {
@@ -9,6 +10,7 @@ interface ColumnOption {
 const props = defineProps<{
   value: string[]
   options: ColumnOption[]
+  storageKey?: string
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +24,33 @@ function updateColumn(value: string, checked: boolean) {
     : props.value.filter((current) => current !== value)
   emit('update:value', next)
 }
+
+function restoreColumns() {
+  if (!props.storageKey) return
+  try {
+    const stored = JSON.parse(localStorage.getItem(props.storageKey) || 'null')
+    if (!Array.isArray(stored)) return
+    const storedKeys = new Set(stored.filter((value): value is string => typeof value === 'string'))
+    const restored = props.options
+      .map((option) => option.value)
+      .filter((value) => storedKeys.has(value))
+    if (restored.length) emit('update:value', restored)
+  } catch {
+    return
+  }
+}
+
+function persistColumns(value: string[]) {
+  if (!props.storageKey || !value.length) return
+  try {
+    localStorage.setItem(props.storageKey, JSON.stringify(value))
+  } catch {
+    return
+  }
+}
+
+onMounted(restoreColumns)
+watch(() => props.value, persistColumns, { deep: true })
 </script>
 
 <template>
