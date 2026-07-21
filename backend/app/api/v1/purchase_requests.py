@@ -51,6 +51,7 @@ async def purchase_records(
     model_spec: Annotated[str | None, Query(max_length=255)] = None,
     actual_demand_person: Annotated[str | None, Query(max_length=128)] = None,
     purchase_responsible: Annotated[str | None, Query(max_length=128)] = None,
+    salesperson: Annotated[str | None, Query(max_length=128)] = None,
 ) -> Page[PurchaseRecordRead]:
     items, total = await service.search_purchase_records(
         session,
@@ -63,6 +64,7 @@ async def purchase_records(
         model_spec=model_spec,
         actual_demand_person=actual_demand_person,
         purchase_responsible=purchase_responsible,
+        salesperson=salesperson,
         page=page,
         page_size=page_size,
     )
@@ -84,6 +86,7 @@ async def purchase_record_filter_options(
     return PurchaseRecordFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
+        salespersons=await service.purchase_salesperson_options(session),
         statuses=await service.purchase_status_options(session),
     )
 

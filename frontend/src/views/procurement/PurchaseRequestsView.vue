@@ -20,15 +20,20 @@ const filters = reactive({
   name: '',
   model_spec: '',
   purchase_responsible: null as string | null,
+  salesperson: null as string | null,
   status: null as string | null,
 })
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
+  salespersons: [],
   statuses: [],
 })
 const purchaseResponsibleOptions = computed(() =>
   filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
+)
+const salespersonOptions = computed(() =>
+  filterOptions.value.salespersons.map((value) => ({ label: value, value })),
 )
 const statusOptions = computed(() => [
   { label: '空状态', value: EMPTY_STATUS_FILTER },
@@ -185,8 +190,8 @@ async function load() {
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
-      status:
-        filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
+      salesperson: filters.salesperson?.trim() || undefined,
+      status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
       empty_status: filters.status === EMPTY_STATUS_FILTER || undefined,
     })
     items.value = data.items
@@ -209,6 +214,7 @@ function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
   filters.purchase_responsible = null
+  filters.salesperson = null
   filters.status = null
   query()
 }
@@ -252,6 +258,14 @@ onMounted(() => {
           v-model:value="filters.purchase_responsible"
           :options="purchaseResponsibleOptions"
           placeholder="申购人"
+          filterable
+          clearable
+          style="width: 180px"
+        />
+        <n-select
+          v-model:value="filters.salesperson"
+          :options="salespersonOptions"
+          placeholder="业务员"
           filterable
           clearable
           style="width: 180px"
