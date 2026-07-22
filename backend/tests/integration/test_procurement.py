@@ -206,6 +206,31 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         second_record["line_id"]
     ]
 
+    number_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={
+            "purchase_order_no": "SG-2026",
+            "trace_no": "OTHER-002",
+        },
+    )
+    assert number_search.status_code == 200, number_search.text
+    assert [item["purchase_material_id"] for item in number_search.json()["items"]] == [
+        second["id"]
+    ]
+
+    mismatched_number_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={
+            "purchase_order_no": "SG-2026",
+            "trace_no": "LIKE-001",
+            "name": "接触器",
+        },
+    )
+    assert mismatched_number_search.status_code == 200, mismatched_number_search.text
+    assert mismatched_number_search.json()["items"] == []
+
     record_options = await client.get(
         "/api/v1/purchase-records/filter-options", headers=headers
     )

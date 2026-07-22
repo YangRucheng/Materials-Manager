@@ -217,6 +217,8 @@ async def search_purchase_records(
     keyword: str | None,
     search_field: str | None,
     search_value: str | None,
+    purchase_order_no: str | None,
+    trace_no: str | None,
     name: str | None,
     model_spec: str | None,
     actual_demand_person: str | None,
@@ -281,6 +283,10 @@ async def search_purchase_records(
             "record_remark": PurchaseRequest.remark,
         }
         query = query.where(search_columns[search_field].like(f"%{search_value}%"))
+    if purchase_order_no:
+        query = query.where(PurchaseRequest.purchase_order_no.like(f"%{purchase_order_no}%"))
+    if trace_no:
+        query = query.where(PurchaseRequest.trace_no.like(f"%{trace_no}%"))
     if name:
         query = query.where(PurchaseMaterial.name.like(f"%{name}%"))
     if model_spec:
