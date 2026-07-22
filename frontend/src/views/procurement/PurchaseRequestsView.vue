@@ -17,6 +17,8 @@ const page = ref(1)
 const pageSize = ref(20)
 const EMPTY_STATUS_FILTER = '__empty_status__'
 const filters = reactive({
+  purchase_order_no: '',
+  trace_no: '',
   name: '',
   model_spec: '',
   purchase_responsible: null as string | null,
@@ -39,6 +41,9 @@ const statusOptions = computed(() => [
   { label: '空状态', value: EMPTY_STATUS_FILTER },
   ...filterOptions.value.statuses.map((value) => ({ label: value, value })),
 ])
+const activeFilterCount = computed(
+  () => Object.values(filters).filter((value) => value?.trim()).length,
+)
 type RecordColumnKey =
   | 'plan_date'
   | 'purchase_order_no'
@@ -187,6 +192,8 @@ async function load() {
     const data = await procurementApi.records({
       page: page.value,
       page_size: pageSize.value,
+      purchase_order_no: filters.purchase_order_no.trim() || undefined,
+      trace_no: filters.trace_no.trim() || undefined,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
@@ -211,6 +218,8 @@ function query() {
 }
 
 function resetFilters() {
+  filters.purchase_order_no = ''
+  filters.trace_no = ''
   filters.name = ''
   filters.model_spec = ''
   filters.purchase_responsible = null
@@ -231,64 +240,106 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page purchase-records-page">
     <div class="page-header">
       <div>
         <h1 class="page-title">申购记录</h1>
-        <p class="page-subtitle">用于整理和统计正式申购信息</p>
+        <p class="page-subtitle">按物资、负责人或业务编号快速定位正式申购信息</p>
       </div>
+      <n-tag :bordered="false" round type="info">共 {{ total }} 条记录</n-tag>
     </div>
-    <n-card>
-      <div class="filter-bar">
-        <n-input
-          v-model:value="filters.name"
-          placeholder="名称"
-          clearable
-          style="width: 200px"
-          @keyup.enter="query"
-        />
-        <n-input
-          v-model:value="filters.model_spec"
-          placeholder="型号"
-          clearable
-          style="width: 200px"
-          @keyup.enter="query"
-        />
-        <n-select
-          v-model:value="filters.purchase_responsible"
-          :options="purchaseResponsibleOptions"
-          placeholder="申购人"
-          filterable
-          clearable
-          style="width: 180px"
-        />
-        <n-select
-          v-model:value="filters.salesperson"
-          :options="salespersonOptions"
-          placeholder="业务员"
-          filterable
-          clearable
-          style="width: 180px"
-        />
-        <n-select
-          v-model:value="filters.status"
-          :options="statusOptions"
-          clearable
-          filterable
-          placeholder="状态"
-          style="width: 150px"
-        />
+    <n-card class="filter-card" :bordered="false">
+      <div class="filter-heading">
+        <div>
+          <div class="filter-title">筛选条件</div>
+          <div class="filter-description">多个条件同时填写时，将按组合条件查询</div>
+        </div>
+        <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
+          已启用 {{ activeFilterCount }} 项
+        </n-tag>
+      </div>
+      <div class="purchase-records-filter-grid">
+        <label class="filter-field">
+          <span>申购单号</span>
+          <n-input
+            v-model:value="filters.purchase_order_no"
+            placeholder="输入申购单号"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>追溯号</span>
+          <n-input
+            v-model:value="filters.trace_no"
+            placeholder="输入追溯号"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>物资名称</span>
+          <n-input
+            v-model:value="filters.name"
+            placeholder="输入物资名称"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>型号规格</span>
+          <n-input
+            v-model:value="filters.model_spec"
+            placeholder="输入型号规格"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>申购负责人</span>
+          <n-select
+            v-model:value="filters.purchase_responsible"
+            :options="purchaseResponsibleOptions"
+            placeholder="选择或搜索负责人"
+            filterable
+            clearable
+          />
+        </label>
+        <label class="filter-field">
+          <span>业务员</span>
+          <n-select
+            v-model:value="filters.salesperson"
+            :options="salespersonOptions"
+            placeholder="选择或搜索业务员"
+            filterable
+            clearable
+          />
+        </label>
+        <label class="filter-field">
+          <span>申购状态</span>
+          <n-select
+            v-model:value="filters.status"
+            :options="statusOptions"
+            clearable
+            filterable
+            placeholder="选择或搜索状态"
+          />
+        </label>
+      </div>
+      <div class="filter-actions">
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
           storage-key="procurement.purchase-records.visible-columns.v1"
           @update:value="setVisibleColumnKeys"
         />
-        <n-button type="primary" @click="query">查询</n-button>
-        <n-button @click="resetFilters">重置</n-button>
+        <div class="filter-action-buttons">
+          <n-button @click="resetFilters">重置</n-button>
+          <n-button type="primary" @click="query">查询记录</n-button>
+        </div>
       </div>
     </n-card>
-    <n-card>
+    <n-card class="records-card" :bordered="false">
       <n-data-table
         :bordered="false"
         :columns="columns"
@@ -311,3 +362,127 @@ onMounted(() => {
     </n-card>
   </div>
 </template>
+
+<style scoped>
+.purchase-records-page {
+  --records-card-radius: 14px;
+}
+
+.purchase-records-page :deep(.n-card) {
+  border-radius: var(--records-card-radius);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
+}
+
+.purchase-records-page .page-header {
+  padding: 4px 2px;
+}
+
+.filter-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.filter-heading,
+.filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.filter-heading {
+  margin-bottom: 18px;
+}
+
+.filter-title {
+  color: #172033;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.filter-description {
+  margin-top: 3px;
+  color: #8792a5;
+  font-size: 13px;
+}
+
+.purchase-records-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-field > span {
+  color: #4b5565;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-field :deep(.n-input),
+.filter-field :deep(.n-select) {
+  width: 100%;
+}
+
+.filter-field :deep(.n-input) {
+  background-color: rgb(255 255 255 / 88%);
+}
+
+.filter-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.filter-action-buttons {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+
+.filter-action-buttons :deep(.n-button) {
+  min-width: 88px;
+}
+
+.records-card :deep(.n-data-table-th) {
+  background-color: #f7f9fc;
+  color: #3d4758;
+  font-weight: 600;
+}
+
+.records-card :deep(.n-data-table-tr:hover .n-data-table-td) {
+  background-color: #f4f8ff;
+}
+
+@media (max-width: 1600px) {
+  .purchase-records-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1220px) {
+  .purchase-records-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .purchase-records-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filter-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-action-buttons {
+    justify-content: flex-end;
+  }
+}
+</style>

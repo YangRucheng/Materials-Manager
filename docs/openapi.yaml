@@ -2066,6 +2066,24 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Search Value
+      - name: purchase_order_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Purchase Order No
+      - name: trace_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Trace No
       - name: name
         in: query
         required: false
