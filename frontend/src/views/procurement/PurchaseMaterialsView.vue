@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   NTag,
   useMessage,
@@ -8,7 +8,7 @@ import {
   type FormInst,
   type FormRules,
 } from 'naive-ui'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   FileObject,
   PurchaseFilterOptions,
@@ -26,7 +26,9 @@ import { defaultPurchaseOrderNo } from '@/utils/purchase'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
+import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const dictionaries = useDictionaryStore()
@@ -34,8 +36,8 @@ const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseMaterial[]>([])
 const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
+const page = ref(routeQueryPositiveInteger(route.query.page, 1))
+const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const loading = ref(false)
 const show = ref(false)
 const showBatch = ref(false)
@@ -47,9 +49,9 @@ const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
 const filters = reactive({
-  name: '',
-  model_spec: '',
-  actual_demand_person: null as string | null,
+  name: routeQueryString(route.query.name),
+  model_spec: routeQueryString(route.query.model_spec),
+  actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
 })
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
@@ -206,9 +208,25 @@ async function load() {
 async function loadFilterOptions() {
   filterOptions.value = await procurementApi.materialFilterOptions({ moved: false })
 }
+async function syncRoute() {
+  await router.replace({
+    name: 'purchase-materials',
+    query: compactRouteQuery({
+      page: page.value === 1 ? undefined : page.value,
+      page_size: pageSize.value === 20 ? undefined : pageSize.value,
+      name: filters.name,
+      model_spec: filters.model_spec,
+      actual_demand_person: filters.actual_demand_person,
+    }),
+  })
+}
+async function syncRouteAndLoad(resetPage = false) {
+  if (resetPage) page.value = 1
+  await syncRoute()
+  await load()
+}
 function query() {
-  page.value = 1
-  void load()
+  void syncRouteAndLoad(true)
 }
 function resetFilters() {
   filters.name = ''
@@ -217,8 +235,10 @@ function resetFilters() {
   query()
 }
 function changePageSize() {
-  page.value = 1
-  void load()
+  void syncRouteAndLoad(true)
+}
+function changePage() {
+  void syncRouteAndLoad()
 }
 function openCreate() {
   Object.assign(form, {
@@ -326,6 +346,9 @@ onMounted(() => {
   void loadFilterOptions()
   void load()
 })
+onActivated(() => {
+  void syncRoute()
+})
 </script>
 
 <template>
@@ -400,7 +423,7 @@ onMounted(() => {
           :item-count="total"
           :page-sizes="[10, 20, 50, 100, 200]"
           show-size-picker
-          @update:page="load"
+          @update:page="changePage"
           @update:page-size="changePageSize"
         /></div
     ></n-card>

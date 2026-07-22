@@ -7,6 +7,7 @@ declare module 'vue-router' {
     title?: string
     permission?: Permission
     public?: boolean
+    keepAlive?: boolean
   }
 }
 
@@ -78,7 +79,7 @@ const router = createRouter({
           path: 'procurement/materials',
           name: 'purchase-materials',
           component: () => import('@/views/procurement/PurchaseMaterialsView.vue'),
-          meta: { title: '申购计划' },
+          meta: { title: '申购计划', keepAlive: true },
         },
         {
           path: 'procurement/materials/:id',
@@ -96,7 +97,7 @@ const router = createRouter({
           path: 'procurement/records',
           name: 'purchase-records',
           component: () => import('@/views/procurement/PurchaseRequestsView.vue'),
-          meta: { title: '申购记录' },
+          meta: { title: '申购记录', keepAlive: true },
         },
         {
           path: 'procurement/records/:id',

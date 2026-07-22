@@ -1,29 +1,31 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
 import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate } from '@/utils/time'
+import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 
+const route = useRoute()
 const router = useRouter()
 const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseRecord[]>([])
 const loading = ref(false)
 const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
+const page = ref(routeQueryPositiveInteger(route.query.page, 1))
+const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const EMPTY_STATUS_FILTER = '__empty_status__'
 const filters = reactive({
-  purchase_order_no: '',
-  trace_no: '',
-  name: '',
-  model_spec: '',
-  purchase_responsible: null as string | null,
-  salesperson: null as string | null,
-  status: null as string | null,
+  purchase_order_no: routeQueryString(route.query.purchase_order_no),
+  trace_no: routeQueryString(route.query.trace_no),
+  name: routeQueryString(route.query.name),
+  model_spec: routeQueryString(route.query.model_spec),
+  purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
+  salesperson: routeQueryString(route.query.salesperson) || null,
+  status: routeQueryString(route.query.status) || null,
 })
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
@@ -212,9 +214,30 @@ async function loadFilterOptions() {
   filterOptions.value = await procurementApi.recordFilterOptions()
 }
 
+async function syncRoute() {
+  await router.replace({
+    name: 'purchase-records',
+    query: compactRouteQuery({
+      page: page.value === 1 ? undefined : page.value,
+      page_size: pageSize.value === 20 ? undefined : pageSize.value,
+      purchase_order_no: filters.purchase_order_no,
+      trace_no: filters.trace_no,
+      name: filters.name,
+      model_spec: filters.model_spec,
+      purchase_responsible: filters.purchase_responsible,
+      salesperson: filters.salesperson,
+      status: filters.status,
+    }),
+  })
+}
+async function syncRouteAndLoad(resetPage = false) {
+  if (resetPage) page.value = 1
+  await syncRoute()
+  await load()
+}
+
 function query() {
-  page.value = 1
-  void load()
+  void syncRouteAndLoad(true)
 }
 
 function resetFilters() {
@@ -229,13 +252,19 @@ function resetFilters() {
 }
 
 function changePageSize() {
-  page.value = 1
-  void load()
+  void syncRouteAndLoad(true)
+}
+
+function changePage() {
+  void syncRouteAndLoad()
 }
 
 onMounted(() => {
   void loadFilterOptions()
   void load()
+})
+onActivated(() => {
+  void syncRoute()
 })
 </script>
 
@@ -355,7 +384,7 @@ onMounted(() => {
           :item-count="total"
           :page-sizes="[10, 20, 50, 100, 200]"
           show-size-picker
-          @update:page="load"
+          @update:page="changePage"
           @update:page-size="changePageSize"
         />
       </div>
