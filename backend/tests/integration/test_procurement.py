@@ -78,6 +78,22 @@ async def test_empty_purchase_people_use_backslash_placeholder(client: AsyncClie
     assert result["actual_demand_person"] == "\\"
     assert result["purchase_responsible"] == "\\"
 
+    empty_people = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"empty_actual_demand_person": True, "moved": False},
+    )
+    assert empty_people.status_code == 200, empty_people.text
+    assert [item["id"] for item in empty_people.json()["items"]] == [result["id"]]
+
+    filter_options = await client.get(
+        "/api/v1/purchase-materials/filter-options",
+        headers=headers,
+        params={"moved": False},
+    )
+    assert filter_options.status_code == 200, filter_options.text
+    assert "\\" not in filter_options.json()["actual_demand_persons"]
+
 
 @pytest.mark.asyncio
 async def test_purchase_lists_support_field_like_and_person_filters(

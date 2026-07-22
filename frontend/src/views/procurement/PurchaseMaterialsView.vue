@@ -48,6 +48,7 @@ const checkedRowKeys = ref<Array<string | number>>([])
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
+const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const filters = reactive({
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
@@ -57,9 +58,10 @@ const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
 })
-const actualDemandPersonOptions = computed(() =>
-  filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
-)
+const actualDemandPersonOptions = computed(() => [
+  { label: '空需求人', value: EMPTY_DEMAND_PERSON_FILTER },
+  ...filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
+])
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
   trace_no: '',
@@ -196,7 +198,12 @@ async function load() {
       moved: false,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
-      actual_demand_person: filters.actual_demand_person?.trim() || undefined,
+      actual_demand_person:
+        filters.actual_demand_person && filters.actual_demand_person !== EMPTY_DEMAND_PERSON_FILTER
+          ? filters.actual_demand_person.trim()
+          : undefined,
+      empty_actual_demand_person:
+        filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER || undefined,
     })
     items.value = d.items
     total.value = d.total

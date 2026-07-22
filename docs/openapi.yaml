@@ -1372,6 +1372,13 @@ paths:
             maxLength: 128
           - type: 'null'
           title: Actual Demand Person
+      - name: empty_actual_demand_person
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Empty Actual Demand Person
       - name: purchase_responsible
         in: query
         required: false
