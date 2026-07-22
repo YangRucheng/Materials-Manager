@@ -29,6 +29,16 @@ FileId = Annotated[
 ]
 
 
+def _ensure_unique_image_ids(value: list[str]) -> list[str]:
+    if len(value) != len(set(value)):
+        raise ValueError("image_ids contains duplicates")
+    return value
+
+
+def _empty_string_to_none(value: object) -> object:
+    return None if isinstance(value, str) and not value.strip() else value
+
+
 class RequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -212,9 +222,7 @@ class StockMaterialBase(RequestModel):
     @field_validator("image_ids")
     @classmethod
     def unique_images(cls, value: list[str]) -> list[str]:
-        if len(value) != len(set(value)):
-            raise ValueError("image_ids contains duplicates")
-        return value
+        return _ensure_unique_image_ids(value)
 
 
 class StockMaterialCreate(StockMaterialBase):
@@ -259,6 +267,21 @@ class OperationLineWrite(RequestModel):
     quantity: PositiveQuantity
 
 
+def _require_aware_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("occurred_at must include a timezone")
+    return value
+
+
+def _ensure_unique_operation_materials(
+    value: list[OperationLineWrite],
+) -> list[OperationLineWrite]:
+    ids = [line.stock_material_id for line in value]
+    if len(ids) != len(set(ids)):
+        raise ValueError("one operation may only contain a material once")
+    return value
+
+
 class OperationCreate(RequestModel):
     client_request_id: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
@@ -277,17 +300,12 @@ class OperationCreate(RequestModel):
     @field_validator("occurred_at")
     @classmethod
     def require_timezone(cls, value: datetime) -> datetime:
-        if value.tzinfo is None or value.utcoffset() is None:
-            raise ValueError("occurred_at must include a timezone")
-        return value
+        return _require_aware_datetime(value)
 
     @field_validator("lines")
     @classmethod
     def unique_materials(cls, value: list[OperationLineWrite]) -> list[OperationLineWrite]:
-        ids = [line.stock_material_id for line in value]
-        if len(ids) != len(set(ids)):
-            raise ValueError("one operation may only contain a material once")
-        return value
+        return _ensure_unique_operation_materials(value)
 
 
 class OperationUpdate(RequestModel):
@@ -304,8 +322,15 @@ class OperationUpdate(RequestModel):
     ) = None
     lines: list[OperationLineWrite] = Field(min_length=1)
 
-    _timezone = field_validator("occurred_at")(OperationCreate.require_timezone)
-    _unique = field_validator("lines")(OperationCreate.unique_materials)
+    @field_validator("occurred_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        return _require_aware_datetime(value)
+
+    @field_validator("lines")
+    @classmethod
+    def unique_materials(cls, value: list[OperationLineWrite]) -> list[OperationLineWrite]:
+        return _ensure_unique_operation_materials(value)
 
 
 class ReverseOperationRequest(RequestModel):
@@ -369,12 +394,15 @@ class PurchaseMaterialBase(RequestModel):
     stock_material_id: int | None = None
     image_ids: list[FileId] = Field(default_factory=list, max_length=9)
 
-    _unique_images = field_validator("image_ids")(StockMaterialBase.unique_images)
+    @field_validator("image_ids")
+    @classmethod
+    def unique_images(cls, value: list[str]) -> list[str]:
+        return _ensure_unique_image_ids(value)
 
     @field_validator("material_code", mode="before")
     @classmethod
     def empty_code_to_none(cls, value: object) -> object:
-        return None if isinstance(value, str) and not value.strip() else value
+        return _empty_string_to_none(value)
 
 
 class PurchaseMaterialCreate(PurchaseMaterialBase):
@@ -496,10 +524,15 @@ class PurchaseRecordUpdate(RequestModel):
     record_remark: str | None = Field(default=None, max_length=1000)
     version: int
 
-    _unique_images = field_validator("image_ids")(StockMaterialBase.unique_images)
-    _empty_code = field_validator("material_code", mode="before")(
-        PurchaseMaterialBase.empty_code_to_none
-    )
+    @field_validator("image_ids")
+    @classmethod
+    def unique_images(cls, value: list[str]) -> list[str]:
+        return _ensure_unique_image_ids(value)
+
+    @field_validator("material_code", mode="before")
+    @classmethod
+    def empty_code_to_none(cls, value: object) -> object:
+        return _empty_string_to_none(value)
 
 
 class PurchaseRecordRead(ReadModel):
