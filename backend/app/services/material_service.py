@@ -339,6 +339,7 @@ async def search_purchase_materials(
     name: str | None,
     model_spec: str | None,
     actual_demand_person: str | None,
+    empty_actual_demand_person: bool,
     purchase_responsible: str | None,
     enabled: bool | None,
     coded: bool | None,
@@ -385,7 +386,14 @@ async def search_purchase_materials(
         query = query.where(PurchaseMaterial.name.like(f"%{name}%"))
     if model_spec:
         query = query.where(PurchaseMaterial.model_spec.like(f"%{model_spec}%"))
-    if actual_demand_person:
+    if empty_actual_demand_person:
+        query = query.where(
+            or_(
+                PurchaseMaterial.actual_demand_person.is_(None),
+                func.trim(PurchaseMaterial.actual_demand_person).in_(("", "\\", "/", "—", "-")),
+            )
+        )
+    elif actual_demand_person:
         query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
     if purchase_responsible:
         query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
@@ -426,7 +434,7 @@ async def purchase_filter_options(
         .exists()
     )
     actual_demand_query = select(PurchaseMaterial.actual_demand_person).where(
-        func.trim(PurchaseMaterial.actual_demand_person) != ""
+        ~func.trim(PurchaseMaterial.actual_demand_person).in_(("", "\\", "/", "—", "-"))
     )
     responsible_query = select(PurchaseMaterial.purchase_responsible).where(
         func.trim(PurchaseMaterial.purchase_responsible) != ""
