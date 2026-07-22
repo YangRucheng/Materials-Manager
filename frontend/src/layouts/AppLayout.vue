@@ -94,7 +94,16 @@ function logout() {
         </n-dropdown>
       </n-layout-header>
       <n-layout-content content-style="padding: 20px;" :native-scrollbar="false">
-        <router-view />
+        <router-view v-slot="{ Component, route: currentRoute }">
+          <keep-alive>
+            <component
+              :is="Component"
+              v-if="currentRoute.meta.keepAlive"
+              :key="String(currentRoute.name)"
+            />
+          </keep-alive>
+          <component :is="Component" v-if="!currentRoute.meta.keepAlive" />
+        </router-view>
       </n-layout-content>
     </n-layout>
   </n-layout>
