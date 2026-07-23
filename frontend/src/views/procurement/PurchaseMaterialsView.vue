@@ -23,7 +23,11 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
-import { defaultPurchaseOrderNo } from '@/utils/purchase'
+import {
+  defaultPurchaseOrderNo,
+  getLastPurchaseResponsible,
+  rememberPurchaseResponsible,
+} from '@/utils/purchase'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
@@ -154,7 +158,17 @@ const availableColumns: Array<{
     },
   },
   { key: 'name', label: '名称', column: { title: '名称', key: 'name' } },
-  { key: 'model_spec', label: '型号规格', column: { title: '型号规格', key: 'model_spec' } },
+  {
+    key: 'model_spec',
+    label: '型号规格',
+    column: {
+      title: '型号规格',
+      key: 'model_spec',
+      width: 220,
+      render: (row) =>
+        h('div', { class: 'model-spec-clamp', title: row.model_spec }, row.model_spec),
+    },
+  },
   {
     key: 'planned_qty',
     label: '计划数量',
@@ -307,7 +321,7 @@ function openCreate() {
     model_spec: '',
     unit_id: null,
     actual_demand_person: '',
-    purchase_responsible: '',
+    purchase_responsible: getLastPurchaseResponsible(),
     planned_qty: '',
     usage: '',
     subitem_no: '',
@@ -333,6 +347,7 @@ async function save() {
       plan_date: toShanghaiDate(createPlanDate.value),
       subitem_no: form.subitem_no?.trim() || undefined,
     })
+    rememberPurchaseResponsible(form.purchase_responsible || '')
     message.success('申购计划已创建')
     show.value = false
     page.value = 1
@@ -696,48 +711,52 @@ onBeforeUnmount(() => {
       title="新建申购计划"
       style="width: 680px"
       :mask-closable="false"
-      ><n-form ref="formRef" :model="form" :rules="rules" label-placement="top"
-        ><div class="form-grid">
-          <n-form-item label="物料编码（已有时填写）"
-            ><n-input
+    >
+      <n-form ref="formRef" :model="form" :rules="rules" label-placement="top">
+        <div class="form-grid">
+          <n-form-item label="物料编码（已有时填写）">
+            <n-input
               v-model:value="form.material_code"
               maxlength="64"
-              placeholder="没有编码可留空" /></n-form-item
-          ><n-form-item label="需求日期" required
-            ><n-date-picker
-              v-model:value="createPlanDate"
-              type="date"
-              class="full-width" /></n-form-item
-          ><n-form-item label="名称" path="name"
-            ><n-input v-model:value="form.name" maxlength="128" /></n-form-item
-          ><n-form-item label="型号规格" path="model_spec"
-            ><n-input v-model:value="form.model_spec" maxlength="255" /></n-form-item
-          ><n-form-item label="计量单位" path="unit_id"
-            ><n-select
-              v-model:value="form.unit_id"
-              :options="dictionaries.unitOptions" /></n-form-item
-          ><n-form-item label="实际需求人" path="actual_demand_person"
-            ><n-input
+              placeholder="没有编码可留空"
+            />
+          </n-form-item>
+          <n-form-item label="需求日期" required>
+            <n-date-picker v-model:value="createPlanDate" type="date" class="full-width" />
+          </n-form-item>
+          <n-form-item label="名称" path="name">
+            <n-input v-model:value="form.name" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="型号规格" path="model_spec">
+            <n-input v-model:value="form.model_spec" maxlength="255" />
+          </n-form-item>
+          <n-form-item label="计划数量" path="planned_qty">
+            <QuantityInput v-model:value="form.planned_qty" :decimal-places="1" />
+          </n-form-item>
+          <n-form-item label="计量单位" path="unit_id">
+            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+          </n-form-item>
+          <n-form-item label="实际需求人" path="actual_demand_person">
+            <n-input
               v-model:value="form.actual_demand_person"
               maxlength="128"
-              placeholder="填写提出实际需求的员工" /></n-form-item
-          ><n-form-item label="申购负责人" path="purchase_responsible"
-            ><n-input v-model:value="form.purchase_responsible" maxlength="128"
-          /></n-form-item>
-          <n-form-item label="计划数量" path="planned_qty"
-            ><QuantityInput v-model:value="form.planned_qty" :decimal-places="1"
-          /></n-form-item>
-          <n-form-item label="子项号"
-            ><n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填"
-          /></n-form-item>
+              placeholder="填写提出实际需求的员工"
+            />
+          </n-form-item>
+          <n-form-item label="申购负责人" path="purchase_responsible">
+            <n-input v-model:value="form.purchase_responsible" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="子项号">
+            <n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填" />
+          </n-form-item>
+          <n-form-item label="用途" path="usage">
+            <n-input v-model:value="form.usage" maxlength="500" />
+          </n-form-item>
         </div>
         <n-form-item label="关联二级库物资"
           ><MaterialSelector
             :value="form.stock_material_id ?? null"
             @update:value="form.stock_material_id = $event ?? undefined"
-        /></n-form-item>
-        <n-form-item label="用途" path="usage"
-          ><n-input v-model:value="form.usage" maxlength="500"
         /></n-form-item>
         <n-form-item label="备注"
           ><n-input
@@ -761,6 +780,18 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 12px;
+}
+
+.model-spec-clamp {
+  display: -webkit-box;
+  max-height: 3em;
+  overflow: hidden;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .purchase-plan-table-area:fullscreen {
