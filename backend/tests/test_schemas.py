@@ -66,6 +66,7 @@ def test_request_models_accept_valid_validator_values() -> None:
     assert stock.image_ids == [IMAGE_ID]
     assert purchase_material.image_ids == [IMAGE_ID]
     assert purchase_material.material_code is None
+    assert purchase_material.status.value == "正常"
     assert purchase_record.image_ids == [IMAGE_ID]
     assert purchase_record.material_code is None
     assert operation.lines[0].stock_material_id == 1
@@ -118,3 +119,10 @@ def test_operation_update_requires_timezone() -> None:
 
     with pytest.raises(ValidationError, match="occurred_at must include a timezone"):
         OperationUpdate.model_validate(payload)
+
+
+def test_purchase_material_rejects_unknown_status() -> None:
+    with pytest.raises(ValidationError):
+        PurchaseMaterialCreate.model_validate(
+            {**purchase_material_payload(), "status": "已取消"}
+        )

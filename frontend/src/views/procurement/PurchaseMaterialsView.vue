@@ -14,6 +14,7 @@ import type {
   PurchaseFilterOptions,
   PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
+  PurchasePlanStatus,
   PurchaseMaterialWrite,
 } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -34,6 +35,12 @@ import {
   rememberPurchaseResponsible,
 } from '@/utils/purchase'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
+import {
+  defaultPurchasePlanStatus,
+  purchasePlanStatusFilterOptions,
+  purchasePlanStatusOptions,
+  type PurchasePlanStatusFilter,
+} from '@/constants/purchase'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
@@ -63,10 +70,14 @@ const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
+const routeStatus = routeQueryString(route.query.status)
 const filters = reactive({
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
   actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
+  status: purchasePlanStatusFilterOptions.some((option) => option.value === routeStatus)
+    ? (routeStatus as PurchasePlanStatusFilter)
+    : defaultPurchasePlanStatus,
 })
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
@@ -93,12 +104,15 @@ const batchEditForm = reactive({
   subitem_no: '',
   update_usage: false,
   usage: '',
+  update_status: false,
+  status: defaultPurchasePlanStatus as PurchasePlanStatus,
 })
 const selectedPlans = computed(() => {
   const selected = new Set(checkedRowKeys.value.map(Number))
   return items.value.filter((item) => selected.has(item.id))
 })
 const form = reactive<PurchaseMaterialWrite>({
+  status: defaultPurchasePlanStatus,
   material_code: '',
   name: '',
   model_spec: '',
@@ -296,6 +310,7 @@ async function load() {
           : undefined,
       empty_actual_demand_person:
         filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER || undefined,
+      status: filters.status === '全部' ? undefined : filters.status,
     })
     items.value = d.items
     total.value = d.total
@@ -316,6 +331,7 @@ async function syncRoute() {
       name: filters.name,
       model_spec: filters.model_spec,
       actual_demand_person: filters.actual_demand_person,
+      status: filters.status === defaultPurchasePlanStatus ? undefined : filters.status,
     }),
   })
 }
@@ -331,6 +347,7 @@ function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
   filters.actual_demand_person = null
+  filters.status = defaultPurchasePlanStatus
   query()
 }
 function changePageSize() {
@@ -341,6 +358,7 @@ function changePage() {
 }
 function openCreate() {
   Object.assign(form, {
+    status: defaultPurchasePlanStatus,
     material_code: '',
     name: '',
     model_spec: '',
@@ -416,6 +434,8 @@ function openBatchEdit() {
     subitem_no: '',
     update_usage: false,
     usage: '',
+    update_status: false,
+    status: defaultPurchasePlanStatus,
   })
   showBatchEdit.value = true
 }
@@ -446,6 +466,9 @@ async function batchUpdate() {
       return
     }
     payload.usage = batchEditForm.usage.trim()
+  }
+  if (batchEditForm.update_status) {
+    payload.status = batchEditForm.status
   }
   if (Object.keys(payload).length === 1) {
     message.warning('请至少勾选一个需要修改的字段')
@@ -571,6 +594,11 @@ onBeforeUnmount(() => {
           clearable
           style="width: 180px"
         />
+        <n-select
+          v-model:value="filters.status"
+          :options="purchasePlanStatusFilterOptions"
+          style="width: 140px"
+        />
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
@@ -655,6 +683,16 @@ onBeforeUnmount(() => {
               maxlength="64"
               placeholder="留空将清除子项号"
               :disabled="!batchEditForm.update_subitem_no"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_status">修改状态</n-checkbox>
+            </template>
+            <n-select
+              v-model:value="batchEditForm.status"
+              :options="purchasePlanStatusOptions"
+              :disabled="!batchEditForm.update_status"
             />
           </n-form-item>
         </div>
@@ -746,6 +784,9 @@ onBeforeUnmount(() => {
           </n-form-item>
           <n-form-item label="需求日期" required>
             <n-date-picker v-model:value="createPlanDate" type="date" class="full-width" />
+          </n-form-item>
+          <n-form-item label="状态" required>
+            <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
           </n-form-item>
           <n-form-item label="名称" path="name">
             <n-input v-model:value="form.name" maxlength="128" />

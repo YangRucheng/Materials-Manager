@@ -57,7 +57,9 @@ def test_init_sql_matches_current_model_schema() -> None:
                 f"{table_name}.{column.name} 的 NULL 约束与 ORM 不一致"
             )
             if isinstance(column.type, Enum):
-                sql_values = re.findall(r"'([^']+)'", definition)
+                enum_definition = re.search(r"ENUM\((.*?)\)", definition)
+                assert enum_definition is not None
+                sql_values = re.findall(r"'([^']+)'", enum_definition.group(1))
                 assert sql_values == list(column.type.enums), (
                     f"{table_name}.{column.name} 的 ENUM 值与 ORM 不一致"
                 )

@@ -5,6 +5,7 @@
 export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_ONLY'
 export type OperationType = 'INBOUND' | 'OUTBOUND'
 export type SourceType = 'MANUAL' | 'REVERSAL' | 'INITIALIZATION'
+export type PurchasePlanStatus = '正常' | '已归档'
 
 export interface ApiError {
   code: string
@@ -170,6 +171,7 @@ export interface PurchaseMaterial {
   remark?: string
   stock_material_id?: number
   stock_material_name?: string
+  status: PurchasePlanStatus
   moved_to_record: boolean
   enabled: boolean
   images: FileObject[]
@@ -191,6 +193,7 @@ export interface PurchaseMaterialWrite {
   remark?: string
   stock_material_id?: number
   image_ids: string[]
+  status?: PurchasePlanStatus
   version?: number
 }
 export interface PurchaseMaterialBatchUpdate {
@@ -199,6 +202,7 @@ export interface PurchaseMaterialBatchUpdate {
   actual_demand_person?: string
   subitem_no?: string | null
   usage?: string
+  status?: PurchasePlanStatus
 }
 export interface PurchaseRequestLine {
   id: number

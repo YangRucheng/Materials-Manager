@@ -1388,6 +1388,14 @@ paths:
             maxLength: 128
           - type: 'null'
           title: Purchase Responsible
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/PurchasePlanStatus'
+          - type: 'null'
+          title: Status
       - name: enabled
         in: query
         required: false
@@ -3267,6 +3275,10 @@ components:
             minLength: 1
           - type: 'null'
           title: Usage
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/PurchasePlanStatus'
+          - type: 'null'
       additionalProperties: false
       type: object
       required:
@@ -4021,6 +4033,9 @@ components:
           type: array
           maxItems: 9
           title: Image Ids
+        status:
+          $ref: '#/components/schemas/PurchasePlanStatus'
+          default: 正常
       additionalProperties: false
       type: object
       required:
@@ -4092,6 +4107,8 @@ components:
           - type: string
           - type: 'null'
           title: Stock Material Name
+        status:
+          $ref: '#/components/schemas/PurchasePlanStatus'
         moved_to_record:
           type: boolean
           title: Moved To Record
@@ -4127,6 +4144,7 @@ components:
       - purchase_responsible
       - planned_qty
       - usage
+      - status
       - moved_to_record
       - enabled
       - images
@@ -4213,6 +4231,9 @@ components:
           type: array
           maxItems: 9
           title: Image Ids
+        status:
+          $ref: '#/components/schemas/PurchasePlanStatus'
+          default: 正常
         version:
           type: integer
           title: Version
@@ -4240,6 +4261,12 @@ components:
       required:
       - material_ids
       title: PurchasePlanExportRequest
+    PurchasePlanStatus:
+      type: string
+      enum:
+      - 正常
+      - 已归档
+      title: PurchasePlanStatus
     PurchasePlanVersion:
       properties:
         id:

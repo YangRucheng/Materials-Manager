@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `remark` VARCHAR(1000) NULL,
   `stock_material_id` BIGINT UNSIGNED NULL,
   `identity_hash` VARCHAR(64) NOT NULL,
+  `status` ENUM('NORMAL', 'ARCHIVED') NOT NULL DEFAULT 'NORMAL',
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -157,6 +158,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   INDEX `ix_purchase_material_model_spec` (`model_spec`),
   INDEX `ix_purchase_material_name` (`name`),
   INDEX `ix_purchase_material_purchase_responsible` (`purchase_responsible`),
+  INDEX `ix_purchase_material_status` (`status`),
   INDEX `ix_purchase_material_stock_material_id` (`stock_material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

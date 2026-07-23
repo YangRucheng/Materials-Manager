@@ -5,6 +5,7 @@ import { useDialog, useMessage } from 'naive-ui'
 import type { FileObject, PurchaseMaterial, PurchaseMaterialWrite } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
+import { defaultPurchasePlanStatus, purchasePlanStatusOptions } from '@/constants/purchase'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
@@ -35,6 +36,7 @@ const moveForm = reactive({
 const images = ref<FileObject[]>([])
 const planDate = ref<number | null>(null)
 const form = reactive<PurchaseMaterialWrite>({
+  status: defaultPurchasePlanStatus,
   material_code: '',
   name: '',
   model_spec: '',
@@ -59,6 +61,7 @@ async function load() {
 }
 function syncForm(value: PurchaseMaterial) {
   Object.assign(form, {
+    status: value.status,
     material_code: value.material_code || '',
     name: value.name,
     model_spec: value.model_spec,
@@ -198,6 +201,9 @@ onMounted(() => {
         <div class="form-grid">
           <n-form-item label="计划 ID">
             <n-input :value="material.plan_no" disabled />
+          </n-form-item>
+          <n-form-item label="状态" required>
+            <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
           </n-form-item>
           <n-form-item label="需求日期" required>
             <n-date-picker v-model:value="planDate" type="date" class="full-width" />

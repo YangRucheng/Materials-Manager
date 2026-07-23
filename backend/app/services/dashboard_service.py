@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.enums import PurchasePlanStatus
 from app.models import (
     PurchaseMaterial,
     PurchaseRequestLine,
@@ -33,6 +34,7 @@ async def dashboard_summary(session: AsyncSession) -> DashboardSummaryRead:
                 select(func.count(PurchaseMaterial.id)).where(
                     PurchaseMaterial.material_code.is_(None),
                     PurchaseMaterial.enabled.is_(True),
+                    PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
                 )
             )
         )

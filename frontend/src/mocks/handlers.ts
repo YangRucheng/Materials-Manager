@@ -3,6 +3,7 @@ import type {
   OperationUpdate,
   OperationWrite,
   MovePurchasePlansWrite,
+  PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
   PurchaseRecordWrite,
@@ -446,7 +447,7 @@ export const handlers = [
       }`
       const planDate = new Date().toISOString().slice(0, 10)
       const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
-      const purchase = {
+      const purchase: PurchaseMaterial = {
         id: nextIds.purchase++,
         plan_no: `PLAN-${planDate.replace(/-/g, '')}-${String(planIndex).padStart(3, '0')}`,
         plan_date: planDate,
@@ -459,6 +460,7 @@ export const handlers = [
         purchase_responsible: body.purchase_responsible,
         planned_qty: body.planned_qty,
         usage: '低库存补库',
+        status: '正常',
         moved_to_record: false,
         remark: [stock.remark, quantityNote].filter(Boolean).join('；'),
         stock_material_id: stock.id,
@@ -479,6 +481,7 @@ export const handlers = [
     const q = (url.searchParams.get('keyword') || '').toLowerCase()
     const coded = url.searchParams.get('coded')
     const moved = url.searchParams.get('moved')
+    const status = url.searchParams.get('status')
     return HttpResponse.json(
       page(
         purchaseMaterials.filter(
@@ -488,7 +491,8 @@ export const handlers = [
                 .toLowerCase()
                 .includes(q)) &&
             (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
-            (moved === null || x.moved_to_record === (moved === 'true')),
+            (moved === null || x.moved_to_record === (moved === 'true')) &&
+            (status === null || x.status === status),
         ),
         url,
       ),
@@ -505,7 +509,7 @@ export const handlers = [
     const responsible = body.purchase_responsible || '\\'
     const planDate = body.plan_date || new Date().toISOString().slice(0, 10)
     const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
-    const item = {
+    const item: PurchaseMaterial = {
       id: nextIds.purchase++,
       plan_no: `PLAN-${planDate.replace(/-/g, '')}-${String(planIndex).padStart(3, '0')}`,
       plan_date: planDate,
@@ -523,6 +527,7 @@ export const handlers = [
       stock_material_id: body.stock_material_id,
       stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)
         ?.name,
+      status: body.status || '正常',
       moved_to_record: false,
       enabled: true,
       images: [],
@@ -548,6 +553,7 @@ export const handlers = [
         item.actual_demand_person = body.actual_demand_person
       if ('subitem_no' in body) item.subitem_no = body.subitem_no || undefined
       if (body.usage !== undefined) item.usage = body.usage
+      if (body.status !== undefined) item.status = body.status
       item.version++
       item.updated_at = now()
     }

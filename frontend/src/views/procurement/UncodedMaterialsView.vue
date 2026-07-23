@@ -13,6 +13,7 @@ import {
 import { formatDate, formatShanghaiTime } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
+import { defaultPurchasePlanStatus } from '@/constants/purchase'
 
 const router = useRouter()
 const dialog = useDialog()
@@ -119,6 +120,7 @@ async function load() {
     const data = await procurementApi.uncodedMaterials({
       page: page.value,
       page_size: pageSize.value,
+      status: defaultPurchasePlanStatus,
     })
     items.value = data.items
     total.value = data.total
