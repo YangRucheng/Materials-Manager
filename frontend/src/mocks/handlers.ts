@@ -214,6 +214,16 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
 }
 
 export const handlers = [
+  http.post(`${api}/ai-search/expand`, async ({ request }) => {
+    const body = (await request.json()) as { value: string }
+    const expanded = body.value
+      .split('|')
+      .flatMap((value) => (value.trim() === '电机' ? ['电机', '电动机'] : [value.trim()]))
+      .filter(Boolean)
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .join('|')
+    return HttpResponse.json({ original: body.value, expanded })
+  }),
   http.get(`${api}/ai-search/status`, () =>
     HttpResponse.json({ available: aiSettings.enabled && aiSettings.api_key_configured }),
   ),

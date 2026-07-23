@@ -188,6 +188,23 @@ class AiSearchStatusRead(BaseModel):
     available: bool
 
 
+class AiSearchExpandRequest(RequestModel):
+    value: str = Field(min_length=1, max_length=500)
+
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("不能为空")
+        return value
+
+
+class AiSearchExpandRead(BaseModel):
+    original: str
+    expanded: str
+
+
 class AiSearchTestRead(BaseModel):
     original: str
     expanded: str
