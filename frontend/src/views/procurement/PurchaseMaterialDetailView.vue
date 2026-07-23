@@ -273,7 +273,7 @@ onMounted(() => {
         <n-form-item label="备注">
           <n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count />
         </n-form-item>
-        <n-form-item label="图片"><ImageUploader v-model:files="images" /></n-form-item>
+        <n-form-item label="图片附件"><ImageUploader v-model:files="images" /></n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="space-between">

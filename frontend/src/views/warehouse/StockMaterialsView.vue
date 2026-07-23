@@ -176,13 +176,12 @@ onMounted(() => {
     <div class="page-header">
       <div>
         <h1 class="page-title">二级库物资</h1>
-        <p class="page-subtitle">库存物资档案不包含物料编码</p>
       </div>
       <n-button v-if="auth.can('warehouse:write')" type="primary" @click="openCreate"
         >新建物资</n-button
       >
     </div>
-    <n-card
+    <n-card class="filter-card"
       ><div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
@@ -202,7 +201,7 @@ onMounted(() => {
         /><n-button type="primary" @click="query">查询</n-button>
       </div></n-card
     >
-    <n-card
+    <n-card class="data-card"
       ><n-data-table
         :bordered="false"
         :columns="columns"
@@ -243,7 +242,7 @@ onMounted(() => {
             type="textarea"
             maxlength="1000"
             show-count /></n-form-item
-        ><n-form-item label="图片"><ImageUploader v-model:files="images" /></n-form-item
+        ><n-form-item label="图片附件"><ImageUploader v-model:files="images" /></n-form-item
       ></n-form>
       <template #footer
         ><n-space justify="end"

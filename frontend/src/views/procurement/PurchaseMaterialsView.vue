@@ -504,9 +504,6 @@ onBeforeUnmount(() => {
     <div class="page-header">
       <div>
         <h1 class="page-title">申购计划</h1>
-        <p class="page-subtitle">
-          计划阶段确定物资、数量和用途，子项号按需填写，物料编码可暂时为空
-        </p>
       </div>
       <n-space v-if="auth.can('purchase:write')">
         <n-button
@@ -525,7 +522,7 @@ onBeforeUnmount(() => {
         <n-button type="primary" @click="openCreate">新建申购计划</n-button>
       </n-space>
     </div>
-    <n-card
+    <n-card class="filter-card"
       ><div class="filter-bar">
         <n-input
           v-model:value="filters.name"
@@ -560,7 +557,7 @@ onBeforeUnmount(() => {
       </div></n-card
     >
     <div ref="tableAreaRef" class="purchase-plan-table-area">
-      <n-card>
+      <n-card class="data-card">
         <div class="table-toolbar">
           <n-button size="small" @click="toggleTableFullscreen">
             {{ isTableFullscreen ? '退出全屏' : '表格全屏' }}
@@ -764,7 +761,8 @@ onBeforeUnmount(() => {
             type="textarea"
             maxlength="1000"
             show-count /></n-form-item
-        ><n-form-item label="图片"><ImageUploader v-model:files="images" /></n-form-item></n-form
+        ><n-form-item label="图片附件"
+          ><ImageUploader v-model:files="images" /></n-form-item></n-form
       ><template #footer
         ><n-space justify="end"
           ><n-button @click="show = false">取消</n-button
@@ -797,7 +795,7 @@ onBeforeUnmount(() => {
 .purchase-plan-table-area:fullscreen {
   overflow: auto;
   padding: 16px;
-  background: #f4f6f8;
+  background: var(--color-bg);
 }
 
 .purchase-plan-table-area:fullscreen :deep(.n-card) {

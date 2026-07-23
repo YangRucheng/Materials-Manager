@@ -104,7 +104,6 @@ onMounted(async () => {
     <div class="page-header">
       <div>
         <h1 class="page-title">{{ title }}</h1>
-        <p class="page-subtitle">一张单据支持多行物资，提交期间按钮会锁定并使用唯一请求 ID</p>
       </div>
     </div>
     <n-card title="业务信息"
