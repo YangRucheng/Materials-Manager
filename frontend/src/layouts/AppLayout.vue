@@ -40,7 +40,11 @@ const menuOptions = computed<MenuOption[]>(() => {
     items.push({
       label: '系统设置',
       key: 'settings-group',
-      children: [link('计量单位', 'units'), link('用户管理', 'users')],
+      children: [
+        link('计量单位', 'units'),
+        link('用户管理', 'users'),
+        link('AI 搜索设置', 'ai-search-settings'),
+      ],
     })
   return items
 })

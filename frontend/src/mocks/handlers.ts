@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type {
+  AiSearchSettingsWrite,
   OperationUpdate,
   OperationWrite,
   MovePurchasePlansWrite,
@@ -24,6 +25,14 @@ import {
 } from './data'
 
 const api = '/api/v1'
+let aiSettings = {
+  endpoint: 'https://example.test/v1',
+  model: 'fast-model',
+  enabled: true,
+  api_key_configured: true,
+  updated_at: new Date().toISOString(),
+  version: 1,
+}
 const now = () => new Date().toISOString()
 const mockImage = (id: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="100%" height="100%" fill="#e8f5ee"/><text x="160" y="125" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#456">备件图片 ${id}</text></svg>`
@@ -43,6 +52,8 @@ const orSearchTerms = (value: string | null) =>
     .split('|')
     .map((term) => term.trim().toLowerCase())
     .filter((term, index, terms) => Boolean(term) && terms.indexOf(term) === index)
+const aiExpandedSearch = (value: string | null, enabled: boolean) =>
+  enabled && value ? value.replace(/(^|[|｜])电机(?=$|[|｜])/g, '$1电机|电动机') : value
 const matchesOrSearch = (value: string | number | null | undefined, search: string | null) => {
   const terms = orSearchTerms(search)
   if (!terms.length) return true
@@ -203,6 +214,33 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
 }
 
 export const handlers = [
+  http.get(`${api}/ai-search/status`, () =>
+    HttpResponse.json({ available: aiSettings.enabled && aiSettings.api_key_configured }),
+  ),
+  http.get(`${api}/ai-search/settings`, ({ request }) =>
+    actor(request).role === 'SUPER_ADMIN'
+      ? HttpResponse.json(aiSettings)
+      : error(403, 'FORBIDDEN', '没有执行此操作的权限'),
+  ),
+  http.put(`${api}/ai-search/settings`, async ({ request }) => {
+    if (actor(request).role !== 'SUPER_ADMIN')
+      return error(403, 'FORBIDDEN', '没有执行此操作的权限')
+    const body = (await request.json()) as AiSearchSettingsWrite
+    aiSettings = {
+      endpoint: body.endpoint.replace(/\/$/, ''),
+      model: body.model,
+      enabled: body.enabled,
+      api_key_configured: body.clear_api_key
+        ? false
+        : Boolean(body.api_key) || aiSettings.api_key_configured,
+      updated_at: now(),
+      version: aiSettings.version + 1,
+    }
+    return HttpResponse.json(aiSettings)
+  }),
+  http.post(`${api}/ai-search/settings/test`, () =>
+    HttpResponse.json({ original: '电机', expanded: '电机|电动机' }),
+  ),
   http.post(`${api}/auth/login`, async ({ request }) => {
     const body = (await request.json()) as { username: string; password: string }
     const user = users.find((x) => x.username === body.username && x.enabled)
@@ -506,17 +544,39 @@ export const handlers = [
     },
   ),
 
+  http.get(`${api}/purchase-materials/filter-options`, ({ request }) => {
+    const url = new URL(request.url)
+    const moved = url.searchParams.get('moved')
+    const status = actor(request).role === 'SUPER_ADMIN' ? null : '正常'
+    const plans = purchaseMaterials.filter(
+      (item) =>
+        (moved === null || item.moved_to_record === (moved === 'true')) &&
+        (status === null || item.status === status),
+    )
+    const uniqueOptions = (values: Array<string | null | undefined>) =>
+      [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])].sort()
+    return HttpResponse.json({
+      actual_demand_persons: uniqueOptions(plans.map((item) => item.actual_demand_person)),
+      purchase_responsibles: uniqueOptions(plans.map((item) => item.purchase_responsible)),
+      subitem_nos: uniqueOptions(plans.map((item) => item.subitem_no)),
+    })
+  }),
   http.get(`${api}/purchase-materials`, ({ request }) => {
     const url = new URL(request.url)
     const currentUser = actor(request)
     const keyword = url.searchParams.get('keyword')
     const searchField = url.searchParams.get('search_field')
     const searchValue = url.searchParams.get('search_value')
-    const name = url.searchParams.get('name')
+    const name = aiExpandedSearch(
+      url.searchParams.get('name'),
+      url.searchParams.get('ai_expand') === 'true',
+    )
     const modelSpec = url.searchParams.get('model_spec')
     const actualDemandPerson = url.searchParams.get('actual_demand_person')
     const emptyActualDemandPerson = url.searchParams.get('empty_actual_demand_person') === 'true'
     const purchaseResponsible = url.searchParams.get('purchase_responsible')
+    const subitemNo = url.searchParams.get('subitem_no')
+    const emptySubitemNo = url.searchParams.get('empty_subitem_no') === 'true'
     const coded = url.searchParams.get('coded')
     const moved = url.searchParams.get('moved')
     const status = url.searchParams.get('status')
@@ -551,6 +611,7 @@ export const handlers = [
                 ['\\', '/', '—', '-'].includes(x.actual_demand_person)
               : matchesOrSearch(x.actual_demand_person, actualDemandPerson)) &&
             matchesOrSearch(x.purchase_responsible, purchaseResponsible) &&
+            (emptySubitemNo ? !x.subitem_no?.trim() : !subitemNo || x.subitem_no === subitemNo) &&
             (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
             (moved === null || x.moved_to_record === (moved === 'true')) &&
             (effectiveStatus === null || x.status === effectiveStatus)
@@ -690,6 +751,7 @@ export const handlers = [
     return HttpResponse.json({
       actual_demand_persons: uniqueOptions(records.map((record) => record.actual_demand_person)),
       purchase_responsibles: uniqueOptions(records.map((record) => record.purchase_responsible)),
+      subitem_nos: uniqueOptions(records.map((record) => record.subitem_no)),
       salespersons: uniqueOptions(records.map((record) => record.salesperson)),
       statuses: uniqueOptions(records.map((record) => record.status)),
     })
@@ -701,7 +763,10 @@ export const handlers = [
     const searchValue = url.searchParams.get('search_value')
     const purchaseOrderNo = url.searchParams.get('purchase_order_no')
     const traceNo = url.searchParams.get('trace_no')
-    const name = url.searchParams.get('name')
+    const name = aiExpandedSearch(
+      url.searchParams.get('name'),
+      url.searchParams.get('ai_expand') === 'true',
+    )
     const modelSpec = url.searchParams.get('model_spec')
     const actualDemandPerson = url.searchParams.get('actual_demand_person')
     const purchaseResponsible = url.searchParams.get('purchase_responsible')
