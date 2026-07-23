@@ -31,7 +31,7 @@ X-Agent-Password: <超级管理员密码>
 - `GET /api/v1/files/images/orphans?older_than_hours=24`：超级管理员查看未引用记录、无记录磁盘文件及磁盘缺失记录。
 - `DELETE /api/v1/files/images/orphans?older_than_hours=24`：删除未引用记录和无记录磁盘文件；默认 24 小时保护期，避免误删刚上传但尚未绑定的图片。
 
-数据库结构以最新版 `../example/database/init.sql` 为准，每次使用该脚本重新初始化。
+全新数据库结构以最新版 `../example/database/init.sql` 为准，已有数据库由启动时的幂等增量迁移补齐兼容字段。
 
 FastAPI + SQLAlchemy 2.x async + MySQL 8.0，按 `docs/development-plan.md` 实现。
 
@@ -49,7 +49,7 @@ copy ..\example\template\*.json data\template\
 .venv/Scripts/uvicorn app.main:app --reload
 ```
 
-空数据库初始化通过 `../example/database/init.sql` 完成；当前开发阶段不执行运行时迁移，结构变化后需要重建空库。Docker 容器会直接启动 API 服务，`/health` 仅通过只读元数据查询校验表结构，不会自动修改数据库。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
+空数据库初始化通过 `../example/database/init.sql` 完成；Docker 容器启动 API 服务前会执行内置的幂等增量迁移，再由 `/health` 校验最终表结构。生产数据库账号需要具备执行已内置迁移所需的 `ALTER TABLE` 权限；若权限受限，可先手工执行对应迁移 SQL。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
 
 ## 验证与契约
 
