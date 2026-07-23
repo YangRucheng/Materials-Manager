@@ -1293,7 +1293,9 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Keyword
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: search_field
         in: query
         required: false
@@ -1321,7 +1323,9 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Search Value
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: name
         in: query
         required: false
@@ -1330,7 +1334,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Name
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: model_spec
         in: query
         required: false
@@ -1339,7 +1345,9 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Model Spec
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: actual_demand_person
         in: query
         required: false
@@ -1348,7 +1356,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Actual Demand Person
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: empty_actual_demand_person
         in: query
         required: false
@@ -1364,7 +1374,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Purchase Responsible
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: status
         in: query
         required: false
@@ -2078,7 +2090,9 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Keyword
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: search_field
         in: query
         required: false
@@ -2112,7 +2126,9 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Search Value
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: purchase_order_no
         in: query
         required: false
@@ -2121,7 +2137,9 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Purchase Order No
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: trace_no
         in: query
         required: false
@@ -2130,7 +2148,9 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Trace No
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: name
         in: query
         required: false
@@ -2139,7 +2159,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Name
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: model_spec
         in: query
         required: false
@@ -2148,7 +2170,9 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Model Spec
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: actual_demand_person
         in: query
         required: false
@@ -2157,7 +2181,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Actual Demand Person
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: purchase_responsible
         in: query
         required: false
@@ -2166,7 +2192,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Purchase Responsible
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       - name: salesperson
         in: query
         required: false
@@ -2175,7 +2203,9 @@ paths:
           - type: string
             maxLength: 128
           - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Salesperson
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
       responses:
         '200':
           description: Successful Response

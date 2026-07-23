@@ -37,6 +37,18 @@ const page = <T>(items: T[], url: URL) => {
     total: items.length,
   }
 }
+const orSearchTerms = (value: string | null) =>
+  (value || '')
+    .replace(/｜/g, '|')
+    .split('|')
+    .map((term) => term.trim().toLowerCase())
+    .filter((term, index, terms) => Boolean(term) && terms.indexOf(term) === index)
+const matchesOrSearch = (value: string | number | null | undefined, search: string | null) => {
+  const terms = orSearchTerms(search)
+  if (!terms.length) return true
+  const normalizedValue = String(value ?? '').toLowerCase()
+  return terms.some((term) => normalizedValue.includes(term))
+}
 const error = (status: number, code: string, message: string, details?: Record<string, unknown>) =>
   HttpResponse.json({ code, message, details, request_id: crypto.randomUUID() }, { status })
 const actor = (request: Request) => {
@@ -497,7 +509,14 @@ export const handlers = [
   http.get(`${api}/purchase-materials`, ({ request }) => {
     const url = new URL(request.url)
     const currentUser = actor(request)
-    const q = (url.searchParams.get('keyword') || '').toLowerCase()
+    const keyword = url.searchParams.get('keyword')
+    const searchField = url.searchParams.get('search_field')
+    const searchValue = url.searchParams.get('search_value')
+    const name = url.searchParams.get('name')
+    const modelSpec = url.searchParams.get('model_spec')
+    const actualDemandPerson = url.searchParams.get('actual_demand_person')
+    const emptyActualDemandPerson = url.searchParams.get('empty_actual_demand_person') === 'true'
+    const purchaseResponsible = url.searchParams.get('purchase_responsible')
     const coded = url.searchParams.get('coded')
     const moved = url.searchParams.get('moved')
     const status = url.searchParams.get('status')
@@ -506,16 +525,37 @@ export const handlers = [
     const effectiveStatus = currentUser.role === 'SUPER_ADMIN' ? status : '正常'
     return HttpResponse.json(
       page(
-        purchaseMaterials.filter(
-          (x) =>
-            (!q ||
-              `${x.plan_no}${x.material_code || ''}${x.name}${x.model_spec}`
-                .toLowerCase()
-                .includes(q)) &&
+        purchaseMaterials.filter((x) => {
+          const searchValues: Record<string, string | number | null | undefined> = {
+            plan_no: x.plan_no,
+            plan_date: x.plan_date,
+            material_code: x.material_code,
+            name: x.name,
+            model_spec: x.model_spec,
+            unit_name: x.unit_name,
+            planned_qty: x.planned_qty,
+            usage: x.usage,
+            subitem_no: x.subitem_no,
+            remark: x.remark,
+          }
+          return (
+            matchesOrSearch(
+              `${x.plan_no}${x.plan_date}${x.material_code || ''}${x.name}${x.model_spec}${x.unit_name}${x.planned_qty}${x.actual_demand_person || ''}${x.purchase_responsible || ''}${x.usage}${x.subitem_no || ''}${x.remark || ''}`,
+              keyword,
+            ) &&
+            (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
+            matchesOrSearch(x.name, name) &&
+            matchesOrSearch(x.model_spec, modelSpec) &&
+            (emptyActualDemandPerson
+              ? !x.actual_demand_person?.trim() ||
+                ['\\', '/', '—', '-'].includes(x.actual_demand_person)
+              : matchesOrSearch(x.actual_demand_person, actualDemandPerson)) &&
+            matchesOrSearch(x.purchase_responsible, purchaseResponsible) &&
             (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
             (moved === null || x.moved_to_record === (moved === 'true')) &&
-            (effectiveStatus === null || x.status === effectiveStatus),
-        ),
+            (effectiveStatus === null || x.status === effectiveStatus)
+          )
+        }),
         url,
       ),
     )
@@ -656,12 +696,16 @@ export const handlers = [
   }),
   http.get(`${api}/purchase-records`, ({ request }) => {
     const url = new URL(request.url)
-    const keyword = (url.searchParams.get('keyword') || '').toLowerCase()
-    const name = (url.searchParams.get('name') || '').toLowerCase()
-    const modelSpec = (url.searchParams.get('model_spec') || '').toLowerCase()
-    const actualDemandPerson = (url.searchParams.get('actual_demand_person') || '').toLowerCase()
-    const purchaseResponsible = (url.searchParams.get('purchase_responsible') || '').toLowerCase()
-    const salesperson = (url.searchParams.get('salesperson') || '').toLowerCase()
+    const keyword = url.searchParams.get('keyword')
+    const searchField = url.searchParams.get('search_field')
+    const searchValue = url.searchParams.get('search_value')
+    const purchaseOrderNo = url.searchParams.get('purchase_order_no')
+    const traceNo = url.searchParams.get('trace_no')
+    const name = url.searchParams.get('name')
+    const modelSpec = url.searchParams.get('model_spec')
+    const actualDemandPerson = url.searchParams.get('actual_demand_person')
+    const purchaseResponsible = url.searchParams.get('purchase_responsible')
+    const salesperson = url.searchParams.get('salesperson')
     const status = url.searchParams.get('status')
     const emptyStatus = url.searchParams.get('empty_status') === 'true'
     const records = purchaseRequests.flatMap((purchaseRequest) =>
@@ -669,22 +713,42 @@ export const handlers = [
     )
     return HttpResponse.json(
       page(
-        records.filter(
-          (record) =>
-            (!keyword ||
-              `${record.plan_no}${record.trace_no}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.salesperson || ''}${record.status}${record.plan_remark || ''}${record.record_remark || ''}`
-                .toLowerCase()
-                .includes(keyword)) &&
-            (!name || record.material_name.toLowerCase().includes(name)) &&
-            (!modelSpec || record.model_spec.toLowerCase().includes(modelSpec)) &&
-            (!actualDemandPerson ||
-              (record.actual_demand_person || '').toLowerCase().includes(actualDemandPerson)) &&
-            (!purchaseResponsible ||
-              (record.purchase_responsible || '').toLowerCase().includes(purchaseResponsible)) &&
-            (!salesperson || (record.salesperson || '').toLowerCase().includes(salesperson)) &&
+        records.filter((record) => {
+          const searchValues: Record<string, string | number | null | undefined> = {
+            plan_no: record.plan_no,
+            plan_date: record.plan_date,
+            purchase_order_no: record.purchase_order_no,
+            trace_no: record.trace_no,
+            material_code: record.material_code,
+            material_name: record.material_name,
+            model_spec: record.model_spec,
+            unit_name: record.unit_name,
+            purchase_qty: record.purchase_qty,
+            salesperson: record.salesperson,
+            status: record.status,
+            purchase_date: record.purchase_date,
+            usage: record.usage,
+            subitem_no: record.subitem_no,
+            plan_remark: record.plan_remark,
+            record_remark: record.record_remark,
+          }
+          return (
+            matchesOrSearch(
+              `${record.plan_no}${record.plan_date}${record.trace_no || ''}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.model_spec}${record.unit_name}${record.purchase_qty}${record.actual_demand_person || ''}${record.purchase_responsible || ''}${record.salesperson || ''}${record.status}${record.purchase_date}${record.usage || ''}${record.subitem_no || ''}${record.plan_remark || ''}${record.record_remark || ''}`,
+              keyword,
+            ) &&
+            (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
+            matchesOrSearch(record.purchase_order_no, purchaseOrderNo) &&
+            matchesOrSearch(record.trace_no, traceNo) &&
+            matchesOrSearch(record.material_name, name) &&
+            matchesOrSearch(record.model_spec, modelSpec) &&
+            matchesOrSearch(record.actual_demand_person, actualDemandPerson) &&
+            matchesOrSearch(record.purchase_responsible, purchaseResponsible) &&
+            matchesOrSearch(record.salesperson, salesperson) &&
             (!status || record.status === status) &&
-            (!emptyStatus || !record.status?.trim()),
-        ),
+            (!emptyStatus || !record.status?.trim())
+          )
+        }),
         url,
       ),
     )

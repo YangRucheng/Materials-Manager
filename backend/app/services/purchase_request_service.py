@@ -14,7 +14,7 @@ from app.schemas import (
     PurchaseRecordRead,
     PurchaseRecordUpdate,
 )
-from app.services.common import file_read, utc_aware, validate_version
+from app.services.common import contains_any, file_read, utc_aware, validate_version
 from app.services.material_service import update_purchase_material
 
 SHANGHAI = timezone(timedelta(hours=8))
@@ -240,30 +240,31 @@ async def search_purchase_records(
         )
     elif status:
         query = query.where(PurchaseRequestLine.status == status)
-    if keyword:
-        like = f"%{keyword}%"
-        query = query.where(
-            or_(
-                PurchaseRequest.purchase_order_no.like(like),
-                PurchaseRequest.trace_no.like(like),
-                PurchaseRequest.salesperson.like(like),
-                PurchaseRequest.remark.like(like),
-                PurchaseMaterial.plan_no.like(like),
-                cast(PurchaseMaterial.plan_date, String).like(like),
-                PurchaseRequestLine.status.like(like),
-                PurchaseMaterial.material_code.like(like),
-                PurchaseMaterial.name.like(like),
-                PurchaseMaterial.model_spec.like(like),
-                MeasurementUnit.name.like(like),
-                cast(PurchaseRequestLine.purchase_qty, String).like(like),
-                PurchaseRequestLine.usage.like(like),
-                PurchaseRequestLine.subitem_no.like(like),
-                PurchaseMaterial.actual_demand_person.like(like),
-                PurchaseMaterial.purchase_responsible.like(like),
-                PurchaseMaterial.remark.like(like),
-                cast(PurchaseRequest.purchase_date, String).like(like),
-            )
-        )
+    keyword_condition = contains_any(
+        (
+            PurchaseRequest.purchase_order_no,
+            PurchaseRequest.trace_no,
+            PurchaseRequest.salesperson,
+            PurchaseRequest.remark,
+            PurchaseMaterial.plan_no,
+            cast(PurchaseMaterial.plan_date, String),
+            PurchaseRequestLine.status,
+            PurchaseMaterial.material_code,
+            PurchaseMaterial.name,
+            PurchaseMaterial.model_spec,
+            MeasurementUnit.name,
+            cast(PurchaseRequestLine.purchase_qty, String),
+            PurchaseRequestLine.usage,
+            PurchaseRequestLine.subitem_no,
+            PurchaseMaterial.actual_demand_person,
+            PurchaseMaterial.purchase_responsible,
+            PurchaseMaterial.remark,
+            cast(PurchaseRequest.purchase_date, String),
+        ),
+        keyword,
+    )
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
     if search_field and search_value:
         search_columns = {
             "plan_no": PurchaseMaterial.plan_no,
@@ -283,21 +284,22 @@ async def search_purchase_records(
             "plan_remark": PurchaseMaterial.remark,
             "record_remark": PurchaseRequest.remark,
         }
-        query = query.where(search_columns[search_field].like(f"%{search_value}%"))
-    if purchase_order_no:
-        query = query.where(PurchaseRequest.purchase_order_no.like(f"%{purchase_order_no}%"))
-    if trace_no:
-        query = query.where(PurchaseRequest.trace_no.like(f"%{trace_no}%"))
-    if name:
-        query = query.where(PurchaseMaterial.name.like(f"%{name}%"))
-    if model_spec:
-        query = query.where(PurchaseMaterial.model_spec.like(f"%{model_spec}%"))
-    if actual_demand_person:
-        query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
-    if purchase_responsible:
-        query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
-    if salesperson:
-        query = query.where(PurchaseRequest.salesperson.like(f"%{salesperson}%"))
+        search_condition = contains_any((search_columns[search_field],), search_value)
+        if search_condition is not None:
+            query = query.where(search_condition)
+    field_filters = (
+        ((PurchaseRequest.purchase_order_no,), purchase_order_no),
+        ((PurchaseRequest.trace_no,), trace_no),
+        ((PurchaseMaterial.name,), name),
+        ((PurchaseMaterial.model_spec,), model_spec),
+        ((PurchaseMaterial.actual_demand_person,), actual_demand_person),
+        ((PurchaseMaterial.purchase_responsible,), purchase_responsible),
+        ((PurchaseRequest.salesperson,), salesperson),
+    )
+    for columns, value in field_filters:
+        condition = contains_any(columns, value)
+        if condition is not None:
+            query = query.where(condition)
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
     items = list(
         (

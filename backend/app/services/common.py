@@ -3,15 +3,20 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement, SQLColumnExpression
 
 from app.core.errors import AppError, version_conflict
 from app.models import BusinessEventLog, FileObject
 from app.schemas import FileObjectRead, Page
+
+SearchableColumn = SQLColumnExpression[Any]
 
 
 def utcnow() -> datetime:
@@ -30,6 +35,22 @@ def utc_aware(value: datetime | None) -> datetime | None:
 
 def normalized_text(value: str) -> str:
     return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value).strip()).casefold()
+
+
+def split_or_search_terms(value: str | None) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    terms = (part.strip() for part in re.split(r"[|｜]", value))
+    return tuple(dict.fromkeys(term for term in terms if term))
+
+
+def contains_any(
+    columns: Sequence[SearchableColumn], value: str | None
+) -> ColumnElement[bool] | None:
+    terms = split_or_search_terms(value)
+    if not terms:
+        return None
+    return or_(*(column.contains(term, autoescape=True) for term in terms for column in columns))
 
 
 def identity_hash(name: str, model_spec: str, unit_id: int) -> str:
