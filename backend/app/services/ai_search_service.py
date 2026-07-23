@@ -29,6 +29,7 @@ _SETTING_BUSINESS_TYPE = "SYSTEM_SETTING"
 _SETTING_BUSINESS_ID = 1
 _SETTING_ACTION = "AI_SEARCH_CONFIG_UPDATED"
 _RESPONSE_TIMEOUT_SECONDS = 10.0
+_TEST_RESPONSE_TIMEOUT_SECONDS = 30.0
 _CONNECT_TIMEOUT_SECONDS = 3.0
 _cache: dict[tuple[int, tuple[str, ...]], tuple[float, tuple[str, ...]]] = {}
 _client = httpx.AsyncClient(
@@ -118,17 +119,17 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
     if setting is None:
         return AiSearchSettingsRead(
             endpoint="",
+            api_key="",
             model="",
             enabled=False,
-            api_key_configured=False,
             updated_at=None,
             version=0,
         )
     return AiSearchSettingsRead(
         endpoint=setting.endpoint,
+        api_key=_decrypt_api_key(setting.api_key_encrypted) if setting.api_key_encrypted else "",
         model=setting.model,
         enabled=setting.enabled,
-        api_key_configured=bool(setting.api_key_encrypted),
         updated_at=setting.updated_at,
         version=setting.version,
     )
@@ -141,14 +142,7 @@ async def update_setting(
     actual_version = current.version if current else 0
     if data.version != actual_version:
         raise version_conflict(data.version, actual_version)
-    if not (current and current.api_key_encrypted) and not data.api_key:
-        raise AppError("AI_API_KEY_REQUIRED", "尚未配置 API Key，请先填写")
-
-    api_key_encrypted = current.api_key_encrypted if current else ""
-    if data.clear_api_key:
-        api_key_encrypted = ""
-    elif data.api_key:
-        api_key_encrypted = _encrypt_api_key(data.api_key)
+    api_key_encrypted = _encrypt_api_key(data.api_key)
 
     event = await log_event(
         session,
@@ -157,7 +151,7 @@ async def update_setting(
         action=_SETTING_ACTION,
         old_status="启用" if current and current.enabled else "停用",
         new_status="启用" if data.enabled else "停用",
-        remark="超级管理员更新 AI 搜索配置",
+        remark="超级管理员更新大模型配置",
         before_data=_payload(current) if current else None,
         after_data={
             "endpoint": data.endpoint.rstrip("/"),
@@ -254,7 +248,12 @@ def _raise_upstream_status_error(exc: httpx.HTTPStatusError) -> NoReturn:
     raise AppError(code, message, status_code=response_status, details=details) from exc
 
 
-async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -> tuple[str, ...]:
+async def _request_expansions(
+    setting: AiSearchConfig,
+    terms: tuple[str, ...],
+    *,
+    response_timeout_seconds: float,
+) -> tuple[str, ...]:
     cache_key = (setting.version, terms)
     cached = _cache.get(cache_key)
     now = time.monotonic()
@@ -279,7 +278,9 @@ async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0,
                 "max_tokens": 180,
+                "stream": False,
             },
+            timeout=httpx.Timeout(response_timeout_seconds, connect=_CONNECT_TIMEOUT_SECONDS),
         )
         response.raise_for_status()
     except httpx.ConnectTimeout as exc:
@@ -291,19 +292,33 @@ async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -
             details={"timeout_seconds": _CONNECT_TIMEOUT_SECONDS, "endpoint": completion_url},
         ) from exc
     except httpx.ReadTimeout as exc:
+        logger.warning(
+            "AI response timeout phase=response_wait endpoint=%s model=%s timeout_seconds=%s",
+            completion_url,
+            setting.model,
+            response_timeout_seconds,
+        )
         raise AppError(
             "AI_RESPONSE_TIMEOUT",
-            f"AI 服务响应超时（{_RESPONSE_TIMEOUT_SECONDS:g} 秒），"
-            "请检查模型名称、模型可用性或上游服务负载",
+            "已连接 AI 服务并发送请求，但在等待上游响应数据阶段，"
+            f"模型「{setting.model}」于 {response_timeout_seconds:g} 秒内未返回完整响应。"
+            f"端点：{completion_url}。"
+            "这通常表示模型冷启动、推理阻塞或上游代理读取超时，请检查上游请求日志",
             status_code=400,
-            details={"timeout_seconds": _RESPONSE_TIMEOUT_SECONDS, "endpoint": completion_url},
+            details={
+                "phase": "response_wait",
+                "timeout_seconds": response_timeout_seconds,
+                "endpoint": completion_url,
+                "model": setting.model,
+                "suggestion": "检查上游模型运行日志、冷启动状态和反向代理读取超时",
+            },
         ) from exc
     except httpx.TimeoutException as exc:
         raise AppError(
             "AI_REQUEST_TIMEOUT",
-            f"AI 服务请求超时（{_RESPONSE_TIMEOUT_SECONDS:g} 秒），请稍后重试",
+            f"AI 服务请求超时（{response_timeout_seconds:g} 秒），请稍后重试",
             status_code=400,
-            details={"timeout_seconds": _RESPONSE_TIMEOUT_SECONDS, "endpoint": completion_url},
+            details={"timeout_seconds": response_timeout_seconds, "endpoint": completion_url},
         ) from exc
     except httpx.ConnectError as exc:
         raise AppError(
@@ -365,7 +380,11 @@ async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -
 
 
 async def expand_search_value(
-    session: AsyncSession, value: str | None, *, strict: bool = False
+    session: AsyncSession,
+    value: str | None,
+    *,
+    strict: bool = False,
+    response_timeout_seconds: float = _RESPONSE_TIMEOUT_SECONDS,
 ) -> str | None:
     terms = _search_terms(value)
     if not terms:
@@ -376,10 +395,23 @@ async def expand_search_value(
             raise AppError("AI_NOT_CONFIGURED", "AI 搜索服务未启用或配置不完整", status_code=503)
         return value
     try:
-        expanded = await _request_expansions(setting, terms)
+        expanded = await _request_expansions(
+            setting,
+            terms,
+            response_timeout_seconds=response_timeout_seconds,
+        )
     except AppError:
         if strict:
             raise
         logger.warning("AI search expansion failed; using original terms", exc_info=True)
         return value
     return "|".join(expanded)
+
+
+async def test_search_value(session: AsyncSession, value: str) -> str | None:
+    return await expand_search_value(
+        session,
+        value,
+        strict=True,
+        response_timeout_seconds=_TEST_RESPONSE_TIMEOUT_SECONDS,
+    )

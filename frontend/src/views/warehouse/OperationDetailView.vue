@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { OperationType, SourceType, StockOperation } from '@/api/generated'
 import { inventoryApi } from '@/api/inventory'
 import { useAuthStore } from '@/stores/auth'
-import { formatShanghaiTime, toIsoWithTimezone } from '@/utils/time'
+import { toIsoWithTimezone } from '@/utils/time'
 import OperationLinesEditor, {
   type OperationLineModel,
 } from '@/components/OperationLinesEditor.vue'
@@ -135,10 +135,6 @@ onMounted(load)
       <div>
         <n-button text @click="router.back()">← 返回操作记录</n-button>
         <h1 class="page-title">{{ operation.operation_no }}</h1>
-        <p class="page-subtitle">
-          {{ operation.operation_type === 'INBOUND' ? '入库' : '出库' }} ·
-          {{ formatShanghaiTime(operation.occurred_at) }}
-        </p>
       </div>
       <n-space v-if="auth.can('warehouse:write')">
         <n-button @click="reverse">反向冲销</n-button>

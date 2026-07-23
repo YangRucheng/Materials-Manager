@@ -38,13 +38,11 @@ async function submit() {
         <img class="login-logo" :src="LOGO_URL" alt="系统 Logo" />
         <span class="eyebrow">ELECTRICAL WORKSHOP</span>
         <h1>电气车间<br />备件管理系统</h1>
-        <p>库存、申购计划与申购记录统一管理</p>
       </div>
     </section>
     <section class="login-panel">
       <n-card class="login-card" :bordered="false">
         <h2>欢迎登录</h2>
-        <p class="muted">请输入系统账号</p>
         <n-form ref="formRef" :model="model" :rules="rules" size="large" @submit.prevent="submit">
           <n-form-item label="用户名" path="username"
             ><n-input v-model:value="model.username" placeholder="用户名"
@@ -115,11 +113,7 @@ async function submit() {
 h1 {
   font-size: 48px;
   line-height: 1.25;
-  margin: 20px 0;
-}
-.intro-content p {
-  font-size: 18px;
-  opacity: 0.85;
+  margin: 20px 0 0;
 }
 .login-panel {
   display: grid;
@@ -135,6 +129,6 @@ h1 {
 }
 h2 {
   font-size: 28px;
-  margin: 0 0 6px;
+  margin: 0 0 22px;
 }
 </style>

@@ -3460,15 +3460,15 @@ components:
         endpoint:
           type: string
           title: Endpoint
+        api_key:
+          type: string
+          title: Api Key
         model:
           type: string
           title: Model
         enabled:
           type: boolean
           title: Enabled
-        api_key_configured:
-          type: boolean
-          title: Api Key Configured
         updated_at:
           anyOf:
           - type: string
@@ -3481,9 +3481,9 @@ components:
       type: object
       required:
       - endpoint
+      - api_key
       - model
       - enabled
-      - api_key_configured
       - version
       title: AiSearchSettingsRead
     AiSearchSettingsUpdate:
@@ -3494,10 +3494,9 @@ components:
           minLength: 1
           title: Endpoint
         api_key:
-          anyOf:
-          - type: string
-            maxLength: 1000
-          - type: 'null'
+          type: string
+          maxLength: 1000
+          minLength: 1
           title: Api Key
         model:
           type: string
@@ -3508,10 +3507,6 @@ components:
           type: boolean
           title: Enabled
           default: true
-        clear_api_key:
-          type: boolean
-          title: Clear Api Key
-          default: false
         version:
           type: integer
           minimum: 0.0
@@ -3520,6 +3515,7 @@ components:
       type: object
       required:
       - endpoint
+      - api_key
       - model
       - version
       title: AiSearchSettingsUpdate

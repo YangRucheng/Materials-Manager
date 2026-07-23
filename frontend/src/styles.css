@@ -57,13 +57,6 @@ a {
   letter-spacing: -0.02em;
   line-height: 1.35;
 }
-.page-subtitle {
-  max-width: 760px;
-  margin: 5px 0 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
 .page-header > .n-space,
 .page-header > .n-button,
 .page-header > .n-tag {

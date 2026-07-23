@@ -66,7 +66,6 @@ onMounted(load)
       <div>
         <n-button text @click="router.back()">← 返回物资列表</n-button>
         <h1 class="page-title">{{ material.name }}</h1>
-        <p class="page-subtitle">{{ material.model_spec }}</p>
       </div>
       <n-space v-if="auth.can('warehouse:write')"
         ><n-button @click="router.push({ name: 'inbound', query: { material_id: material.id } })"

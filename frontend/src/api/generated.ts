@@ -38,18 +38,17 @@ export interface LoginResponse {
 }
 export interface AiSearchSettings {
   endpoint: string
+  api_key: string
   model: string
   enabled: boolean
-  api_key_configured: boolean
   updated_at?: string
   version: number
 }
 export interface AiSearchSettingsWrite {
   endpoint: string
-  api_key?: string
+  api_key: string
   model: string
   enabled: boolean
-  clear_api_key: boolean
   version: number
 }
 export interface AiSearchStatus {
