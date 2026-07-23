@@ -582,14 +582,14 @@ onBeforeUnmount(() => {
       ><div class="filter-bar">
         <n-input
           v-model:value="filters.name"
-          placeholder="名称，多个关键词用 | 分隔"
+          placeholder="名称"
           clearable
           style="width: 200px"
           @keyup.enter="query"
         />
         <n-input
           v-model:value="filters.model_spec"
-          placeholder="型号，多个关键词用 | 分隔"
+          placeholder="型号"
           clearable
           style="width: 200px"
           @keyup.enter="query"
