@@ -23,7 +23,11 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 import {
   defaultPurchaseOrderNo,
   getLastPurchaseResponsible,
@@ -236,22 +240,18 @@ const availableColumns: Array<{
 ]
 const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
-const tableScrollX = computed(
-  () =>
-    48 +
-    availableColumns
+const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
+  preventTableColumnCompression([
+    {
+      type: 'selection',
+      disabled: () => !auth.can('purchase:write'),
+    },
+    ...availableColumns
       .filter((item) => visibleColumnKeys.value.includes(item.key))
-      .reduce((total, item) => total + Number(item.column.width || tableColumnWidths.text), 0),
+      .map((item) => item.column),
+  ]),
 )
-const columns = computed<DataTableColumns<PurchaseMaterial>>(() => [
-  {
-    type: 'selection',
-    disabled: () => !auth.can('purchase:write'),
-  },
-  ...availableColumns
-    .filter((item) => visibleColumnKeys.value.includes(item.key))
-    .map((item) => item.column),
-])
+const tableScrollX = computed(() => getTableScrollX(columns.value))
 function setVisibleColumnKeys(value: string[]) {
   visibleColumnKeys.value = value as PlanColumnKey[]
 }

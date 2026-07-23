@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, type DataTableColumns } from 'naive-ui'
+import { NButton, NTag } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { StockOperation } from '@/api/generated'
 import { inventoryApi } from '@/api/inventory'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 import { formatShanghaiTime } from '@/utils/time'
 
 const router = useRouter()
@@ -18,7 +22,7 @@ const filters = reactive({
   operation_type: null as string | null,
   material_name: '',
 })
-const columns: DataTableColumns<StockOperation> = [
+const columns = preventTableColumnCompression<StockOperation>([
   {
     title: '流水号',
     key: 'operation_no',
@@ -75,7 +79,8 @@ const columns: DataTableColumns<StockOperation> = [
         { default: () => '详情' },
       ),
   },
-]
+])
+const tableScrollX = getTableScrollX(columns)
 async function load() {
   loading.value = true
   try {
@@ -137,7 +142,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1000"
+        :scroll-x="tableScrollX"
         :row-key="(r: StockOperation) => r.id" />
       <div class="pagination-bar">
         <n-pagination

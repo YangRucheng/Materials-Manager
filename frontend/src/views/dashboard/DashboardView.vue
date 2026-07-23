@@ -101,37 +101,39 @@ onMounted(load)
           >
         </div></template
       >
-      <n-table :bordered="false" :single-line="false"
-        ><thead>
-          <tr>
-            <th>物资</th>
-            <th>当前库存</th>
-            <th>状态</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in lowStock" :key="item.stock_material_id">
-            <td>
-              {{ item.name }}<br /><span class="muted">{{ item.model_spec }}</span>
-            </td>
-            <td>{{ item.current_qty }} {{ item.unit_name }}</td>
-            <td>
-              <n-tag type="error">低库存</n-tag>
-            </td>
-            <td>
-              <n-button
-                text
-                type="primary"
-                @click="router.push(`/warehouse/materials/${item.stock_material_id}`)"
-                >查看详情</n-button
-              >
-            </td>
-          </tr>
-          <tr v-if="!lowStock.length">
-            <td colspan="4"><n-empty description="当前没有低库存物资" /></td>
-          </tr></tbody
-      ></n-table>
+      <div class="table-scroll" style="--table-min-width: 680px">
+        <n-table :bordered="false" :single-line="false"
+          ><thead>
+            <tr>
+              <th>物资</th>
+              <th>当前库存</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in lowStock" :key="item.stock_material_id">
+              <td>
+                {{ item.name }}<br /><span class="muted">{{ item.model_spec }}</span>
+              </td>
+              <td>{{ item.current_qty }} {{ item.unit_name }}</td>
+              <td>
+                <n-tag type="error">低库存</n-tag>
+              </td>
+              <td>
+                <n-button
+                  text
+                  type="primary"
+                  @click="router.push(`/warehouse/materials/${item.stock_material_id}`)"
+                  >查看详情</n-button
+                >
+              </td>
+            </tr>
+            <tr v-if="!lowStock.length">
+              <td colspan="4"><n-empty description="当前没有低库存物资" /></td>
+            </tr></tbody
+        ></n-table>
+      </div>
     </n-card>
   </div>
 </template>

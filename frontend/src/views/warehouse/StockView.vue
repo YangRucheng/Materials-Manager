@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { NButton, NTag, useMessage } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
 import type { InventoryBalance, ReplenishmentDraftWrite } from '@/api/generated'
@@ -8,7 +8,11 @@ import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime } from '@/utils/time'
 import { isDecimalString } from '@/utils/decimal'
 import QuantityInput from '@/components/QuantityInput.vue'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,7 +36,7 @@ const filters = reactive({
   min_qty: '',
   max_qty: '',
 })
-const columns: DataTableColumns<InventoryBalance> = [
+const columns = preventTableColumnCompression<InventoryBalance>([
   {
     title: '物资名称',
     key: 'name',
@@ -107,7 +111,8 @@ const columns: DataTableColumns<InventoryBalance> = [
           : []),
       ]),
   },
-]
+])
+const tableScrollX = getTableScrollX(columns)
 async function load() {
   loading.value = true
   try {
@@ -207,7 +212,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1050"
+        :scroll-x="tableScrollX"
         :row-key="(r: InventoryBalance) => r.stock_material_id" />
       <div class="pagination-bar">
         <n-pagination

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useDialog, useMessage, type DataTableColumns } from 'naive-ui'
+import { NButton, NTag, useDialog, useMessage } from 'naive-ui'
 import type { Role, User } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 import { roleLabels } from '@/types/navigation'
 
 const message = useMessage()
@@ -20,7 +24,7 @@ const form = reactive({
   password: '',
   version: 0,
 })
-const columns: DataTableColumns<User> = [
+const columns = preventTableColumnCompression<User>([
   { title: '用户名', key: 'username', width: tableColumnWidths.identifier },
   { title: '显示名称', key: 'display_name', width: tableColumnWidths.name },
   {
@@ -54,7 +58,8 @@ const columns: DataTableColumns<User> = [
         ),
       ]),
   },
-]
+])
+const tableScrollX = getTableScrollX(columns)
 async function load() {
   loading.value = true
   try {
@@ -147,6 +152,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
+        :scroll-x="tableScrollX"
         :row-key="(r: User) => r.id" /></n-card
     ><n-modal
       v-model:show="show"

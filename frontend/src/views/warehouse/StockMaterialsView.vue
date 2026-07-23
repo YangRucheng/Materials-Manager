@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import {
-  NButton,
-  NTag,
-  useMessage,
-  type DataTableColumns,
-  type FormInst,
-  type FormRules,
-} from 'naive-ui'
+import { NButton, NTag, useMessage, type FormInst, type FormRules } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
 import type { FileObject, StockMaterial, StockMaterialWrite } from '@/api/generated'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import { useAuthStore } from '@/stores/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 
 const router = useRouter()
 const message = useMessage()
@@ -43,7 +40,7 @@ const rules: FormRules = {
   unit_id: { type: 'number', required: true, message: '请选择单位' },
 }
 
-const columns: DataTableColumns<StockMaterial> = [
+const columns = preventTableColumnCompression<StockMaterial>([
   {
     title: '物资名称',
     key: 'name',
@@ -105,7 +102,8 @@ const columns: DataTableColumns<StockMaterial> = [
           : []),
       ]),
   },
-]
+])
+const tableScrollX = getTableScrollX(columns)
 async function load() {
   loading.value = true
   try {
@@ -214,7 +212,7 @@ onMounted(() => {
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="970"
+        :scroll-x="tableScrollX"
         :row-key="(row: StockMaterial) => row.id" />
       <div class="pagination-bar">
         <n-pagination
