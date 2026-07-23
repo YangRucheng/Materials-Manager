@@ -29,10 +29,10 @@ docker compose pull
 docker compose up -d
 ```
 
-至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。后端不执行运行时迁移，数据库结构以
-`example/database/init.sql` 为准；升级前需自行处理结构变更与数据备份。
+至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。全新数据库结构以
+`example/database/init.sql` 为准；后端启动时会自动执行内置的幂等增量迁移，升级前仍应备份数据库。
 
-已有数据库升级到申购计划状态版本时，备份后执行：
+若运行账号没有 `ALTER TABLE` 权限，可在备份后手工执行：
 
 ```bash
 mysql -h <host> -u <user> -p <database> < example/database/migrations/20260723_add_purchase_material_status.sql
