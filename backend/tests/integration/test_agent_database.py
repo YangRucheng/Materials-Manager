@@ -126,6 +126,7 @@ async def test_agent_database_requires_super_admin_password_headers(client: Asyn
     "sql",
     [
         "CREATE TABLE forbidden (id INT)",
+        "ALTER TABLE measurement_unit ADD COLUMN forbidden INT",
         "ALTER USER admin IDENTIFIED BY 'forbidden'",
         "DROP TABLE user",
         "SELECT id FROM user; DELETE FROM user",
@@ -144,21 +145,3 @@ async def test_agent_database_rejects_ddl_multi_statement_and_server_files(
     )
     assert response.status_code == 400, response.text
     assert response.json()["code"] == "AGENT_DATABASE_SQL_FORBIDDEN"
-
-
-@pytest.mark.asyncio
-async def test_agent_database_allows_alter_table(client: AsyncClient) -> None:
-    added = await client.post(
-        "/api/v1/agent/database/execute",
-        headers=agent_headers(),
-        json={"sql": "ALTER TABLE measurement_unit ADD COLUMN agent_test_flag INTEGER NULL"},
-    )
-    assert added.status_code == 200, added.text
-    assert added.json()["statement_type"] == "ALTER"
-
-    removed = await client.post(
-        "/api/v1/agent/database/execute",
-        headers=agent_headers(),
-        json={"sql": "ALTER TABLE measurement_unit DROP COLUMN agent_test_flag"},
-    )
-    assert removed.status_code == 200, removed.text

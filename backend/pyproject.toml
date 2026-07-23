@@ -43,7 +43,6 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]
 strict = true
-exclude = ["app/migrations"]
 
 [build-system]
 requires = ["hatchling"]

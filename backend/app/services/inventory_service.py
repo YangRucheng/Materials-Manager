@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -8,6 +9,7 @@ from uuid import uuid4
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.errors import AppError, not_found
 from app.domain.enums import OperationType, SourceType
@@ -37,6 +39,46 @@ from app.services.common import (
 )
 
 ZERO = Decimal("0")
+
+
+def _months_before(value: datetime, months: int) -> datetime:
+    month_index = value.year * 12 + value.month - 1 - months
+    year, zero_based_month = divmod(month_index, 12)
+    month = zero_based_month + 1
+    day = min(value.day, monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+async def recent_outbound_consumption(
+    session: AsyncSession,
+    material_ids: Iterable[int],
+    *,
+    now: datetime | None = None,
+) -> dict[int, Decimal]:
+    ids = list(dict.fromkeys(material_ids))
+    if not ids:
+        return {}
+    end_at = now or utcnow()
+    start_at = _months_before(end_at, 6)
+    reversal = aliased(StockOperation)
+    rows = await session.execute(
+        select(
+            StockOperationLine.stock_material_id,
+            func.sum(StockOperationLine.quantity),
+        )
+        .join(StockOperation, StockOperation.id == StockOperationLine.operation_id)
+        .outerjoin(reversal, reversal.reversal_of_id == StockOperation.id)
+        .where(
+            StockOperationLine.stock_material_id.in_(ids),
+            StockOperation.operation_type == OperationType.OUTBOUND,
+            StockOperation.source_type != SourceType.REVERSAL,
+            StockOperation.occurred_at >= start_at,
+            StockOperation.occurred_at <= end_at,
+            reversal.id.is_(None),
+        )
+        .group_by(StockOperationLine.stock_material_id)
+    )
+    return {material_id: quantity for material_id, quantity in rows.all()}
 
 
 async def get_operation(
@@ -135,9 +177,6 @@ async def _lock_and_validate_materials(
     missing = [item_id for item_id in material_ids if item_id not in by_id]
     if missing:
         raise AppError("NOT_FOUND", "二级库物资不存在", details={"ids": missing})
-    disabled = [item.id for item in materials if item.id in new_material_ids and not item.enabled]
-    if disabled:
-        raise AppError("MATERIAL_DISABLED", "停用物资不能新增库存业务", details={"ids": disabled})
     for line in lines:
         validate_quantity_precision(
             line.quantity, by_id[line.stock_material_id].unit.decimal_places
@@ -432,13 +471,16 @@ async def inventory_balances(
         .unique()
         .all()
     )
+    recent_consumption = await recent_outbound_consumption(
+        session, (item.id for item in materials)
+    )
     result = []
     for item in materials:
         balance = item.balance
         policy = item.replenishment_policy
         current = balance.quantity if balance else ZERO
         low = bool(policy and policy.enabled and current <= policy.minimum_qty)
-        suggested = max((policy.minimum_qty if policy else ZERO) - current, ZERO)
+        suggested = recent_consumption.get(item.id, ZERO)
         result.append(
             InventoryBalanceRead(
                 stock_material_id=item.id,

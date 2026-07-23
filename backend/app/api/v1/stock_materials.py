@@ -4,7 +4,6 @@ from fastapi import APIRouter, Query, status
 
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
 from app.schemas import (
-    ActionVersion,
     Page,
     ReplenishmentPolicyWrite,
     StockMaterialCreate,
@@ -25,10 +24,9 @@ async def list_materials(
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: str | None = None,
-    enabled: bool | None = None,
 ) -> Page[StockMaterialRead]:
     items, total = await material_service.search_stock_materials(
-        session, keyword=keyword, enabled=enabled, page=page, page_size=page_size
+        session, keyword=keyword, page=page, page_size=page_size
     )
     return Page(
         items=[material_service.stock_read(item) for item in items],
@@ -64,24 +62,6 @@ async def update_material(
 ) -> StockMaterialRead:
     item = await material_service.get_stock_material(session, material_id)
     item = await material_service.update_stock_material(session, item, data)
-    return material_service.stock_read(item)
-
-
-@router.post("/{material_id}/disable", response_model=StockMaterialRead)
-async def disable_material(
-    material_id: int,
-    session: DbSession,
-    user: WarehouseWriter,
-    data: ActionVersion | None = None,
-) -> StockMaterialRead:
-    item = await material_service.get_stock_material(session, material_id)
-    if data:
-        from app.services.common import validate_version
-
-        validate_version(data.version, item.version)
-    item.enabled = False
-    item.version += 1
-    await session.flush()
     return material_service.stock_read(item)
 
 

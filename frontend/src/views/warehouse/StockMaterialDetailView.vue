@@ -86,10 +86,6 @@ onMounted(load)
           ><n-descriptions-item label="计量单位">{{ material.unit_name }}</n-descriptions-item
           ><n-descriptions-item label="当前库存"
             ><strong>{{ material.current_qty }}</strong></n-descriptions-item
-          ><n-descriptions-item label="状态"
-            ><n-tag :type="material.enabled ? 'success' : 'default'">{{
-              material.enabled ? '启用' : '停用'
-            }}</n-tag></n-descriptions-item
           ><n-descriptions-item label="更新时间">{{
             formatShanghaiTime(material.updated_at)
           }}</n-descriptions-item
@@ -113,7 +109,7 @@ onMounted(load)
           ><n-descriptions-item label="最低库存">{{
             balance?.minimum_qty ?? '—'
           }}</n-descriptions-item
-          ><n-descriptions-item label="建议申购">{{
+          ><n-descriptions-item label="近6个月消耗（建议申购）">{{
             balance?.suggested_purchase_qty ?? '0'
           }}</n-descriptions-item></n-descriptions
         ><n-form label-placement="top"

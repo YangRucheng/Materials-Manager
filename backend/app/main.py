@@ -22,7 +22,6 @@ from app.core.database import engine
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.core.middleware import RealIPMiddleware
-from app.core.migrations import apply_schema_migrations
 from app.core.schema import schema_differences
 
 logger = logging.getLogger("spare_parts.api")
@@ -51,13 +50,6 @@ def error_response(
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     configure_logging(settings.log_dir, settings.log_backup_count)
-    try:
-        async with engine.begin() as connection:
-            applied_migrations = await connection.run_sync(apply_schema_migrations)
-        if applied_migrations:
-            logger.info("database migrations applied migrations=%s", applied_migrations)
-    except SQLAlchemyError:
-        logger.exception("database migration check failed")
     logger.info(
         "service started environment=%s log_dir=%s",
         settings.environment,

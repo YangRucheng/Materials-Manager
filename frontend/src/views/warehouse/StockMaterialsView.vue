@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useMessage, type FormInst, type FormRules } from 'naive-ui'
-import { useRouter } from 'vue-router'
+import { NButton, useMessage, type FormInst, type FormRules } from 'naive-ui'
 import { inventoryApi } from '@/api/inventory'
 import type { FileObject, StockMaterial, StockMaterialWrite } from '@/api/generated'
 import { useDictionaryStore } from '@/stores/dictionaries'
@@ -13,7 +12,6 @@ import {
   tableColumnWidths,
 } from '@/constants/table'
 
-const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 const dictionaries = useDictionaryStore()
@@ -21,7 +19,7 @@ const loading = ref(false)
 const items = ref<StockMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
-const filters = reactive({ keyword: '', enabled: null as boolean | null })
+const filters = reactive({ keyword: '' })
 const showModal = ref(false)
 const saving = ref(false)
 const editing = ref<StockMaterial | null>(null)
@@ -45,16 +43,7 @@ const columns = preventTableColumnCompression<StockMaterial>([
     title: '物资名称',
     key: 'name',
     width: tableColumnWidths.name,
-    render: (row) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'primary',
-          onClick: () => router.push(`/warehouse/materials/${row.id}`),
-        },
-        { default: () => row.name },
-      ),
+    render: (row) => row.name,
   },
   {
     title: '型号规格',
@@ -63,44 +52,14 @@ const columns = preventTableColumnCompression<StockMaterial>([
     ellipsis: { tooltip: true },
   },
   { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
-  { title: '当前库存', key: 'current_qty', width: tableColumnWidths.quantity },
-  {
-    title: '状态',
-    key: 'enabled',
-    width: tableColumnWidths.status,
-    render: (row) =>
-      h(
-        NTag,
-        { type: row.enabled ? 'success' : 'default', size: 'small' },
-        { default: () => (row.enabled ? '启用' : '停用') },
-      ),
-  },
   {
     title: '操作',
     key: 'actions',
-    width: 210,
+    width: 100,
     render: (row) =>
-      h('div', { class: 'action-row' }, [
-        h(
-          NButton,
-          { size: 'small', onClick: () => router.push(`/warehouse/materials/${row.id}`) },
-          { default: () => '详情' },
-        ),
-        ...(auth.can('warehouse:write')
-          ? [
-              h(
-                NButton,
-                { size: 'small', onClick: () => openEdit(row) },
-                { default: () => '编辑' },
-              ),
-              h(
-                NButton,
-                { size: 'small', disabled: !row.enabled, onClick: () => disable(row) },
-                { default: () => '停用' },
-              ),
-            ]
-          : []),
-      ]),
+      auth.can('warehouse:write')
+        ? h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' })
+        : '—',
   },
 ])
 const tableScrollX = getTableScrollX(columns)
@@ -111,7 +70,6 @@ async function load() {
       page: page.value,
       page_size: 20,
       keyword: filters.keyword || undefined,
-      enabled: filters.enabled ?? undefined,
     })
     items.value = data.items
     total.value = data.total
@@ -161,15 +119,6 @@ async function save() {
     saving.value = false
   }
 }
-async function disable(row: StockMaterial) {
-  try {
-    await inventoryApi.disableMaterial(row.id)
-    message.success('物资已停用')
-    await load()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '停用失败')
-  }
-}
 onMounted(() => {
   void dictionaries.load()
   void load()
@@ -180,7 +129,7 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <div>
-        <h1 class="page-title">二级库物资</h1>
+        <h1 class="page-title">物资档案</h1>
       </div>
       <n-button v-if="auth.can('warehouse:write')" type="primary" @click="openCreate"
         >新建物资</n-button
@@ -193,16 +142,7 @@ onMounted(() => {
           clearable
           placeholder="名称或型号规格"
           style="width: 240px"
-          @keyup.enter="load"
-        /><n-select
-          v-model:value="filters.enabled"
-          clearable
-          :options="[
-            { label: '启用', value: true },
-            { label: '停用', value: false },
-          ]"
-          placeholder="启用状态"
-          style="width: 140px"
+          @keyup.enter="query"
         /><n-button type="primary" @click="query">查询</n-button>
       </div></n-card
     >

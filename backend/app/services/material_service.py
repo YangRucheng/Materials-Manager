@@ -66,7 +66,6 @@ def stock_read(item: StockMaterial) -> StockMaterialRead:
         unit_id=item.unit_id,
         unit_name=item.unit.name,
         remark=item.remark,
-        enabled=item.enabled,
         current_qty=item.balance.quantity if item.balance else 0,
         images=[file_read(link.file) for link in item.images],
         replenishment_policy=item.replenishment_policy,
@@ -362,7 +361,6 @@ async def search_stock_materials(
     session: AsyncSession,
     *,
     keyword: str | None,
-    enabled: bool | None,
     page: int,
     page_size: int,
 ) -> tuple[list[StockMaterial], int]:
@@ -370,8 +368,6 @@ async def search_stock_materials(
     if keyword:
         like = f"%{keyword}%"
         query = query.where(or_(StockMaterial.name.like(like), StockMaterial.model_spec.like(like)))
-    if enabled is not None:
-        query = query.where(StockMaterial.enabled == enabled)
     count = await session.scalar(select(func.count()).select_from(query.subquery()))
     items = list(
         (
@@ -486,7 +482,10 @@ async def search_purchase_materials(
 
 
 async def purchase_filter_options(
-    session: AsyncSession, *, moved: bool | None
+    session: AsyncSession,
+    *,
+    moved: bool | None,
+    status: PurchasePlanStatus | None,
 ) -> tuple[list[str], list[str]]:
     record_exists = (
         select(PurchaseRequestLine.id)
@@ -499,6 +498,9 @@ async def purchase_filter_options(
     responsible_query = select(PurchaseMaterial.purchase_responsible).where(
         func.trim(PurchaseMaterial.purchase_responsible) != ""
     )
+    if status is not None:
+        actual_demand_query = actual_demand_query.where(PurchaseMaterial.status == status)
+        responsible_query = responsible_query.where(PurchaseMaterial.status == status)
     if moved is not None:
         moved_filter = record_exists if moved else ~record_exists
         actual_demand_query = actual_demand_query.where(moved_filter)

@@ -59,13 +59,14 @@ async def create_purchase_plan(
 
 @pytest.mark.asyncio
 async def test_purchase_plan_status_filter_and_batch_archive(client: AsyncClient) -> None:
-    headers = await auth_headers(client, "purchase")
-    normal = await create_purchase_plan(client, headers, "正常申购计划")
-    archived = await create_purchase_plan(client, headers, "待归档申购计划")
+    purchase_headers = await auth_headers(client, "purchase")
+    admin_headers = await auth_headers(client, "admin")
+    normal = await create_purchase_plan(client, purchase_headers, "正常申购计划")
+    archived = await create_purchase_plan(client, purchase_headers, "待归档申购计划")
 
     archive_response = await client.patch(
         "/api/v1/purchase-materials/batch",
-        headers=headers,
+        headers=purchase_headers,
         json={
             "materials": [{"id": archived["id"], "version": archived["version"]}],
             "status": "已归档",
@@ -76,26 +77,43 @@ async def test_purchase_plan_status_filter_and_batch_archive(client: AsyncClient
 
     normal_list = await client.get(
         "/api/v1/purchase-materials",
-        headers=headers,
+        headers=purchase_headers,
         params={"status": "正常"},
     )
     archived_list = await client.get(
         "/api/v1/purchase-materials",
-        headers=headers,
+        headers=purchase_headers,
         params={"status": "已归档"},
     )
-    all_list = await client.get("/api/v1/purchase-materials", headers=headers)
+    purchase_list = await client.get("/api/v1/purchase-materials", headers=purchase_headers)
+    admin_archived_list = await client.get(
+        "/api/v1/purchase-materials",
+        headers=admin_headers,
+        params={"status": "已归档"},
+    )
+    admin_all_list = await client.get("/api/v1/purchase-materials", headers=admin_headers)
 
     assert {item["id"] for item in normal_list.json()["items"]} == {normal["id"]}
-    assert {item["id"] for item in archived_list.json()["items"]} == {archived["id"]}
-    assert {item["id"] for item in all_list.json()["items"]} == {
+    assert archived_list.status_code == 403
+    assert archived_list.json()["code"] == "ARCHIVED_PURCHASE_PLAN_FORBIDDEN"
+    assert {item["id"] for item in purchase_list.json()["items"]} == {normal["id"]}
+    assert {item["id"] for item in admin_archived_list.json()["items"]} == {archived["id"]}
+    assert {item["id"] for item in admin_all_list.json()["items"]} == {
         normal["id"],
         archived["id"],
     }
+    forbidden_detail = await client.get(
+        f"/api/v1/purchase-materials/{archived['id']}", headers=purchase_headers
+    )
+    assert forbidden_detail.status_code == 403
+    admin_detail = await client.get(
+        f"/api/v1/purchase-materials/{archived['id']}", headers=admin_headers
+    )
+    assert admin_detail.status_code == 200
 
     invalid = await client.get(
         "/api/v1/purchase-materials",
-        headers=headers,
+        headers=purchase_headers,
         params={"status": "已取消"},
     )
     assert invalid.status_code == 422

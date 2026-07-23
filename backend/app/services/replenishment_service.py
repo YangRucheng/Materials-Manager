@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -13,14 +14,32 @@ from app.models import (
 )
 from app.schemas import (
     PurchaseMaterialCreate,
+    ReplenishmentDefaultsRead,
     ReplenishmentDraftCreate,
     ReplenishmentDraftRead,
     ReplenishmentPolicyWrite,
 )
 from app.services.common import validate_quantity_precision, validate_version
+from app.services.inventory_service import recent_outbound_consumption
 from app.services.material_service import create_purchase_material, get_stock_material
 
 ZERO = Decimal("0")
+SHANGHAI = timezone(timedelta(hours=8))
+
+
+async def replenishment_defaults(session: AsyncSession) -> ReplenishmentDefaultsRead:
+    latest_responsible = await session.scalar(
+        select(PurchaseMaterial.purchase_responsible)
+        .where(
+            func.trim(PurchaseMaterial.purchase_responsible).not_in(("", "\\", "/", "—", "-"))
+        )
+        .order_by(PurchaseMaterial.id.desc())
+        .limit(1)
+    )
+    return ReplenishmentDefaultsRead(
+        purchase_responsible=latest_responsible or "",
+        demand_date=datetime.now(SHANGHAI).date(),
+    )
 
 
 async def set_policy(
@@ -59,9 +78,7 @@ async def create_replenishment_draft(
     if policy is None or not policy.enabled or stock.balance.quantity > policy.minimum_qty:
         raise AppError("NOT_LOW_STOCK", "该物资当前不在低库存范围", status_code=409)
 
-    suggested = max(policy.minimum_qty - stock.balance.quantity, ZERO)
-    if suggested == ZERO:
-        raise AppError("REPLENISHMENT_NOT_REQUIRED", "当前库存无需补库", status_code=409)
+    suggested = (await recent_outbound_consumption(session, [stock.id])).get(stock.id, ZERO)
     validate_quantity_precision(data.planned_qty, stock.unit.decimal_places)
 
     previous_code = await session.scalar(
@@ -80,6 +97,7 @@ async def create_replenishment_draft(
     purchase = await create_purchase_material(
         session,
         PurchaseMaterialCreate(
+            plan_date=data.demand_date,
             material_code=previous_code,
             name=stock.name,
             model_spec=stock.model_spec,
