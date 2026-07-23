@@ -217,6 +217,9 @@ onMounted(() => {
           <n-form-item label="型号规格" required>
             <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
+          <n-form-item label="计划数量" required>
+            <QuantityInput v-model:value="form.planned_qty" :decimal-places="1" />
+          </n-form-item>
           <n-form-item label="计量单位" required>
             <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
           </n-form-item>
@@ -226,11 +229,11 @@ onMounted(() => {
           <n-form-item label="申购负责人" required>
             <n-input v-model:value="form.purchase_responsible" maxlength="128" />
           </n-form-item>
-          <n-form-item label="计划数量" required>
-            <QuantityInput v-model:value="form.planned_qty" :decimal-places="1" />
-          </n-form-item>
           <n-form-item label="子项号">
             <n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填" />
+          </n-form-item>
+          <n-form-item label="用途" required>
+            <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
         </div>
         <n-form-item label="关联二级库物资">
@@ -238,9 +241,6 @@ onMounted(() => {
             :value="form.stock_material_id ?? null"
             @update:value="form.stock_material_id = $event ?? undefined"
           />
-        </n-form-item>
-        <n-form-item label="用途" required>
-          <n-input v-model:value="form.usage" maxlength="500" />
         </n-form-item>
         <n-form-item label="备注">
           <n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count />

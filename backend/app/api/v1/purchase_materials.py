@@ -22,7 +22,12 @@ from app.schemas import (
     PurchasePlanExportRequest,
     PurchaseRecordRead,
 )
-from app.services import excel_export_service, material_service, purchase_request_service
+from app.services import (
+    ai_search_service,
+    excel_export_service,
+    material_service,
+    purchase_request_service,
+)
 from app.services.common import validate_version
 
 router = APIRouter(prefix="/purchase-materials", tags=["申购计划"])
@@ -64,10 +69,13 @@ async def list_materials(
     actual_demand_person: OrSearch128 = None,
     empty_actual_demand_person: bool = False,
     purchase_responsible: OrSearch128 = None,
+    subitem_no: Annotated[str | None, Query(max_length=64)] = None,
+    empty_subitem_no: bool = False,
     status: PurchasePlanStatus | None = None,
     enabled: bool | None = None,
     coded: bool | None = None,
     moved: bool | None = None,
+    ai_expand: bool = False,
 ) -> Page[PurchaseMaterialRead]:
     if user.role != Role.SUPER_ADMIN:
         if status == PurchasePlanStatus.ARCHIVED:
@@ -77,6 +85,11 @@ async def list_materials(
                 status_code=403,
             )
         status = PurchasePlanStatus.NORMAL
+    if ai_expand:
+        keyword = await ai_search_service.expand_search_value(session, keyword)
+        name = await ai_search_service.expand_search_value(session, name)
+        if search_field == "name":
+            search_value = await ai_search_service.expand_search_value(session, search_value)
     items, total = await material_service.search_purchase_materials(
         session,
         keyword=keyword,
@@ -87,6 +100,8 @@ async def list_materials(
         actual_demand_person=actual_demand_person,
         empty_actual_demand_person=empty_actual_demand_person,
         purchase_responsible=purchase_responsible,
+        subitem_no=subitem_no,
+        empty_subitem_no=empty_subitem_no,
         status=status,
         enabled=enabled,
         coded=coded,
@@ -108,7 +123,7 @@ async def filter_options(
     user: CurrentUser,
     moved: bool | None = None,
 ) -> PurchaseFilterOptions:
-    actual_demand_persons, purchase_responsibles = (
+    actual_demand_persons, purchase_responsibles, subitem_nos = (
         await material_service.purchase_filter_options(
             session,
             moved=moved,
@@ -118,6 +133,7 @@ async def filter_options(
     return PurchaseFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
+        subitem_nos=subitem_nos,
     )
 
 

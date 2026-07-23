@@ -18,6 +18,7 @@ import type {
   PurchaseMaterialWrite,
 } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
+import { aiSearchApi } from '@/api/aiSearch'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -56,6 +57,8 @@ const total = ref(0)
 const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const loading = ref(false)
+const aiAvailable = ref(false)
+const aiEnabled = ref(routeQueryString(route.query.ai) === '1')
 const show = ref(false)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
@@ -70,6 +73,8 @@ const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
+const ALL_SUBITEM_FILTER = '__all_subitem_no__'
+const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
 const routeStatus = routeQueryString(route.query.status)
 const canViewArchivedPlans = computed(() => auth.user?.role === 'SUPER_ADMIN')
 const statusFilterOptions = computed(() =>
@@ -83,6 +88,7 @@ const filters = reactive({
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
   actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
+  subitem_no: routeQueryString(route.query.subitem_no) || ALL_SUBITEM_FILTER,
   status: statusFilterOptions.value.some((option) => option.value === routeStatus)
     ? (routeStatus as PurchasePlanStatusFilter)
     : defaultPurchasePlanStatus,
@@ -90,10 +96,16 @@ const filters = reactive({
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
+  subitem_nos: [],
 })
 const actualDemandPersonOptions = computed(() => [
   { label: '空需求人', value: EMPTY_DEMAND_PERSON_FILTER },
   ...filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
+])
+const subitemOptions = computed(() => [
+  { label: '全部子项号', value: ALL_SUBITEM_FILTER },
+  { label: '空子项号', value: EMPTY_SUBITEM_FILTER },
+  ...filterOptions.value.subitem_nos.map((value) => ({ label: value, value })),
 ])
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
@@ -310,6 +322,7 @@ async function load() {
       page: page.value,
       page_size: pageSize.value,
       moved: false,
+      ai_expand: aiEnabled.value || undefined,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
       actual_demand_person:
@@ -318,6 +331,11 @@ async function load() {
           : undefined,
       empty_actual_demand_person:
         filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER || undefined,
+      subitem_no:
+        filters.subitem_no !== ALL_SUBITEM_FILTER && filters.subitem_no !== EMPTY_SUBITEM_FILTER
+          ? filters.subitem_no
+          : undefined,
+      empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
       status: filters.status === '全部' ? undefined : filters.status,
     })
     items.value = d.items
@@ -330,6 +348,15 @@ async function load() {
 async function loadFilterOptions() {
   filterOptions.value = await procurementApi.materialFilterOptions({ moved: false })
 }
+async function loadAiStatus() {
+  try {
+    aiAvailable.value = (await aiSearchApi.status()).available
+    if (!aiAvailable.value) aiEnabled.value = false
+  } catch {
+    aiAvailable.value = false
+    aiEnabled.value = false
+  }
+}
 async function syncRoute() {
   await router.replace({
     name: 'purchase-materials',
@@ -339,7 +366,9 @@ async function syncRoute() {
       name: filters.name,
       model_spec: filters.model_spec,
       actual_demand_person: filters.actual_demand_person,
+      subitem_no: filters.subitem_no === ALL_SUBITEM_FILTER ? undefined : filters.subitem_no,
       status: filters.status === defaultPurchasePlanStatus ? undefined : filters.status,
+      ai: aiEnabled.value ? '1' : undefined,
     }),
   })
 }
@@ -355,6 +384,7 @@ function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
   filters.actual_demand_person = null
+  filters.subitem_no = ALL_SUBITEM_FILTER
   filters.status = defaultPurchasePlanStatus
   query()
 }
@@ -545,6 +575,7 @@ onMounted(() => {
   document.addEventListener('fullscreenchange', syncTableFullscreen)
   void dictionaries.load()
   void loadFilterOptions()
+  void loadAiStatus()
   void load()
 })
 onActivated(() => {
@@ -603,6 +634,11 @@ onBeforeUnmount(() => {
           style="width: 180px"
         />
         <n-select
+          v-model:value="filters.subitem_no"
+          :options="subitemOptions"
+          style="width: 160px"
+        />
+        <n-select
           v-model:value="filters.status"
           :options="statusFilterOptions"
           style="width: 140px"
@@ -613,6 +649,13 @@ onBeforeUnmount(() => {
           storage-key="procurement.purchase-materials.visible-columns.v2"
           @update:value="setVisibleColumnKeys"
         />
+        <n-checkbox
+          v-model:checked="aiEnabled"
+          :disabled="!aiAvailable"
+          :title="aiAvailable ? '自动补充物资名称同义词' : '请联系超级管理员配置 AI 搜索服务'"
+        >
+          AI 赋能
+        </n-checkbox>
         <n-button type="primary" @click="query">查询</n-button>
         <n-button @click="resetFilters">重置</n-button>
       </div></n-card

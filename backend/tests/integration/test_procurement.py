@@ -159,6 +159,47 @@ async def test_empty_purchase_people_use_backslash_placeholder(client: AsyncClie
 
 
 @pytest.mark.asyncio
+async def test_purchase_plan_subitem_filters_support_all_exact_and_empty(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "一号子项计划", subitem_no="01-01")
+    second = await create_purchase_plan(client, headers, "二号子项计划", subitem_no="02-02")
+    empty = await create_purchase_plan(client, headers, "空子项计划", subitem_no=None)
+
+    options = await client.get(
+        "/api/v1/purchase-materials/filter-options",
+        headers=headers,
+        params={"moved": False},
+    )
+    assert options.status_code == 200, options.text
+    assert options.json()["subitem_nos"] == ["01-01", "02-02"]
+
+    exact = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"moved": False, "subitem_no": "02-02"},
+    )
+    assert [item["id"] for item in exact.json()["items"]] == [second["id"]]
+
+    empty_result = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"moved": False, "empty_subitem_no": True},
+    )
+    assert [item["id"] for item in empty_result.json()["items"]] == [empty["id"]]
+
+    all_result = await client.get(
+        "/api/v1/purchase-materials", headers=headers, params={"moved": False}
+    )
+    assert {item["id"] for item in all_result.json()["items"]} == {
+        first["id"],
+        second["id"],
+        empty["id"],
+    }
+
+
+@pytest.mark.asyncio
 async def test_purchase_lists_support_field_like_and_person_filters(
     client: AsyncClient,
 ) -> None:
