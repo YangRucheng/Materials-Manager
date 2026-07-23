@@ -1,15 +1,20 @@
+from decimal import Decimal
 from typing import Annotated, Literal
+from urllib.parse import quote
 
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
+from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
 from app.schemas import (
     Page,
     PurchaseRecordFilterOptions,
     PurchaseRecordRead,
+    PurchaseRecordResultExportRequest,
     PurchaseRecordUpdate,
 )
-from app.services import ai_search_service, material_service
+from app.services import ai_search_service, excel_export_service, material_service
 from app.services import purchase_request_service as service
 
 router = APIRouter(tags=["申购记录"])
@@ -38,6 +43,31 @@ RecordSearchField = Literal[
     "plan_remark",
     "record_remark",
 ]
+RESULT_EXPORT_LIMIT = 10_000
+RECORD_RESULT_HEADERS = {
+    "purchase_qty": "申购数量",
+    "plan_date": "需求日期",
+    "purchase_order_no": "申购单号",
+    "trace_no": "追溯号",
+    "material_name": "物资",
+    "actual_demand_person": "实际需求人",
+    "purchase_responsible": "申购负责人",
+    "salesperson": "业务员",
+    "status": "状态",
+    "purchase_date": "申购日期",
+}
+
+
+def _excel_response(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type=excel_export_service.XLSX_CONTENT_TYPE,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
+
+
+def _quantity_text(value: Decimal) -> str:
+    return format(value, "f").rstrip("0").rstrip(".") or "0"
 
 
 @router.get("/purchase-records", response_model=Page[PurchaseRecordRead])
@@ -103,6 +133,64 @@ async def purchase_record_filter_options(
         subitem_nos=subitem_nos,
         salespersons=await service.purchase_salesperson_options(session),
         statuses=await service.purchase_status_options(session),
+    )
+
+
+@router.post("/purchase-records/export-results")
+async def export_purchase_record_results(
+    data: PurchaseRecordResultExportRequest,
+    session: DbSession,
+    user: CurrentUser,
+) -> Response:
+    items, total = await service.search_purchase_records(
+        session,
+        status=data.status,
+        empty_status=data.empty_status,
+        keyword=None,
+        search_field=None,
+        search_value=None,
+        purchase_order_no=data.purchase_order_no,
+        trace_no=data.trace_no,
+        name=data.name,
+        model_spec=data.model_spec,
+        actual_demand_person=None,
+        purchase_responsible=data.purchase_responsible,
+        salesperson=data.salesperson,
+        page=1,
+        page_size=RESULT_EXPORT_LIMIT + 1,
+    )
+    if total > RESULT_EXPORT_LIMIT:
+        raise AppError(
+            "EXPORT_RESULT_LIMIT_EXCEEDED",
+            f"查询结果超过 {RESULT_EXPORT_LIMIT} 行，请缩小筛选范围后导出",
+            status_code=400,
+            details={"total": total, "limit": RESULT_EXPORT_LIMIT},
+        )
+    rows = []
+    for item in items:
+        record = service.purchase_record_read(item)
+        material_details = [record.material_name]
+        if record.material_code:
+            material_details.append(f"物料编码：{record.material_code}")
+        if record.model_spec:
+            material_details.append(f"型号规格：{record.model_spec}")
+        rows.append(
+            {
+                "purchase_qty": f"{_quantity_text(record.purchase_qty)} {record.unit_name}",
+                "plan_date": record.plan_date,
+                "purchase_order_no": record.purchase_order_no,
+                "trace_no": record.trace_no,
+                "material_name": "\n".join(material_details),
+                "actual_demand_person": record.actual_demand_person,
+                "purchase_responsible": record.purchase_responsible,
+                "salesperson": record.salesperson,
+                "status": record.status,
+                "purchase_date": record.purchase_date,
+            }
+        )
+    columns = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
+    return _excel_response(
+        *excel_export_service.render_result_excel("申购记录导出", columns, rows)
     )
 
 
