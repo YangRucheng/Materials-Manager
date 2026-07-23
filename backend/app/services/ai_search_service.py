@@ -216,10 +216,24 @@ def _extract_json(content: str) -> dict[str, Any]:
     )
 
 
-def _completion_payload(setting: AiSearchConfig, prompt: str) -> dict[str, Any]:
+def _completion_payload(setting: AiSearchConfig, terms: tuple[str, ...]) -> dict[str, Any]:
+    system_prompt = (
+        "你是工业备件搜索词扩展器。必须只返回一个 JSON 对象，不得输出 Markdown、解释或其他文本。"
+        "JSON 结构固定为 {\"expansions\":[[\"原词\",\"同义词\"]]}。"
+        f"expansions 必须包含且仅包含 {len(terms)} 个子数组，"
+        "第 i 个子数组必须对应 input_terms 的第 i 个词。"
+        "每个子数组必须保留原词，并最多补充 5 个含义高度一致的同义词、常用别名或规范名称。"
+        "不得补充上下位类别、品牌或型号。"
+    )
     payload: dict[str, Any] = {
         "model": setting.model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": json.dumps({"input_terms": terms}, ensure_ascii=False),
+            },
+        ],
         "temperature": 0,
         "max_tokens": 180,
         "stream": False,
@@ -228,6 +242,53 @@ def _completion_payload(setting: AiSearchConfig, prompt: str) -> dict[str, Any]:
         payload["thinking"] = {"type": "disabled"}
         payload["response_format"] = {"type": "json_object"}
     return payload
+
+
+def _expansion_groups(
+    payload: dict[str, Any], terms: tuple[str, ...], content: str
+) -> list[list[str]]:
+    raw_groups = payload.get("expansions")
+    groups: object = raw_groups
+    if isinstance(raw_groups, dict):
+        groups = [raw_groups.get(term, []) for term in terms]
+    elif (
+        len(terms) == 1
+        and isinstance(raw_groups, list)
+        and all(isinstance(item, str) for item in raw_groups)
+    ):
+        groups = [raw_groups]
+    elif isinstance(raw_groups, list) and all(isinstance(item, dict) for item in raw_groups):
+        groups_by_original: dict[str, object] = {}
+        for item in raw_groups:
+            original = item.get("original")
+            values = item.get("terms", item.get("synonyms", item.get("expansions", [])))
+            if isinstance(original, str):
+                groups_by_original[original] = values
+        groups = [groups_by_original.get(term, []) for term in terms]
+
+    actual_count = len(groups) if isinstance(groups, list) else None
+    if not isinstance(groups, list) or actual_count != len(terms):
+        raise AppError(
+            "AI_INVALID_RESPONSE",
+            f"AI 返回的扩展词分组数量不匹配：期望 {len(terms)} 组，实际 "
+            f"{actual_count if actual_count is not None else '不是数组'}",
+            status_code=502,
+            details={
+                "expected_count": len(terms),
+                "actual_count": actual_count,
+                "content_preview": content[:300],
+            },
+        )
+
+    normalized: list[list[str]] = []
+    for group in groups:
+        if isinstance(group, list):
+            normalized.append([item for item in group if isinstance(item, str)])
+        elif isinstance(group, str):
+            normalized.append([group])
+        else:
+            normalized.append([])
+    return normalized
 
 
 def _upstream_error_reason(response: httpx.Response) -> str | None:
@@ -295,19 +356,12 @@ async def _request_expansions(
         return cached[1]
 
     api_key = _decrypt_api_key(setting.api_key_encrypted)
-    prompt = (
-        "你是工业备件搜索词扩展器。为每个输入词补充同义词、常用别名和规范名称，"
-        "只补充含义高度一致、适合数据库模糊搜索的短词。不要补充上下位类别、品牌或型号。"
-        "每个输入最多返回5个补充词，必须保留原词。只返回JSON："
-        '{"expansions":[["原词","同义词"]]}。输入词：'
-        + json.dumps(terms, ensure_ascii=False)
-    )
     completion_url = _completion_url(setting.endpoint)
     try:
         response = await _client.post(
             completion_url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json=_completion_payload(setting, prompt),
+            json=_completion_payload(setting, terms),
             timeout=httpx.Timeout(response_timeout_seconds, connect=_CONNECT_TIMEOUT_SECONDS),
         )
         response.raise_for_status()
@@ -388,9 +442,7 @@ async def _request_expansions(
         )
 
     payload = _extract_json(content)
-    groups = payload.get("expansions")
-    if not isinstance(groups, list) or len(groups) != len(terms):
-        raise AppError("AI_INVALID_RESPONSE", "AI 返回的扩展词数量不匹配", status_code=502)
+    groups = _expansion_groups(payload, terms, content)
 
     expanded: list[str] = []
     seen: set[str] = set()
