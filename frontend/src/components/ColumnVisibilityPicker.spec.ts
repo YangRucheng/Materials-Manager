@@ -28,10 +28,7 @@ describe('ColumnVisibilityPicker', () => {
 
     await wrapper.setProps({ value: ['plan_no', 'model_spec'] })
 
-    expect(JSON.parse(localStorage.getItem('columns') || 'null')).toEqual([
-      'plan_no',
-      'model_spec',
-    ])
+    expect(JSON.parse(localStorage.getItem('columns') || 'null')).toEqual(['plan_no', 'model_spec'])
   })
 
   it('keeps page defaults when stored data is invalid', () => {

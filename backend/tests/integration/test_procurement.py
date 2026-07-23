@@ -482,6 +482,53 @@ async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: Asyn
 
 
 @pytest.mark.asyncio
+async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "批量修改计划一", subitem_no="01-01")
+    second = await create_purchase_plan(
+        client,
+        headers,
+        "批量修改计划二",
+        subitem_no="02-02",
+        actual_demand_person="原需求人",
+    )
+
+    response = await client.patch(
+        "/api/v1/purchase-materials/batch",
+        headers=headers,
+        json={
+            "materials": [
+                {"id": first["id"], "version": first["version"]},
+                {"id": second["id"], "version": second["version"]},
+            ],
+            "plan_date": "2026-07-15",
+            "actual_demand_person": "统一需求人",
+            "subitem_no": None,
+            "usage": "统一批量修改用途",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert [item["id"] for item in payload] == [first["id"], second["id"]]
+    assert {item["plan_date"] for item in payload} == {"2026-07-15"}
+    assert {item["actual_demand_person"] for item in payload} == {"统一需求人"}
+    assert {item["subitem_no"] for item in payload} == {None}
+    assert {item["usage"] for item in payload} == {"统一批量修改用途"}
+    assert len({item["plan_no"] for item in payload}) == 2
+    assert all(item["plan_no"].startswith("PLAN-20260715-") for item in payload)
+    assert {item["version"] for item in payload} == {2}
+
+    listed = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"moved": False, "actual_demand_person": "统一需求人"},
+    )
+    assert listed.status_code == 200, listed.text
+    assert {item["id"] for item in listed.json()["items"]} == {first["id"], second["id"]}
+
+
+@pytest.mark.asyncio
 async def test_purchase_record_supports_full_edit_and_free_text_status(
     client: AsyncClient,
 ) -> None:
