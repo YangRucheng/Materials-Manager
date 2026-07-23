@@ -55,6 +55,13 @@ export interface AiSearchSettingsWrite {
 export interface AiSearchStatus {
   available: boolean
 }
+export interface AiSearchExpandInput {
+  value: string
+}
+export interface AiSearchExpandResult {
+  original: string
+  expanded: string
+}
 export interface AiSearchTestResult {
   original: string
   expanded: string

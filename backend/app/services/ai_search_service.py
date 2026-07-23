@@ -8,7 +8,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, NoReturn
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
@@ -28,8 +28,12 @@ _MAX_EXPANSIONS_PER_TERM = 6
 _SETTING_BUSINESS_TYPE = "SYSTEM_SETTING"
 _SETTING_BUSINESS_ID = 1
 _SETTING_ACTION = "AI_SEARCH_CONFIG_UPDATED"
+_RESPONSE_TIMEOUT_SECONDS = 10.0
+_CONNECT_TIMEOUT_SECONDS = 3.0
 _cache: dict[tuple[int, tuple[str, ...]], tuple[float, tuple[str, ...]]] = {}
-_client = httpx.AsyncClient(timeout=httpx.Timeout(4.0, connect=2.0))
+_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(_RESPONSE_TIMEOUT_SECONDS, connect=_CONNECT_TIMEOUT_SECONDS)
+)
 
 
 @dataclass(frozen=True)
@@ -198,6 +202,58 @@ def _extract_json(content: str) -> dict[str, Any]:
     return payload
 
 
+def _upstream_error_reason(response: httpx.Response) -> str | None:
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    error = payload.get("error")
+    if isinstance(error, dict) and isinstance(error.get("message"), str):
+        return error["message"][:300]
+    if isinstance(error, str):
+        return error[:300]
+    for key in ("message", "detail"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            return value[:300]
+    return None
+
+
+def _raise_upstream_status_error(exc: httpx.HTTPStatusError) -> NoReturn:
+    status = exc.response.status_code
+    reason = _upstream_error_reason(exc.response)
+    details: dict[str, object] = {"upstream_status": status}
+    if reason:
+        details["reason"] = reason
+
+    if status in {401, 403}:
+        code = "AI_AUTH_FAILED"
+        message = "AI 服务鉴权失败，请检查 API Key 是否正确且具有模型访问权限"
+        response_status = 400
+    elif status == 404:
+        code = "AI_ENDPOINT_NOT_FOUND"
+        message = "AI 接口或模型不存在，请检查端点路径和模型名称"
+        response_status = 400
+    elif status == 429:
+        code = "AI_RATE_LIMITED"
+        message = "AI 服务请求过于频繁或额度不足，请检查账户额度后重试"
+        response_status = 429
+    elif 400 <= status < 500:
+        code = "AI_REQUEST_REJECTED"
+        message = "AI 服务拒绝了请求，请检查端点格式、模型名称和接口兼容性"
+        response_status = 400
+    else:
+        code = "AI_UPSTREAM_FAILED"
+        message = f"AI 上游服务返回 HTTP {status}，请检查服务状态或稍后重试"
+        response_status = 502
+
+    if reason:
+        message = f"{message}：{reason}"
+    raise AppError(code, message, status_code=response_status, details=details) from exc
+
+
 async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -> tuple[str, ...]:
     cache_key = (setting.version, terms)
     cached = _cache.get(cache_key)
@@ -213,9 +269,10 @@ async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -
         '{"expansions":[["原词","同义词"]]}。输入词：'
         + json.dumps(terms, ensure_ascii=False)
     )
+    completion_url = _completion_url(setting.endpoint)
     try:
         response = await _client.post(
-            _completion_url(setting.endpoint),
+            completion_url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": setting.model,
@@ -225,15 +282,67 @@ async def _request_expansions(setting: AiSearchConfig, terms: tuple[str, ...]) -
             },
         )
         response.raise_for_status()
-        body = response.json()
-        content = body["choices"][0]["message"]["content"]
-    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+    except httpx.ConnectTimeout as exc:
+        raise AppError(
+            "AI_CONNECT_TIMEOUT",
+            f"连接 AI 服务超时（{_CONNECT_TIMEOUT_SECONDS:g} 秒），"
+            "请检查端点地址、服务器网络或代理设置",
+            status_code=400,
+            details={"timeout_seconds": _CONNECT_TIMEOUT_SECONDS, "endpoint": completion_url},
+        ) from exc
+    except httpx.ReadTimeout as exc:
+        raise AppError(
+            "AI_RESPONSE_TIMEOUT",
+            f"AI 服务响应超时（{_RESPONSE_TIMEOUT_SECONDS:g} 秒），"
+            "请检查模型名称、模型可用性或上游服务负载",
+            status_code=400,
+            details={"timeout_seconds": _RESPONSE_TIMEOUT_SECONDS, "endpoint": completion_url},
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise AppError(
+            "AI_REQUEST_TIMEOUT",
+            f"AI 服务请求超时（{_RESPONSE_TIMEOUT_SECONDS:g} 秒），请稍后重试",
+            status_code=400,
+            details={"timeout_seconds": _RESPONSE_TIMEOUT_SECONDS, "endpoint": completion_url},
+        ) from exc
+    except httpx.ConnectError as exc:
+        raise AppError(
+            "AI_CONNECTION_FAILED",
+            "无法连接 AI 服务，请检查端点地址、DNS、TLS 证书或服务器出网配置",
+            status_code=400,
+            details={"reason": str(exc)[:300], "endpoint": completion_url},
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        _raise_upstream_status_error(exc)
+    except httpx.RequestError as exc:
         raise AppError(
             "AI_REQUEST_FAILED",
-            "AI 搜索扩展服务调用失败",
-            status_code=502,
-            details={"reason": str(exc)[:300]},
+            "请求 AI 服务失败，请检查端点和服务器网络配置",
+            status_code=400,
+            details={"reason": str(exc)[:300], "endpoint": completion_url},
         ) from exc
+
+    try:
+        body = response.json()
+        content = body["choices"][0]["message"]["content"]
+    except ValueError as exc:
+        raise AppError(
+            "AI_INVALID_RESPONSE",
+            "AI 服务返回了无法解析的 JSON 响应",
+            status_code=502,
+        ) from exc
+    except (KeyError, IndexError, TypeError) as exc:
+        raise AppError(
+            "AI_INVALID_RESPONSE",
+            "AI 服务返回结构缺少 choices[0].message.content，请检查接口兼容性",
+            status_code=502,
+        ) from exc
+    if not isinstance(content, str):
+        raise AppError(
+            "AI_INVALID_RESPONSE",
+            "AI 服务返回的 message.content 不是文本，请检查接口兼容性",
+            status_code=502,
+        )
 
     payload = _extract_json(content)
     groups = payload.get("expansions")

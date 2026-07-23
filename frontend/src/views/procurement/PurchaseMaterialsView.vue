@@ -58,7 +58,7 @@ const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const loading = ref(false)
 const aiAvailable = ref(false)
-const aiEnabled = ref(routeQueryString(route.query.ai) === '1')
+const aiSearching = ref(false)
 const show = ref(false)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
@@ -107,6 +107,16 @@ const subitemOptions = computed(() => [
   { label: '空子项号', value: EMPTY_SUBITEM_FILTER },
   ...filterOptions.value.subitem_nos.map((value) => ({ label: value, value })),
 ])
+const activeFilterCount = computed(
+  () =>
+    [
+      filters.name.trim(),
+      filters.model_spec.trim(),
+      filters.actual_demand_person,
+      filters.subitem_no === ALL_SUBITEM_FILTER ? '' : filters.subitem_no,
+      filters.status === defaultPurchasePlanStatus ? '' : filters.status,
+    ].filter(Boolean).length,
+)
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
   trace_no: '',
@@ -322,7 +332,6 @@ async function load() {
       page: page.value,
       page_size: pageSize.value,
       moved: false,
-      ai_expand: aiEnabled.value || undefined,
       name: filters.name.trim() || undefined,
       model_spec: filters.model_spec.trim() || undefined,
       actual_demand_person:
@@ -351,10 +360,8 @@ async function loadFilterOptions() {
 async function loadAiStatus() {
   try {
     aiAvailable.value = (await aiSearchApi.status()).available
-    if (!aiAvailable.value) aiEnabled.value = false
   } catch {
     aiAvailable.value = false
-    aiEnabled.value = false
   }
 }
 async function syncRoute() {
@@ -368,7 +375,6 @@ async function syncRoute() {
       actual_demand_person: filters.actual_demand_person,
       subitem_no: filters.subitem_no === ALL_SUBITEM_FILTER ? undefined : filters.subitem_no,
       status: filters.status === defaultPurchasePlanStatus ? undefined : filters.status,
-      ai: aiEnabled.value ? '1' : undefined,
     }),
   })
 }
@@ -379,6 +385,25 @@ async function syncRouteAndLoad(resetPage = false) {
 }
 function query() {
   void syncRouteAndLoad(true)
+}
+async function aiQuery() {
+  const value = filters.name.trim()
+  if (!value) {
+    message.warning('请先输入物资名称')
+    return
+  }
+  aiSearching.value = true
+  try {
+    const data = await aiSearchApi.expand(value)
+    filters.name = data.expanded
+    if (data.expanded === data.original) message.info('未发现可补充的同义词，已按原词搜索')
+    else message.success(`已扩展搜索词：${data.expanded}`)
+    await syncRouteAndLoad(true)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : 'AI 赋能搜索失败')
+  } finally {
+    aiSearching.value = false
+  }
 }
 function resetFilters() {
   filters.name = ''
@@ -609,64 +634,93 @@ onBeforeUnmount(() => {
         <n-button type="primary" @click="openCreate">新建申购计划</n-button>
       </n-space>
     </div>
-    <n-card class="filter-card"
-      ><div class="filter-bar">
-        <n-input
-          v-model:value="filters.name"
-          placeholder="名称"
-          clearable
-          style="width: 200px"
-          @keyup.enter="query"
-        />
-        <n-input
-          v-model:value="filters.model_spec"
-          placeholder="型号"
-          clearable
-          style="width: 200px"
-          @keyup.enter="query"
-        />
-        <n-select
-          v-model:value="filters.actual_demand_person"
-          :options="actualDemandPersonOptions"
-          placeholder="实际需求人"
-          filterable
-          clearable
-          style="width: 180px"
-        />
-        <n-select
-          v-model:value="filters.subitem_no"
-          :options="subitemOptions"
-          style="width: 160px"
-        />
-        <n-select
-          v-model:value="filters.status"
-          :options="statusFilterOptions"
-          style="width: 140px"
-        />
+    <n-card class="filter-card" :bordered="false">
+      <div class="filter-heading">
+        <div class="filter-title">筛选条件</div>
+        <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
+          已启用 {{ activeFilterCount }} 项
+        </n-tag>
+      </div>
+      <div class="purchase-plan-filter-grid">
+        <label class="filter-field">
+          <span>物资名称</span>
+          <n-input
+            v-model:value="filters.name"
+            placeholder="输入物资名称"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>型号规格</span>
+          <n-input
+            v-model:value="filters.model_spec"
+            placeholder="输入型号规格"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>实际需求人</span>
+          <n-select
+            v-model:value="filters.actual_demand_person"
+            :options="actualDemandPersonOptions"
+            placeholder="选择或搜索需求人"
+            filterable
+            clearable
+          />
+        </label>
+        <label class="filter-field">
+          <span>子项号</span>
+          <n-select v-model:value="filters.subitem_no" :options="subitemOptions" filterable />
+        </label>
+        <label class="filter-field">
+          <span>计划状态</span>
+          <n-select v-model:value="filters.status" :options="statusFilterOptions" />
+        </label>
+      </div>
+      <div class="filter-actions">
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
           storage-key="procurement.purchase-materials.visible-columns.v2"
           @update:value="setVisibleColumnKeys"
         />
-        <n-checkbox
-          v-model:checked="aiEnabled"
-          :disabled="!aiAvailable"
-          :title="aiAvailable ? '自动补充物资名称同义词' : '请联系超级管理员配置 AI 搜索服务'"
-        >
-          AI 赋能
-        </n-checkbox>
-        <n-button type="primary" @click="query">查询</n-button>
-        <n-button @click="resetFilters">重置</n-button>
-      </div></n-card
-    >
-    <div ref="tableAreaRef" class="purchase-plan-table-area">
-      <n-card class="data-card">
-        <div class="table-toolbar">
-          <n-button size="small" @click="toggleTableFullscreen">
-            {{ isTableFullscreen ? '退出全屏' : '表格全屏' }}
+        <div class="filter-action-buttons">
+          <n-button @click="resetFilters">重置</n-button>
+          <n-button
+            secondary
+            type="primary"
+            :loading="aiSearching"
+            :disabled="!aiAvailable || !filters.name.trim()"
+            :title="
+              aiAvailable
+                ? filters.name.trim()
+                  ? '自动扩展物资名称同义词并立即搜索'
+                  : '请先输入物资名称'
+                : '请联系超级管理员配置 AI 搜索服务'
+            "
+            @click="aiQuery"
+          >
+            AI 赋能搜索
           </n-button>
+          <n-button type="primary" @click="query">查询计划</n-button>
         </div>
+      </div>
+    </n-card>
+    <div ref="tableAreaRef" class="purchase-plan-table-area">
+      <n-button
+        class="table-fullscreen-toggle"
+        quaternary
+        circle
+        size="small"
+        :title="isTableFullscreen ? '退出表格全屏' : '表格全屏'"
+        :aria-label="isTableFullscreen ? '退出表格全屏' : '表格全屏'"
+        @click="toggleTableFullscreen"
+      >
+        {{ isTableFullscreen ? '↙' : '↗' }}
+      </n-button>
+      <n-card class="data-card">
         <n-data-table
           v-model:checked-row-keys="checkedRowKeys"
           :bordered="false"
@@ -892,10 +946,78 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.table-toolbar {
+.filter-heading,
+.filter-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.filter-heading {
+  margin-bottom: 18px;
+}
+
+.purchase-plan-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-field > span {
+  color: #4b5565;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-field :deep(.n-input),
+.filter-field :deep(.n-select) {
+  width: 100%;
+}
+
+.filter-field :deep(.n-input) {
+  background-color: rgb(255 255 255 / 88%);
+}
+
+.filter-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.filter-action-buttons {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+
+.filter-action-buttons :deep(.n-button) {
+  min-width: 88px;
+}
+
+.purchase-plan-table-area {
+  position: relative;
+}
+
+.table-fullscreen-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 12px;
+  color: #64748b;
+  font-size: 17px;
+}
+
+.table-fullscreen-toggle:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .model-spec-clamp {
@@ -918,5 +1040,32 @@ onBeforeUnmount(() => {
 
 .purchase-plan-table-area:fullscreen :deep(.n-card) {
   min-height: 100%;
+}
+
+@media (max-width: 1600px) {
+  .purchase-plan-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1220px) {
+  .purchase-plan-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .purchase-plan-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filter-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-action-buttons {
+    justify-content: flex-end;
+  }
 }
 </style>

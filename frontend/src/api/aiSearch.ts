@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type {
+  AiSearchExpandResult,
   AiSearchSettings,
   AiSearchSettingsWrite,
   AiSearchStatus,
@@ -7,6 +8,10 @@ import type {
 } from './generated'
 
 export const aiSearchApi = {
+  expand: (value: string) =>
+    apiClient
+      .post<AiSearchExpandResult>('/ai-search/expand', { value })
+      .then((response) => response.data),
   status: () =>
     apiClient.get<AiSearchStatus>('/ai-search/status').then((response) => response.data),
   settings: () =>
