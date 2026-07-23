@@ -17,3 +17,8 @@ class SourceType(StrEnum):
     MANUAL = "MANUAL"
     REVERSAL = "REVERSAL"
     INITIALIZATION = "INITIALIZATION"
+
+
+class PurchasePlanStatus(StrEnum):
+    NORMAL = "正常"
+    ARCHIVED = "已归档"

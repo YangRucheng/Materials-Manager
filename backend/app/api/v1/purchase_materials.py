@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter, require_roles
-from app.domain.enums import Role
+from app.domain.enums import PurchasePlanStatus, Role
 from app.models import User
 from app.schemas import (
     ApiError,
@@ -59,6 +59,7 @@ async def list_materials(
     actual_demand_person: Annotated[str | None, Query(max_length=128)] = None,
     empty_actual_demand_person: bool = False,
     purchase_responsible: Annotated[str | None, Query(max_length=128)] = None,
+    status: PurchasePlanStatus | None = None,
     enabled: bool | None = None,
     coded: bool | None = None,
     moved: bool | None = None,
@@ -73,6 +74,7 @@ async def list_materials(
         actual_demand_person=actual_demand_person,
         empty_actual_demand_person=empty_actual_demand_person,
         purchase_responsible=purchase_responsible,
+        status=status,
         enabled=enabled,
         coded=coded,
         moved=moved,
@@ -128,7 +130,11 @@ async def export_uncoded_materials(
     keyword: str | None = None,
 ) -> Response:
     materials = await material_service.purchase_materials_for_export(
-        session, keyword=keyword, coded=False, moved=False
+        session,
+        keyword=keyword,
+        coded=False,
+        moved=False,
+        status=PurchasePlanStatus.NORMAL,
     )
     rows = [
         {

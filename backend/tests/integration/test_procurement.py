@@ -52,8 +52,53 @@ async def create_purchase_plan(
     assert result["planned_qty"] == planned_qty
     assert result["purchase_responsible"] == purchase_responsible
     assert result["plan_date"] == plan_date
+    assert result["status"] == "正常"
     assert "code_state" not in result
     return result
+
+
+@pytest.mark.asyncio
+async def test_purchase_plan_status_filter_and_batch_archive(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    normal = await create_purchase_plan(client, headers, "正常申购计划")
+    archived = await create_purchase_plan(client, headers, "待归档申购计划")
+
+    archive_response = await client.patch(
+        "/api/v1/purchase-materials/batch",
+        headers=headers,
+        json={
+            "materials": [{"id": archived["id"], "version": archived["version"]}],
+            "status": "已归档",
+        },
+    )
+    assert archive_response.status_code == 200, archive_response.text
+    assert archive_response.json()[0]["status"] == "已归档"
+
+    normal_list = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"status": "正常"},
+    )
+    archived_list = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"status": "已归档"},
+    )
+    all_list = await client.get("/api/v1/purchase-materials", headers=headers)
+
+    assert {item["id"] for item in normal_list.json()["items"]} == {normal["id"]}
+    assert {item["id"] for item in archived_list.json()["items"]} == {archived["id"]}
+    assert {item["id"] for item in all_list.json()["items"]} == {
+        normal["id"],
+        archived["id"],
+    }
+
+    invalid = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"status": "已取消"},
+    )
+    assert invalid.status_code == 422
 
 
 @pytest.mark.asyncio

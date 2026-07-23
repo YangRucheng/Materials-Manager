@@ -15,6 +15,7 @@ from pydantic import (
 
 from app.domain.enums import (
     OperationType,
+    PurchasePlanStatus,
     Role,
     SourceType,
 )
@@ -394,6 +395,7 @@ class PurchaseMaterialBase(RequestModel):
     remark: str | None = Field(default=None, max_length=1000)
     stock_material_id: int | None = None
     image_ids: list[FileId] = Field(default_factory=list, max_length=9)
+    status: PurchasePlanStatus = PurchasePlanStatus.NORMAL
 
     @field_validator("image_ids")
     @classmethod
@@ -433,6 +435,7 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
         | None
     ) = None
+    status: PurchasePlanStatus | None = None
 
     @field_validator("materials")
     @classmethod
@@ -444,7 +447,7 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
 
     @model_validator(mode="after")
     def validate_updates(self) -> BatchUpdatePurchasePlansRequest:
-        update_fields = {"plan_date", "actual_demand_person", "subitem_no", "usage"}
+        update_fields = {"plan_date", "actual_demand_person", "subitem_no", "usage", "status"}
         selected_fields = self.model_fields_set & update_fields
         if not selected_fields:
             raise ValueError("at least one update field is required")
@@ -471,6 +474,7 @@ class PurchaseMaterialRead(ReadModel):
     remark: str | None = None
     stock_material_id: int | None = None
     stock_material_name: str | None = None
+    status: PurchasePlanStatus
     moved_to_record: bool
     enabled: bool
     images: list[FileObjectRead]
