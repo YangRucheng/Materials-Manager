@@ -1047,19 +1047,19 @@ onBeforeUnmount(() => {
 .table-fullscreen-toggle {
   position: absolute;
   z-index: 2;
-  top: 10px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
   color: #aeb7c4;
 }
 
 .table-fullscreen-toggle::before {
-  width: 17px;
-  height: 17px;
-  border-top: 3px solid currentcolor;
-  border-right: 3px solid currentcolor;
-  border-top-right-radius: 2px;
+  width: 13px;
+  height: 13px;
+  border-top: 2px solid currentcolor;
+  border-right: 2px solid currentcolor;
+  border-top-right-radius: 1px;
   content: '';
   transition:
     color 0.18s ease,
