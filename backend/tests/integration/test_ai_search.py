@@ -54,7 +54,7 @@ class GlmResponse:
                 {
                     "message": {
                         "reasoning_content": "需要为电机补充常用规范名称。",
-                        "content": '输出如下：\n{"expansions":[["电机","电动机"]]}',
+                        "content": '输出如下：\n{"expansions":["电机","电动机"]}',
                     }
                 }
             ]
@@ -244,3 +244,9 @@ async def test_glm_models_disable_thinking_and_request_json_output(
     assert glm_client.request_json["thinking"] == {"type": "disabled"}
     assert glm_client.request_json["response_format"] == {"type": "json_object"}
     assert glm_client.request_json["stream"] is False
+    assert glm_client.request_json["messages"][0]["role"] == "system"
+    assert "仅包含 1 个子数组" in glm_client.request_json["messages"][0]["content"]
+    assert glm_client.request_json["messages"][1] == {
+        "role": "user",
+        "content": '{"input_terms": ["电机"]}',
+    }
