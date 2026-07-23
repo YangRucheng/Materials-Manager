@@ -132,15 +132,8 @@ onMounted(() => {
 
 <template>
   <div v-if="record" v-loading="loading" class="page">
-    <div class="page-header">
-      <div>
-        <n-button text @click="router.back()">← 返回申购记录</n-button>
-        <h1 class="page-title">{{ record.material_name }}</h1>
-        <p class="page-subtitle">{{ record.plan_no }} · {{ record.status }}</p>
-      </div>
-      <n-button v-if="auth.can('purchase:write')" type="primary" :loading="saving" @click="save"
-        >保存修改</n-button
-      >
+    <div class="detail-toolbar">
+      <n-button secondary @click="router.push('/procurement/records')">← 返回申购记录</n-button>
     </div>
 
     <n-card title="申购记录信息">

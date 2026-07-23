@@ -2,16 +2,11 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDialog, useMessage } from 'naive-ui'
-import type {
-  FileObject,
-  PurchaseMaterial,
-  PurchaseMaterialWrite,
-  StockMaterial,
-} from '@/api/generated'
+import type { FileObject, PurchaseMaterial, PurchaseMaterialWrite } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import MaterialSelector from '@/components/MaterialSelector.vue'
-import { dateToTimestamp, formatDate, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
+import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
@@ -25,9 +20,6 @@ const dialog = useDialog()
 const dictionaries = useDictionaryStore()
 const material = ref<PurchaseMaterial | null>(null)
 const loading = ref(true)
-const showLink = ref(false)
-const selectedStock = ref<number | null>(null)
-const stockPreview = ref<StockMaterial | undefined>()
 const saving = ref(false)
 const deleting = ref(false)
 const showMove = ref(false)
@@ -63,17 +55,6 @@ async function load() {
     syncForm(material.value)
   } finally {
     loading.value = false
-  }
-}
-async function linkStock() {
-  if (!material.value || !selectedStock.value) return
-  try {
-    material.value = await procurementApi.linkStock(material.value.id, selectedStock.value)
-    syncForm(material.value)
-    message.success('已关联二级库物资')
-    showLink.value = false
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '关联失败')
   }
 }
 function syncForm(value: PurchaseMaterial) {
@@ -196,19 +177,8 @@ onMounted(() => {
 
 <template>
   <div v-if="material" v-loading="loading" class="page">
-    <div class="page-header">
-      <div>
-        <n-button text @click="router.back()">← 返回申购计划</n-button>
-        <h1 class="page-title">{{ material.name }}</h1>
-        <n-space class="page-subtitle" size="small">
-          <span>{{ material.plan_no }}</span>
-          <span>{{ formatDate(material.plan_date) }}</span>
-          <span>{{ material.material_code || '\\' }}</span>
-          <n-tag size="small" :type="material.moved_to_record ? 'success' : 'warning'">
-            {{ material.moved_to_record ? '已转入申购记录' : '申购计划中' }}
-          </n-tag>
-        </n-space>
-      </div>
+    <div class="detail-toolbar">
+      <n-button secondary @click="router.push('/procurement/materials')">← 返回申购计划</n-button>
       <n-space v-if="auth.can('purchase:write')">
         <n-button
           type="error"
@@ -218,13 +188,9 @@ onMounted(() => {
           @click="confirmDelete"
           >删除计划</n-button
         >
-        <n-button v-if="!material.stock_material_id" @click="showLink = true"
-          >关联二级库物资</n-button
-        >
         <n-button v-if="material.material_code && !material.moved_to_record" @click="openMove"
           >转入申购记录</n-button
         >
-        <n-button type="primary" :loading="saving" @click="save">保存修改</n-button>
       </n-space>
     </div>
     <n-card title="申购计划信息">
@@ -284,28 +250,6 @@ onMounted(() => {
         </n-space>
       </template>
     </n-card>
-    <n-modal v-model:show="showLink" preset="card" title="关联已有二级库物资" style="width: 600px"
-      ><n-alert type="info"
-        >同一二级库物资可以关联多条申购计划，请确认名称、规格和单位一致。</n-alert
-      ><br /><MaterialSelector
-        v-model:value="selectedStock"
-        @select="stockPreview = $event"
-      /><n-descriptions v-if="stockPreview" :column="2" style="margin-top: 16px"
-        ><n-descriptions-item label="名称">{{ stockPreview.name }}</n-descriptions-item
-        ><n-descriptions-item label="规格">{{ stockPreview.model_spec }}</n-descriptions-item
-        ><n-descriptions-item label="单位">{{ stockPreview.unit_name }}</n-descriptions-item
-        ><n-descriptions-item label="库存">{{
-          stockPreview.current_qty
-        }}</n-descriptions-item></n-descriptions
-      ><template #footer
-        ><n-space justify="end"
-          ><n-button @click="showLink = false">取消</n-button
-          ><n-button type="primary" :disabled="!selectedStock" @click="linkStock"
-            >确认关联</n-button
-          ></n-space
-        ></template
-      ></n-modal
-    >
     <n-modal
       v-model:show="showMove"
       preset="card"
