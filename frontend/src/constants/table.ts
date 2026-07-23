@@ -1,0 +1,15 @@
+export const tableColumnWidths = {
+  unit: 80,
+  quantity: 110,
+  date: 112,
+  datetime: 172,
+  status: 104,
+  person: 120,
+  code: 150,
+  identifier: 176,
+  name: 220,
+  material: 280,
+  model: 240,
+  text: 200,
+  action: 180,
+} as const
