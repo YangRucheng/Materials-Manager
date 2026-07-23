@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from datetime import date
+from decimal import Decimal
 from io import BytesIO
 from typing import Any
 
@@ -15,6 +17,7 @@ from openpyxl.styles import (  # type: ignore[import-untyped]
     PatternFill,
     Side,
 )
+from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
 from openpyxl.worksheet.datavalidation import (  # type: ignore[import-untyped]
     DataValidation,
 )
@@ -206,4 +209,88 @@ def render_excel(template_file: str, rows: list[dict[str, Any]]) -> tuple[bytes,
             f"Excel 导出模板内容不完整或无效：{template_file}",
             details={"template": template_file},
         ) from exc
+    return output.getvalue(), filename
+
+
+def _display_width(value: object) -> int:
+    text = "" if value is None else str(value)
+    return max(
+        (
+            sum(
+                2 if unicodedata.east_asian_width(character) in {"W", "F"} else 1
+                for character in line
+            )
+            for line in text.splitlines() or [""]
+        ),
+        default=0,
+    )
+
+
+def _result_cell_value(value: object) -> object:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, str):
+        value = ILLEGAL_EXCEL_CHARACTERS.sub("", value)
+        if value.startswith(("=", "+", "-", "@")):
+            return f"'{value}"
+    return value
+
+
+def render_result_excel(
+    filename_prefix: str,
+    columns: list[tuple[str, str]],
+    rows: list[dict[str, Any]],
+) -> tuple[bytes, str]:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = filename_prefix[:31]
+    sheet.freeze_panes = "A2"
+    sheet.sheet_view.showGridLines = False
+    sheet.sheet_view.zoomScale = 90
+
+    border_side = Side(style="thin", color="FFD8DEE8")
+    cell_border = Border(
+        left=border_side,
+        right=border_side,
+        top=border_side,
+        bottom=border_side,
+    )
+    header_fill = PatternFill("solid", fgColor="FFE9EDF3")
+    alternate_fill = PatternFill("solid", fgColor="FFF7F9FC")
+
+    for column_index, (_, label) in enumerate(columns, start=1):
+        cell = sheet.cell(row=1, column=column_index, value=label)
+        cell.font = Font(name="等线", size=11, bold=True, color="FF344054")
+        cell.fill = header_fill
+        cell.border = cell_border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    sheet.row_dimensions[1].height = 32
+
+    widths = [_display_width(label) for _, label in columns]
+    for row_index, row in enumerate(rows, start=2):
+        for column_index, (key, _) in enumerate(columns, start=1):
+            value = _result_cell_value(row.get(key))
+            cell = sheet.cell(row=row_index, column=column_index, value=value)
+            cell.font = Font(name="等线", size=11, color="FF344054")
+            cell.border = cell_border
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+            if row_index % 2 == 0:
+                cell.fill = alternate_fill
+            widths[column_index - 1] = max(widths[column_index - 1], _display_width(value))
+        sheet.row_dimensions[row_index].height = 30
+
+    last_column = get_column_letter(len(columns))
+    last_row = max(1, len(rows) + 1)
+    sheet.auto_filter.ref = f"A1:{last_column}{last_row}"
+    sheet.print_area = f"A1:{last_column}{last_row}"
+    sheet.page_setup.orientation = "landscape"
+    sheet.page_setup.fitToWidth = 1
+    sheet.page_setup.fitToHeight = 0
+
+    for column_index, width in enumerate(widths, start=1):
+        sheet.column_dimensions[get_column_letter(column_index)].width = min(max(width + 4, 14), 42)
+
+    output = BytesIO()
+    workbook.save(output)
+    filename = f"{filename_prefix}_{date.today():%Y%m%d}.xlsx"
     return output.getvalue(), filename

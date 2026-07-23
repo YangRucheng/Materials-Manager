@@ -8,6 +8,8 @@ import type {
   PurchaseMaterialWrite,
   PurchaseRecord,
   PurchaseRecordFilterOptions,
+  PurchasePlanResultExportRequest,
+  PurchaseRecordResultExportRequest,
   PurchaseRecordWrite,
 } from './generated'
 
@@ -53,6 +55,10 @@ export const procurementApi = {
         { responseType: 'blob' },
       )
       .then((r) => r.data),
+  exportMaterialResults: (payload: PurchasePlanResultExportRequest) =>
+    apiClient
+      .post<Blob>('/purchase-materials/export-results', payload, { responseType: 'blob' })
+      .then((r) => r.data),
   exportUncodedMaterials: (params?: Record<string, unknown>) =>
     apiClient
       .get<Blob>('/purchase-materials/export-uncoded', { params, responseType: 'blob' })
@@ -66,6 +72,10 @@ export const procurementApi = {
   recordFilterOptions: () =>
     apiClient
       .get<PurchaseRecordFilterOptions>('/purchase-records/filter-options')
+      .then((r) => r.data),
+  exportRecordResults: (payload: PurchaseRecordResultExportRequest) =>
+    apiClient
+      .post<Blob>('/purchase-records/export-results', payload, { responseType: 'blob' })
       .then((r) => r.data),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),

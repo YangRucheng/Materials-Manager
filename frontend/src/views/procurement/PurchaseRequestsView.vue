@@ -12,7 +12,8 @@ import {
   tableColumnWidths,
 } from '@/constants/table'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
-import { formatDate } from '@/utils/time'
+import { formatDate, toShanghaiDate } from '@/utils/time'
+import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 
@@ -24,6 +25,7 @@ const items = ref<PurchaseRecord[]>([])
 const loading = ref(false)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
+const resultExporting = ref(false)
 const total = ref(0)
 const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
@@ -282,6 +284,36 @@ async function aiQuery() {
     aiSearching.value = false
   }
 }
+async function exportResults() {
+  const exportColumns = availableColumns
+    .filter((item) => visibleColumnKeys.value.includes(item.key))
+    .map((item) => item.key)
+  if (!exportColumns.length) {
+    message.warning('请至少显示一个字段')
+    return
+  }
+  resultExporting.value = true
+  try {
+    const content = await procurementApi.exportRecordResults({
+      columns: exportColumns,
+      purchase_order_no: filters.purchase_order_no.trim() || undefined,
+      trace_no: filters.trace_no.trim() || undefined,
+      name: searchName.value,
+      model_spec: filters.model_spec.trim() || undefined,
+      purchase_responsible: filters.purchase_responsible?.trim() || undefined,
+      salesperson: filters.salesperson?.trim() || undefined,
+      status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
+      empty_status: filters.status === EMPTY_STATUS_FILTER,
+    })
+    const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    downloadBlob(content, `申购记录导出_${date}.xlsx`)
+    message.success('查询结果已导出')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '导出失败')
+  } finally {
+    resultExporting.value = false
+  }
+}
 
 function resetFilters() {
   filters.purchase_order_no = ''
@@ -404,6 +436,7 @@ onActivated(() => {
         />
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
+          <n-button :loading="resultExporting" @click="exportResults">导出结果</n-button>
           <n-button
             secondary
             type="primary"
