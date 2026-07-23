@@ -3,6 +3,7 @@ import { h, onMounted, reactive, ref } from 'vue'
 import { NButton, NTag, useDialog, useMessage, type DataTableColumns } from 'naive-ui'
 import type { Role, User } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
+import { tableColumnWidths } from '@/constants/table'
 import { roleLabels } from '@/types/navigation'
 
 const message = useMessage()
@@ -20,12 +21,18 @@ const form = reactive({
   version: 0,
 })
 const columns: DataTableColumns<User> = [
-  { title: '用户名', key: 'username' },
-  { title: '显示名称', key: 'display_name' },
-  { title: '角色', key: 'role', render: (r) => roleLabels[r.role] },
+  { title: '用户名', key: 'username', width: tableColumnWidths.identifier },
+  { title: '显示名称', key: 'display_name', width: tableColumnWidths.name },
+  {
+    title: '角色',
+    key: 'role',
+    width: tableColumnWidths.code,
+    render: (r) => roleLabels[r.role],
+  },
   {
     title: '状态',
     key: 'enabled',
+    width: tableColumnWidths.status,
     render: (r) =>
       h(
         NTag,
@@ -36,6 +43,7 @@ const columns: DataTableColumns<User> = [
   {
     title: '操作',
     key: 'action',
+    width: tableColumnWidths.action,
     render: (r) =>
       h('div', { style: 'display:flex;gap:8px' }, [
         h(NButton, { size: 'small', onClick: () => open(r) }, { default: () => '编辑' }),

@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import { tableColumnWidths } from '@/constants/table'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate } from '@/utils/time'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
@@ -69,7 +70,7 @@ const availableColumns: Array<{
     column: {
       title: '申购数量',
       key: 'purchase_qty',
-      width: 110,
+      width: tableColumnWidths.quantity,
       render: (row) => `${row.purchase_qty} ${row.unit_name}`,
     },
   },
@@ -79,7 +80,7 @@ const availableColumns: Array<{
     column: {
       title: '需求日期',
       key: 'plan_date',
-      width: 110,
+      width: tableColumnWidths.date,
       render: (row) => formatDate(row.plan_date),
     },
   },
@@ -89,7 +90,7 @@ const availableColumns: Array<{
     column: {
       title: '申购单号',
       key: 'purchase_order_no',
-      width: 170,
+      width: tableColumnWidths.identifier,
       render: (row) => row.purchase_order_no || '\\',
     },
   },
@@ -99,7 +100,7 @@ const availableColumns: Array<{
     column: {
       title: '追溯号',
       key: 'trace_no',
-      width: 170,
+      width: tableColumnWidths.identifier,
       render: (row) => row.trace_no || '\\',
     },
   },
@@ -109,6 +110,7 @@ const availableColumns: Array<{
     column: {
       title: '物资',
       key: 'material_name',
+      width: tableColumnWidths.material,
       render: (row) =>
         h('div', [
           h('strong', row.material_name),
@@ -122,7 +124,7 @@ const availableColumns: Array<{
     column: {
       title: '实际需求人',
       key: 'actual_demand_person',
-      width: 110,
+      width: tableColumnWidths.person,
       render: (row) => row.actual_demand_person || '\\',
     },
   },
@@ -132,7 +134,7 @@ const availableColumns: Array<{
     column: {
       title: '申购负责人',
       key: 'purchase_responsible',
-      width: 110,
+      width: tableColumnWidths.person,
       render: (row) => row.purchase_responsible || '\\',
     },
   },
@@ -142,7 +144,7 @@ const availableColumns: Array<{
     column: {
       title: '业务员',
       key: 'salesperson',
-      width: 110,
+      width: tableColumnWidths.person,
       render: (row) => row.salesperson || '\\',
     },
   },
@@ -152,7 +154,7 @@ const availableColumns: Array<{
     column: {
       title: '状态',
       key: 'status',
-      width: 120,
+      width: tableColumnWidths.status,
       render: (row) => h(NTag, null, { default: () => row.status || '\\' }),
     },
   },
@@ -162,13 +164,18 @@ const availableColumns: Array<{
     column: {
       title: '申购日期',
       key: 'purchase_date',
-      width: 120,
+      width: tableColumnWidths.date,
       render: (row) => (row.purchase_date ? formatDate(row.purchase_date) : '\\'),
     },
   },
 ]
 const visibleColumnKeys = ref<RecordColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
+const tableScrollX = computed(() =>
+  availableColumns
+    .filter((item) => visibleColumnKeys.value.includes(item.key))
+    .reduce((total, item) => total + Number(item.column.width || tableColumnWidths.text), 0),
+)
 const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
   availableColumns
     .filter((item) => visibleColumnKeys.value.includes(item.key))
@@ -372,6 +379,7 @@ onActivated(() => {
         :loading="loading"
         :row-props="rowProps"
         :row-key="(row: PurchaseRecord) => row.line_id"
+        :scroll-x="tableScrollX"
       />
       <div class="pagination-bar">
         <n-pagination

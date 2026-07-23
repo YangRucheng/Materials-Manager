@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import { tableColumnWidths } from '@/constants/table'
 import { formatDate, formatShanghaiTime } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
@@ -29,7 +30,7 @@ const availableColumns: Array<{
   {
     key: 'plan_no',
     label: '计划 ID',
-    column: { title: '计划 ID', key: 'plan_no', width: 175 },
+    column: { title: '计划 ID', key: 'plan_no', width: tableColumnWidths.identifier },
   },
   {
     key: 'plan_date',
@@ -37,7 +38,7 @@ const availableColumns: Array<{
     column: {
       title: '需求日期',
       key: 'plan_date',
-      width: 110,
+      width: tableColumnWidths.date,
       render: (row) => formatDate(row.plan_date),
     },
   },
@@ -47,18 +48,24 @@ const availableColumns: Array<{
     column: {
       title: '物资名称',
       key: 'name',
+      width: tableColumnWidths.name,
       render: (row) => h('strong', row.name),
     },
   },
   {
     key: 'model_spec',
     label: '型号规格',
-    column: { title: '型号规格', key: 'model_spec' },
+    column: {
+      title: '型号规格',
+      key: 'model_spec',
+      width: tableColumnWidths.model,
+      ellipsis: { tooltip: true },
+    },
   },
   {
     key: 'unit_name',
     label: '单位',
-    column: { title: '单位', key: 'unit_name', width: 80 },
+    column: { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
   },
   {
     key: 'created_at',
@@ -66,13 +73,18 @@ const availableColumns: Array<{
     column: {
       title: '创建时间',
       key: 'created_at',
-      width: 170,
+      width: tableColumnWidths.datetime,
       render: (row) => formatShanghaiTime(row.created_at),
     },
   },
 ]
 const visibleColumnKeys = ref<UncodedColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
+const tableScrollX = computed(() =>
+  availableColumns
+    .filter((item) => visibleColumnKeys.value.includes(item.key))
+    .reduce((total, item) => total + Number(item.column.width || tableColumnWidths.text), 0),
+)
 const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
   availableColumns
     .filter((item) => visibleColumnKeys.value.includes(item.key))
@@ -160,6 +172,7 @@ onMounted(load)
         :loading="loading"
         :row-props="rowProps"
         :row-key="(row: PurchaseMaterial) => row.id"
+        :scroll-x="tableScrollX"
       />
       <div class="pagination-bar">
         <n-pagination

@@ -14,6 +14,7 @@ import type { FileObject, StockMaterial, StockMaterialWrite } from '@/api/genera
 import { useDictionaryStore } from '@/stores/dictionaries'
 import { useAuthStore } from '@/stores/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
+import { tableColumnWidths } from '@/constants/table'
 
 const router = useRouter()
 const message = useMessage()
@@ -46,6 +47,7 @@ const columns: DataTableColumns<StockMaterial> = [
   {
     title: '物资名称',
     key: 'name',
+    width: tableColumnWidths.name,
     render: (row) =>
       h(
         NButton,
@@ -57,13 +59,18 @@ const columns: DataTableColumns<StockMaterial> = [
         { default: () => row.name },
       ),
   },
-  { title: '型号规格', key: 'model_spec' },
-  { title: '单位', key: 'unit_name', width: 80 },
-  { title: '当前库存', key: 'current_qty', width: 110 },
+  {
+    title: '型号规格',
+    key: 'model_spec',
+    width: tableColumnWidths.model,
+    ellipsis: { tooltip: true },
+  },
+  { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+  { title: '当前库存', key: 'current_qty', width: tableColumnWidths.quantity },
   {
     title: '状态',
     key: 'enabled',
-    width: 90,
+    width: tableColumnWidths.status,
     render: (row) =>
       h(
         NTag,
@@ -207,6 +214,7 @@ onMounted(() => {
         :columns="columns"
         :data="items"
         :loading="loading"
+        :scroll-x="970"
         :row-key="(row: StockMaterial) => row.id" />
       <div class="pagination-bar">
         <n-pagination

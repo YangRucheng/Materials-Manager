@@ -23,6 +23,7 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import { tableColumnWidths } from '@/constants/table'
 import {
   defaultPurchaseOrderNo,
   getLastPurchaseResponsible,
@@ -134,14 +135,18 @@ const availableColumns: Array<{
   label: string
   column: DataTableBaseColumn<PurchaseMaterial>
 }> = [
-  { key: 'plan_no', label: '计划 ID', column: { title: '计划 ID', key: 'plan_no', width: 175 } },
+  {
+    key: 'plan_no',
+    label: '计划 ID',
+    column: { title: '计划 ID', key: 'plan_no', width: tableColumnWidths.identifier },
+  },
   {
     key: 'plan_date',
     label: '需求日期',
     column: {
       title: '需求日期',
       key: 'plan_date',
-      width: 110,
+      width: tableColumnWidths.date,
       render: (row) => formatDate(row.plan_date),
     },
   },
@@ -151,20 +156,29 @@ const availableColumns: Array<{
     column: {
       title: '物料编码',
       key: 'material_code',
-      width: 140,
+      width: tableColumnWidths.code,
       render: (row) =>
         row.material_code ||
         h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
     },
   },
-  { key: 'name', label: '名称', column: { title: '名称', key: 'name' } },
+  {
+    key: 'name',
+    label: '名称',
+    column: {
+      title: '名称',
+      key: 'name',
+      width: tableColumnWidths.name,
+      ellipsis: { tooltip: true },
+    },
+  },
   {
     key: 'model_spec',
     label: '型号规格',
     column: {
       title: '型号规格',
       key: 'model_spec',
-      width: 220,
+      width: tableColumnWidths.model,
       render: (row) =>
         h('div', { class: 'model-spec-clamp', title: row.model_spec }, row.model_spec),
     },
@@ -172,16 +186,20 @@ const availableColumns: Array<{
   {
     key: 'planned_qty',
     label: '计划数量',
-    column: { title: '计划数量', key: 'planned_qty', width: 100 },
+    column: { title: '计划数量', key: 'planned_qty', width: tableColumnWidths.quantity },
   },
-  { key: 'unit_name', label: '单位', column: { title: '单位', key: 'unit_name', width: 70 } },
+  {
+    key: 'unit_name',
+    label: '单位',
+    column: { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+  },
   {
     key: 'actual_demand_person',
     label: '实际需求人',
     column: {
       title: '实际需求人',
       key: 'actual_demand_person',
-      width: 110,
+      width: tableColumnWidths.person,
       render: (row) => row.actual_demand_person || '\\',
     },
   },
@@ -191,7 +209,7 @@ const availableColumns: Array<{
     column: {
       title: '申购负责人',
       key: 'purchase_responsible',
-      width: 110,
+      width: tableColumnWidths.person,
       render: (row) => row.purchase_responsible || '\\',
     },
   },
@@ -201,7 +219,7 @@ const availableColumns: Array<{
     column: {
       title: '子项号',
       key: 'subitem_no',
-      width: 110,
+      width: tableColumnWidths.person,
       render: (row) => row.subitem_no || '\\',
     },
   },
@@ -211,13 +229,20 @@ const availableColumns: Array<{
     column: {
       title: '用途',
       key: 'usage',
-      width: 180,
+      width: tableColumnWidths.text,
       ellipsis: { tooltip: true },
     },
   },
 ]
 const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
+const tableScrollX = computed(
+  () =>
+    48 +
+    availableColumns
+      .filter((item) => visibleColumnKeys.value.includes(item.key))
+      .reduce((total, item) => total + Number(item.column.width || tableColumnWidths.text), 0),
+)
 const columns = computed<DataTableColumns<PurchaseMaterial>>(() => [
   {
     type: 'selection',
@@ -571,6 +596,7 @@ onBeforeUnmount(() => {
           :loading="loading"
           :row-props="rowProps"
           :row-key="(r: PurchaseMaterial) => r.id"
+          :scroll-x="tableScrollX"
         />
         <div class="pagination-bar">
           <n-pagination

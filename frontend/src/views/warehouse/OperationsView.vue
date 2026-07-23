@@ -4,6 +4,7 @@ import { NButton, NTag, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { StockOperation } from '@/api/generated'
 import { inventoryApi } from '@/api/inventory'
+import { tableColumnWidths } from '@/constants/table'
 import { formatShanghaiTime } from '@/utils/time'
 
 const router = useRouter()
@@ -21,7 +22,7 @@ const columns: DataTableColumns<StockOperation> = [
   {
     title: '流水号',
     key: 'operation_no',
-    width: 150,
+    width: tableColumnWidths.identifier,
     render: (r) =>
       h(
         NButton,
@@ -47,15 +48,22 @@ const columns: DataTableColumns<StockOperation> = [
   {
     title: '发生时间',
     key: 'occurred_at',
-    width: 170,
+    width: tableColumnWidths.datetime,
     render: (r) => formatShanghaiTime(r.occurred_at),
   },
   {
     title: '物资',
     key: 'lines',
+    width: tableColumnWidths.material,
+    ellipsis: { tooltip: true },
     render: (r) => r.lines.map((x) => `${x.material_name} × ${x.quantity}`).join('；'),
   },
-  { title: '原因', key: 'business_reason' },
+  {
+    title: '原因',
+    key: 'business_reason',
+    width: tableColumnWidths.text,
+    ellipsis: { tooltip: true },
+  },
   {
     title: '操作',
     key: 'action',
@@ -129,7 +137,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="1200"
+        :scroll-x="1000"
         :row-key="(r: StockOperation) => r.id" />
       <div class="pagination-bar">
         <n-pagination
