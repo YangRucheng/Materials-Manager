@@ -44,6 +44,34 @@ class TimeoutAiClient:
         return None
 
 
+class GlmResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "reasoning_content": "需要为电机补充常用规范名称。",
+                        "content": '输出如下：\n{"expansions":[["电机","电动机"]]}',
+                    }
+                }
+            ]
+        }
+
+
+class GlmAiClient:
+    request_json: dict[str, Any] | None = None
+
+    async def post(self, *_args: object, **kwargs: object) -> GlmResponse:
+        self.request_json = kwargs.get("json") if isinstance(kwargs.get("json"), dict) else None
+        return GlmResponse()
+
+    async def aclose(self) -> None:
+        return None
+
+
 @pytest.mark.asyncio
 async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypted_at_rest(
     client: AsyncClient,
@@ -186,3 +214,33 @@ async def test_ai_response_timeout_returns_specific_bad_request(
     assert "https://example.test/v1/chat/completions" in response.json()["message"]
     assert response.json()["details"]["phase"] == "response_wait"
     assert response.json()["details"]["timeout_seconds"] == 30.0
+
+
+@pytest.mark.asyncio
+async def test_glm_models_disable_thinking_and_request_json_output(
+    client: AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    admin = await auth_headers(client, "admin")
+    glm_client = GlmAiClient()
+    monkeypatch.setattr(ai_search_service, "_client", glm_client)
+
+    configured = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "https://open.bigmodel.cn/api/paas/v4",
+            "api_key": "secret-key",
+            "model": "glm-4.7-flash",
+            "enabled": True,
+            "version": 0,
+        },
+    )
+    assert configured.status_code == 200, configured.text
+
+    response = await client.post("/api/v1/ai-search/settings/test", headers=admin)
+    assert response.status_code == 200, response.text
+    assert response.json()["expanded"] == "电机|电动机"
+    assert glm_client.request_json is not None
+    assert glm_client.request_json["thinking"] == {"type": "disabled"}
+    assert glm_client.request_json["response_format"] == {"type": "json_object"}
+    assert glm_client.request_json["stream"] is False
