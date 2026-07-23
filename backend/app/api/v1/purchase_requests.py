@@ -85,7 +85,7 @@ async def purchase_record_filter_options(
     session: DbSession, user: CurrentUser
 ) -> PurchaseRecordFilterOptions:
     actual_demand_persons, purchase_responsibles = (
-        await material_service.purchase_filter_options(session, moved=True)
+        await material_service.purchase_filter_options(session, moved=True, status=None)
     )
     return PurchaseRecordFilterOptions(
         actual_demand_persons=actual_demand_persons,

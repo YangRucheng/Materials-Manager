@@ -21,8 +21,8 @@ const menuOptions = computed<MenuOption[]>(() => {
     label: '二级库',
     key: 'warehouse-group',
     children: [
-      link('物资档案', 'stock-materials'),
       link('库存查询', 'stock'),
+      link('物资档案', 'stock-materials'),
       link('操作记录', 'operations'),
       ...(auth.can('warehouse:write') ? [link('入库', 'inbound'), link('出库', 'outbound')] : []),
     ],
@@ -82,15 +82,13 @@ function logout() {
           <n-breadcrumb-item>{{ route.meta.title }}</n-breadcrumb-item>
         </n-breadcrumb>
         <n-dropdown :options="[{ label: '退出登录', key: 'logout' }]" @select="logout">
-          <n-button text>
-            <n-space align="center"
-              ><n-avatar round size="small">{{ auth.user?.display_name.slice(0, 1) }}</n-avatar
-              ><span>{{ auth.user?.display_name }}</span
-              ><n-tag size="small">{{
-                auth.user ? roleLabels[auth.user.role] : ''
-              }}</n-tag></n-space
-            >
-          </n-button>
+          <button type="button" class="user-menu-trigger" aria-label="打开用户菜单">
+            <span class="user-summary">
+              <span class="user-name">{{ auth.user?.display_name || auth.user?.username }}</span>
+              <span class="user-role">{{ auth.user ? roleLabels[auth.user.role] : '' }}</span>
+            </span>
+            <span class="user-menu-caret" aria-hidden="true" />
+          </button>
         </n-dropdown>
       </n-layout-header>
       <n-layout-content
@@ -148,6 +146,52 @@ function logout() {
   justify-content: space-between;
   background: rgb(255 255 255 / 92%);
   backdrop-filter: blur(12px);
+}
+.user-menu-trigger {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 13px 6px 15px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.user-menu-trigger:hover,
+.user-menu-trigger:focus-visible {
+  border-color: #dce5ff;
+  background: var(--color-primary-soft);
+  outline: none;
+}
+.user-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 96px;
+  text-align: left;
+}
+.user-name {
+  color: var(--color-text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.user-role {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.user-menu-caret {
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 1.5px solid var(--color-text-muted);
+  border-bottom: 1.5px solid var(--color-text-muted);
+  transform: rotate(45deg);
 }
 .app-content {
   background:
