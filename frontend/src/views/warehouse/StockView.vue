@@ -171,10 +171,9 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">库存查询</h1>
-        <p class="page-subtitle">余额只由入库、出库流水计算，不提供直接调整入口</p>
       </div>
     </div>
-    <n-card
+    <n-card class="filter-card"
       ><div class="filter-bar">
         <n-input
           v-model:value="filters.keyword"
@@ -200,7 +199,7 @@ onMounted(load)
         /><n-button type="primary" @click="query">查询</n-button>
       </div></n-card
     >
-    <n-card
+    <n-card class="data-card"
       ><n-data-table
         :bordered="false"
         :columns="columns"

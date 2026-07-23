@@ -139,7 +139,6 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">未编码物资</h1>
-        <p class="page-subtitle">直接查询物料编码为空的申购计划，无单独申请单和状态流程</p>
       </div>
       <n-space>
         <ColumnVisibilityPicker
@@ -153,7 +152,7 @@ onMounted(load)
         </n-button>
       </n-space>
     </div>
-    <n-card>
+    <n-card class="data-card">
       <n-data-table
         :bordered="false"
         :columns="columns"

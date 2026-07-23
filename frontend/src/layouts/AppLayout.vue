@@ -93,7 +93,11 @@ function logout() {
           </n-button>
         </n-dropdown>
       </n-layout-header>
-      <n-layout-content content-style="padding: 20px;" :native-scrollbar="false">
+      <n-layout-content
+        class="app-content"
+        content-style="padding: 24px 28px 32px;"
+        :native-scrollbar="false"
+      >
         <router-view v-slot="{ Component, route: currentRoute }">
           <keep-alive>
             <component
@@ -112,15 +116,18 @@ function logout() {
 <style scoped>
 .app-shell {
   height: 100vh;
+  background: var(--color-bg);
 }
 .brand {
-  height: 64px;
+  height: 68px;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 16px;
-  font-size: 16px;
-  font-weight: 600;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-strong);
+  font-size: 17px;
+  font-weight: 650;
   white-space: nowrap;
 }
 .brand.compact {
@@ -128,17 +135,22 @@ function logout() {
   padding: 0;
 }
 .brand-mark {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
   flex: none;
 }
 .topbar {
-  height: 64px;
-  padding: 0 22px;
+  height: 68px;
+  padding: 0 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(12px);
+}
+.app-content {
+  background:
+    radial-gradient(circle at 100% 0%, rgb(63 99 216 / 4%), transparent 28%), var(--color-bg);
 }
 </style>
