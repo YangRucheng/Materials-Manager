@@ -20,25 +20,25 @@ const cards = computed(() => [
     label: '库存物资',
     value: summary.value.stock_material_count,
     hint: '二级库物资项数',
-    color: '#2080f0',
+    color: '#3f63d8',
   },
   {
     label: '低库存',
     value: summary.value.low_stock_count,
     hint: '按最低库存阈值统计',
-    color: '#d03050',
+    color: '#d94b64',
   },
   {
     label: '未编码物资',
     value: summary.value.uncoded_purchase_material_count,
     hint: '可直接进入申购计划编辑',
-    color: '#f0a020',
+    color: '#d99020',
   },
   {
     label: '申购记录',
     value: summary.value.purchase_record_count,
     hint: '用于整理和统计',
-    color: '#18a058',
+    color: '#229b6b',
   },
 ])
 async function load() {
@@ -62,7 +62,6 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">工作台</h1>
-        <p class="page-subtitle">库存与申购业务概览</p>
       </div>
       <n-button @click="load">刷新数据</n-button>
     </div>
@@ -144,10 +143,12 @@ onMounted(load)
   gap: 6px;
 }
 .stat-label {
-  color: #4b5563;
+  color: var(--color-text);
+  font-weight: 500;
 }
 .stat strong {
   font-size: 30px;
+  font-weight: 650;
   line-height: 1.2;
 }
 </style>

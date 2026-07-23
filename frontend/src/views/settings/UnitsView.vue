@@ -86,11 +86,10 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">计量单位</h1>
-        <p class="page-subtitle">数量输入按单位限制为整数或 1 位小数</p>
       </div>
       <n-button type="primary" @click="open()">新建单位</n-button>
     </div>
-    <n-card
+    <n-card class="data-card"
       ><n-data-table
         :bordered="false"
         :columns="columns"

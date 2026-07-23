@@ -216,7 +216,7 @@ onMounted(() => {
               show-count
             />
           </n-form-item>
-          <n-form-item label="附件" class="wide-form-item attachment-form-item">
+          <n-form-item label="图片附件" class="wide-form-item attachment-form-item">
             <ImageUploader v-model:files="images" />
           </n-form-item>
         </div>

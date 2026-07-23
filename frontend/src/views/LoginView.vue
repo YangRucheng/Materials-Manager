@@ -71,10 +71,12 @@ async function submit() {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.15fr 1fr;
-  background: white;
+  background: var(--color-bg);
 }
 .login-intro {
-  background: linear-gradient(145deg, #0a6847, #18a058);
+  background:
+    radial-gradient(circle at 18% 20%, rgb(255 255 255 / 14%), transparent 24%),
+    linear-gradient(145deg, #2947a6, #5579e7);
   color: white;
   display: grid;
   place-items: center;
@@ -123,9 +125,13 @@ h1 {
   display: grid;
   place-items: center;
   padding: 48px;
+  background:
+    radial-gradient(circle at 100% 0%, rgb(63 99 216 / 7%), transparent 32%), var(--color-bg);
 }
 .login-card {
   width: 420px;
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: 0 18px 44px rgb(15 23 42 / 10%);
 }
 h2 {
   font-size: 28px;

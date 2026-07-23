@@ -96,10 +96,9 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">操作记录</h1>
-        <p class="page-subtitle">所有库存变化均可追溯，支持授权角色修改并触发重算</p>
       </div>
     </div>
-    <n-card
+    <n-card class="filter-card"
       ><div class="filter-bar">
         <n-input
           v-model:value="filters.operation_no"
@@ -124,7 +123,7 @@ onMounted(load)
           >查询</n-button
         >
       </div></n-card
-    ><n-card
+    ><n-card class="data-card"
       ><n-data-table
         :bordered="false"
         :columns="columns"

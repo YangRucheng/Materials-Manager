@@ -273,16 +273,12 @@ onActivated(() => {
     <div class="page-header">
       <div>
         <h1 class="page-title">申购记录</h1>
-        <p class="page-subtitle">按物资、负责人或业务编号快速定位正式申购信息</p>
       </div>
       <n-tag :bordered="false" round type="info">共 {{ total }} 条记录</n-tag>
     </div>
     <n-card class="filter-card" :bordered="false">
       <div class="filter-heading">
-        <div>
-          <div class="filter-title">筛选条件</div>
-          <div class="filter-description">多个条件同时填写时，将按组合条件查询</div>
-        </div>
+        <div class="filter-title">筛选条件</div>
         <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
           已启用 {{ activeFilterCount }} 项
         </n-tag>
@@ -368,7 +364,7 @@ onActivated(() => {
         </div>
       </div>
     </n-card>
-    <n-card class="records-card" :bordered="false">
+    <n-card class="records-card data-card" :bordered="false">
       <n-data-table
         :bordered="false"
         :columns="columns"
@@ -393,23 +389,6 @@ onActivated(() => {
 </template>
 
 <style scoped>
-.purchase-records-page {
-  --records-card-radius: 14px;
-}
-
-.purchase-records-page :deep(.n-card) {
-  border-radius: var(--records-card-radius);
-  box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
-}
-
-.purchase-records-page .page-header {
-  padding: 4px 2px;
-}
-
-.filter-card {
-  background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%);
-}
-
 .filter-heading,
 .filter-actions {
   display: flex;
@@ -420,18 +399,6 @@ onActivated(() => {
 
 .filter-heading {
   margin-bottom: 18px;
-}
-
-.filter-title {
-  color: #172033;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.filter-description {
-  margin-top: 3px;
-  color: #8792a5;
-  font-size: 13px;
 }
 
 .purchase-records-filter-grid {
@@ -476,16 +443,6 @@ onActivated(() => {
 
 .filter-action-buttons :deep(.n-button) {
   min-width: 88px;
-}
-
-.records-card :deep(.n-data-table-th) {
-  background-color: #f7f9fc;
-  color: #3d4758;
-  font-weight: 600;
-}
-
-.records-card :deep(.n-data-table-tr:hover .n-data-table-td) {
-  background-color: #f4f8ff;
 }
 
 @media (max-width: 1600px) {

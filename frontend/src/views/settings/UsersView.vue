@@ -130,11 +130,10 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 class="page-title">用户管理</h1>
-        <p class="page-subtitle">每个用户直接配置一个简单角色</p>
       </div>
       <n-button type="primary" @click="open()">新建用户</n-button>
     </div>
-    <n-card
+    <n-card class="data-card"
       ><n-data-table
         :bordered="false"
         :columns="columns"

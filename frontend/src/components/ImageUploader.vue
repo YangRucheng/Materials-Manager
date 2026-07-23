@@ -74,69 +74,82 @@ async function remove(file: FileObject) {
 </script>
 
 <template>
-  <div
-    class="image-uploader"
-    tabindex="0"
-    aria-label="图片上传区域，支持 Ctrl+V 粘贴图片"
-    @paste="pasteImages"
-  >
-    <div v-for="file in files" :key="file.id" class="image-item">
-      <n-image
-        :src="imagePreviewUrl(file.id, 192)"
-        :preview-src="imageUrl(file.id)"
-        :alt="file.original_name"
-        object-fit="cover"
-        width="96"
-        height="96"
-      />
-      <n-button
-        v-if="!disabled"
-        class="remove"
-        size="tiny"
-        circle
-        type="error"
-        @click="remove(file)"
-        >×</n-button
-      >
-    </div>
-    <button
-      v-if="!disabled && files.length < max"
-      type="button"
-      class="upload-trigger"
-      :disabled="uploading"
-      @click="input?.click()"
+  <div class="image-upload-field">
+    <div
+      class="image-uploader"
+      :tabindex="disabled ? -1 : 0"
+      :aria-disabled="disabled"
+      aria-label="图片上传区域，支持 Ctrl+V 粘贴图片"
+      @paste="pasteImages"
     >
-      <span class="plus">+</span><span>{{ uploading ? '上传中' : '上传' }}</span>
-    </button>
-    <input
-      ref="input"
-      hidden
-      type="file"
-      multiple
-      accept="image/jpeg,image/png,image/webp"
-      @change="choose"
-    />
+      <div v-for="file in files" :key="file.id" class="image-item">
+        <n-image
+          :src="imagePreviewUrl(file.id, 192)"
+          :preview-src="imageUrl(file.id)"
+          :alt="file.original_name"
+          object-fit="cover"
+          width="96"
+          height="96"
+        />
+        <n-button
+          v-if="!disabled"
+          class="remove"
+          size="tiny"
+          circle
+          type="error"
+          @click="remove(file)"
+          >×</n-button
+        >
+      </div>
+      <button
+        v-if="!disabled && files.length < max"
+        type="button"
+        class="upload-trigger"
+        :disabled="uploading"
+        @click="input?.click()"
+      >
+        <span class="plus">+</span><span>{{ uploading ? '上传中' : '添加图片' }}</span>
+      </button>
+      <input
+        ref="input"
+        hidden
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/webp"
+        @change="choose"
+      />
+    </div>
+    <p class="image-hint">
+      JPG / PNG / WebP · 单张不超过 10 MB · 最多 {{ max }} 张 · 支持 Ctrl+V 粘贴
+    </p>
   </div>
-  <p class="image-hint">JPG/PNG/WebP，单图 ≤10 MB，最多 {{ max }} 张；支持 Ctrl+V 粘贴。</p>
 </template>
 
 <style scoped>
+.image-upload-field {
+  width: 100%;
+}
 .image-uploader {
   display: flex;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 12px;
+  min-height: 104px;
+  padding: 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  background: var(--color-surface-soft);
 }
 .image-uploader:focus-visible {
-  outline: 2px solid rgba(24, 160, 88, 0.35);
-  outline-offset: 4px;
-  border-radius: 4px;
+  outline: 2px solid rgb(63 99 216 / 30%);
+  outline-offset: 2px;
 }
 .image-item {
   position: relative;
   width: 98px;
   height: 98px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
   overflow: hidden;
 }
 .remove {
@@ -147,28 +160,38 @@ async function remove(file: FileObject) {
 .upload-trigger {
   width: 98px;
   height: 98px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 6px;
-  background: #fafafa;
-  color: #6b7280;
+  border: 1px dashed #b8c4df;
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 .upload-trigger:hover {
-  border-color: #18a058;
-  color: #18a058;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.upload-trigger:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 .plus {
   font-size: 28px;
   line-height: 1;
 }
 .image-hint {
-  margin: 8px 0 0;
-  color: #9ca3af;
+  margin: 7px 2px 0;
+  color: var(--color-text-muted);
   font-size: 12px;
+  line-height: 1.6;
 }
 </style>
