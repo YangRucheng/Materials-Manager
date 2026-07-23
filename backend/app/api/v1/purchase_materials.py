@@ -28,6 +28,10 @@ from app.services.common import validate_version
 router = APIRouter(prefix="/purchase-materials", tags=["申购计划"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
+OR_SEARCH_DESCRIPTION = "可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词"
+OrSearch = Annotated[str | None, Query(description=OR_SEARCH_DESCRIPTION)]
+OrSearch128 = Annotated[str | None, Query(max_length=128, description=OR_SEARCH_DESCRIPTION)]
+OrSearch255 = Annotated[str | None, Query(max_length=255, description=OR_SEARCH_DESCRIPTION)]
 PlanSearchField = Literal[
     "plan_no",
     "plan_date",
@@ -52,14 +56,14 @@ async def list_materials(
     user: CurrentUser,
     page: PageNo = 1,
     page_size: PageSize = 20,
-    keyword: str | None = None,
+    keyword: OrSearch = None,
     search_field: PlanSearchField | None = None,
-    search_value: Annotated[str | None, Query(max_length=255)] = None,
-    name: Annotated[str | None, Query(max_length=128)] = None,
-    model_spec: Annotated[str | None, Query(max_length=255)] = None,
-    actual_demand_person: Annotated[str | None, Query(max_length=128)] = None,
+    search_value: OrSearch255 = None,
+    name: OrSearch128 = None,
+    model_spec: OrSearch255 = None,
+    actual_demand_person: OrSearch128 = None,
     empty_actual_demand_person: bool = False,
-    purchase_responsible: Annotated[str | None, Query(max_length=128)] = None,
+    purchase_responsible: OrSearch128 = None,
     status: PurchasePlanStatus | None = None,
     enabled: bool | None = None,
     coded: bool | None = None,

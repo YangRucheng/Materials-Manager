@@ -297,7 +297,7 @@ onActivated(() => {
           <span>申购单号</span>
           <n-input
             v-model:value="filters.purchase_order_no"
-            placeholder="输入申购单号"
+            placeholder="输入申购单号，多个关键词用 | 分隔"
             clearable
             @keyup.enter="query"
           />
@@ -306,7 +306,7 @@ onActivated(() => {
           <span>追溯号</span>
           <n-input
             v-model:value="filters.trace_no"
-            placeholder="输入追溯号"
+            placeholder="输入追溯号，多个关键词用 | 分隔"
             clearable
             @keyup.enter="query"
           />
@@ -315,7 +315,7 @@ onActivated(() => {
           <span>物资名称</span>
           <n-input
             v-model:value="filters.name"
-            placeholder="输入物资名称"
+            placeholder="输入物资名称，多个关键词用 | 分隔"
             clearable
             @keyup.enter="query"
           />
@@ -324,7 +324,7 @@ onActivated(() => {
           <span>型号规格</span>
           <n-input
             v-model:value="filters.model_spec"
-            placeholder="输入型号规格"
+            placeholder="输入型号规格，多个关键词用 | 分隔"
             clearable
             @keyup.enter="query"
           />

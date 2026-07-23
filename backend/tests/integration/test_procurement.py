@@ -363,6 +363,136 @@ async def move_to_record(
 
 
 @pytest.mark.asyncio
+async def test_purchase_search_supports_or_delimiters_and_keeps_filters_anded(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(
+        client,
+        headers,
+        "智能断路器",
+        code="DQ-OR-001",
+        actual_demand_person="张三",
+        purchase_responsible="李工",
+    )
+    second = await create_purchase_plan(
+        client,
+        headers,
+        "交流接触器",
+        code="DQ-OR-002",
+        actual_demand_person="李四",
+        purchase_responsible="王工",
+    )
+    literal = await create_purchase_plan(
+        client,
+        headers,
+        "100%负载开关",
+        code="DQ-OR-003",
+        actual_demand_person="赵六",
+        purchase_responsible="周工",
+    )
+
+    plan_field_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"search_field": "name", "search_value": "断路||接触器|", "moved": False},
+    )
+    assert plan_field_search.status_code == 200, plan_field_search.text
+    assert {item["id"] for item in plan_field_search.json()["items"]} == {
+        first["id"],
+        second["id"],
+    }
+
+    plan_fullwidth_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"name": "断路｜接触器", "moved": False},
+    )
+    assert plan_fullwidth_search.status_code == 200, plan_fullwidth_search.text
+    assert {item["id"] for item in plan_fullwidth_search.json()["items"]} == {
+        first["id"],
+        second["id"],
+    }
+
+    plan_global_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"keyword": "DQ-OR-001|王工", "moved": False},
+    )
+    assert plan_global_search.status_code == 200, plan_global_search.text
+    assert {item["id"] for item in plan_global_search.json()["items"]} == {
+        first["id"],
+        second["id"],
+    }
+
+    plan_anded_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"name": "断路|接触器", "purchase_responsible": "李", "moved": False},
+    )
+    assert plan_anded_search.status_code == 200, plan_anded_search.text
+    assert [item["id"] for item in plan_anded_search.json()["items"]] == [first["id"]]
+
+    literal_search = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"name": "%", "moved": False},
+    )
+    assert literal_search.status_code == 200, literal_search.text
+    assert [item["id"] for item in literal_search.json()["items"]] == [literal["id"]]
+
+    first_record = await move_to_record(
+        client, headers, int(first["id"]), trace_no="TRACE-OR-001", salesperson="赵经理"
+    )
+    second_record = await move_to_record(
+        client, headers, int(second["id"]), trace_no="TRACE-OR-002", salesperson="钱经理"
+    )
+
+    record_field_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"search_field": "trace_no", "search_value": "OR-001｜OR-002"},
+    )
+    assert record_field_search.status_code == 200, record_field_search.text
+    assert {item["line_id"] for item in record_field_search.json()["items"]} == {
+        first_record["line_id"],
+        second_record["line_id"],
+    }
+
+    record_trace_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"trace_no": "OR-001||OR-002|"},
+    )
+    assert record_trace_search.status_code == 200, record_trace_search.text
+    assert {item["line_id"] for item in record_trace_search.json()["items"]} == {
+        first_record["line_id"],
+        second_record["line_id"],
+    }
+
+    record_global_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"keyword": "DQ-OR-001||钱经理|"},
+    )
+    assert record_global_search.status_code == 200, record_global_search.text
+    assert {item["line_id"] for item in record_global_search.json()["items"]} == {
+        first_record["line_id"],
+        second_record["line_id"],
+    }
+
+    record_anded_search = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"name": "断路|接触器", "salesperson": "钱"},
+    )
+    assert record_anded_search.status_code == 200, record_anded_search.text
+    assert [item["line_id"] for item in record_anded_search.json()["items"]] == [
+        second_record["line_id"]
+    ]
+
+
+@pytest.mark.asyncio
 async def test_plan_number_uses_date_sequence_and_record_keeps_plan_date(
     client: AsyncClient,
 ) -> None:
