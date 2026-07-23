@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
-import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
+import { NTag, useMessage, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -17,11 +17,12 @@ import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '
 
 const route = useRoute()
 const router = useRouter()
+const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseRecord[]>([])
 const loading = ref(false)
 const aiAvailable = ref(false)
-const aiEnabled = ref(routeQueryString(route.query.ai) === '1')
+const aiSearching = ref(false)
 const total = ref(0)
 const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
@@ -207,7 +208,6 @@ async function load() {
     const data = await procurementApi.records({
       page: page.value,
       page_size: pageSize.value,
-      ai_expand: aiEnabled.value || undefined,
       purchase_order_no: filters.purchase_order_no.trim() || undefined,
       trace_no: filters.trace_no.trim() || undefined,
       name: filters.name.trim() || undefined,
@@ -231,10 +231,8 @@ async function loadFilterOptions() {
 async function loadAiStatus() {
   try {
     aiAvailable.value = (await aiSearchApi.status()).available
-    if (!aiAvailable.value) aiEnabled.value = false
   } catch {
     aiAvailable.value = false
-    aiEnabled.value = false
   }
 }
 
@@ -251,7 +249,6 @@ async function syncRoute() {
       purchase_responsible: filters.purchase_responsible,
       salesperson: filters.salesperson,
       status: filters.status,
-      ai: aiEnabled.value ? '1' : undefined,
     }),
   })
 }
@@ -263,6 +260,26 @@ async function syncRouteAndLoad(resetPage = false) {
 
 function query() {
   void syncRouteAndLoad(true)
+}
+
+async function aiQuery() {
+  const value = filters.name.trim()
+  if (!value) {
+    message.warning('请先输入物资名称')
+    return
+  }
+  aiSearching.value = true
+  try {
+    const data = await aiSearchApi.expand(value)
+    filters.name = data.expanded
+    if (data.expanded === data.original) message.info('未发现可补充的同义词，已按原词搜索')
+    else message.success(`已扩展搜索词：${data.expanded}`)
+    await syncRouteAndLoad(true)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : 'AI 赋能搜索失败')
+  } finally {
+    aiSearching.value = false
+  }
 }
 
 function resetFilters() {
@@ -386,13 +403,22 @@ onActivated(() => {
         />
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
-          <n-checkbox
-            v-model:checked="aiEnabled"
-            :disabled="!aiAvailable"
-            :title="aiAvailable ? '自动补充物资名称同义词' : '请联系超级管理员配置 AI 搜索服务'"
+          <n-button
+            secondary
+            type="primary"
+            :loading="aiSearching"
+            :disabled="!aiAvailable || !filters.name.trim()"
+            :title="
+              aiAvailable
+                ? filters.name.trim()
+                  ? '自动扩展物资名称同义词并立即搜索'
+                  : '请先输入物资名称'
+                : '请联系超级管理员配置 AI 搜索服务'
+            "
+            @click="aiQuery"
           >
-            AI 赋能
-          </n-checkbox>
+            AI 赋能搜索
+          </n-button>
           <n-button type="primary" @click="query">查询记录</n-button>
         </div>
       </div>

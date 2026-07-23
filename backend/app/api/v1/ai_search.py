@@ -2,6 +2,8 @@ from fastapi import APIRouter
 
 from app.core.permissions import CurrentUser, DbSession, SuperAdmin
 from app.schemas import (
+    AiSearchExpandRead,
+    AiSearchExpandRequest,
     AiSearchSettingsRead,
     AiSearchSettingsUpdate,
     AiSearchStatusRead,
@@ -10,6 +12,14 @@ from app.schemas import (
 from app.services import ai_search_service
 
 router = APIRouter(prefix="/ai-search", tags=["AI 搜索"])
+
+
+@router.post("/expand", response_model=AiSearchExpandRead)
+async def expand(
+    data: AiSearchExpandRequest, session: DbSession, user: CurrentUser
+) -> AiSearchExpandRead:
+    expanded = await ai_search_service.expand_search_value(session, data.value, strict=True)
+    return AiSearchExpandRead(original=data.value, expanded=expanded or data.value)
 
 
 @router.get("/status", response_model=AiSearchStatusRead)
