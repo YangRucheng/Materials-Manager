@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime } from '@/utils/time'
 import { isDecimalString } from '@/utils/decimal'
 import QuantityInput from '@/components/QuantityInput.vue'
+import { tableColumnWidths } from '@/constants/table'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,14 +36,15 @@ const columns: DataTableColumns<InventoryBalance> = [
   {
     title: '物资名称',
     key: 'name',
+    width: tableColumnWidths.material,
     render: (r) => h('div', [h('strong', r.name), h('div', { class: 'muted' }, r.model_spec)]),
   },
-  { title: '单位', key: 'unit_name', width: 70 },
-  { title: '当前库存', key: 'current_qty', width: 100 },
+  { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+  { title: '当前库存', key: 'current_qty', width: tableColumnWidths.quantity },
   {
     title: '预警状态',
     key: 'is_low_stock',
-    width: 140,
+    width: tableColumnWidths.status,
     render: (r) =>
       r.is_low_stock
         ? h(NTag, { type: 'error', size: 'small' }, { default: () => '低库存' })
@@ -51,7 +53,7 @@ const columns: DataTableColumns<InventoryBalance> = [
   {
     title: '更新时间',
     key: 'updated_at',
-    width: 170,
+    width: tableColumnWidths.datetime,
     render: (r) => formatShanghaiTime(r.updated_at),
   },
   {
@@ -205,7 +207,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
-        :scroll-x="900"
+        :scroll-x="1050"
         :row-key="(r: InventoryBalance) => r.stock_material_id" />
       <div class="pagination-bar">
         <n-pagination
