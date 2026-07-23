@@ -23,6 +23,7 @@ from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.core.middleware import RealIPMiddleware
 from app.core.schema import schema_differences
+from app.services import ai_search_service
 
 logger = logging.getLogger("spare_parts.api")
 
@@ -56,6 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.log_dir,
     )
     yield
+    await ai_search_service.close_client()
 
 
 app = FastAPI(

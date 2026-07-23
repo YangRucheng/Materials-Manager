@@ -9,7 +9,7 @@ from app.schemas import (
     PurchaseRecordRead,
     PurchaseRecordUpdate,
 )
-from app.services import material_service
+from app.services import ai_search_service, material_service
 from app.services import purchase_request_service as service
 
 router = APIRouter(tags=["申购记录"])
@@ -58,7 +58,13 @@ async def purchase_records(
     actual_demand_person: OrSearch128 = None,
     purchase_responsible: OrSearch128 = None,
     salesperson: OrSearch128 = None,
+    ai_expand: bool = False,
 ) -> Page[PurchaseRecordRead]:
+    if ai_expand:
+        keyword = await ai_search_service.expand_search_value(session, keyword)
+        name = await ai_search_service.expand_search_value(session, name)
+        if search_field == "material_name":
+            search_value = await ai_search_service.expand_search_value(session, search_value)
     items, total = await service.search_purchase_records(
         session,
         status=record_status,
@@ -88,12 +94,13 @@ async def purchase_records(
 async def purchase_record_filter_options(
     session: DbSession, user: CurrentUser
 ) -> PurchaseRecordFilterOptions:
-    actual_demand_persons, purchase_responsibles = (
+    actual_demand_persons, purchase_responsibles, subitem_nos = (
         await material_service.purchase_filter_options(session, moved=True, status=None)
     )
     return PurchaseRecordFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
+        subitem_nos=subitem_nos,
         salespersons=await service.purchase_salesperson_options(session),
         statuses=await service.purchase_status_options(session),
     )

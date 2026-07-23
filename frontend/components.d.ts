@@ -45,6 +45,7 @@ declare module 'vue' {
     NSpace: typeof import('naive-ui')['NSpace']
     NSwitch: typeof import('naive-ui')['NSwitch']
     NTable: typeof import('naive-ui')['NTable']
+    NTag: typeof import('naive-ui')['NTag']
     OperationLinesEditor: typeof import('./src/components/OperationLinesEditor.vue')['default']
     QuantityInput: typeof import('./src/components/QuantityInput.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

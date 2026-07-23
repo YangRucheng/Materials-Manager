@@ -62,6 +62,7 @@ class Page[T](ReadModel):
 class PurchaseFilterOptions(ReadModel):
     actual_demand_persons: list[str]
     purchase_responsibles: list[str]
+    subitem_nos: list[str]
 
 
 class PurchaseRecordFilterOptions(PurchaseFilterOptions):
@@ -140,6 +141,56 @@ class UserUpdate(RequestModel):
     role: Role | None = None
     enabled: bool | None = None
     version: int
+
+
+class AiSearchSettingsRead(ReadModel):
+    endpoint: str
+    model: str
+    enabled: bool
+    api_key_configured: bool
+    updated_at: datetime | None = None
+    version: int
+
+
+class AiSearchSettingsUpdate(RequestModel):
+    endpoint: str = Field(min_length=1, max_length=500)
+    api_key: str | None = Field(default=None, max_length=1000)
+    model: str = Field(min_length=1, max_length=128)
+    enabled: bool = True
+    clear_api_key: bool = False
+    version: int = Field(ge=0)
+
+    @field_validator("endpoint")
+    @classmethod
+    def validate_endpoint(cls, value: str) -> str:
+        value = value.strip()
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("端点必须使用 http:// 或 https://")
+        return value
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("不能为空")
+        return value
+
+    @field_validator("api_key")
+    @classmethod
+    def strip_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class AiSearchStatusRead(BaseModel):
+    available: bool
+
+
+class AiSearchTestRead(BaseModel):
+    original: str
+    expanded: str
 
 
 class MeasurementUnitRead(ReadModel):
