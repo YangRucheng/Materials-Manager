@@ -204,26 +204,28 @@ onMounted(load)
     </n-card>
     <n-card title="物资明细">
       <OperationLinesEditor v-if="editing" v-model:lines="edit.lines" :type="edit.operation_type" />
-      <n-table v-else :bordered="false">
-        <thead>
-          <tr>
-            <th>物资</th>
-            <th>型号规格</th>
-            <th>数量</th>
-            <th>操作前</th>
-            <th>操作后</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(line, index) in operation.lines" :key="line.id || index">
-            <td>{{ line.material_name }}</td>
-            <td>{{ line.model_spec }}</td>
-            <td>{{ line.quantity }} {{ line.unit_name }}</td>
-            <td>{{ line.before_qty }}</td>
-            <td>{{ line.after_qty }}</td>
-          </tr>
-        </tbody>
-      </n-table>
+      <div v-else class="table-scroll" style="--table-min-width: 900px">
+        <n-table :bordered="false">
+          <thead>
+            <tr>
+              <th>物资</th>
+              <th>型号规格</th>
+              <th>数量</th>
+              <th>操作前</th>
+              <th>操作后</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(line, index) in operation.lines" :key="line.id || index">
+              <td>{{ line.material_name }}</td>
+              <td>{{ line.model_spec }}</td>
+              <td>{{ line.quantity }} {{ line.unit_name }}</td>
+              <td>{{ line.before_qty }}</td>
+              <td>{{ line.after_qty }}</td>
+            </tr>
+          </tbody>
+        </n-table>
+      </div>
     </n-card>
     <n-space v-if="editing" justify="end"
       ><n-button @click="cancelEdit">取消</n-button

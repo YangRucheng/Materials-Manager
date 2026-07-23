@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { NButton, NTag, useMessage } from 'naive-ui'
 import type { MeasurementUnit } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 import { useDictionaryStore } from '@/stores/dictionaries'
 
 const message = useMessage()
@@ -19,7 +23,7 @@ const form = reactive({
   enabled: true,
   version: 0,
 })
-const columns: DataTableColumns<MeasurementUnit> = [
+const columns = preventTableColumnCompression<MeasurementUnit>([
   { title: '编码', key: 'code', width: tableColumnWidths.code },
   { title: '名称', key: 'name', width: tableColumnWidths.name },
   { title: '数量小数位', key: 'decimal_places', width: tableColumnWidths.quantity },
@@ -40,7 +44,8 @@ const columns: DataTableColumns<MeasurementUnit> = [
     width: 100,
     render: (r) => h(NButton, { size: 'small', onClick: () => open(r) }, { default: () => '编辑' }),
   },
-]
+])
+const tableScrollX = getTableScrollX(columns)
 async function load() {
   loading.value = true
   try {
@@ -98,6 +103,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
+        :scroll-x="tableScrollX"
         :row-key="(r: MeasurementUnit) => r.id" /></n-card
     ><n-modal
       v-model:show="show"

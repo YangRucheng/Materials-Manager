@@ -5,7 +5,11 @@ import { useRoute, useRouter } from 'vue-router'
 import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
-import { tableColumnWidths } from '@/constants/table'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate } from '@/utils/time'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
@@ -171,16 +175,14 @@ const availableColumns: Array<{
 ]
 const visibleColumnKeys = ref<RecordColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
-const tableScrollX = computed(() =>
-  availableColumns
-    .filter((item) => visibleColumnKeys.value.includes(item.key))
-    .reduce((total, item) => total + Number(item.column.width || tableColumnWidths.text), 0),
-)
 const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
-  availableColumns
-    .filter((item) => visibleColumnKeys.value.includes(item.key))
-    .map((item) => item.column),
+  preventTableColumnCompression(
+    availableColumns
+      .filter((item) => visibleColumnKeys.value.includes(item.key))
+      .map((item) => item.column),
+  ),
 )
+const tableScrollX = computed(() => getTableScrollX(columns.value))
 function setVisibleColumnKeys(value: string[]) {
   visibleColumnKeys.value = value as RecordColumnKey[]
 }
