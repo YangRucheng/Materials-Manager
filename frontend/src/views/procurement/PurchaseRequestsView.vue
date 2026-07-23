@@ -4,6 +4,7 @@ import { NTag, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
+import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import {
   getTableScrollX,
@@ -19,6 +20,8 @@ const router = useRouter()
 const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseRecord[]>([])
 const loading = ref(false)
+const aiAvailable = ref(false)
+const aiEnabled = ref(routeQueryString(route.query.ai) === '1')
 const total = ref(0)
 const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
@@ -35,6 +38,7 @@ const filters = reactive({
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
+  subitem_nos: [],
   salespersons: [],
   statuses: [],
 })
@@ -203,6 +207,7 @@ async function load() {
     const data = await procurementApi.records({
       page: page.value,
       page_size: pageSize.value,
+      ai_expand: aiEnabled.value || undefined,
       purchase_order_no: filters.purchase_order_no.trim() || undefined,
       trace_no: filters.trace_no.trim() || undefined,
       name: filters.name.trim() || undefined,
@@ -223,6 +228,16 @@ async function loadFilterOptions() {
   filterOptions.value = await procurementApi.recordFilterOptions()
 }
 
+async function loadAiStatus() {
+  try {
+    aiAvailable.value = (await aiSearchApi.status()).available
+    if (!aiAvailable.value) aiEnabled.value = false
+  } catch {
+    aiAvailable.value = false
+    aiEnabled.value = false
+  }
+}
+
 async function syncRoute() {
   await router.replace({
     name: 'purchase-records',
@@ -236,6 +251,7 @@ async function syncRoute() {
       purchase_responsible: filters.purchase_responsible,
       salesperson: filters.salesperson,
       status: filters.status,
+      ai: aiEnabled.value ? '1' : undefined,
     }),
   })
 }
@@ -270,6 +286,7 @@ function changePage() {
 
 onMounted(() => {
   void loadFilterOptions()
+  void loadAiStatus()
   void load()
 })
 onActivated(() => {
@@ -369,6 +386,13 @@ onActivated(() => {
         />
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
+          <n-checkbox
+            v-model:checked="aiEnabled"
+            :disabled="!aiAvailable"
+            :title="aiAvailable ? '自动补充物资名称同义词' : '请联系超级管理员配置 AI 搜索服务'"
+          >
+            AI 赋能
+          </n-checkbox>
           <n-button type="primary" @click="query">查询记录</n-button>
         </div>
       </div>

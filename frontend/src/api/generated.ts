@@ -36,6 +36,29 @@ export interface LoginResponse {
   token_type: 'bearer'
   user: User
 }
+export interface AiSearchSettings {
+  endpoint: string
+  model: string
+  enabled: boolean
+  api_key_configured: boolean
+  updated_at?: string
+  version: number
+}
+export interface AiSearchSettingsWrite {
+  endpoint: string
+  api_key?: string
+  model: string
+  enabled: boolean
+  clear_api_key: boolean
+  version: number
+}
+export interface AiSearchStatus {
+  available: boolean
+}
+export interface AiSearchTestResult {
+  original: string
+  expanded: string
+}
 export interface MeasurementUnit {
   id: number
   code: string
@@ -153,6 +176,7 @@ export interface DashboardSummary {
 export interface PurchaseFilterOptions {
   actual_demand_persons: string[]
   purchase_responsibles: string[]
+  subitem_nos: string[]
 }
 export interface PurchaseRecordFilterOptions extends PurchaseFilterOptions {
   salespersons: string[]

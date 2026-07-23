@@ -223,6 +223,191 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/ai-search/status:
+    get:
+      tags:
+      - AI 搜索
+      summary: Status
+      operationId: status_api_v1_ai_search_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSearchStatusRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+  /api/v1/ai-search/settings:
+    get:
+      tags:
+      - AI 搜索
+      summary: Get Settings
+      operationId: get_settings_api_v1_ai_search_settings_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSearchSettingsRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+    put:
+      tags:
+      - AI 搜索
+      summary: Update Settings
+      operationId: update_settings_api_v1_ai_search_settings_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiSearchSettingsUpdate'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSearchSettingsRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+  /api/v1/ai-search/settings/test:
+    post:
+      tags:
+      - AI 搜索
+      summary: Test Settings
+      operationId: test_settings_api_v1_ai_search_settings_test_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSearchTestRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/stock-materials:
     get:
       tags:
@@ -1377,6 +1562,22 @@ paths:
           description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Purchase Responsible
         description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
+      - name: subitem_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Subitem No
+      - name: empty_subitem_no
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Empty Subitem No
       - name: status
         in: query
         required: false
@@ -1409,6 +1610,13 @@ paths:
           - type: boolean
           - type: 'null'
           title: Moved
+      - name: ai_expand
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Ai Expand
       responses:
         '200':
           description: Successful Response
@@ -2206,6 +2414,13 @@ paths:
           description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Salesperson
         description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
+      - name: ai_expand
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Ai Expand
       responses:
         '200':
           description: Successful Response
@@ -3164,6 +3379,96 @@ components:
       required:
       - tables
       title: AgentDatabaseSchemaRead
+    AiSearchSettingsRead:
+      properties:
+        endpoint:
+          type: string
+          title: Endpoint
+        model:
+          type: string
+          title: Model
+        enabled:
+          type: boolean
+          title: Enabled
+        api_key_configured:
+          type: boolean
+          title: Api Key Configured
+        updated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Updated At
+        version:
+          type: integer
+          title: Version
+      type: object
+      required:
+      - endpoint
+      - model
+      - enabled
+      - api_key_configured
+      - version
+      title: AiSearchSettingsRead
+    AiSearchSettingsUpdate:
+      properties:
+        endpoint:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Endpoint
+        api_key:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Api Key
+        model:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Model
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+        clear_api_key:
+          type: boolean
+          title: Clear Api Key
+          default: false
+        version:
+          type: integer
+          minimum: 0.0
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - endpoint
+      - model
+      - version
+      title: AiSearchSettingsUpdate
+    AiSearchStatusRead:
+      properties:
+        available:
+          type: boolean
+          title: Available
+      type: object
+      required:
+      - available
+      title: AiSearchStatusRead
+    AiSearchTestRead:
+      properties:
+        original:
+          type: string
+          title: Original
+        expanded:
+          type: string
+          title: Expanded
+      type: object
+      required:
+      - original
+      - expanded
+      title: AiSearchTestRead
     ApiError:
       properties:
         code:
@@ -3945,10 +4250,16 @@ components:
             type: string
           type: array
           title: Purchase Responsibles
+        subitem_nos:
+          items:
+            type: string
+          type: array
+          title: Subitem Nos
       type: object
       required:
       - actual_demand_persons
       - purchase_responsibles
+      - subitem_nos
       title: PurchaseFilterOptions
     PurchaseMaterialCreate:
       properties:
@@ -4289,6 +4600,11 @@ components:
             type: string
           type: array
           title: Purchase Responsibles
+        subitem_nos:
+          items:
+            type: string
+          type: array
+          title: Subitem Nos
         salespersons:
           items:
             type: string
@@ -4303,6 +4619,7 @@ components:
       required:
       - actual_demand_persons
       - purchase_responsibles
+      - subitem_nos
       - salespersons
       - statuses
       title: PurchaseRecordFilterOptions
