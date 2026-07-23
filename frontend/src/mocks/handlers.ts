@@ -27,9 +27,9 @@ import {
 const api = '/api/v1'
 let aiSettings = {
   endpoint: 'https://example.test/v1',
+  api_key: 'mock-secret-key',
   model: 'fast-model',
   enabled: true,
-  api_key_configured: true,
   updated_at: new Date().toISOString(),
   version: 1,
 }
@@ -225,7 +225,7 @@ export const handlers = [
     return HttpResponse.json({ original: body.value, expanded })
   }),
   http.get(`${api}/ai-search/status`, () =>
-    HttpResponse.json({ available: aiSettings.enabled && aiSettings.api_key_configured }),
+    HttpResponse.json({ available: aiSettings.enabled && Boolean(aiSettings.api_key) }),
   ),
   http.get(`${api}/ai-search/settings`, ({ request }) =>
     actor(request).role === 'SUPER_ADMIN'
@@ -238,11 +238,9 @@ export const handlers = [
     const body = (await request.json()) as AiSearchSettingsWrite
     aiSettings = {
       endpoint: body.endpoint.replace(/\/$/, ''),
+      api_key: body.api_key,
       model: body.model,
       enabled: body.enabled,
-      api_key_configured: body.clear_api_key
-        ? false
-        : Boolean(body.api_key) || aiSettings.api_key_configured,
       updated_at: now(),
       version: aiSettings.version + 1,
     }

@@ -115,7 +115,7 @@ const router = createRouter({
           path: 'settings/ai-search',
           name: 'ai-search-settings',
           component: () => import('@/views/settings/AiSearchSettingsView.vue'),
-          meta: { title: 'AI 搜索设置', permission: 'settings:write' },
+          meta: { title: '大模型设置', permission: 'settings:write' },
         },
         {
           path: 'settings/users',

@@ -43,5 +43,5 @@ async def update_settings(
 @router.post("/settings/test", response_model=AiSearchTestRead)
 async def test_settings(session: DbSession, user: SuperAdmin) -> AiSearchTestRead:
     original = "电机"
-    expanded = await ai_search_service.expand_search_value(session, original, strict=True)
+    expanded = await ai_search_service.test_search_value(session, original)
     return AiSearchTestRead(original=original, expanded=expanded or original)
