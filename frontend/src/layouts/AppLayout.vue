@@ -43,7 +43,7 @@ const menuOptions = computed<MenuOption[]>(() => {
       children: [
         link('计量单位', 'units'),
         link('用户管理', 'users'),
-        link('AI 搜索设置', 'ai-search-settings'),
+        link('大模型设置', 'ai-search-settings'),
       ],
     })
   return items

@@ -145,19 +145,18 @@ class UserUpdate(RequestModel):
 
 class AiSearchSettingsRead(ReadModel):
     endpoint: str
+    api_key: str
     model: str
     enabled: bool
-    api_key_configured: bool
     updated_at: datetime | None = None
     version: int
 
 
 class AiSearchSettingsUpdate(RequestModel):
     endpoint: str = Field(min_length=1, max_length=500)
-    api_key: str | None = Field(default=None, max_length=1000)
+    api_key: str = Field(min_length=1, max_length=1000)
     model: str = Field(min_length=1, max_length=128)
     enabled: bool = True
-    clear_api_key: bool = False
     version: int = Field(ge=0)
 
     @field_validator("endpoint")
@@ -178,10 +177,11 @@ class AiSearchSettingsUpdate(RequestModel):
 
     @field_validator("api_key")
     @classmethod
-    def strip_api_key(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return value.strip() or None
+    def strip_api_key(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("不能为空")
+        return value
 
 
 class AiSearchStatusRead(BaseModel):
