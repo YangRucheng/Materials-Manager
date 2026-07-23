@@ -14,6 +14,7 @@ import {
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate } from '@/utils/time'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
+import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,6 +37,7 @@ const filters = reactive({
   salesperson: routeQueryString(route.query.salesperson) || null,
   status: routeQueryString(route.query.status) || null,
 })
+const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
@@ -210,7 +212,7 @@ async function load() {
       page_size: pageSize.value,
       purchase_order_no: filters.purchase_order_no.trim() || undefined,
       trace_no: filters.trace_no.trim() || undefined,
-      name: filters.name.trim() || undefined,
+      name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
       salesperson: filters.salesperson?.trim() || undefined,
@@ -259,6 +261,7 @@ async function syncRouteAndLoad(resetPage = false) {
 }
 
 function query() {
+  clearExpandedName()
   void syncRouteAndLoad(true)
 }
 
@@ -271,12 +274,10 @@ async function aiQuery() {
   aiSearching.value = true
   try {
     const data = await aiSearchApi.expand(value)
-    filters.name = data.expanded
-    if (data.expanded === data.original) message.info('未发现可补充的同义词，已按原词搜索')
-    else message.success(`已扩展搜索词：${data.expanded}`)
+    applyExpandedName(data.expanded)
     await syncRouteAndLoad(true)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : 'AI 赋能搜索失败')
+    message.error(error instanceof Error ? error.message : '智能查询失败')
   } finally {
     aiSearching.value = false
   }
@@ -328,6 +329,15 @@ onActivated(() => {
       </div>
       <div class="purchase-records-filter-grid">
         <label class="filter-field">
+          <span>物资名称</span>
+          <n-input
+            v-model:value="filters.name"
+            placeholder="输入物资名称"
+            clearable
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
           <span>申购单号</span>
           <n-input
             v-model:value="filters.purchase_order_no"
@@ -341,15 +351,6 @@ onActivated(() => {
           <n-input
             v-model:value="filters.trace_no"
             placeholder="输入追溯号"
-            clearable
-            @keyup.enter="query"
-          />
-        </label>
-        <label class="filter-field">
-          <span>物资名称</span>
-          <n-input
-            v-model:value="filters.name"
-            placeholder="输入物资名称"
             clearable
             @keyup.enter="query"
           />
@@ -411,15 +412,15 @@ onActivated(() => {
             :title="
               aiAvailable
                 ? filters.name.trim()
-                  ? '自动扩展物资名称同义词并立即搜索'
+                  ? '自动扩展物资名称同义词并立即查询'
                   : '请先输入物资名称'
-                : '请联系超级管理员配置 AI 搜索服务'
+                : '请联系超级管理员配置大模型服务'
             "
             @click="aiQuery"
           >
-            AI 赋能搜索
+            智能查询
           </n-button>
-          <n-button type="primary" @click="query">查询记录</n-button>
+          <n-button type="primary" @click="query">查询</n-button>
         </div>
       </div>
     </n-card>
