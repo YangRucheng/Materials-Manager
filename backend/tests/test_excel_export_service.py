@@ -1,6 +1,9 @@
+from datetime import date
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from openpyxl import load_workbook
 
 from app.core.config import Settings, settings
 from app.core.errors import AppError
@@ -44,3 +47,24 @@ def test_invalid_template_raises_readable_business_error(monkeypatch, tmp_path: 
 
     assert raised.value.status_code == 400
     assert raised.value.code == "EXPORT_TEMPLATE_INVALID"
+
+
+def test_result_excel_uses_visible_columns_and_readable_layout() -> None:
+    content, filename = excel_export_service.render_result_excel(
+        "申购计划导出",
+        [("name", "名称"), ("usage", "用途")],
+        [{"name": "电机", "usage": "控制柜检修\n备用设备维护"}],
+    )
+
+    assert filename == f"申购计划导出_{date.today():%Y%m%d}.xlsx"
+    sheet = load_workbook(BytesIO(content)).active
+    assert [sheet.cell(1, column).value for column in range(1, 3)] == ["名称", "用途"]
+    assert sheet["A2"].value == "电机"
+    assert sheet["B2"].value == "控制柜检修\n备用设备维护"
+    assert sheet.freeze_panes == "A2"
+    assert sheet.auto_filter.ref == "A1:B2"
+    assert sheet.row_dimensions[1].height == 32
+    assert sheet.row_dimensions[2].height == 30
+    assert sheet["B2"].alignment.wrap_text is True
+    assert sheet.column_dimensions["A"].width >= 14
+    assert sheet.column_dimensions["B"].width >= 14

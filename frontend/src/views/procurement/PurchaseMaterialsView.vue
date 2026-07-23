@@ -60,6 +60,7 @@ const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const loading = ref(false)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
+const resultExporting = ref(false)
 const show = ref(false)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
@@ -406,6 +407,42 @@ async function aiQuery() {
     aiSearching.value = false
   }
 }
+async function exportResults() {
+  const exportColumns = availableColumns
+    .filter((item) => visibleColumnKeys.value.includes(item.key))
+    .map((item) => item.key)
+  if (!exportColumns.length) {
+    message.warning('请至少显示一个字段')
+    return
+  }
+  resultExporting.value = true
+  try {
+    const actualDemandPerson =
+      filters.actual_demand_person && filters.actual_demand_person !== EMPTY_DEMAND_PERSON_FILTER
+        ? filters.actual_demand_person.trim()
+        : undefined
+    const content = await procurementApi.exportMaterialResults({
+      columns: exportColumns,
+      name: searchName.value,
+      model_spec: filters.model_spec.trim() || undefined,
+      actual_demand_person: actualDemandPerson,
+      empty_actual_demand_person: filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER,
+      subitem_no:
+        filters.subitem_no !== ALL_SUBITEM_FILTER && filters.subitem_no !== EMPTY_SUBITEM_FILTER
+          ? filters.subitem_no
+          : undefined,
+      empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER,
+      status: filters.status === '全部' ? undefined : filters.status,
+    })
+    const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    downloadBlob(content, `申购计划导出_${date}.xlsx`)
+    message.success('查询结果已导出')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '导出失败')
+  } finally {
+    resultExporting.value = false
+  }
+}
 function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
@@ -689,6 +726,7 @@ onBeforeUnmount(() => {
         />
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
+          <n-button :loading="resultExporting" @click="exportResults">导出结果</n-button>
           <n-button
             secondary
             type="primary"
@@ -712,15 +750,14 @@ onBeforeUnmount(() => {
     <div ref="tableAreaRef" class="purchase-plan-table-area">
       <n-button
         class="table-fullscreen-toggle"
+        :class="{ 'is-fullscreen': isTableFullscreen }"
         quaternary
         circle
         size="small"
         :title="isTableFullscreen ? '退出表格全屏' : '表格全屏'"
         :aria-label="isTableFullscreen ? '退出表格全屏' : '表格全屏'"
         @click="toggleTableFullscreen"
-      >
-        {{ isTableFullscreen ? '↙' : '↗' }}
-      </n-button>
+      />
       <n-card class="data-card">
         <n-data-table
           v-model:checked-row-keys="checkedRowKeys"
@@ -1012,13 +1049,30 @@ onBeforeUnmount(() => {
   z-index: 2;
   top: 10px;
   right: 12px;
-  color: #64748b;
-  font-size: 17px;
+  width: 32px;
+  height: 32px;
+  color: #aeb7c4;
+}
+
+.table-fullscreen-toggle::before {
+  width: 17px;
+  height: 17px;
+  border-top: 3px solid currentcolor;
+  border-right: 3px solid currentcolor;
+  border-top-right-radius: 2px;
+  content: '';
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.table-fullscreen-toggle.is-fullscreen::before {
+  transform: rotate(180deg);
 }
 
 .table-fullscreen-toggle:hover {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: rgb(148 163 184 / 10%);
+  color: #8e99a8;
 }
 
 .model-spec-clamp {

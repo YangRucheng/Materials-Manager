@@ -20,6 +20,7 @@ from app.schemas import (
     PurchaseMaterialRead,
     PurchaseMaterialUpdate,
     PurchasePlanExportRequest,
+    PurchasePlanResultExportRequest,
     PurchaseRecordRead,
 )
 from app.services import (
@@ -53,6 +54,20 @@ LinkWriter = Annotated[
     User,
     Depends(require_roles(Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.PURCHASE_ADMIN)),
 ]
+RESULT_EXPORT_LIMIT = 10_000
+PLAN_RESULT_HEADERS = {
+    "plan_no": "计划 ID",
+    "plan_date": "需求日期",
+    "material_code": "物料编码",
+    "name": "名称",
+    "model_spec": "型号规格",
+    "planned_qty": "计划数量",
+    "unit_name": "单位",
+    "actual_demand_person": "实际需求人",
+    "purchase_responsible": "申购负责人",
+    "subitem_no": "子项号",
+    "usage": "用途",
+}
 
 
 @router.get("", response_model=Page[PurchaseMaterialRead])
@@ -150,6 +165,69 @@ def _excel_response(content: bytes, filename: str) -> Response:
         content=content,
         media_type=excel_export_service.XLSX_CONTENT_TYPE,
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
+
+
+@router.post("/export-results")
+async def export_material_results(
+    data: PurchasePlanResultExportRequest,
+    session: DbSession,
+    user: CurrentUser,
+) -> Response:
+    export_status = data.status
+    if user.role != Role.SUPER_ADMIN:
+        if export_status == PurchasePlanStatus.ARCHIVED:
+            raise AppError(
+                "ARCHIVED_PURCHASE_PLAN_FORBIDDEN",
+                "仅超级管理员可查询已归档申购计划",
+                status_code=403,
+            )
+        export_status = PurchasePlanStatus.NORMAL
+    items, total = await material_service.search_purchase_materials(
+        session,
+        keyword=None,
+        search_field=None,
+        search_value=None,
+        name=data.name,
+        model_spec=data.model_spec,
+        actual_demand_person=data.actual_demand_person,
+        empty_actual_demand_person=data.empty_actual_demand_person,
+        purchase_responsible=None,
+        subitem_no=data.subitem_no,
+        empty_subitem_no=data.empty_subitem_no,
+        status=export_status,
+        enabled=None,
+        coded=None,
+        moved=False,
+        page=1,
+        page_size=RESULT_EXPORT_LIMIT + 1,
+    )
+    if total > RESULT_EXPORT_LIMIT:
+        raise AppError(
+            "EXPORT_RESULT_LIMIT_EXCEEDED",
+            f"查询结果超过 {RESULT_EXPORT_LIMIT} 行，请缩小筛选范围后导出",
+            status_code=400,
+            details={"total": total, "limit": RESULT_EXPORT_LIMIT},
+        )
+    rows = [
+        {
+            "plan_no": item.plan_no,
+            "plan_date": item.plan_date,
+            "material_code": item.material_code,
+            "name": item.name,
+            "model_spec": item.model_spec,
+            "planned_qty": item.planned_qty,
+            "unit_name": item.unit.name,
+            "actual_demand_person": item.actual_demand_person,
+            "purchase_responsible": item.purchase_responsible,
+            "subitem_no": item.subitem_no,
+            "usage": item.usage,
+        }
+        for item in items
+    ]
+    columns = [(key, PLAN_RESULT_HEADERS[key]) for key in data.columns]
+    return _excel_response(
+        *excel_export_service.render_result_excel("申购计划导出", columns, rows)
     )
 
 
