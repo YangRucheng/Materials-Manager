@@ -45,7 +45,7 @@ class TimeoutAiClient:
 
 
 @pytest.mark.asyncio
-async def test_super_admin_configures_ai_search_and_key_is_not_exposed(
+async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypted_at_rest(
     client: AsyncClient,
 ) -> None:
     admin = await auth_headers(client, "admin")
@@ -62,20 +62,23 @@ async def test_super_admin_configures_ai_search_and_key_is_not_exposed(
             "api_key": "secret-key",
             "model": "fast-model",
             "enabled": True,
-            "clear_api_key": False,
             "version": 0,
         },
     )
     assert saved.status_code == 200, saved.text
     assert saved.json() == {
         "endpoint": "https://example.test/v1",
+        "api_key": "secret-key",
         "model": "fast-model",
         "enabled": True,
-        "api_key_configured": True,
         "updated_at": saved.json()["updated_at"],
         "version": 1,
     }
-    assert "secret-key" not in saved.text
+    assert "secret-key" in saved.text
+
+    loaded = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert loaded.status_code == 200, loaded.text
+    assert loaded.json()["api_key"] == "secret-key"
 
     status = await client.get("/api/v1/ai-search/status", headers=purchase)
     assert status.status_code == 200
@@ -110,7 +113,6 @@ async def test_ai_expansion_applies_to_plans_and_records(
             "api_key": "secret-key",
             "model": "fast-model",
             "enabled": True,
-            "clear_api_key": False,
             "version": 0,
         },
     )
@@ -171,7 +173,6 @@ async def test_ai_response_timeout_returns_specific_bad_request(
             "api_key": "secret-key",
             "model": "slow-model",
             "enabled": True,
-            "clear_api_key": False,
             "version": 0,
         },
     )
@@ -180,5 +181,8 @@ async def test_ai_response_timeout_returns_specific_bad_request(
     response = await client.post("/api/v1/ai-search/settings/test", headers=admin)
     assert response.status_code == 400, response.text
     assert response.json()["code"] == "AI_RESPONSE_TIMEOUT"
-    assert "10 秒" in response.json()["message"]
-    assert response.json()["details"]["timeout_seconds"] == 10.0
+    assert "等待上游响应数据阶段" in response.json()["message"]
+    assert "slow-model" in response.json()["message"]
+    assert "https://example.test/v1/chat/completions" in response.json()["message"]
+    assert response.json()["details"]["phase"] == "response_wait"
+    assert response.json()["details"]["timeout_seconds"] == 30.0

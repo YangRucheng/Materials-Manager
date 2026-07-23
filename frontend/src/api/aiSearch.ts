@@ -22,6 +22,6 @@ export const aiSearchApi = {
       .then((response) => response.data),
   testSettings: () =>
     apiClient
-      .post<AiSearchTestResult>('/ai-search/settings/test')
+      .post<AiSearchTestResult>('/ai-search/settings/test', undefined, { timeout: 35_000 })
       .then((response) => response.data),
 }
