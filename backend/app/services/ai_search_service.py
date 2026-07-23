@@ -189,10 +189,44 @@ def _extract_json(content: str) -> dict[str, Any]:
         content = fenced.group(1)
     try:
         payload = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise AppError("AI_INVALID_RESPONSE", "AI 返回内容不是有效 JSON", status_code=502) from exc
-    if not isinstance(payload, dict):
-        raise AppError("AI_INVALID_RESPONSE", "AI 返回结构无效", status_code=502)
+    except json.JSONDecodeError:
+        decoder = json.JSONDecoder()
+        for index, character in enumerate(content):
+            if character != "{":
+                continue
+            try:
+                payload, _ = decoder.raw_decode(content[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                return payload
+        raise AppError(
+            "AI_INVALID_RESPONSE",
+            "AI 返回内容不是有效 JSON，请检查模型是否支持 JSON 输出模式",
+            status_code=502,
+            details={"content_preview": content[:300]},
+        ) from None
+    if isinstance(payload, dict):
+        return payload
+    raise AppError(
+        "AI_INVALID_RESPONSE",
+        "AI 返回的 JSON 顶层结构不是对象",
+        status_code=502,
+        details={"content_preview": content[:300]},
+    )
+
+
+def _completion_payload(setting: AiSearchConfig, prompt: str) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": setting.model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0,
+        "max_tokens": 180,
+        "stream": False,
+    }
+    if setting.model.strip().lower().startswith("glm-"):
+        payload["thinking"] = {"type": "disabled"}
+        payload["response_format"] = {"type": "json_object"}
     return payload
 
 
@@ -273,13 +307,7 @@ async def _request_expansions(
         response = await _client.post(
             completion_url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "model": setting.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0,
-                "max_tokens": 180,
-                "stream": False,
-            },
+            json=_completion_payload(setting, prompt),
             timeout=httpx.Timeout(response_timeout_seconds, connect=_CONNECT_TIMEOUT_SECONDS),
         )
         response.raise_for_status()
