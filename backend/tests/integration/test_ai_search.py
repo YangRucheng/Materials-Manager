@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 import pytest
 from httpx import AsyncClient
 from pytest import MonkeyPatch
@@ -29,6 +30,15 @@ class FakeResponse:
 class FakeAiClient:
     async def post(self, *_args: object, **_kwargs: object) -> FakeResponse:
         return FakeResponse()
+
+    async def aclose(self) -> None:
+        return None
+
+
+class TimeoutAiClient:
+    async def post(self, *_args: object, **_kwargs: object) -> FakeResponse:
+        request = httpx.Request("POST", "https://example.test/v1/chat/completions")
+        raise httpx.ReadTimeout("timed out", request=request)
 
     async def aclose(self) -> None:
         return None
@@ -106,6 +116,14 @@ async def test_ai_expansion_applies_to_plans_and_records(
     )
     assert configured.status_code == 200, configured.text
 
+    expanded = await client.post(
+        "/api/v1/ai-search/expand",
+        headers=purchase,
+        json={"value": "电机"},
+    )
+    assert expanded.status_code == 200, expanded.text
+    assert expanded.json() == {"original": "电机", "expanded": "电机|电动机"}
+
     motor = await create_purchase_plan(client, purchase, "电机", code="AI-001")
     electric_motor = await create_purchase_plan(client, purchase, "电动机", code="AI-002")
 
@@ -136,3 +154,31 @@ async def test_ai_expansion_applies_to_plans_and_records(
         first_record["line_id"],
         second_record["line_id"],
     }
+
+
+@pytest.mark.asyncio
+async def test_ai_response_timeout_returns_specific_bad_request(
+    client: AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    admin = await auth_headers(client, "admin")
+    monkeypatch.setattr(ai_search_service, "_client", TimeoutAiClient())
+
+    configured = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "https://example.test/v1",
+            "api_key": "secret-key",
+            "model": "slow-model",
+            "enabled": True,
+            "clear_api_key": False,
+            "version": 0,
+        },
+    )
+    assert configured.status_code == 200, configured.text
+
+    response = await client.post("/api/v1/ai-search/settings/test", headers=admin)
+    assert response.status_code == 400, response.text
+    assert response.json()["code"] == "AI_RESPONSE_TIMEOUT"
+    assert "10 秒" in response.json()["message"]
+    assert response.json()["details"]["timeout_seconds"] == 10.0
