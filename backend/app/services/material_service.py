@@ -395,6 +395,8 @@ async def search_purchase_materials(
     actual_demand_person: str | None,
     empty_actual_demand_person: bool,
     purchase_responsible: str | None,
+    subitem_no: str | None,
+    empty_subitem_no: bool,
     status: PurchasePlanStatus | None,
     enabled: bool | None,
     coded: bool | None,
@@ -464,6 +466,12 @@ async def search_purchase_materials(
     )
     if responsible_condition is not None:
         query = query.where(responsible_condition)
+    if empty_subitem_no:
+        query = query.where(
+            or_(PurchaseMaterial.subitem_no.is_(None), func.trim(PurchaseMaterial.subitem_no) == "")
+        )
+    elif subitem_no:
+        query = query.where(func.trim(PurchaseMaterial.subitem_no) == subitem_no.strip())
     if status is not None:
         query = query.where(PurchaseMaterial.status == status)
     if enabled is not None:
@@ -499,7 +507,7 @@ async def purchase_filter_options(
     *,
     moved: bool | None,
     status: PurchasePlanStatus | None,
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[str], list[str], list[str]]:
     record_exists = (
         select(PurchaseRequestLine.id)
         .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
@@ -511,13 +519,19 @@ async def purchase_filter_options(
     responsible_query = select(PurchaseMaterial.purchase_responsible).where(
         func.trim(PurchaseMaterial.purchase_responsible) != ""
     )
+    subitem_query = select(PurchaseMaterial.subitem_no).where(
+        PurchaseMaterial.subitem_no.is_not(None),
+        func.trim(PurchaseMaterial.subitem_no) != "",
+    )
     if status is not None:
         actual_demand_query = actual_demand_query.where(PurchaseMaterial.status == status)
         responsible_query = responsible_query.where(PurchaseMaterial.status == status)
+        subitem_query = subitem_query.where(PurchaseMaterial.status == status)
     if moved is not None:
         moved_filter = record_exists if moved else ~record_exists
         actual_demand_query = actual_demand_query.where(moved_filter)
         responsible_query = responsible_query.where(moved_filter)
+        subitem_query = subitem_query.where(moved_filter)
     actual_demand_persons = list(
         await session.scalars(
             actual_demand_query.distinct().order_by(PurchaseMaterial.actual_demand_person)
@@ -528,7 +542,12 @@ async def purchase_filter_options(
             responsible_query.distinct().order_by(PurchaseMaterial.purchase_responsible)
         )
     )
-    return actual_demand_persons, purchase_responsibles
+    subitem_nos = list(
+        await session.scalars(
+            subitem_query.distinct().order_by(PurchaseMaterial.subitem_no)
+        )
+    )
+    return actual_demand_persons, purchase_responsibles, subitem_nos
 
 
 async def purchase_materials_for_export(
