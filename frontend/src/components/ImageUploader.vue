@@ -14,8 +14,8 @@ const input = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const message = useMessage()
 
-async function choose(event: Event) {
-  const selected = Array.from((event.target as HTMLInputElement).files || [])
+async function uploadSelected(selected: File[]) {
+  if (!selected.length || uploading.value) return
   const validationError = validateImageSelection(props.files.length, selected, props.max)
   if (validationError) {
     message.error(validationError)
@@ -23,7 +23,7 @@ async function choose(event: Event) {
   }
   uploading.value = true
   try {
-    const uploaded = await Promise.all(selected.map(fileApi.uploadImage))
+    const uploaded = await Promise.all(selected.map((file) => fileApi.uploadImage(file)))
     const merged = [...props.files, ...uploaded]
     const unique = Array.from(new Map(merged.map((file) => [file.id, file])).values())
     if (unique.length < merged.length) {
@@ -34,8 +34,30 @@ async function choose(event: Event) {
     message.error(error instanceof Error ? error.message : '图片上传失败')
   } finally {
     uploading.value = false
+  }
+}
+
+async function choose(event: Event) {
+  const selected = Array.from((event.target as HTMLInputElement).files || [])
+  try {
+    await uploadSelected(selected)
+  } finally {
     if (input.value) input.value.value = ''
   }
+}
+
+async function pasteImages(event: ClipboardEvent) {
+  if (props.disabled || uploading.value) return
+  const selected = Array.from(event.clipboardData?.items || [])
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => file !== null)
+  if (!selected.length) {
+    message.warning('剪贴板中没有可粘贴的图片')
+    return
+  }
+  event.preventDefault()
+  await uploadSelected(selected)
 }
 
 async function remove(file: FileObject) {
@@ -52,7 +74,12 @@ async function remove(file: FileObject) {
 </script>
 
 <template>
-  <div class="image-uploader">
+  <div
+    class="image-uploader"
+    tabindex="0"
+    aria-label="图片上传区域，支持 Ctrl+V 粘贴图片"
+    @paste="pasteImages"
+  >
     <div v-for="file in files" :key="file.id" class="image-item">
       <n-image
         :src="imagePreviewUrl(file.id, 192)"
@@ -79,7 +106,7 @@ async function remove(file: FileObject) {
       :disabled="uploading"
       @click="input?.click()"
     >
-      <span class="plus">+</span><span>{{ uploading ? '上传中' : '上传图片' }}</span>
+      <span class="plus">+</span><span>{{ uploading ? '上传中' : '上传' }}</span>
     </button>
     <input
       ref="input"
@@ -90,10 +117,7 @@ async function remove(file: FileObject) {
       @change="choose"
     />
   </div>
-  <p class="image-hint">
-    支持 JPG、PNG、WebP，单图不超过 10 MB，最多 {{ max }} 张；服务端统一转换为
-    PNG，相同图片自动复用。
-  </p>
+  <p class="image-hint">JPG/PNG/WebP，单图 ≤10 MB，最多 {{ max }} 张；支持 Ctrl+V 粘贴。</p>
 </template>
 
 <style scoped>
@@ -101,6 +125,11 @@ async function remove(file: FileObject) {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+.image-uploader:focus-visible {
+  outline: 2px solid rgba(24, 160, 88, 0.35);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 .image-item {
   position: relative;
