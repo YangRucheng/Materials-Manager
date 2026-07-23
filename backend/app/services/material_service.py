@@ -28,6 +28,7 @@ from app.schemas import (
     StockMaterialUpdate,
 )
 from app.services.common import (
+    contains_any,
     file_read,
     identity_hash,
     utc_aware,
@@ -404,24 +405,25 @@ async def search_purchase_materials(
     query = select(PurchaseMaterial).join(
         MeasurementUnit, MeasurementUnit.id == PurchaseMaterial.unit_id
     )
-    if keyword:
-        like = f"%{keyword}%"
-        query = query.where(
-            or_(
-                PurchaseMaterial.plan_no.like(like),
-                cast(PurchaseMaterial.plan_date, String).like(like),
-                PurchaseMaterial.name.like(like),
-                PurchaseMaterial.model_spec.like(like),
-                PurchaseMaterial.material_code.like(like),
-                MeasurementUnit.name.like(like),
-                cast(PurchaseMaterial.planned_qty, String).like(like),
-                PurchaseMaterial.actual_demand_person.like(like),
-                PurchaseMaterial.purchase_responsible.like(like),
-                PurchaseMaterial.usage.like(like),
-                PurchaseMaterial.subitem_no.like(like),
-                PurchaseMaterial.remark.like(like),
-            )
-        )
+    keyword_condition = contains_any(
+        (
+            PurchaseMaterial.plan_no,
+            cast(PurchaseMaterial.plan_date, String),
+            PurchaseMaterial.name,
+            PurchaseMaterial.model_spec,
+            PurchaseMaterial.material_code,
+            MeasurementUnit.name,
+            cast(PurchaseMaterial.planned_qty, String),
+            PurchaseMaterial.actual_demand_person,
+            PurchaseMaterial.purchase_responsible,
+            PurchaseMaterial.usage,
+            PurchaseMaterial.subitem_no,
+            PurchaseMaterial.remark,
+        ),
+        keyword,
+    )
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
     if search_field and search_value:
         search_columns = {
             "plan_no": PurchaseMaterial.plan_no,
@@ -435,11 +437,15 @@ async def search_purchase_materials(
             "subitem_no": PurchaseMaterial.subitem_no,
             "remark": PurchaseMaterial.remark,
         }
-        query = query.where(search_columns[search_field].like(f"%{search_value}%"))
-    if name:
-        query = query.where(PurchaseMaterial.name.like(f"%{name}%"))
-    if model_spec:
-        query = query.where(PurchaseMaterial.model_spec.like(f"%{model_spec}%"))
+        search_condition = contains_any((search_columns[search_field],), search_value)
+        if search_condition is not None:
+            query = query.where(search_condition)
+    name_condition = contains_any((PurchaseMaterial.name,), name)
+    if name_condition is not None:
+        query = query.where(name_condition)
+    model_condition = contains_any((PurchaseMaterial.model_spec,), model_spec)
+    if model_condition is not None:
+        query = query.where(model_condition)
     if empty_actual_demand_person:
         query = query.where(
             or_(
@@ -447,10 +453,17 @@ async def search_purchase_materials(
                 func.trim(PurchaseMaterial.actual_demand_person).in_(("", "\\", "/", "—", "-")),
             )
         )
-    elif actual_demand_person:
-        query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
-    if purchase_responsible:
-        query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
+    else:
+        demand_person_condition = contains_any(
+            (PurchaseMaterial.actual_demand_person,), actual_demand_person
+        )
+        if demand_person_condition is not None:
+            query = query.where(demand_person_condition)
+    responsible_condition = contains_any(
+        (PurchaseMaterial.purchase_responsible,), purchase_responsible
+    )
+    if responsible_condition is not None:
+        query = query.where(responsible_condition)
     if status is not None:
         query = query.where(PurchaseMaterial.status == status)
     if enabled is not None:

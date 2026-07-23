@@ -16,6 +16,10 @@ router = APIRouter(tags=["申购记录"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
 StatusFilter = Annotated[str | None, Query(alias="status", max_length=128)]
+OR_SEARCH_DESCRIPTION = "可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词"
+OrSearch = Annotated[str | None, Query(description=OR_SEARCH_DESCRIPTION)]
+OrSearch128 = Annotated[str | None, Query(max_length=128, description=OR_SEARCH_DESCRIPTION)]
+OrSearch255 = Annotated[str | None, Query(max_length=255, description=OR_SEARCH_DESCRIPTION)]
 RecordSearchField = Literal[
     "plan_no",
     "plan_date",
@@ -44,16 +48,16 @@ async def purchase_records(
     page_size: PageSize = 20,
     record_status: StatusFilter = None,
     empty_status: bool = False,
-    keyword: str | None = None,
+    keyword: OrSearch = None,
     search_field: RecordSearchField | None = None,
-    search_value: Annotated[str | None, Query(max_length=255)] = None,
-    purchase_order_no: Annotated[str | None, Query(max_length=255)] = None,
-    trace_no: Annotated[str | None, Query(max_length=255)] = None,
-    name: Annotated[str | None, Query(max_length=128)] = None,
-    model_spec: Annotated[str | None, Query(max_length=255)] = None,
-    actual_demand_person: Annotated[str | None, Query(max_length=128)] = None,
-    purchase_responsible: Annotated[str | None, Query(max_length=128)] = None,
-    salesperson: Annotated[str | None, Query(max_length=128)] = None,
+    search_value: OrSearch255 = None,
+    purchase_order_no: OrSearch255 = None,
+    trace_no: OrSearch255 = None,
+    name: OrSearch128 = None,
+    model_spec: OrSearch255 = None,
+    actual_demand_person: OrSearch128 = None,
+    purchase_responsible: OrSearch128 = None,
+    salesperson: OrSearch128 = None,
 ) -> Page[PurchaseRecordRead]:
     items, total = await service.search_purchase_records(
         session,
