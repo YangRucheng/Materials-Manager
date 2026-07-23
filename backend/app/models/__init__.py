@@ -29,6 +29,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.domain.enums import (
     OperationType,
+    PurchasePlanStatus,
     Role,
     SourceType,
 )
@@ -192,6 +193,13 @@ class PurchaseMaterial(AuditMixin, Base):
         BIGINT_ID, ForeignKey("stock_material.id"), index=True
     )
     identity_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[PurchasePlanStatus] = mapped_column(
+        SAEnum(PurchasePlanStatus),
+        nullable=False,
+        default=PurchasePlanStatus.NORMAL,
+        server_default=PurchasePlanStatus.NORMAL.name,
+        index=True,
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")

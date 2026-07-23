@@ -187,6 +187,7 @@ async def update_purchase_record(
             remark=data.plan_remark,
             stock_material_id=data.stock_material_id,
             image_ids=data.image_ids,
+            status=material.status,
             version=material.version,
         ),
     )

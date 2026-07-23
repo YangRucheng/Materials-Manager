@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
+from app.domain.enums import PurchasePlanStatus
 from app.models import (
     FileObject,
     MeasurementUnit,
@@ -168,6 +169,7 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         remark=item.remark,
         stock_material_id=item.stock_material_id,
         stock_material_name=item.stock_material.name if item.stock_material else None,
+        status=item.status,
         moved_to_record=moved_to_record,
         enabled=item.enabled,
         images=[file_read(link.file) for link in item.images],
@@ -231,6 +233,7 @@ async def create_purchase_material(
         remark=data.remark,
         stock_material_id=data.stock_material_id,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
+        status=data.status,
         enabled=True,
         images=[
             PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
@@ -270,6 +273,8 @@ async def update_purchase_material(
         item.plan_date = data.plan_date
     if data.actual_demand_person is not None:
         item.actual_demand_person = data.actual_demand_person
+    if "status" in data.model_fields_set:
+        item.status = data.status
     item.purchase_responsible = responsible
     item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_id)
     item.unit = unit
@@ -307,6 +312,7 @@ async def batch_update_purchase_materials(
         "actual_demand_person",
         "subitem_no",
         "usage",
+        "status",
     }
     updated: list[PurchaseMaterial] = []
     for reference in data.materials:
@@ -324,6 +330,9 @@ async def batch_update_purchase_materials(
         if "usage" in update_fields:
             assert data.usage is not None
             item.usage = data.usage
+        if "status" in update_fields:
+            assert data.status is not None
+            item.status = data.status
         item.version += 1
         await session.flush()
         updated.append(item)
@@ -389,6 +398,7 @@ async def search_purchase_materials(
     actual_demand_person: str | None,
     empty_actual_demand_person: bool,
     purchase_responsible: str | None,
+    status: PurchasePlanStatus | None,
     enabled: bool | None,
     coded: bool | None,
     moved: bool | None,
@@ -445,6 +455,8 @@ async def search_purchase_materials(
         query = query.where(PurchaseMaterial.actual_demand_person.like(f"%{actual_demand_person}%"))
     if purchase_responsible:
         query = query.where(PurchaseMaterial.purchase_responsible.like(f"%{purchase_responsible}%"))
+    if status is not None:
+        query = query.where(PurchaseMaterial.status == status)
     if enabled is not None:
         query = query.where(PurchaseMaterial.enabled == enabled)
     if coded is True:
@@ -511,6 +523,7 @@ async def purchase_materials_for_export(
     keyword: str | None = None,
     coded: bool | None = None,
     moved: bool | None = None,
+    status: PurchasePlanStatus | None = None,
 ) -> list[PurchaseMaterial]:
     query = select(PurchaseMaterial)
     if material_ids is not None:
@@ -529,6 +542,8 @@ async def purchase_materials_for_export(
         query = query.where(PurchaseMaterial.material_code.is_not(None))
     elif coded is False:
         query = query.where(PurchaseMaterial.material_code.is_(None))
+    if status is not None:
+        query = query.where(PurchaseMaterial.status == status)
     if moved is not None:
         record_exists = (
             select(PurchaseRequestLine.id)
