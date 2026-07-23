@@ -1,9 +1,10 @@
-name: 构建并推送 Docker 镜像
+name: 构建 Docker 镜像
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -16,6 +17,7 @@ concurrency:
 env:
   REGISTRY: docker.io
   DOCKERHUB_NAMESPACE: yangrucheng
+  SHOULD_PUSH_IMAGE: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) }}
 
 jobs:
   build:
@@ -42,6 +44,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: 登录 Docker Hub
+        if: env.SHOULD_PUSH_IMAGE == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -58,12 +61,12 @@ jobs:
             type=sha,prefix=${{ matrix.component }}-sha-
             type=ref,event=tag,prefix=${{ matrix.component }}-
 
-      - name: 构建并推送镜像
+      - name: 构建并按需推送镜像
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          push: true
+          push: ${{ env.SHOULD_PUSH_IMAGE == 'true' }}
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
