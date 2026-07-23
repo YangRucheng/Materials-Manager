@@ -10,6 +10,7 @@ from pydantic import (
     Field,
     StringConstraints,
     field_validator,
+    model_validator,
 )
 
 from app.domain.enums import (
@@ -411,6 +412,46 @@ class PurchaseMaterialCreate(PurchaseMaterialBase):
 
 class PurchaseMaterialUpdate(PurchaseMaterialBase):
     version: int
+
+
+class PurchasePlanVersion(RequestModel):
+    id: int
+    version: int
+
+
+class BatchUpdatePurchasePlansRequest(RequestModel):
+    materials: list[PurchasePlanVersion] = Field(min_length=1, max_length=200)
+    plan_date: date | None = None
+    actual_demand_person: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    usage: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+        | None
+    ) = None
+
+    @field_validator("materials")
+    @classmethod
+    def unique_materials(cls, value: list[PurchasePlanVersion]) -> list[PurchasePlanVersion]:
+        ids = [item.id for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("materials must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def validate_updates(self) -> BatchUpdatePurchasePlansRequest:
+        update_fields = {"plan_date", "actual_demand_person", "subitem_no", "usage"}
+        selected_fields = self.model_fields_set & update_fields
+        if not selected_fields:
+            raise ValueError("at least one update field is required")
+        for field in selected_fields - {"subitem_no"}:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+        return self
 
 
 class PurchaseMaterialRead(ReadModel):

@@ -18,6 +18,7 @@ from app.models import (
     StockMaterialImage,
 )
 from app.schemas import (
+    BatchUpdatePurchasePlansRequest,
     PurchaseMaterialCreate,
     PurchaseMaterialRead,
     PurchaseMaterialUpdate,
@@ -280,6 +281,53 @@ async def update_purchase_material(
     item.version += 1
     await session.flush()
     return item
+
+
+async def batch_update_purchase_materials(
+    session: AsyncSession, data: BatchUpdatePurchasePlansRequest
+) -> list[PurchaseMaterial]:
+    material_ids = [reference.id for reference in data.materials]
+    items = list(
+        (
+            await session.scalars(
+                select(PurchaseMaterial)
+                .where(PurchaseMaterial.id.in_(material_ids))
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
+    )
+    items_by_id = {item.id: item for item in items}
+    if len(items_by_id) != len(material_ids):
+        raise not_found("申购计划")
+
+    update_fields = data.model_fields_set & {
+        "plan_date",
+        "actual_demand_person",
+        "subitem_no",
+        "usage",
+    }
+    updated: list[PurchaseMaterial] = []
+    for reference in data.materials:
+        item = items_by_id[reference.id]
+        validate_version(reference.version, item.version)
+        if "plan_date" in update_fields and data.plan_date != item.plan_date:
+            assert data.plan_date is not None
+            item.plan_no = await _next_plan_no(session, data.plan_date)
+            item.plan_date = data.plan_date
+        if "actual_demand_person" in update_fields:
+            assert data.actual_demand_person is not None
+            item.actual_demand_person = data.actual_demand_person
+        if "subitem_no" in update_fields:
+            item.subitem_no = data.subitem_no
+        if "usage" in update_fields:
+            assert data.usage is not None
+            item.usage = data.usage
+        item.version += 1
+        await session.flush()
+        updated.append(item)
+    return updated
 
 
 async def delete_purchase_material(

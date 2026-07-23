@@ -19,13 +19,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
 const exporting = ref(false)
-type UncodedColumnKey =
-  | 'plan_no'
-  | 'plan_date'
-  | 'name'
-  | 'model_spec'
-  | 'unit_name'
-  | 'created_at'
+type UncodedColumnKey = 'plan_no' | 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
 
 const availableColumns: Array<{
   key: UncodedColumnKey

@@ -193,6 +193,13 @@ export interface PurchaseMaterialWrite {
   image_ids: string[]
   version?: number
 }
+export interface PurchaseMaterialBatchUpdate {
+  materials: Array<{ id: number; version: number }>
+  plan_date?: string
+  actual_demand_person?: string
+  subitem_no?: string | null
+  usage?: string
+}
 export interface PurchaseRequestLine {
   id: number
   purchase_material_id: number

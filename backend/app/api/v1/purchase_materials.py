@@ -10,6 +10,7 @@ from app.models import User
 from app.schemas import (
     ApiError,
     BatchMovePurchasePlansRequest,
+    BatchUpdatePurchasePlansRequest,
     LinkStockMaterialRequest,
     MovePurchasePlanRequest,
     Page,
@@ -180,6 +181,16 @@ async def batch_move_to_record(
 ) -> list[PurchaseRecordRead]:
     lines = await purchase_request_service.batch_move_plans_to_record(session, data)
     return [purchase_request_service.purchase_record_read(line) for line in lines]
+
+
+@router.patch("/batch", response_model=list[PurchaseMaterialRead])
+async def batch_update_materials(
+    data: BatchUpdatePurchasePlansRequest,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> list[PurchaseMaterialRead]:
+    items = await material_service.batch_update_purchase_materials(session, data)
+    return [await material_service.purchase_read(session, item) for item in items]
 
 
 @router.get("/{material_id}", response_model=PurchaseMaterialRead)

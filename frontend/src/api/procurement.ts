@@ -4,6 +4,7 @@ import type {
   MovePurchasePlansWrite,
   PurchaseFilterOptions,
   PurchaseMaterial,
+  PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
   PurchaseRecord,
   PurchaseRecordFilterOptions,
@@ -23,6 +24,8 @@ export const procurementApi = {
     apiClient.post<PurchaseMaterial>('/purchase-materials', payload).then((r) => r.data),
   updateMaterial: (id: number, payload: PurchaseMaterialWrite) =>
     apiClient.patch<PurchaseMaterial>(`/purchase-materials/${id}`, payload).then((r) => r.data),
+  batchUpdateMaterials: (payload: PurchaseMaterialBatchUpdate) =>
+    apiClient.patch<PurchaseMaterial[]>('/purchase-materials/batch', payload).then((r) => r.data),
   deleteMaterial: (id: number, version: number) =>
     apiClient.delete(`/purchase-materials/${id}`, { params: { version } }),
   linkStock: (id: number, stock_material_id: number) =>

@@ -1711,6 +1711,61 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/purchase-materials/batch:
+    patch:
+      tags:
+      - 申购计划
+      summary: Batch Update Materials
+      operationId: batch_update_materials_api_v1_purchase_materials_batch_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdatePurchasePlansRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/PurchaseMaterialRead'
+                type: array
+                title: Response Batch Update Materials Api V1 Purchase Materials Batch
+                  Patch
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/purchase-materials/{material_id}:
     get:
       tags:
@@ -3176,6 +3231,47 @@ components:
       - purchase_date
       - material_ids
       title: BatchMovePurchasePlansRequest
+    BatchUpdatePurchasePlansRequest:
+      properties:
+        materials:
+          items:
+            $ref: '#/components/schemas/PurchasePlanVersion'
+          type: array
+          maxItems: 200
+          minItems: 1
+          title: Materials
+        plan_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Plan Date
+        actual_demand_person:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Actual Demand Person
+        subitem_no:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Subitem No
+        usage:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 1
+          - type: 'null'
+          title: Usage
+      additionalProperties: false
+      type: object
+      required:
+      - materials
+      title: BatchUpdatePurchasePlansRequest
     Body_upload_api_v1_files_images_post:
       properties:
         file:
@@ -4144,6 +4240,20 @@ components:
       required:
       - material_ids
       title: PurchasePlanExportRequest
+    PurchasePlanVersion:
+      properties:
+        id:
+          type: integer
+          title: Id
+        version:
+          type: integer
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - version
+      title: PurchasePlanVersion
     PurchaseRecordFilterOptions:
       properties:
         actual_demand_persons:

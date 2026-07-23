@@ -3,6 +3,7 @@ import type {
   OperationUpdate,
   OperationWrite,
   MovePurchasePlansWrite,
+  PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
   PurchaseRecordWrite,
   ReplenishmentDraftWrite,
@@ -531,6 +532,26 @@ export const handlers = [
     }
     purchaseMaterials.push(item)
     return HttpResponse.json(item, { status: 201 })
+  }),
+  http.patch(`${api}/purchase-materials/batch`, async ({ request }) => {
+    const body = (await request.json()) as PurchaseMaterialBatchUpdate
+    const materials = body.materials.map((reference) =>
+      purchaseMaterials.find((item) => item.id === reference.id),
+    )
+    if (materials.some((material) => !material)) return error(400, 'NOT_FOUND', '申购计划不存在')
+    const plans = materials.filter((material) => material !== undefined)
+    if (plans.some((item, index) => item.version !== body.materials[index].version))
+      return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改')
+    for (const item of plans) {
+      if (body.plan_date !== undefined) item.plan_date = body.plan_date
+      if (body.actual_demand_person !== undefined)
+        item.actual_demand_person = body.actual_demand_person
+      if ('subitem_no' in body) item.subitem_no = body.subitem_no || undefined
+      if (body.usage !== undefined) item.usage = body.usage
+      item.version++
+      item.updated_at = now()
+    }
+    return HttpResponse.json(plans)
   }),
   http.patch(`${api}/purchase-materials/:id`, async ({ params, request }) => {
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))

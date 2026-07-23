@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, h, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   NTag,
   useMessage,
@@ -13,6 +13,7 @@ import type {
   FileObject,
   PurchaseFilterOptions,
   PurchaseMaterial,
+  PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
 } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -41,10 +42,14 @@ const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const loading = ref(false)
 const show = ref(false)
 const showBatch = ref(false)
+const showBatchEdit = ref(false)
 const saving = ref(false)
 const batchMoving = ref(false)
+const batchUpdating = ref(false)
 const batchExporting = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
+const tableAreaRef = ref<HTMLElement | null>(null)
+const isTableFullscreen = ref(false)
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
@@ -69,6 +74,16 @@ const batchForm = reactive({
   salesperson: '',
   status: '已申购',
   record_remark: '',
+})
+const batchEditForm = reactive({
+  update_plan_date: false,
+  plan_date: null as number | null,
+  update_actual_demand_person: false,
+  actual_demand_person: '',
+  update_subitem_no: false,
+  subitem_no: '',
+  update_usage: false,
+  usage: '',
 })
 const selectedPlans = computed(() => {
   const selected = new Set(checkedRowKeys.value.map(Number))
@@ -107,6 +122,8 @@ type PlanColumnKey =
   | 'planned_qty'
   | 'actual_demand_person'
   | 'purchase_responsible'
+  | 'subitem_no'
+  | 'usage'
 
 const availableColumns: Array<{
   key: PlanColumnKey
@@ -164,13 +181,33 @@ const availableColumns: Array<{
       render: (row) => row.purchase_responsible || '\\',
     },
   },
+  {
+    key: 'subitem_no',
+    label: '子项号',
+    column: {
+      title: '子项号',
+      key: 'subitem_no',
+      width: 110,
+      render: (row) => row.subitem_no || '\\',
+    },
+  },
+  {
+    key: 'usage',
+    label: '用途',
+    column: {
+      title: '用途',
+      key: 'usage',
+      width: 180,
+      ellipsis: { tooltip: true },
+    },
+  },
 ]
 const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
 const columns = computed<DataTableColumns<PurchaseMaterial>>(() => [
   {
     type: 'selection',
-    disabled: (row) => !auth.can('purchase:write') || !row.material_code,
+    disabled: () => !auth.can('purchase:write'),
   },
   ...availableColumns
     .filter((item) => visibleColumnKeys.value.includes(item.key))
@@ -187,6 +224,22 @@ function rowProps(row: PurchaseMaterial) {
       if (rowClickGuard.shouldIgnore(event)) return
       void router.push(`/procurement/materials/${row.id}`)
     },
+  }
+}
+function syncTableFullscreen() {
+  isTableFullscreen.value = document.fullscreenElement === tableAreaRef.value
+}
+async function toggleTableFullscreen() {
+  const tableArea = tableAreaRef.value
+  if (!tableArea?.requestFullscreen) {
+    message.warning('当前浏览器不支持全屏显示')
+    return
+  }
+  try {
+    if (document.fullscreenElement === tableArea) await document.exitFullscreen()
+    else await tableArea.requestFullscreen()
+  } catch {
+    message.error('切换全屏失败')
   }
 }
 async function load() {
@@ -295,6 +348,10 @@ function openBatchMove() {
     message.warning('请先选择至少一条已有编码的申购计划')
     return
   }
+  if (selectedPlans.value.some((item) => !item.material_code)) {
+    message.warning('选中的申购计划包含未编码物资，请先补充物料编码')
+    return
+  }
   Object.assign(batchForm, {
     purchase_order_no: defaultPurchaseOrderNo(),
     trace_no: '',
@@ -304,6 +361,67 @@ function openBatchMove() {
     record_remark: '',
   })
   showBatch.value = true
+}
+function openBatchEdit() {
+  if (!selectedPlans.value.length) {
+    message.warning('请先选择至少一条申购计划')
+    return
+  }
+  Object.assign(batchEditForm, {
+    update_plan_date: false,
+    plan_date: null,
+    update_actual_demand_person: false,
+    actual_demand_person: '',
+    update_subitem_no: false,
+    subitem_no: '',
+    update_usage: false,
+    usage: '',
+  })
+  showBatchEdit.value = true
+}
+async function batchUpdate() {
+  const payload: PurchaseMaterialBatchUpdate = {
+    materials: selectedPlans.value.map((item) => ({ id: item.id, version: item.version })),
+  }
+  if (batchEditForm.update_plan_date) {
+    if (!batchEditForm.plan_date) {
+      message.error('请选择需求日期')
+      return
+    }
+    payload.plan_date = toShanghaiDate(batchEditForm.plan_date)
+  }
+  if (batchEditForm.update_actual_demand_person) {
+    if (!batchEditForm.actual_demand_person.trim()) {
+      message.error('请输入实际需求人')
+      return
+    }
+    payload.actual_demand_person = batchEditForm.actual_demand_person.trim()
+  }
+  if (batchEditForm.update_subitem_no) {
+    payload.subitem_no = batchEditForm.subitem_no.trim() || null
+  }
+  if (batchEditForm.update_usage) {
+    if (!batchEditForm.usage.trim()) {
+      message.error('请输入用途')
+      return
+    }
+    payload.usage = batchEditForm.usage.trim()
+  }
+  if (Object.keys(payload).length === 1) {
+    message.warning('请至少勾选一个需要修改的字段')
+    return
+  }
+  batchUpdating.value = true
+  try {
+    await procurementApi.batchUpdateMaterials(payload)
+    message.success(`已批量修改 ${selectedPlans.value.length} 条申购计划`)
+    showBatchEdit.value = false
+    await Promise.all([load(), loadFilterOptions()])
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '批量修改失败')
+  } finally {
+    batchUpdating.value = false
+  }
 }
 async function batchMove() {
   if (!batchForm.purchase_date) {
@@ -335,6 +453,10 @@ async function batchMove() {
 }
 async function exportPurchaseApplication() {
   if (!selectedPlans.value.length) return
+  if (selectedPlans.value.some((item) => !item.material_code)) {
+    message.warning('选中的申购计划包含未编码物资，请先补充物料编码')
+    return
+  }
   batchExporting.value = true
   try {
     const content = await procurementApi.exportPurchaseApplication(
@@ -349,12 +471,16 @@ async function exportPurchaseApplication() {
   }
 }
 onMounted(() => {
+  document.addEventListener('fullscreenchange', syncTableFullscreen)
   void dictionaries.load()
   void loadFilterOptions()
   void load()
 })
 onActivated(() => {
   void syncRoute()
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', syncTableFullscreen)
 })
 </script>
 
@@ -374,6 +500,9 @@ onActivated(() => {
           @click="exportPurchaseApplication"
         >
           导出采购申请表（{{ selectedPlans.length }}）
+        </n-button>
+        <n-button :disabled="!selectedPlans.length" @click="openBatchEdit">
+          批量修改（{{ selectedPlans.length }}）
         </n-button>
         <n-button :disabled="!selectedPlans.length" @click="openBatchMove">
           批量转为申购记录（{{ selectedPlans.length }}）
@@ -408,32 +537,111 @@ onActivated(() => {
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
-          storage-key="procurement.purchase-materials.visible-columns.v1"
+          storage-key="procurement.purchase-materials.visible-columns.v2"
           @update:value="setVisibleColumnKeys"
         />
         <n-button type="primary" @click="query">查询</n-button>
         <n-button @click="resetFilters">重置</n-button>
       </div></n-card
-    ><n-card
-      ><n-data-table
-        v-model:checked-row-keys="checkedRowKeys"
-        :bordered="false"
-        :columns="columns"
-        :data="items"
-        :loading="loading"
-        :row-props="rowProps"
-        :row-key="(r: PurchaseMaterial) => r.id" />
-      <div class="pagination-bar">
-        <n-pagination
-          v-model:page="page"
-          v-model:page-size="pageSize"
-          :item-count="total"
-          :page-sizes="[10, 20, 50, 100, 200]"
-          show-size-picker
-          @update:page="changePage"
-          @update:page-size="changePageSize"
-        /></div
-    ></n-card>
+    >
+    <div ref="tableAreaRef" class="purchase-plan-table-area">
+      <n-card>
+        <div class="table-toolbar">
+          <n-button size="small" @click="toggleTableFullscreen">
+            {{ isTableFullscreen ? '退出全屏' : '表格全屏' }}
+          </n-button>
+        </div>
+        <n-data-table
+          v-model:checked-row-keys="checkedRowKeys"
+          :bordered="false"
+          :columns="columns"
+          :data="items"
+          :loading="loading"
+          :row-props="rowProps"
+          :row-key="(r: PurchaseMaterial) => r.id"
+        />
+        <div class="pagination-bar">
+          <n-pagination
+            v-model:page="page"
+            v-model:page-size="pageSize"
+            :item-count="total"
+            :page-sizes="[10, 20, 50, 100, 200]"
+            show-size-picker
+            @update:page="changePage"
+            @update:page-size="changePageSize"
+          />
+        </div>
+      </n-card>
+    </div>
+    <n-modal
+      v-model:show="showBatchEdit"
+      preset="card"
+      title="批量修改申购计划"
+      style="width: 620px"
+      :mask-closable="false"
+    >
+      <n-alert type="info" style="margin-bottom: 16px">
+        已选择 {{ selectedPlans.length }} 条计划。仅勾选的字段会被统一修改。
+      </n-alert>
+      <n-form label-placement="top">
+        <div class="form-grid">
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_plan_date">修改需求日期</n-checkbox>
+            </template>
+            <n-date-picker
+              v-model:value="batchEditForm.plan_date"
+              type="date"
+              class="full-width"
+              :disabled="!batchEditForm.update_plan_date"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_actual_demand_person">
+                修改实际需求人
+              </n-checkbox>
+            </template>
+            <n-input
+              v-model:value="batchEditForm.actual_demand_person"
+              maxlength="128"
+              :disabled="!batchEditForm.update_actual_demand_person"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_subitem_no">修改子项号</n-checkbox>
+            </template>
+            <n-input
+              v-model:value="batchEditForm.subitem_no"
+              maxlength="64"
+              placeholder="留空将清除子项号"
+              :disabled="!batchEditForm.update_subitem_no"
+            />
+          </n-form-item>
+        </div>
+        <n-form-item>
+          <template #label>
+            <n-checkbox v-model:checked="batchEditForm.update_usage">修改用途</n-checkbox>
+          </template>
+          <n-input
+            v-model:value="batchEditForm.usage"
+            type="textarea"
+            maxlength="500"
+            show-count
+            :disabled="!batchEditForm.update_usage"
+          />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showBatchEdit = false">取消</n-button>
+          <n-button type="primary" :loading="batchUpdating" @click="batchUpdate">
+            保存修改
+          </n-button>
+        </n-space>
+      </template>
+    </n-modal>
     <n-modal
       v-model:show="showBatch"
       preset="card"
@@ -547,3 +755,21 @@ onActivated(() => {
     >
   </div>
 </template>
+
+<style scoped>
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.purchase-plan-table-area:fullscreen {
+  overflow: auto;
+  padding: 16px;
+  background: #f4f6f8;
+}
+
+.purchase-plan-table-area:fullscreen :deep(.n-card) {
+  min-height: 100%;
+}
+</style>
