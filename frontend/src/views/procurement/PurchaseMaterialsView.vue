@@ -45,6 +45,7 @@ import {
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
+import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 
 const route = useRoute()
 const router = useRouter()
@@ -93,6 +94,7 @@ const filters = reactive({
     ? (routeStatus as PurchasePlanStatusFilter)
     : defaultPurchasePlanStatus,
 })
+const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
@@ -332,7 +334,7 @@ async function load() {
       page: page.value,
       page_size: pageSize.value,
       moved: false,
-      name: filters.name.trim() || undefined,
+      name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
       actual_demand_person:
         filters.actual_demand_person && filters.actual_demand_person !== EMPTY_DEMAND_PERSON_FILTER
@@ -384,6 +386,7 @@ async function syncRouteAndLoad(resetPage = false) {
   await load()
 }
 function query() {
+  clearExpandedName()
   void syncRouteAndLoad(true)
 }
 async function aiQuery() {
@@ -395,12 +398,10 @@ async function aiQuery() {
   aiSearching.value = true
   try {
     const data = await aiSearchApi.expand(value)
-    filters.name = data.expanded
-    if (data.expanded === data.original) message.info('未发现可补充的同义词，已按原词搜索')
-    else message.success(`已扩展搜索词：${data.expanded}`)
+    applyExpandedName(data.expanded)
     await syncRouteAndLoad(true)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : 'AI 赋能搜索失败')
+    message.error(error instanceof Error ? error.message : '智能查询失败')
   } finally {
     aiSearching.value = false
   }
@@ -696,15 +697,15 @@ onBeforeUnmount(() => {
             :title="
               aiAvailable
                 ? filters.name.trim()
-                  ? '自动扩展物资名称同义词并立即搜索'
+                  ? '自动扩展物资名称同义词并立即查询'
                   : '请先输入物资名称'
-                : '请联系超级管理员配置 AI 搜索服务'
+                : '请联系超级管理员配置大模型服务'
             "
             @click="aiQuery"
           >
-            AI 赋能搜索
+            智能查询
           </n-button>
-          <n-button type="primary" @click="query">查询计划</n-button>
+          <n-button type="primary" @click="query">查询</n-button>
         </div>
       </div>
     </n-card>
