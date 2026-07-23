@@ -71,11 +71,19 @@ const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const routeStatus = routeQueryString(route.query.status)
+const canViewArchivedPlans = computed(() => auth.user?.role === 'SUPER_ADMIN')
+const statusFilterOptions = computed(() =>
+  canViewArchivedPlans.value
+    ? purchasePlanStatusFilterOptions
+    : purchasePlanStatusFilterOptions.filter(
+        (option) => option.value === defaultPurchasePlanStatus,
+      ),
+)
 const filters = reactive({
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
   actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
-  status: purchasePlanStatusFilterOptions.some((option) => option.value === routeStatus)
+  status: statusFilterOptions.value.some((option) => option.value === routeStatus)
     ? (routeStatus as PurchasePlanStatusFilter)
     : defaultPurchasePlanStatus,
 })
@@ -596,7 +604,7 @@ onBeforeUnmount(() => {
         />
         <n-select
           v-model:value="filters.status"
-          :options="purchasePlanStatusFilterOptions"
+          :options="statusFilterOptions"
           style="width: 140px"
         />
         <ColumnVisibilityPicker

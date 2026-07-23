@@ -114,6 +114,28 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
     minimum !== undefined &&
     Number(material.current_qty) <= Number(minimum),
   )
+  const endAt = new Date()
+  const startAt = new Date(endAt)
+  startAt.setMonth(startAt.getMonth() - 6)
+  const reversedIds = new Set(
+    operations
+      .map((operation) => operation.reversal_of_id)
+      .filter((id): id is number => Boolean(id)),
+  )
+  const recentConsumption = operations
+    .filter((operation) => {
+      const occurredAt = new Date(operation.occurred_at)
+      return (
+        operation.operation_type === 'OUTBOUND' &&
+        operation.source_type !== 'REVERSAL' &&
+        !reversedIds.has(operation.id) &&
+        occurredAt >= startAt &&
+        occurredAt <= endAt
+      )
+    })
+    .flatMap((operation) => operation.lines)
+    .filter((line) => line.stock_material_id === material.id)
+    .reduce((sum, line) => sum + Number(line.quantity), 0)
   return {
     stock_material_id: material.id,
     name: material.name,
@@ -123,9 +145,7 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
     current_qty: material.current_qty,
     minimum_qty: minimum,
     is_low_stock: low,
-    suggested_purchase_qty: String(
-      Math.max(Number(minimum || 0) - Number(material.current_qty), 0),
-    ),
+    suggested_purchase_qty: String(recentConsumption),
     updated_at: material.updated_at,
   }
 }
@@ -245,11 +265,8 @@ export const handlers = [
   http.get(`${api}/stock-materials`, ({ request }) => {
     const url = new URL(request.url)
     const q = (url.searchParams.get('keyword') || '').toLowerCase()
-    const enabled = url.searchParams.get('enabled')
     const list = stockMaterials.filter(
-      (x) =>
-        (!q || `${x.name}${x.model_spec}`.toLowerCase().includes(q)) &&
-        (enabled === null || String(x.enabled) === enabled),
+      (x) => !q || `${x.name}${x.model_spec}`.toLowerCase().includes(q),
     )
     return HttpResponse.json(page(list, url))
   }),
@@ -277,7 +294,6 @@ export const handlers = [
       unit_id: u.id,
       unit_name: u.name,
       remark: body.remark,
-      enabled: true,
       current_qty: '0',
       images: [],
       created_at: now(),
@@ -297,13 +313,6 @@ export const handlers = [
       updated_at: now(),
       version: item.version + 1,
     })
-    return HttpResponse.json(item)
-  }),
-  http.post(`${api}/stock-materials/:id/disable`, ({ params }) => {
-    const item = stockMaterials.find((x) => x.id === Number(params.id))
-    if (!item) return error(400, 'NOT_FOUND', '物资不存在')
-    item.enabled = false
-    item.version++
     return HttpResponse.json(item)
   }),
   http.put(`${api}/stock-materials/:id/replenishment-policy`, async ({ params, request }) => {
@@ -431,6 +440,15 @@ export const handlers = [
     op.reversal_of_id = original.id
     return HttpResponse.json(op, { status: 201 })
   }),
+  http.get(`${api}/inventory/replenishment-defaults`, () => {
+    const latest = [...purchaseMaterials]
+      .sort((left, right) => right.id - left.id)
+      .find((item) => item.purchase_responsible.trim() && item.purchase_responsible !== '\\')
+    return HttpResponse.json({
+      purchase_responsible: latest?.purchase_responsible || '',
+      demand_date: new Date().toISOString().slice(0, 10),
+    })
+  }),
   http.post(
     `${api}/inventory/low-stock/:id/create-replenishment-draft`,
     async ({ params, request }) => {
@@ -445,7 +463,7 @@ export const handlers = [
       const quantityNote = `补库计划：建议申购 ${suggested} ${stock.unit_name}${
         body.planned_qty === suggested ? '' : `，确认计划 ${body.planned_qty} ${stock.unit_name}`
       }`
-      const planDate = new Date().toISOString().slice(0, 10)
+      const planDate = body.demand_date || new Date().toISOString().slice(0, 10)
       const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
       const purchase: PurchaseMaterial = {
         id: nextIds.purchase++,
@@ -478,10 +496,14 @@ export const handlers = [
 
   http.get(`${api}/purchase-materials`, ({ request }) => {
     const url = new URL(request.url)
+    const currentUser = actor(request)
     const q = (url.searchParams.get('keyword') || '').toLowerCase()
     const coded = url.searchParams.get('coded')
     const moved = url.searchParams.get('moved')
     const status = url.searchParams.get('status')
+    if (currentUser.role !== 'SUPER_ADMIN' && status === '已归档')
+      return error(403, 'ARCHIVED_PURCHASE_PLAN_FORBIDDEN', '仅超级管理员可查询已归档申购计划')
+    const effectiveStatus = currentUser.role === 'SUPER_ADMIN' ? status : '正常'
     return HttpResponse.json(
       page(
         purchaseMaterials.filter(
@@ -492,14 +514,16 @@ export const handlers = [
                 .includes(q)) &&
             (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
             (moved === null || x.moved_to_record === (moved === 'true')) &&
-            (status === null || x.status === status),
+            (effectiveStatus === null || x.status === effectiveStatus),
         ),
         url,
       ),
     )
   }),
-  http.get(`${api}/purchase-materials/:id`, ({ params }) => {
+  http.get(`${api}/purchase-materials/:id`, ({ params, request }) => {
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))
+    if (item?.status === '已归档' && actor(request).role !== 'SUPER_ADMIN')
+      return error(403, 'ARCHIVED_PURCHASE_PLAN_FORBIDDEN', '仅超级管理员可查询已归档申购计划')
     return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '申购物资不存在')
   }),
   http.post(`${api}/purchase-materials`, async ({ request }) => {

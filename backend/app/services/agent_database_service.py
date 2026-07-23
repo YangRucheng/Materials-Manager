@@ -17,7 +17,7 @@ from app.core.errors import AppError
 from app.schemas import AgentDatabaseExecuteRead, AgentDatabaseExecuteRequest
 
 logger = logging.getLogger("spare_parts.agent_database")
-ALLOWED_STATEMENTS = {"SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"}
+ALLOWED_STATEMENTS = {"SELECT", "INSERT", "UPDATE", "DELETE"}
 BLOCKED_SELECT_FEATURES = re.compile(
     r"\b(?:INTO\s+(?:OUTFILE|DUMPFILE)|LOAD_FILE\s*\()",
     re.IGNORECASE,
@@ -64,11 +64,7 @@ def validate_sql(sql: str) -> str:
     match = re.match(r"^([A-Za-z]+)\b", statement)
     statement_type = match.group(1).upper() if match else ""
     if statement_type not in ALLOWED_STATEMENTS:
-        raise _invalid_sql("只允许执行 SELECT、INSERT、UPDATE、DELETE、ALTER TABLE")
-    if statement_type == "ALTER" and not re.match(
-        r"^ALTER\s+TABLE\s+[`A-Za-z0-9_.]+\s+", statement, re.IGNORECASE
-    ):
-        raise _invalid_sql("ALTER 仅允许修改数据表结构")
+        raise _invalid_sql("只允许执行 SELECT、INSERT、UPDATE、DELETE")
     if BLOCKED_SELECT_FEATURES.search("".join(masked)):
         raise _invalid_sql("不允许通过 SQL 读写数据库服务器文件")
     return statement_type

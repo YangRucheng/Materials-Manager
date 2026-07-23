@@ -4,6 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
+from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter, require_roles
 from app.domain.enums import PurchasePlanStatus, Role
 from app.models import User
@@ -64,6 +65,14 @@ async def list_materials(
     coded: bool | None = None,
     moved: bool | None = None,
 ) -> Page[PurchaseMaterialRead]:
+    if user.role != Role.SUPER_ADMIN:
+        if status == PurchasePlanStatus.ARCHIVED:
+            raise AppError(
+                "ARCHIVED_PURCHASE_PLAN_FORBIDDEN",
+                "仅超级管理员可查询已归档申购计划",
+                status_code=403,
+            )
+        status = PurchasePlanStatus.NORMAL
     items, total = await material_service.search_purchase_materials(
         session,
         keyword=keyword,
@@ -96,7 +105,11 @@ async def filter_options(
     moved: bool | None = None,
 ) -> PurchaseFilterOptions:
     actual_demand_persons, purchase_responsibles = (
-        await material_service.purchase_filter_options(session, moved=moved)
+        await material_service.purchase_filter_options(
+            session,
+            moved=moved,
+            status=None if user.role == Role.SUPER_ADMIN else PurchasePlanStatus.NORMAL,
+        )
     )
     return PurchaseFilterOptions(
         actual_demand_persons=actual_demand_persons,
@@ -162,7 +175,11 @@ async def export_purchase_application(
     user: CurrentUser,
 ) -> Response:
     materials = await material_service.purchase_materials_for_export(
-        session, material_ids=data.material_ids, coded=True, moved=False
+        session,
+        material_ids=data.material_ids,
+        coded=True,
+        moved=False,
+        status=None if user.role == Role.SUPER_ADMIN else PurchasePlanStatus.NORMAL,
     )
     rows = [
         {
@@ -203,9 +220,14 @@ async def batch_update_materials(
 async def material_detail(
     material_id: int, session: DbSession, user: CurrentUser
 ) -> PurchaseMaterialRead:
-    return await material_service.purchase_read(
-        session, await material_service.get_purchase_material(session, material_id)
-    )
+    item = await material_service.get_purchase_material(session, material_id)
+    if item.status == PurchasePlanStatus.ARCHIVED and user.role != Role.SUPER_ADMIN:
+        raise AppError(
+            "ARCHIVED_PURCHASE_PLAN_FORBIDDEN",
+            "仅超级管理员可查询已归档申购计划",
+            status_code=403,
+        )
+    return await material_service.purchase_read(session, item)
 
 
 @router.patch("/{material_id}", response_model=PurchaseMaterialRead)

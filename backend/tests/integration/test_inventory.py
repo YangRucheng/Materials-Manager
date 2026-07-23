@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -197,10 +198,53 @@ async def test_concurrent_outbound_allows_negative_without_lost_updates(
 
 
 @pytest.mark.asyncio
-async def test_low_stock_uses_minimum_only_and_disabled_material(client: AsyncClient) -> None:
+async def test_low_stock_replenishment_uses_recent_consumption_and_defaults(
+    client: AsyncClient,
+) -> None:
     warehouse = await auth_headers(client, "warehouse")
     purchase = await auth_headers(client, "purchase")
     material_id = await create_stock(client, warehouse, "低库存物资")
+    latest_plan = await client.post(
+        "/api/v1/purchase-materials",
+        headers=purchase,
+        json={
+            "plan_date": "2026-07-20",
+            "name": "负责人默认值样本",
+            "model_spec": "无",
+            "unit_id": 1,
+            "actual_demand_person": "检修班",
+            "purchase_responsible": "最近负责人王工",
+            "planned_qty": "1",
+            "usage": "测试默认值",
+            "image_ids": [],
+        },
+    )
+    assert latest_plan.status_code == 201, latest_plan.text
+    defaults = await client.get("/api/v1/inventory/replenishment-defaults", headers=warehouse)
+    assert defaults.status_code == 200, defaults.text
+    assert defaults.json()["purchase_responsible"] == "最近负责人王工"
+    shanghai = timezone(timedelta(hours=8))
+    assert defaults.json()["demand_date"] == datetime.now(shanghai).date().isoformat()
+
+    now = datetime.now(UTC)
+    recent_outbound = await client.post(
+        "/api/v1/inventory/outbounds",
+        headers=warehouse,
+        json=operation_payload(
+            "recent-consumption", material_id, "5", (now - timedelta(days=30)).isoformat()
+        )
+        | {"receiver_name": "近期领用人"},
+    )
+    assert recent_outbound.status_code == 201, recent_outbound.text
+    old_outbound = await client.post(
+        "/api/v1/inventory/outbounds",
+        headers=warehouse,
+        json=operation_payload(
+            "old-consumption", material_id, "7", (now - timedelta(days=220)).isoformat()
+        )
+        | {"receiver_name": "历史领用人"},
+    )
+    assert old_outbound.status_code == 201, old_outbound.text
     policy = await client.put(
         f"/api/v1/stock-materials/{material_id}/replenishment-policy",
         headers=warehouse,
@@ -209,7 +253,7 @@ async def test_low_stock_uses_minimum_only_and_disabled_material(client: AsyncCl
     assert policy.status_code == 200
     assert "target_qty" not in policy.json()["replenishment_policy"]
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "3"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "5"
     assert "target_qty" not in low.json()["items"][0]
     assert "warning_state" not in low.json()["items"][0]
     assert "on_order_qty" not in low.json()["items"][0]
@@ -221,13 +265,27 @@ async def test_low_stock_uses_minimum_only_and_disabled_material(client: AsyncCl
     )
     assert missing_confirmation.status_code == 422
 
+    additional_outbound = await client.post(
+        "/api/v1/inventory/outbounds",
+        headers=warehouse,
+        json=operation_payload(
+            "latest-consumption", material_id, "2", (now - timedelta(days=1)).isoformat()
+        )
+        | {"receiver_name": "最新领用人"},
+    )
+    assert additional_outbound.status_code == 201, additional_outbound.text
+    low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "7"
+
+    demand_date = (now.date() + timedelta(days=10)).isoformat()
     replenishment = await client.post(
         f"/api/v1/inventory/low-stock/{material_id}/create-replenishment-draft",
         headers=warehouse,
         json={
             "planned_qty": "9",
+            "demand_date": demand_date,
             "actual_demand_person": "检修班张三",
-            "purchase_responsible": "采购李工",
+            "purchase_responsible": "自定义负责人李工",
         },
     )
     assert replenishment.status_code == 200, replenishment.text
@@ -237,19 +295,8 @@ async def test_low_stock_uses_minimum_only_and_disabled_material(client: AsyncCl
     )
     assert plan.json()["stock_material_id"] == material_id
     assert plan.json()["planned_qty"] == "9"
+    assert plan.json()["plan_date"] == demand_date
     assert plan.json()["actual_demand_person"] == "检修班张三"
-    assert plan.json()["purchase_responsible"] == "采购李工"
+    assert plan.json()["purchase_responsible"] == "自定义负责人李工"
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
-    assert low.json()["items"][0]["suggested_purchase_qty"] == "3"
-
-    disabled = await client.post(
-        f"/api/v1/stock-materials/{material_id}/disable", headers=warehouse, json={}
-    )
-    assert disabled.status_code == 200
-    rejected = await client.post(
-        "/api/v1/inventory/inbounds",
-        headers=warehouse,
-        json=operation_payload("disabled-inbound", material_id, "1", "2026-07-17T10:00:00+08:00"),
-    )
-    assert rejected.status_code == 400
-    assert rejected.json()["code"] == "MATERIAL_DISABLED"
+    assert low.json()["items"][0]["suggested_purchase_qty"] == "7"

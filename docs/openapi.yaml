@@ -257,14 +257,6 @@ paths:
           - type: string
           - type: 'null'
           title: Keyword
-      - name: enabled
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Enabled
       responses:
         '200':
           description: Successful Response
@@ -461,66 +453,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/stock-materials/{material_id}/disable:
-    post:
-      tags:
-      - 二级库物资
-      summary: Disable Material
-      operationId: disable_material_api_v1_stock_materials__material_id__disable_post
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: material_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Material Id
-      requestBody:
-        content:
-          application/json:
-            schema:
-              anyOf:
-              - $ref: '#/components/schemas/ActionVersion'
-              - type: 'null'
-              title: Data
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StockMaterialRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
   /api/v1/stock-materials/{material_id}/replenishment-policy:
     put:
       tags:
@@ -579,6 +511,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/inventory/replenishment-defaults:
+    get:
+      tags:
+      - 库存
+      summary: Replenishment Defaults
+      operationId: replenishment_defaults_api_v1_inventory_replenishment_defaults_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplenishmentDefaultsRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/inventory/balances:
     get:
       tags:
@@ -3073,16 +3050,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
 components:
   schemas:
-    ActionVersion:
-      properties:
-        version:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Version
-      additionalProperties: false
-      type: object
-      title: ActionVersion
     AgentDatabaseExecuteRead:
       properties:
         statement_type:
@@ -3092,7 +3059,6 @@ components:
           - INSERT
           - UPDATE
           - DELETE
-          - ALTER
           title: Statement Type
         columns:
           items:
@@ -4565,6 +4531,20 @@ components:
       - status
       - version
       title: PurchaseRecordUpdate
+    ReplenishmentDefaultsRead:
+      properties:
+        purchase_responsible:
+          type: string
+          title: Purchase Responsible
+        demand_date:
+          type: string
+          format: date
+          title: Demand Date
+      type: object
+      required:
+      - purchase_responsible
+      - demand_date
+      title: ReplenishmentDefaultsRead
     ReplenishmentDraftCreate:
       properties:
         planned_qty:
@@ -4574,6 +4554,12 @@ components:
           - type: string
             pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
           title: Planned Qty
+        demand_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Demand Date
         actual_demand_person:
           type: string
           maxLength: 128
@@ -4736,9 +4722,6 @@ components:
           - type: string
           - type: 'null'
           title: Remark
-        enabled:
-          type: boolean
-          title: Enabled
         current_qty:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
@@ -4770,7 +4753,6 @@ components:
       - model_spec
       - unit_id
       - unit_name
-      - enabled
       - current_qty
       - images
       - created_at

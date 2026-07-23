@@ -3,10 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
 import type { DashboardSummary, InventoryBalance } from '@/api/generated'
-import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const auth = useAuthStore()
 const loading = ref(true)
 const summary = ref<DashboardSummary>({
   stock_material_count: 0,
@@ -19,25 +17,25 @@ const cards = computed(() => [
   {
     label: '库存物资',
     value: summary.value.stock_material_count,
-    hint: '二级库物资项数',
+    hint: '已建立档案的二级库物资',
     color: '#3f63d8',
   },
   {
     label: '低库存',
     value: summary.value.low_stock_count,
-    hint: '按最低库存阈值统计',
+    hint: '当前库存已达到预警阈值',
     color: '#d94b64',
   },
   {
     label: '未编码物资',
     value: summary.value.uncoded_purchase_material_count,
-    hint: '可直接进入申购计划编辑',
+    hint: '正常计划中待补录物料编码',
     color: '#d99020',
   },
   {
     label: '申购记录',
     value: summary.value.purchase_record_count,
-    hint: '用于整理和统计',
+    hint: '已转入申购记录的物资明细',
     color: '#229b6b',
   },
 ])
@@ -74,41 +72,26 @@ onMounted(load)
         </div></n-card
       >
     </div>
-    <n-card
-      ><template #header><span class="card-title">快捷入口</span></template>
-      <n-space>
-        <n-button
-          v-if="auth.can('warehouse:write')"
-          type="primary"
-          @click="router.push('/warehouse/inbound')"
-          >办理入库</n-button
-        >
-        <n-button v-if="auth.can('warehouse:write')" @click="router.push('/warehouse/outbound')"
-          >办理出库</n-button
-        >
-        <n-button v-if="auth.can('purchase:write')" @click="router.push('/procurement/materials')"
-          >新物资申购</n-button
-        >
-        <n-button @click="router.push('/warehouse/stock?low_stock=true')">低库存补库</n-button>
-      </n-space>
-    </n-card>
-    <n-card
-      ><template #header
-        ><div class="page-header">
-          <span class="card-title">低库存提醒</span
-          ><n-button text type="primary" @click="router.push('/warehouse/stock?low_stock=true')"
+    <n-card>
+      <template #header>
+        <div class="page-header">
+          <div>
+            <span class="card-title">低库存提醒</span>
+            <div class="section-description">仅展示前 5 条，完整数据请前往库存查询</div>
+          </div>
+          <n-button text type="primary" @click="router.push('/warehouse/stock?low_stock=true')"
             >查看全部</n-button
           >
-        </div></template
-      >
+        </div>
+      </template>
       <div class="table-scroll" style="--table-min-width: 680px">
         <n-table :bordered="false" :single-line="false"
           ><thead>
             <tr>
               <th>物资</th>
               <th>当前库存</th>
-              <th>状态</th>
-              <th>操作</th>
+              <th>最低库存</th>
+              <th>近6个月消耗</th>
             </tr>
           </thead>
           <tbody>
@@ -117,17 +100,8 @@ onMounted(load)
                 {{ item.name }}<br /><span class="muted">{{ item.model_spec }}</span>
               </td>
               <td>{{ item.current_qty }} {{ item.unit_name }}</td>
-              <td>
-                <n-tag type="error">低库存</n-tag>
-              </td>
-              <td>
-                <n-button
-                  text
-                  type="primary"
-                  @click="router.push(`/warehouse/materials/${item.stock_material_id}`)"
-                  >查看详情</n-button
-                >
-              </td>
+              <td>{{ item.minimum_qty ?? '—' }} {{ item.unit_name }}</td>
+              <td>{{ item.suggested_purchase_qty }} {{ item.unit_name }}</td>
             </tr>
             <tr v-if="!lowStock.length">
               <td colspan="4"><n-empty description="当前没有低库存物资" /></td>
@@ -152,5 +126,11 @@ onMounted(load)
   font-size: 30px;
   font-weight: 650;
   line-height: 1.2;
+}
+.section-description {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 </style>

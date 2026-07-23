@@ -12,9 +12,9 @@ const materials = ref<StockMaterial[]>([])
 const loading = ref(false)
 const options = computed(() =>
   materials.value
-    .filter((x) => x.enabled && !props.excludeIds?.includes(x.id))
+    .filter((x) => !props.excludeIds?.includes(x.id))
     .map((x) => ({
-      label: `${x.name}｜${x.model_spec}（库存 ${x.current_qty} ${x.unit_name}）`,
+      label: `${x.name}｜${x.model_spec}`,
       value: x.id,
     })),
 )
@@ -22,7 +22,7 @@ async function load(keyword = '') {
   loading.value = true
   try {
     materials.value = (
-      await inventoryApi.materials({ page_size: 200, enabled: true, keyword: keyword || undefined })
+      await inventoryApi.materials({ page_size: 200, keyword: keyword || undefined })
     ).items
   } finally {
     loading.value = false

@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
 import type { InventoryBalance, ReplenishmentDraftWrite } from '@/api/generated'
 import { useAuthStore } from '@/stores/auth'
-import { formatShanghaiTime } from '@/utils/time'
+import { formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { isDecimalString } from '@/utils/decimal'
 import QuantityInput from '@/components/QuantityInput.vue'
 import {
@@ -24,9 +24,11 @@ const total = ref(0)
 const page = ref(1)
 const showReplenishment = ref(false)
 const replenishing = ref(false)
+const loadingDefaults = ref(false)
 const replenishmentRow = ref<InventoryBalance | null>(null)
 const replenishmentForm = reactive<ReplenishmentDraftWrite>({
   planned_qty: '',
+  demand_date: toShanghaiDate(Date.now()),
   actual_demand_person: '',
   purchase_responsible: '',
 })
@@ -80,7 +82,7 @@ const columns = preventTableColumnCompression<InventoryBalance>([
                 NButton,
                 {
                   size: 'small',
-                  disabled: !r.is_low_stock || r.suggested_purchase_qty === '0',
+                  disabled: !r.is_low_stock,
                   onClick: () => openReplenishment(r),
                 },
                 { default: () => '发起补库' },
@@ -134,30 +136,45 @@ function query() {
   page.value = 1
   void load()
 }
-function openReplenishment(row: InventoryBalance) {
+async function openReplenishment(row: InventoryBalance) {
   replenishmentRow.value = row
   Object.assign(replenishmentForm, {
-    planned_qty: row.suggested_purchase_qty,
+    planned_qty: row.suggested_purchase_qty === '0' ? '' : row.suggested_purchase_qty,
+    demand_date: toShanghaiDate(Date.now()),
     actual_demand_person: '',
     purchase_responsible: '',
   })
   showReplenishment.value = true
+  loadingDefaults.value = true
+  try {
+    const defaults = await inventoryApi.replenishmentDefaults()
+    if (replenishmentRow.value?.stock_material_id === row.stock_material_id) {
+      replenishmentForm.demand_date = defaults.demand_date
+      replenishmentForm.purchase_responsible = defaults.purchase_responsible
+    }
+  } catch {
+    message.warning('默认申购负责人加载失败，请手动填写')
+  } finally {
+    loadingDefaults.value = false
+  }
 }
 async function confirmReplenishment() {
   const row = replenishmentRow.value
   if (!row) return
   if (
     !isDecimalString(replenishmentForm.planned_qty, row.decimal_places) ||
+    !replenishmentForm.demand_date ||
     !replenishmentForm.actual_demand_person.trim() ||
     !replenishmentForm.purchase_responsible.trim()
   ) {
-    message.error('请确认计划数量、实际需求人和申购负责人')
+    message.error('请确认需求日期、计划数量、实际需求人和申购负责人')
     return
   }
   replenishing.value = true
   try {
     const result = await inventoryApi.replenish(row.stock_material_id, {
       planned_qty: replenishmentForm.planned_qty,
+      demand_date: replenishmentForm.demand_date,
       actual_demand_person: replenishmentForm.actual_demand_person.trim(),
       purchase_responsible: replenishmentForm.purchase_responsible.trim(),
     })
@@ -240,19 +257,30 @@ onMounted(load)
         <n-descriptions-item label="当前库存"
           >{{ replenishmentRow.current_qty }} {{ replenishmentRow.unit_name }}</n-descriptions-item
         >
-        <n-descriptions-item label="建议申购"
+        <n-descriptions-item label="近6个月消耗（建议申购）"
           >{{ replenishmentRow.suggested_purchase_qty }}
           {{ replenishmentRow.unit_name }}</n-descriptions-item
         >
       </n-descriptions>
       <n-divider />
       <n-form label-placement="top">
-        <n-form-item label="计划数量" required>
-          <QuantityInput
-            v-model:value="replenishmentForm.planned_qty"
-            :decimal-places="replenishmentRow?.decimal_places ?? 1"
-          />
-        </n-form-item>
+        <div class="form-grid">
+          <n-form-item label="需求日期" required>
+            <n-date-picker
+              v-model:formatted-value="replenishmentForm.demand_date"
+              type="date"
+              value-format="yyyy-MM-dd"
+              :disabled="loadingDefaults"
+              class="full-width"
+            />
+          </n-form-item>
+          <n-form-item label="计划数量" required>
+            <QuantityInput
+              v-model:value="replenishmentForm.planned_qty"
+              :decimal-places="replenishmentRow?.decimal_places ?? 1"
+            />
+          </n-form-item>
+        </div>
         <div class="form-grid">
           <n-form-item label="实际需求人" required>
             <n-input

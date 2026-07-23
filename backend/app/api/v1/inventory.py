@@ -13,6 +13,7 @@ from app.schemas import (
     OperationCreate,
     OperationUpdate,
     Page,
+    ReplenishmentDefaultsRead,
     ReplenishmentDraftCreate,
     ReplenishmentDraftRead,
     ReverseOperationRequest,
@@ -37,6 +38,13 @@ def _query_time(value: str | None) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed
     return parsed.astimezone(UTC).replace(tzinfo=None)
+
+
+@router.get("/inventory/replenishment-defaults", response_model=ReplenishmentDefaultsRead)
+async def replenishment_defaults(
+    session: DbSession, user: CurrentUser
+) -> ReplenishmentDefaultsRead:
+    return await replenishment_service.replenishment_defaults(session)
 
 
 @router.get("/inventory/balances", response_model=Page[InventoryBalanceRead])

@@ -10,7 +10,6 @@ const material: StockMaterial = {
   model_spec: 'C20 3P',
   unit_id: 1,
   unit_name: '个',
-  enabled: true,
   current_qty: '10',
   images: [],
   created_at: '2026-07-18T00:00:00Z',

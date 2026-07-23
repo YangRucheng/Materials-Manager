@@ -63,7 +63,6 @@ export interface StockMaterial {
   unit_id: number
   unit_name: string
   remark?: string
-  enabled: boolean
   current_qty: string
   images: FileObject[]
   replenishment_policy?: ReplenishmentPolicy
@@ -93,8 +92,13 @@ export interface InventoryBalance {
 }
 export interface ReplenishmentDraftWrite {
   planned_qty: string
+  demand_date?: string
   actual_demand_person: string
   purchase_responsible: string
+}
+export interface ReplenishmentDefaults {
+  purchase_responsible: string
+  demand_date: string
 }
 export interface StockOperationLine {
   id?: number

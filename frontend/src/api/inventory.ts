@@ -6,6 +6,7 @@ import type {
   OperationWrite,
   Page,
   ReplenishmentDraftWrite,
+  ReplenishmentDefaults,
   ReplenishmentPolicy,
   StockMaterial,
   StockMaterialWrite,
@@ -22,8 +23,6 @@ export const inventoryApi = {
     apiClient.post<StockMaterial>('/stock-materials', payload).then((r) => r.data),
   updateMaterial: (id: number, payload: StockMaterialWrite) =>
     apiClient.patch<StockMaterial>(`/stock-materials/${id}`, payload).then((r) => r.data),
-  disableMaterial: (id: number) =>
-    apiClient.post<StockMaterial>(`/stock-materials/${id}/disable`).then((r) => r.data),
   savePolicy: (id: number, payload: ReplenishmentPolicy & { version?: number }) =>
     apiClient
       .put<StockMaterial>(`/stock-materials/${id}/replenishment-policy`, payload)
@@ -34,6 +33,8 @@ export const inventoryApi = {
     apiClient.get<InventoryBalance>(`/inventory/balances/${materialId}`).then((r) => r.data),
   lowStock: (params?: Record<string, unknown>) =>
     apiClient.get<Page<InventoryBalance>>('/inventory/low-stock', { params }).then((r) => r.data),
+  replenishmentDefaults: () =>
+    apiClient.get<ReplenishmentDefaults>('/inventory/replenishment-defaults').then((r) => r.data),
   inbound: (payload: OperationWrite) =>
     apiClient.post<StockOperation>('/inventory/inbounds', payload).then((r) => r.data),
   outbound: (payload: OperationWrite) =>

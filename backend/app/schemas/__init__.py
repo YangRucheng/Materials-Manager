@@ -85,7 +85,7 @@ class AgentDatabaseExecuteRequest(RequestModel):
 
 
 class AgentDatabaseExecuteRead(ReadModel):
-    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"]
+    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE"]
     columns: list[str] = Field(default_factory=list)
     rows: list[dict[str, object]] = Field(default_factory=list)
     row_count: int
@@ -242,7 +242,6 @@ class StockMaterialRead(ReadModel):
     unit_id: int
     unit_name: str
     remark: str | None = None
-    enabled: bool
     current_qty: Decimal
     images: list[FileObjectRead]
     replenishment_policy: ReplenishmentPolicyRead | None = None
@@ -612,12 +611,18 @@ class PurchaseRecordRead(ReadModel):
 
 class ReplenishmentDraftCreate(RequestModel):
     planned_qty: PositiveQuantity
+    demand_date: date | None = None
     actual_demand_person: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
     ]
     purchase_responsible: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
     ]
+
+
+class ReplenishmentDefaultsRead(ReadModel):
+    purchase_responsible: str
+    demand_date: date
 
 
 class ReplenishmentDraftRead(ReadModel):
