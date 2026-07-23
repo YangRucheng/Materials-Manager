@@ -188,6 +188,50 @@ export interface PurchaseRecordFilterOptions extends PurchaseFilterOptions {
   salespersons: string[]
   statuses: string[]
 }
+export type PurchasePlanResultColumn =
+  | 'plan_no'
+  | 'plan_date'
+  | 'material_code'
+  | 'name'
+  | 'model_spec'
+  | 'planned_qty'
+  | 'unit_name'
+  | 'actual_demand_person'
+  | 'purchase_responsible'
+  | 'subitem_no'
+  | 'usage'
+export interface PurchasePlanResultExportRequest {
+  columns: PurchasePlanResultColumn[]
+  name?: string
+  model_spec?: string
+  actual_demand_person?: string
+  empty_actual_demand_person: boolean
+  subitem_no?: string
+  empty_subitem_no: boolean
+  status?: PurchasePlanStatus
+}
+export type PurchaseRecordResultColumn =
+  | 'purchase_qty'
+  | 'plan_date'
+  | 'purchase_order_no'
+  | 'trace_no'
+  | 'material_name'
+  | 'actual_demand_person'
+  | 'purchase_responsible'
+  | 'salesperson'
+  | 'status'
+  | 'purchase_date'
+export interface PurchaseRecordResultExportRequest {
+  columns: PurchaseRecordResultColumn[]
+  purchase_order_no?: string
+  trace_no?: string
+  name?: string
+  model_spec?: string
+  purchase_responsible?: string
+  salesperson?: string
+  status?: string
+  empty_status: boolean
+}
 export interface PurchaseMaterial {
   id: number
   plan_no: string
