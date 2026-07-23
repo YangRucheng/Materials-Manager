@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import date
 from io import BytesIO
+from urllib.parse import unquote
 
 import pytest
 from httpx import AsyncClient
@@ -964,6 +966,57 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert purchase_sheet["A2"].value == coded["material_code"]
     assert purchase_sheet["B2"].value == "已编码接触器"
     assert str(purchase_sheet["C2"].value) == coded["planned_qty"]
+
+
+@pytest.mark.asyncio
+async def test_purchase_result_exports_follow_filters_and_visible_columns(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    motor = await create_purchase_plan(client, headers, "导出电机", code="DQ-RESULT-1")
+    await create_purchase_plan(client, headers, "不应导出的水泵", code="DQ-RESULT-2")
+
+    plan_export = await client.post(
+        "/api/v1/purchase-materials/export-results",
+        headers=headers,
+        json={"columns": ["name", "usage"], "name": "导出电机", "status": "正常"},
+    )
+    assert plan_export.status_code == 200, plan_export.text
+    assert f"申购计划导出_{date.today():%Y%m%d}.xlsx" in unquote(
+        plan_export.headers["content-disposition"]
+    )
+    plan_sheet = load_workbook(BytesIO(plan_export.content)).active
+    assert [plan_sheet.cell(1, column).value for column in range(1, 3)] == ["名称", "用途"]
+    assert plan_sheet.max_column == 2
+    assert plan_sheet.max_row == 2
+    assert plan_sheet["A2"].value == motor["name"]
+    assert plan_sheet["B2"].alignment.wrap_text is True
+
+    record = await move_to_record(client, headers, int(motor["id"]))
+    record_export = await client.post(
+        "/api/v1/purchase-records/export-results",
+        headers=headers,
+        json={
+            "columns": ["material_name", "purchase_qty", "status"],
+            "name": "导出电机",
+            "status": "已申购",
+        },
+    )
+    assert record_export.status_code == 200, record_export.text
+    assert f"申购记录导出_{date.today():%Y%m%d}.xlsx" in unquote(
+        record_export.headers["content-disposition"]
+    )
+    record_sheet = load_workbook(BytesIO(record_export.content)).active
+    assert [record_sheet.cell(1, column).value for column in range(1, 4)] == [
+        "物资",
+        "申购数量",
+        "状态",
+    ]
+    assert record_sheet.max_column == 3
+    assert record_sheet.max_row == 2
+    assert record["material_name"] in record_sheet["A2"].value
+    assert record_sheet["B2"].value == f"{record['purchase_qty']} {record['unit_name']}"
+    assert record_sheet["C2"].value == "已申购"
 
 
 @pytest.mark.asyncio

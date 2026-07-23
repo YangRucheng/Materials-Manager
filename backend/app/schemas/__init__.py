@@ -597,6 +597,41 @@ class PurchasePlanExportRequest(RequestModel):
         return value
 
 
+PurchasePlanResultColumn = Literal[
+    "plan_no",
+    "plan_date",
+    "material_code",
+    "name",
+    "model_spec",
+    "planned_qty",
+    "unit_name",
+    "actual_demand_person",
+    "purchase_responsible",
+    "subitem_no",
+    "usage",
+]
+
+
+class PurchasePlanResultExportRequest(RequestModel):
+    columns: list[PurchasePlanResultColumn] = Field(min_length=1, max_length=11)
+    name: str | None = Field(default=None, max_length=128)
+    model_spec: str | None = Field(default=None, max_length=255)
+    actual_demand_person: str | None = Field(default=None, max_length=128)
+    empty_actual_demand_person: bool = False
+    subitem_no: str | None = Field(default=None, max_length=64)
+    empty_subitem_no: bool = False
+    status: PurchasePlanStatus | None = None
+
+    @field_validator("columns")
+    @classmethod
+    def unique_columns(
+        cls, value: list[PurchasePlanResultColumn]
+    ) -> list[PurchasePlanResultColumn]:
+        if len(value) != len(set(value)):
+            raise ValueError("columns must be unique")
+        return value
+
+
 class PurchaseRecordUpdate(RequestModel):
     plan_date: date
     material_code: (
@@ -675,6 +710,41 @@ class PurchaseRecordRead(ReadModel):
     created_at: datetime
     updated_at: datetime
     version: int
+
+
+PurchaseRecordResultColumn = Literal[
+    "purchase_qty",
+    "plan_date",
+    "purchase_order_no",
+    "trace_no",
+    "material_name",
+    "actual_demand_person",
+    "purchase_responsible",
+    "salesperson",
+    "status",
+    "purchase_date",
+]
+
+
+class PurchaseRecordResultExportRequest(RequestModel):
+    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=10)
+    purchase_order_no: str | None = Field(default=None, max_length=255)
+    trace_no: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=128)
+    model_spec: str | None = Field(default=None, max_length=255)
+    purchase_responsible: str | None = Field(default=None, max_length=128)
+    salesperson: str | None = Field(default=None, max_length=128)
+    status: str | None = Field(default=None, max_length=128)
+    empty_status: bool = False
+
+    @field_validator("columns")
+    @classmethod
+    def unique_columns(
+        cls, value: list[PurchaseRecordResultColumn]
+    ) -> list[PurchaseRecordResultColumn]:
+        if len(value) != len(set(value)):
+            raise ValueError("columns must be unique")
+        return value
 
 
 class ReplenishmentDraftCreate(RequestModel):

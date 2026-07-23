@@ -1809,6 +1809,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-materials/export-results:
+    post:
+      tags:
+      - 申购计划
+      summary: Export Material Results
+      operationId: export_material_results_api_v1_purchase_materials_export_results_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchasePlanResultExportRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/purchase-materials/export-uncoded:
     get:
       tags:
@@ -2522,6 +2572,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PurchaseRecordFilterOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+  /api/v1/purchase-records/export-results:
+    post:
+      tags:
+      - 申购记录
+      summary: Export Purchase Record Results
+      operationId: export_purchase_record_results_api_v1_purchase_records_export_results_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRecordResultExportRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '400':
           description: 业务校验失败
           content:
@@ -4640,6 +4740,68 @@ components:
       required:
       - material_ids
       title: PurchasePlanExportRequest
+    PurchasePlanResultExportRequest:
+      properties:
+        columns:
+          items:
+            type: string
+            enum:
+            - plan_no
+            - plan_date
+            - material_code
+            - name
+            - model_spec
+            - planned_qty
+            - unit_name
+            - actual_demand_person
+            - purchase_responsible
+            - subitem_no
+            - usage
+          type: array
+          maxItems: 11
+          minItems: 1
+          title: Columns
+        name:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name
+        model_spec:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Model Spec
+        actual_demand_person:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Actual Demand Person
+        empty_actual_demand_person:
+          type: boolean
+          title: Empty Actual Demand Person
+          default: false
+        subitem_no:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Subitem No
+        empty_subitem_no:
+          type: boolean
+          title: Empty Subitem No
+          default: false
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/PurchasePlanStatus'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - columns
+      title: PurchasePlanResultExportRequest
     PurchasePlanStatus:
       type: string
       enum:
@@ -4824,6 +4986,77 @@ components:
       - updated_at
       - version
       title: PurchaseRecordRead
+    PurchaseRecordResultExportRequest:
+      properties:
+        columns:
+          items:
+            type: string
+            enum:
+            - purchase_qty
+            - plan_date
+            - purchase_order_no
+            - trace_no
+            - material_name
+            - actual_demand_person
+            - purchase_responsible
+            - salesperson
+            - status
+            - purchase_date
+          type: array
+          maxItems: 10
+          minItems: 1
+          title: Columns
+        purchase_order_no:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Purchase Order No
+        trace_no:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Trace No
+        name:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name
+        model_spec:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Model Spec
+        purchase_responsible:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Purchase Responsible
+        salesperson:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Salesperson
+        status:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Status
+        empty_status:
+          type: boolean
+          title: Empty Status
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - columns
+      title: PurchaseRecordResultExportRequest
     PurchaseRecordUpdate:
       properties:
         plan_date:
