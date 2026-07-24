@@ -49,7 +49,7 @@ const policy = reactive({
 const rules: FormRules = {
   name: { required: true, message: '请输入物资名称' },
   model_spec: { required: true, message: '请输入型号规格；无型号时填写“无”' },
-  unit_id: { type: 'number', required: true, message: '请选择单位' },
+  unit_id: { type: 'number', required: true, message: '请选择计量单位' },
 }
 
 const columns = preventTableColumnCompression<StockMaterial>([
@@ -65,7 +65,7 @@ const columns = preventTableColumnCompression<StockMaterial>([
     width: tableColumnWidths.model,
     ellipsis: { tooltip: true },
   },
-  { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+  { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
   { title: '当前库存', key: 'current_qty', width: tableColumnWidths.quantity },
   {
     title: '最低库存',

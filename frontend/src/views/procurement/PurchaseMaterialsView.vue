@@ -156,6 +156,10 @@ const batchForm = reactive({
 const batchEditForm = reactive({
   update_plan_date: false,
   plan_date: null as number | null,
+  update_category: false,
+  category: '',
+  update_demand_department: false,
+  demand_department: defaultDemandDepartment,
   update_actual_demand_person: false,
   actual_demand_person: '',
   update_subitem_no: false,
@@ -202,7 +206,7 @@ const form = reactive<PurchaseMaterialWrite>({
 const rules: FormRules = {
   name: { required: true, message: '请输入名称' },
   model_spec: { required: true, message: '请输入型号规格' },
-  unit_id: { type: 'number', required: true, message: '请选择单位' },
+  unit_id: { type: 'number', required: true, message: '请选择计量单位' },
   actual_demand_person: { required: true, message: '请输入实际需求人' },
   purchase_responsible: { required: true, message: '请输入申购负责人' },
   planned_qty: { required: true, message: '请输入计划数量' },
@@ -304,8 +308,8 @@ const availableColumns: Array<{
   },
   {
     key: 'unit_name',
-    label: '单位',
-    column: { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+    label: '计量单位',
+    column: { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
   },
   {
     key: 'actual_demand_person',
@@ -608,6 +612,10 @@ function openBatchEdit() {
   Object.assign(batchEditForm, {
     update_plan_date: false,
     plan_date: null,
+    update_category: false,
+    category: '',
+    update_demand_department: false,
+    demand_department: defaultDemandDepartment,
     update_actual_demand_person: false,
     actual_demand_person: '',
     update_subitem_no: false,
@@ -629,6 +637,16 @@ async function batchUpdate() {
       return
     }
     payload.plan_date = toShanghaiDate(batchEditForm.plan_date)
+  }
+  if (batchEditForm.update_category) {
+    payload.category = batchEditForm.category.trim() || null
+  }
+  if (batchEditForm.update_demand_department) {
+    if (!batchEditForm.demand_department.trim()) {
+      message.error('请输入需求部门')
+      return
+    }
+    payload.demand_department = batchEditForm.demand_department.trim()
   }
   if (batchEditForm.update_actual_demand_person) {
     if (!batchEditForm.actual_demand_person.trim()) {
@@ -851,12 +869,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </n-card>
-    <div
-      ref="tableAreaRef"
-      class="purchase-plan-table-area"
-      title="按住 Shift 并滚动鼠标滚轮可横向浏览表格"
-    >
-      <div class="table-scroll-hint">Shift + 滚轮：横向滚动</div>
+    <div ref="tableAreaRef" class="purchase-plan-table-area">
       <n-button
         class="table-fullscreen-toggle"
         :class="{ 'is-fullscreen': isTableFullscreen }"
@@ -912,6 +925,31 @@ onBeforeUnmount(() => {
               type="date"
               class="full-width"
               :disabled="!batchEditForm.update_plan_date"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_category">修改类别</n-checkbox>
+            </template>
+            <n-select
+              v-model:value="batchEditForm.category"
+              :options="categoryOptions"
+              filterable
+              clearable
+              placeholder="留空将清除类别"
+              :disabled="!batchEditForm.update_category"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_demand_department">
+                修改需求部门
+              </n-checkbox>
+            </template>
+            <n-input
+              v-model:value="batchEditForm.demand_department"
+              maxlength="128"
+              :disabled="!batchEditForm.update_demand_department"
             />
           </n-form-item>
           <n-form-item>
@@ -1195,13 +1233,6 @@ onBeforeUnmount(() => {
 
 .purchase-plan-table-area {
   position: relative;
-}
-
-.table-scroll-hint {
-  margin: 0 44px 8px 0;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: right;
 }
 
 .table-fullscreen-toggle {

@@ -350,6 +350,8 @@ async def batch_update_purchase_materials(
 
     update_fields = data.model_fields_set & {
         "plan_date",
+        "category",
+        "demand_department",
         "actual_demand_person",
         "subitem_no",
         "usage",
@@ -363,6 +365,11 @@ async def batch_update_purchase_materials(
             assert data.plan_date is not None
             item.plan_no = await _next_plan_no(session, data.plan_date)
             item.plan_date = data.plan_date
+        if "category" in update_fields:
+            item.category = data.category
+        if "demand_department" in update_fields:
+            assert data.demand_department is not None
+            item.demand_department = data.demand_department
         if "actual_demand_person" in update_fields:
             assert data.actual_demand_person is not None
             item.actual_demand_person = data.actual_demand_person
