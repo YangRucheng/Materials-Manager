@@ -18,7 +18,7 @@ from app.schemas import AgentDatabaseExecuteRead, AgentDatabaseExecuteRequest
 
 logger = logging.getLogger("spare_parts.agent_database")
 ALLOWED_STATEMENTS = {"SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"}
-ALTERABLE_TABLES = {"purchase_material", "purchase_request"}
+ALTERABLE_TABLES = {"purchase_material", "purchase_request", "stock_operation"}
 BLOCKED_ALTER_FEATURES = re.compile(
     r"\b(?:DROP|RENAME|TRUNCATE|DISCARD|IMPORT|EXCHANGE)\b", re.IGNORECASE
 )
@@ -80,7 +80,7 @@ def validate_sql(sql: str) -> str:
             next((value for value in alter_match.groups() if value), "") if alter_match else ""
         )
         if table_name.lower() not in ALTERABLE_TABLES:
-            raise _invalid_sql("ALTER TABLE 仅允许修改申购计划和申购记录表")
+            raise _invalid_sql("ALTER TABLE 仅允许修改应用迁移白名单内的数据表")
         if BLOCKED_ALTER_FEATURES.search(masked_sql):
             raise _invalid_sql("ALTER TABLE 不允许删除、重命名或交换数据库对象")
     if BLOCKED_SELECT_FEATURES.search(masked_sql):
