@@ -4,14 +4,18 @@ import { describe, expect, it } from 'vitest'
 import ExportButton from './ExportButton.vue'
 
 describe('ExportButton', () => {
-  it('directly emits the only export option', async () => {
+  it('renders the only export option in a dropdown', async () => {
     const wrapper = mount(ExportButton, {
       props: {
         options: [{ label: '导出查询结果', key: 'results' }],
       },
     })
 
-    await wrapper.get('button').trigger('click')
+    const dropdown = wrapper.findComponent(NDropdown)
+    expect(dropdown.props('options')).toEqual([{ label: '导出查询结果', key: 'results' }])
+
+    dropdown.vm.$emit('select', 'results')
+    await wrapper.vm.$nextTick()
 
     expect(wrapper.emitted('select')).toEqual([['results']])
   })
@@ -32,7 +36,7 @@ describe('ExportButton', () => {
     expect(wrapper.emitted('select')).toEqual([['purchase-application']])
   })
 
-  it('does not emit a disabled direct option', async () => {
+  it('does not directly emit a disabled single option', async () => {
     const wrapper = mount(ExportButton, {
       props: {
         options: [{ label: '导出查询结果', key: 'results', disabled: true }],

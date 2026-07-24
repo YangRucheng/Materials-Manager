@@ -14,6 +14,7 @@ IMAGE_ID = "01900000-0000-7000-8000-000000000001"
 def purchase_material_payload() -> dict[str, object]:
     return {
         "material_code": "",
+        "category": "",
         "name": "接触器",
         "model_spec": "CJX2-1810",
         "unit_id": 1,
@@ -66,6 +67,7 @@ def test_request_models_accept_valid_validator_values() -> None:
     assert stock.image_ids == [IMAGE_ID]
     assert purchase_material.image_ids == [IMAGE_ID]
     assert purchase_material.material_code is None
+    assert purchase_material.category is None
     assert purchase_material.status.value == "正常"
     assert purchase_record.image_ids == [IMAGE_ID]
     assert purchase_record.material_code is None
@@ -123,6 +125,4 @@ def test_operation_update_requires_timezone() -> None:
 
 def test_purchase_material_rejects_unknown_status() -> None:
     with pytest.raises(ValidationError):
-        PurchaseMaterialCreate.model_validate(
-            {**purchase_material_payload(), "status": "已取消"}
-        )
+        PurchaseMaterialCreate.model_validate({**purchase_material_payload(), "status": "已取消"})

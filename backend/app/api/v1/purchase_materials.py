@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from typing import Annotated, Literal
 from urllib.parse import quote
 
@@ -42,6 +43,7 @@ PlanSearchField = Literal[
     "plan_no",
     "plan_date",
     "material_code",
+    "category",
     "name",
     "model_spec",
     "unit_name",
@@ -59,6 +61,9 @@ PLAN_RESULT_HEADERS = {
     "plan_no": "计划 ID",
     "plan_date": "需求日期",
     "material_code": "物料编码",
+    "category": "类别",
+    "urgency": "紧急程度",
+    "demand_department": "需求部门",
     "name": "名称",
     "model_spec": "型号规格",
     "planned_qty": "计划数量",
@@ -86,20 +91,21 @@ async def list_materials(
     purchase_responsible: OrSearch128 = None,
     subitem_no: Annotated[str | None, Query(max_length=64)] = None,
     empty_subitem_no: bool = False,
-    status: PurchasePlanStatus | None = None,
+    category: Annotated[str | None, Query(max_length=64)] = None,
+    status: Annotated[list[PurchasePlanStatus] | None, Query()] = None,
     enabled: bool | None = None,
     coded: bool | None = None,
     moved: bool | None = None,
     ai_expand: bool = False,
 ) -> Page[PurchaseMaterialRead]:
     if user.role != Role.SUPER_ADMIN:
-        if status == PurchasePlanStatus.ARCHIVED:
+        if status and PurchasePlanStatus.ARCHIVED in status:
             raise AppError(
                 "ARCHIVED_PURCHASE_PLAN_FORBIDDEN",
                 "仅超级管理员可查询已归档申购计划",
                 status_code=403,
             )
-        status = PurchasePlanStatus.NORMAL
+        status = status or [PurchasePlanStatus.NORMAL]
     if ai_expand:
         keyword = await ai_search_service.expand_search_value(session, keyword)
         name = await ai_search_service.expand_search_value(session, name)
@@ -117,6 +123,7 @@ async def list_materials(
         purchase_responsible=purchase_responsible,
         subitem_no=subitem_no,
         empty_subitem_no=empty_subitem_no,
+        category=category,
         status=status,
         enabled=enabled,
         coded=coded,
@@ -138,17 +145,21 @@ async def filter_options(
     user: CurrentUser,
     moved: bool | None = None,
 ) -> PurchaseFilterOptions:
-    actual_demand_persons, purchase_responsibles, subitem_nos = (
-        await material_service.purchase_filter_options(
-            session,
-            moved=moved,
-            status=None if user.role == Role.SUPER_ADMIN else PurchasePlanStatus.NORMAL,
-        )
+    (
+        actual_demand_persons,
+        purchase_responsibles,
+        subitem_nos,
+        categories,
+    ) = await material_service.purchase_filter_options(
+        session,
+        moved=moved,
+        status=None if user.role == Role.SUPER_ADMIN else PurchasePlanStatus.NORMAL,
     )
     return PurchaseFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
         subitem_nos=subitem_nos,
+        categories=categories,
     )
 
 
@@ -174,15 +185,15 @@ async def export_material_results(
     session: DbSession,
     user: CurrentUser,
 ) -> Response:
-    export_status = data.status
+    export_status = [data.status] if isinstance(data.status, PurchasePlanStatus) else data.status
     if user.role != Role.SUPER_ADMIN:
-        if export_status == PurchasePlanStatus.ARCHIVED:
+        if export_status and PurchasePlanStatus.ARCHIVED in export_status:
             raise AppError(
                 "ARCHIVED_PURCHASE_PLAN_FORBIDDEN",
                 "仅超级管理员可查询已归档申购计划",
                 status_code=403,
             )
-        export_status = PurchasePlanStatus.NORMAL
+        export_status = export_status or [PurchasePlanStatus.NORMAL]
     items, total = await material_service.search_purchase_materials(
         session,
         keyword=None,
@@ -195,6 +206,7 @@ async def export_material_results(
         purchase_responsible=None,
         subitem_no=data.subitem_no,
         empty_subitem_no=data.empty_subitem_no,
+        category=data.category,
         status=export_status,
         enabled=None,
         coded=None,
@@ -214,6 +226,9 @@ async def export_material_results(
             "plan_no": item.plan_no,
             "plan_date": item.plan_date,
             "material_code": item.material_code,
+            "category": item.category,
+            "urgency": item.urgency,
+            "demand_department": item.demand_department,
             "name": item.name,
             "model_spec": item.model_spec,
             "planned_qty": item.planned_qty,
@@ -226,9 +241,7 @@ async def export_material_results(
         for item in items
     ]
     columns = [(key, PLAN_RESULT_HEADERS[key]) for key in data.columns]
-    return _excel_response(
-        *excel_export_service.render_result_excel("申购计划导出", columns, rows)
-    )
+    return _excel_response(*excel_export_service.render_result_excel("申购计划导出", columns, rows))
 
 
 @router.get(
@@ -285,6 +298,9 @@ async def export_purchase_application(
             "name": item.name,
             "planned_qty": item.planned_qty,
             "actual_demand_person": item.actual_demand_person,
+            "demand_department": item.demand_department,
+            "required_arrival_date": date.today() + timedelta(days=90),
+            "urgency": item.urgency,
             "usage": item.usage,
             "remark": item.remark,
             "subitem_no": item.subitem_no,

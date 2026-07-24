@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from io import BytesIO
 from urllib.parse import unquote
 
@@ -21,6 +21,7 @@ async def create_purchase_plan(
     name: str,
     *,
     code: str | None = None,
+    category: str = "备品备件",
     stock_material_id: int | None = None,
     planned_qty: str = "5",
     model_spec: str = "M60-2P 5A",
@@ -36,6 +37,7 @@ async def create_purchase_plan(
         json={
             "plan_date": plan_date,
             "material_code": code,
+            "category": category,
             "name": name,
             "model_spec": model_spec,
             "unit_id": 1,
@@ -53,6 +55,7 @@ async def create_purchase_plan(
     result = response.json()
     assert result["planned_qty"] == planned_qty
     assert result["purchase_responsible"] == purchase_responsible
+    assert result["category"] == category
     assert result["plan_date"] == plan_date
     assert result["status"] == "正常"
     assert "code_state" not in result
@@ -64,7 +67,19 @@ async def test_purchase_plan_status_filter_and_batch_archive(client: AsyncClient
     purchase_headers = await auth_headers(client, "purchase")
     admin_headers = await auth_headers(client, "admin")
     normal = await create_purchase_plan(client, purchase_headers, "正常申购计划")
+    deferred = await create_purchase_plan(client, purchase_headers, "暂不申购计划")
     archived = await create_purchase_plan(client, purchase_headers, "待归档申购计划")
+
+    deferred_response = await client.patch(
+        "/api/v1/purchase-materials/batch",
+        headers=purchase_headers,
+        json={
+            "materials": [{"id": deferred["id"], "version": deferred["version"]}],
+            "status": "暂不申购",
+        },
+    )
+    assert deferred_response.status_code == 200, deferred_response.text
+    assert deferred_response.json()[0]["status"] == "暂不申购"
 
     archive_response = await client.patch(
         "/api/v1/purchase-materials/batch",
@@ -82,6 +97,16 @@ async def test_purchase_plan_status_filter_and_batch_archive(client: AsyncClient
         headers=purchase_headers,
         params={"status": "正常"},
     )
+    deferred_list = await client.get(
+        "/api/v1/purchase-materials",
+        headers=purchase_headers,
+        params={"status": "暂不申购"},
+    )
+    multi_status_list = await client.get(
+        "/api/v1/purchase-materials",
+        headers=purchase_headers,
+        params=[("status", "正常"), ("status", "暂不申购")],
+    )
     archived_list = await client.get(
         "/api/v1/purchase-materials",
         headers=purchase_headers,
@@ -96,12 +121,18 @@ async def test_purchase_plan_status_filter_and_batch_archive(client: AsyncClient
     admin_all_list = await client.get("/api/v1/purchase-materials", headers=admin_headers)
 
     assert {item["id"] for item in normal_list.json()["items"]} == {normal["id"]}
+    assert {item["id"] for item in deferred_list.json()["items"]} == {deferred["id"]}
+    assert {item["id"] for item in multi_status_list.json()["items"]} == {
+        normal["id"],
+        deferred["id"],
+    }
     assert archived_list.status_code == 403
     assert archived_list.json()["code"] == "ARCHIVED_PURCHASE_PLAN_FORBIDDEN"
     assert {item["id"] for item in purchase_list.json()["items"]} == {normal["id"]}
     assert {item["id"] for item in admin_archived_list.json()["items"]} == {archived["id"]}
     assert {item["id"] for item in admin_all_list.json()["items"]} == {
         normal["id"],
+        deferred["id"],
         archived["id"],
     }
     forbidden_detail = await client.get(
@@ -299,9 +330,7 @@ async def test_purchase_lists_support_field_like_and_person_filters(
     )
     assert record_search.status_code == 200, record_search.text
     assert record_search.json()["page_size"] == 10
-    assert [item["purchase_material_id"] for item in record_search.json()["items"]] == [
-        first["id"]
-    ]
+    assert [item["purchase_material_id"] for item in record_search.json()["items"]] == [first["id"]]
 
     combined_record_search = await client.get(
         "/api/v1/purchase-records",
@@ -314,9 +343,9 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         },
     )
     assert combined_record_search.status_code == 200, combined_record_search.text
-    assert [
-        item["purchase_material_id"] for item in combined_record_search.json()["items"]
-    ] == [second["id"]]
+    assert [item["purchase_material_id"] for item in combined_record_search.json()["items"]] == [
+        second["id"]
+    ]
 
     salesperson_search = await client.get(
         "/api/v1/purchase-records",
@@ -353,9 +382,7 @@ async def test_purchase_lists_support_field_like_and_person_filters(
     assert mismatched_number_search.status_code == 200, mismatched_number_search.text
     assert mismatched_number_search.json()["items"] == []
 
-    record_options = await client.get(
-        "/api/v1/purchase-records/filter-options", headers=headers
-    )
+    record_options = await client.get("/api/v1/purchase-records/filter-options", headers=headers)
     assert record_options.status_code == 200, record_options.text
     assert set(record_options.json()["actual_demand_persons"]) == {"张三", "李四"}
     assert set(record_options.json()["salespersons"]) == {"赵经理", "钱经理"}
@@ -377,9 +404,7 @@ async def test_purchase_lists_support_field_like_and_person_filters(
         params={"empty_status": True},
     )
     assert empty_status.status_code == 200, empty_status.text
-    assert [item["line_id"] for item in empty_status.json()["items"]] == [
-        first_record["line_id"]
-    ]
+    assert [item["line_id"] for item in empty_status.json()["items"]] == [first_record["line_id"]]
 
 
 async def move_to_record(
@@ -395,6 +420,11 @@ async def move_to_record(
         json={
             "purchase_order_no": "SG-2026-001",
             "trace_no": trace_no,
+            "contract_no": "HT-2026-001",
+            "vessel_no": "VESSEL-01",
+            "consolidation_date": "2026-07-19",
+            "consolidation_port": "上海港",
+            "sailing_date": "2026-07-20",
             "purchase_date": "2026-07-18",
             "salesperson": salesperson,
             "status": "已申购",
@@ -557,6 +587,12 @@ async def test_plan_number_uses_date_sequence_and_record_keeps_plan_date(
     record = await move_to_record(client, headers, int(first["id"]))
     assert record["plan_no"] == first["plan_no"]
     assert record["plan_date"] == "2026-07-01"
+    assert record["category"] == "备品备件"
+    assert record["contract_no"] == "HT-2026-001"
+    assert record["vessel_no"] == "VESSEL-01"
+    assert record["consolidation_date"] == "2026-07-19"
+    assert record["consolidation_port"] == "上海港"
+    assert record["sailing_date"] == "2026-07-20"
 
 
 @pytest.mark.asyncio
@@ -881,9 +917,7 @@ async def test_inventory_inbound_does_not_change_purchase_record(client: AsyncCl
         },
     )
     assert inbound.status_code == 201, inbound.text
-    unchanged = await client.get(
-        f"/api/v1/purchase-records/{record['line_id']}", headers=purchase
-    )
+    unchanged = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=purchase)
     assert unchanged.status_code == 200, unchanged.text
     assert unchanged.json()["purchase_qty"] == "5"
     assert unchanged.json()["status"] == "已申购"
@@ -966,6 +1000,9 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert purchase_sheet["A2"].value == coded["material_code"]
     assert purchase_sheet["B2"].value == "已编码接触器"
     assert str(purchase_sheet["C2"].value) == coded["planned_qty"]
+    assert purchase_sheet["E2"].value == "HXNI 检修维护部"
+    assert purchase_sheet["G2"].value.date() == date.today() + timedelta(days=90)
+    assert purchase_sheet["H2"].value == "正常"
 
 
 @pytest.mark.asyncio

@@ -18,6 +18,8 @@ import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
+import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
+import { purchaseCategoryOptions } from '@/constants/purchase'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +30,7 @@ const loading = ref(false)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
 const resultExporting = ref(false)
+const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
 const total = ref(0)
 const page = ref(routeQueryPositiveInteger(route.query.page, 1))
@@ -36,6 +39,7 @@ const EMPTY_STATUS_FILTER = '__empty_status__'
 const filters = reactive({
   purchase_order_no: routeQueryString(route.query.purchase_order_no),
   trace_no: routeQueryString(route.query.trace_no),
+  category: routeQueryString(route.query.category) || null,
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
   purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
@@ -47,8 +51,16 @@ const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
   subitem_nos: [],
+  categories: [],
   salespersons: [],
   statuses: [],
+})
+const categoryOptions = computed(() => {
+  const values = new Set([
+    ...purchaseCategoryOptions.map((option) => option.value),
+    ...filterOptions.value.categories,
+  ])
+  return [...values].map((value) => ({ label: value, value }))
 })
 const purchaseResponsibleOptions = computed(() =>
   filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
@@ -67,6 +79,13 @@ type RecordColumnKey =
   | 'plan_date'
   | 'purchase_order_no'
   | 'trace_no'
+  | 'contract_no'
+  | 'vessel_no'
+  | 'consolidation_date'
+  | 'consolidation_port'
+  | 'sailing_date'
+  | 'category'
+  | 'demand_department'
   | 'material_name'
   | 'purchase_qty'
   | 'actual_demand_person'
@@ -119,6 +138,71 @@ const availableColumns: Array<{
       width: tableColumnWidths.identifier,
       render: (row) => row.trace_no || '\\',
     },
+  },
+  {
+    key: 'contract_no',
+    label: '合同号',
+    column: {
+      title: '合同号',
+      key: 'contract_no',
+      width: tableColumnWidths.identifier,
+      render: (row) => row.contract_no || '\\',
+    },
+  },
+  {
+    key: 'vessel_no',
+    label: '船号',
+    column: {
+      title: '船号',
+      key: 'vessel_no',
+      width: tableColumnWidths.identifier,
+      render: (row) => row.vessel_no || '\\',
+    },
+  },
+  {
+    key: 'consolidation_date',
+    label: '集港日期',
+    column: {
+      title: '集港日期',
+      key: 'consolidation_date',
+      width: tableColumnWidths.date,
+      render: (row) => (row.consolidation_date ? formatDate(row.consolidation_date) : '\\'),
+    },
+  },
+  {
+    key: 'consolidation_port',
+    label: '集港港口',
+    column: {
+      title: '集港港口',
+      key: 'consolidation_port',
+      width: tableColumnWidths.identifier,
+      render: (row) => row.consolidation_port || '\\',
+    },
+  },
+  {
+    key: 'sailing_date',
+    label: '发船日期',
+    column: {
+      title: '发船日期',
+      key: 'sailing_date',
+      width: tableColumnWidths.date,
+      render: (row) => (row.sailing_date ? formatDate(row.sailing_date) : '\\'),
+    },
+  },
+  {
+    key: 'category',
+    label: '类别',
+    column: {
+      title: '类别',
+      key: 'category',
+      width: tableColumnWidths.person,
+      render: (row) => row.category || '\\',
+    },
+  },
+  {
+    key: 'demand_department',
+    label: '需求部门',
+    column: { title: '需求部门', key: 'demand_department', width: tableColumnWidths.person },
   },
   {
     key: 'material_name',
@@ -185,7 +269,18 @@ const availableColumns: Array<{
     },
   },
 ]
-const visibleColumnKeys = ref<RecordColumnKey[]>(availableColumns.map((item) => item.key))
+const optionalShippingColumnKeys = new Set<RecordColumnKey>([
+  'contract_no',
+  'vessel_no',
+  'consolidation_date',
+  'consolidation_port',
+  'sailing_date',
+])
+const visibleColumnKeys = ref<RecordColumnKey[]>(
+  availableColumns
+    .filter((item) => !optionalShippingColumnKeys.has(item.key))
+    .map((item) => item.key),
+)
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
 const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
   preventTableColumnCompression(
@@ -195,6 +290,7 @@ const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
   ),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
+useShiftWheelHorizontalScroll(tableAreaRef)
 function setVisibleColumnKeys(value: string[]) {
   visibleColumnKeys.value = value as RecordColumnKey[]
 }
@@ -217,6 +313,7 @@ async function load() {
       page_size: pageSize.value,
       purchase_order_no: filters.purchase_order_no.trim() || undefined,
       trace_no: filters.trace_no.trim() || undefined,
+      category: filters.category || undefined,
       name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
@@ -251,6 +348,7 @@ async function syncRoute() {
       page_size: pageSize.value === 20 ? undefined : pageSize.value,
       purchase_order_no: filters.purchase_order_no,
       trace_no: filters.trace_no,
+      category: filters.category,
       name: filters.name,
       model_spec: filters.model_spec,
       purchase_responsible: filters.purchase_responsible,
@@ -301,6 +399,7 @@ async function exportResults() {
       columns: exportColumns,
       purchase_order_no: filters.purchase_order_no.trim() || undefined,
       trace_no: filters.trace_no.trim() || undefined,
+      category: filters.category || undefined,
       name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
@@ -325,6 +424,7 @@ function handleExport(key: string) {
 function resetFilters() {
   filters.purchase_order_no = ''
   filters.trace_no = ''
+  filters.category = null
   filters.name = ''
   filters.model_spec = ''
   filters.purchase_responsible = null
@@ -398,6 +498,16 @@ onActivated(() => {
           />
         </label>
         <label class="filter-field">
+          <span>类别</span>
+          <n-select
+            v-model:value="filters.category"
+            :options="categoryOptions"
+            placeholder="选择类别"
+            filterable
+            clearable
+          />
+        </label>
+        <label class="filter-field">
           <span>型号规格</span>
           <n-input
             v-model:value="filters.model_spec"
@@ -441,7 +551,7 @@ onActivated(() => {
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
-          storage-key="procurement.purchase-records.visible-columns.v1"
+          storage-key="procurement.purchase-records.visible-columns.v2"
           @update:value="setVisibleColumnKeys"
         />
         <div class="filter-action-buttons">
@@ -466,7 +576,13 @@ onActivated(() => {
         </div>
       </div>
     </n-card>
-    <n-card class="records-card data-card" :bordered="false">
+    <n-card
+      ref="tableAreaRef"
+      class="records-card data-card"
+      :bordered="false"
+      title="按住 Shift 并滚动鼠标滚轮可横向浏览表格"
+    >
+      <div class="table-scroll-hint">Shift + 滚轮：横向滚动</div>
       <n-data-table
         :bordered="false"
         :columns="columns"
@@ -492,6 +608,13 @@ onActivated(() => {
 </template>
 
 <style scoped>
+.table-scroll-hint {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
 .filter-heading,
 .filter-actions {
   display: flex;

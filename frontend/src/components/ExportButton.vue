@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { NButton, NDropdown } from 'naive-ui'
 import type { ExportOption } from '@/types/export'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     options: ExportOption[]
     loading?: boolean
@@ -19,37 +18,13 @@ const emit = defineEmits<{
   select: [key: string]
 }>()
 
-const directOption = computed(() => (props.options.length === 1 ? props.options[0] : null))
-
 function selectOption(key: string | number) {
   emit('select', String(key))
-}
-
-function selectDirectOption() {
-  const option = directOption.value
-  if (!option || option.disabled || props.disabled || props.loading) return
-  emit('select', option.key)
 }
 </script>
 
 <template>
-  <NButton
-    v-if="directOption"
-    class="export-button"
-    :loading="loading"
-    :disabled="disabled || loading || directOption.disabled"
-    :title="directOption.label"
-    @click="selectDirectOption"
-  >
-    导出
-  </NButton>
-  <NDropdown
-    v-else
-    trigger="click"
-    placement="bottom-end"
-    :options="options"
-    @select="selectOption"
-  >
+  <NDropdown trigger="click" placement="bottom-end" :options="options" @select="selectOption">
     <NButton
       class="export-button"
       :loading="loading"
