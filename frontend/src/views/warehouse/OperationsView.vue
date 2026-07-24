@@ -67,7 +67,7 @@ const columns = preventTableColumnCompression<StockOperation>([
     render: (row) => row.lines.map((line) => `${line.material_name} × ${line.quantity}`).join('；'),
   },
   {
-    title: '原因',
+    title: '用途',
     key: 'business_reason',
     width: tableColumnWidths.text,
     ellipsis: { tooltip: true },
