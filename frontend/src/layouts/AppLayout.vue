@@ -44,6 +44,7 @@ const menuOptions = computed<MenuOption[]>(() => {
         link('计量单位', 'units'),
         link('用户管理', 'users'),
         link('大模型设置', 'ai-search-settings'),
+        link('关于', 'about'),
       ],
     })
   return items

@@ -48,7 +48,7 @@ const columns = preventTableColumnCompression<InventoryBalance>([
     width: tableColumnWidths.material,
     render: (r) => h('div', [h('strong', r.name), h('div', { class: 'muted' }, r.model_spec)]),
   },
-  { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+  { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
   { title: '当前库存', key: 'current_qty', width: tableColumnWidths.quantity },
   {
     title: '预警状态',

@@ -576,13 +576,7 @@ onActivated(() => {
         </div>
       </div>
     </n-card>
-    <n-card
-      ref="tableAreaRef"
-      class="records-card data-card"
-      :bordered="false"
-      title="按住 Shift 并滚动鼠标滚轮可横向浏览表格"
-    >
-      <div class="table-scroll-hint">Shift + 滚轮：横向滚动</div>
+    <n-card ref="tableAreaRef" class="records-card data-card" :bordered="false">
       <n-data-table
         :bordered="false"
         :columns="columns"
@@ -608,13 +602,6 @@ onActivated(() => {
 </template>
 
 <style scoped>
-.table-scroll-hint {
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: right;
-}
-
 .filter-heading,
 .filter-actions {
   display: flex;

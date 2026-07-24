@@ -67,7 +67,7 @@ PLAN_RESULT_HEADERS = {
     "name": "名称",
     "model_spec": "型号规格",
     "planned_qty": "计划数量",
-    "unit_name": "单位",
+    "unit_name": "计量单位",
     "actual_demand_person": "实际需求人",
     "purchase_responsible": "申购负责人",
     "subitem_no": "子项号",

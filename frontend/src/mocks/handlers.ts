@@ -348,7 +348,7 @@ export const handlers = [
           x.unit_id === body.unit_id,
       )
     )
-      return error(409, 'DUPLICATE_MATERIAL', '名称、规格和单位相同的物资已存在')
+      return error(409, 'DUPLICATE_MATERIAL', '名称、规格和计量单位相同的物资已存在')
     const item = {
       id: nextIds.stock++,
       name: body.name.trim(),

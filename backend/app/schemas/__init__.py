@@ -511,6 +511,13 @@ class PurchasePlanVersion(RequestModel):
 class BatchUpdatePurchasePlansRequest(RequestModel):
     materials: list[PurchasePlanVersion] = Field(min_length=1, max_length=200)
     plan_date: date | None = None
+    category: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    demand_department: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
     actual_demand_person: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
@@ -534,11 +541,19 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
 
     @model_validator(mode="after")
     def validate_updates(self) -> BatchUpdatePurchasePlansRequest:
-        update_fields = {"plan_date", "actual_demand_person", "subitem_no", "usage", "status"}
+        update_fields = {
+            "plan_date",
+            "category",
+            "demand_department",
+            "actual_demand_person",
+            "subitem_no",
+            "usage",
+            "status",
+        }
         selected_fields = self.model_fields_set & update_fields
         if not selected_fields:
             raise ValueError("at least one update field is required")
-        for field in selected_fields - {"subitem_no"}:
+        for field in selected_fields - {"category", "subitem_no"}:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
         return self

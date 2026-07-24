@@ -301,6 +301,8 @@ export interface PurchaseMaterialWrite {
 export interface PurchaseMaterialBatchUpdate {
   materials: Array<{ id: number; version: number }>
   plan_date?: string
+  category?: string | null
+  demand_department?: string
   actual_demand_person?: string
   subitem_no?: string | null
   usage?: string
