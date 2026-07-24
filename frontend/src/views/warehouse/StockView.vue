@@ -24,6 +24,7 @@ const loading = ref(false)
 const items = ref<InventoryBalance[]>([])
 const total = ref(0)
 const page = ref(1)
+const pageSize = ref(20)
 const showReplenishment = ref(false)
 const replenishing = ref(false)
 const loadingDefaults = ref(false)
@@ -123,7 +124,7 @@ async function load() {
     const api = filters.low_stock ? inventoryApi.lowStock : inventoryApi.balances
     const data = await api({
       page: page.value,
-      page_size: 20,
+      page_size: pageSize.value,
       keyword: filters.keyword || undefined,
       min_qty: filters.min_qty || undefined,
       max_qty: filters.max_qty || undefined,
@@ -137,6 +138,15 @@ async function load() {
   }
 }
 function query() {
+  page.value = 1
+  void load()
+}
+function changePage(nextPage: number) {
+  page.value = nextPage
+  void load()
+}
+function changePageSize(nextPageSize: number) {
+  pageSize.value = nextPageSize
   page.value = 1
   void load()
 }
@@ -223,7 +233,6 @@ onMounted(load)
       <div class="filter-heading">
         <div>
           <div class="filter-title">筛选条件</div>
-          <div class="filter-hint">名称和型号支持使用 | 分隔多个关键词，按 OR 查询</div>
         </div>
       </div>
       <div class="warehouse-filter-grid">
@@ -274,9 +283,12 @@ onMounted(load)
       <div class="pagination-bar">
         <n-pagination
           v-model:page="page"
+          v-model:page-size="pageSize"
           :item-count="total"
-          :page-size="20"
-          @update:page="load"
+          :page-sizes="[10, 20, 50, 100, 200]"
+          show-size-picker
+          @update:page="changePage"
+          @update:page-size="changePageSize"
         /></div
     ></n-card>
     <n-modal
@@ -297,7 +309,7 @@ onMounted(load)
         <n-descriptions-item label="当前库存"
           >{{ replenishmentRow.current_qty }} {{ replenishmentRow.unit_name }}</n-descriptions-item
         >
-        <n-descriptions-item label="近6个月消耗（建议申购）"
+        <n-descriptions-item label="建议申购"
           >{{ replenishmentRow.suggested_purchase_qty }}
           {{ replenishmentRow.unit_name }}</n-descriptions-item
         >
@@ -361,12 +373,6 @@ onMounted(load)
 
 .filter-heading {
   margin-bottom: 18px;
-}
-
-.filter-hint {
-  margin-top: 4px;
-  color: var(--color-text-muted);
-  font-size: 12px;
 }
 
 .warehouse-filter-grid {

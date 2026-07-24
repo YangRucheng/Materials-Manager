@@ -26,6 +26,7 @@ const loading = ref(false)
 const items = ref<StockMaterial[]>([])
 const total = ref(0)
 const page = ref(1)
+const pageSize = ref(20)
 const filters = reactive({ keyword: '' })
 const showModal = ref(false)
 const saving = ref(false)
@@ -116,7 +117,7 @@ async function load() {
   try {
     const data = await inventoryApi.materials({
       page: page.value,
-      page_size: 20,
+      page_size: pageSize.value,
       keyword: filters.keyword.trim() || undefined,
     })
     items.value = data.items
@@ -129,6 +130,15 @@ async function load() {
 }
 
 function query() {
+  page.value = 1
+  void load()
+}
+function changePage(nextPage: number) {
+  page.value = nextPage
+  void load()
+}
+function changePageSize(nextPageSize: number) {
+  pageSize.value = nextPageSize
   page.value = 1
   void load()
 }
@@ -253,7 +263,6 @@ onMounted(() => {
       <div class="filter-heading">
         <div>
           <div class="filter-title">筛选条件</div>
-          <div class="filter-hint">名称和型号支持使用 | 分隔多个关键词，按 OR 查询</div>
         </div>
       </div>
       <div class="warehouse-filter-grid single-column">
@@ -284,7 +293,15 @@ onMounted(() => {
         :row-key="(row: StockMaterial) => row.id"
       />
       <div class="pagination-bar">
-        <n-pagination v-model:page="page" :item-count="total" :page-size="20" @update:page="load" />
+        <n-pagination
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          :item-count="total"
+          :page-sizes="[10, 20, 50, 100, 200]"
+          show-size-picker
+          @update:page="changePage"
+          @update:page-size="changePageSize"
+        />
       </div>
     </n-card>
 
@@ -349,12 +366,6 @@ onMounted(() => {
 
 .filter-heading {
   margin-bottom: 18px;
-}
-
-.filter-hint {
-  margin-top: 4px;
-  color: var(--color-text-muted);
-  font-size: 12px;
 }
 
 .warehouse-filter-grid {
