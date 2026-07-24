@@ -281,6 +281,7 @@ class StockOperation(AuditMixin, Base):
     operation_type: Mapped[OperationType] = mapped_column(SAEnum(OperationType), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(UTC_DATETIME, nullable=False, index=True)
     business_reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    receiver_unit: Mapped[str | None] = mapped_column(String(128))
     receiver_name: Mapped[str | None] = mapped_column(String(64))
     subitem_no: Mapped[str | None] = mapped_column(String(64))
     source_type: Mapped[SourceType] = mapped_column(SAEnum(SourceType), nullable=False)

@@ -19,6 +19,7 @@ const occurredAt = ref(Date.now())
 const requestId = ref<string | null>(null)
 const model = reactive({
   business_reason: '',
+  receiver_unit: '',
   receiver_name: '',
   subitem_no: '',
   source_type: 'MANUAL' as 'MANUAL' | 'INITIALIZATION',
@@ -26,7 +27,7 @@ const model = reactive({
 })
 const title = computed(() => (props.operationType === 'INBOUND' ? '办理入库' : '办理出库'))
 function validate(): string | null {
-  if (props.operationType === 'OUTBOUND' && !model.business_reason.trim()) return '请填写业务原因'
+  if (props.operationType === 'OUTBOUND' && !model.business_reason.trim()) return '请填写用途'
   if (props.operationType === 'OUTBOUND' && !model.receiver_name.trim()) return '请填写领用人'
   if (
     !model.lines.length ||
@@ -43,6 +44,7 @@ async function submit() {
       occurred_at: toIsoWithTimezone(occurredAt.value),
       source_type: model.source_type,
       business_reason: model.business_reason.trim(),
+      receiver_unit: model.receiver_unit.trim() || undefined,
       receiver_name: model.receiver_name.trim() || undefined,
       subitem_no: model.subitem_no.trim() || undefined,
       lines: model.lines.map((x) => ({
@@ -122,20 +124,19 @@ onMounted(async () => {
                 { label: '手工入库', value: 'MANUAL' },
                 { label: '初始化入库', value: 'INITIALIZATION' },
               ]" /></n-form-item
+          ><n-form-item v-if="operationType === 'OUTBOUND'" label="领用单位"
+            ><n-input v-model:value="model.receiver_unit" maxlength="128" /></n-form-item
           ><n-form-item v-if="operationType === 'OUTBOUND'" label="领用人" required
             ><n-input v-model:value="model.receiver_name" maxlength="64" /></n-form-item
           ><n-form-item v-if="operationType === 'OUTBOUND'" label="子项号"
-            ><n-input v-model:value="model.subitem_no" maxlength="64" placeholder="选填"
+            ><n-input v-model:value="model.subitem_no" maxlength="64"
           /></n-form-item>
         </div>
-        <n-form-item label="业务原因" :required="operationType === 'OUTBOUND'"
+        <n-form-item label="用途" :required="operationType === 'OUTBOUND'"
           ><n-input
             v-model:value="model.business_reason"
             maxlength="500"
-            show-count
-            :placeholder="
-              operationType === 'INBOUND' ? '可选' : '说明本次库存变化原因'
-            " /></n-form-item></n-form
+            show-count /></n-form-item></n-form
     ></n-card>
     <n-card title="物资明细"
       ><OperationLinesEditor v-model:lines="model.lines" :type="operationType"
