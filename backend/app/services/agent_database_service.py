@@ -17,7 +17,11 @@ from app.core.errors import AppError
 from app.schemas import AgentDatabaseExecuteRead, AgentDatabaseExecuteRequest
 
 logger = logging.getLogger("spare_parts.agent_database")
-ALLOWED_STATEMENTS = {"SELECT", "INSERT", "UPDATE", "DELETE"}
+ALLOWED_STATEMENTS = {"SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"}
+ALTERABLE_TABLES = {"purchase_material", "purchase_request"}
+BLOCKED_ALTER_FEATURES = re.compile(
+    r"\b(?:DROP|RENAME|TRUNCATE|DISCARD|IMPORT|EXCHANGE)\b", re.IGNORECASE
+)
 BLOCKED_SELECT_FEATURES = re.compile(
     r"\b(?:INTO\s+(?:OUTFILE|DUMPFILE)|LOAD_FILE\s*\()",
     re.IGNORECASE,
@@ -64,8 +68,22 @@ def validate_sql(sql: str) -> str:
     match = re.match(r"^([A-Za-z]+)\b", statement)
     statement_type = match.group(1).upper() if match else ""
     if statement_type not in ALLOWED_STATEMENTS:
-        raise _invalid_sql("只允许执行 SELECT、INSERT、UPDATE、DELETE")
-    if BLOCKED_SELECT_FEATURES.search("".join(masked)):
+        raise _invalid_sql("只允许执行 SELECT、INSERT、UPDATE、DELETE 或受限 ALTER TABLE")
+    masked_sql = "".join(masked)
+    if statement_type == "ALTER":
+        alter_match = re.match(
+            r"^ALTER\s+TABLE\s+(?:`([^`]+)`|([A-Za-z_][A-Za-z0-9_]*))(?:\s|$)",
+            statement,
+            re.IGNORECASE,
+        )
+        table_name = (
+            next((value for value in alter_match.groups() if value), "") if alter_match else ""
+        )
+        if table_name.lower() not in ALTERABLE_TABLES:
+            raise _invalid_sql("ALTER TABLE 仅允许修改申购计划和申购记录表")
+        if BLOCKED_ALTER_FEATURES.search(masked_sql):
+            raise _invalid_sql("ALTER TABLE 不允许删除、重命名或交换数据库对象")
+    if BLOCKED_SELECT_FEATURES.search(masked_sql):
         raise _invalid_sql("不允许通过 SQL 读写数据库服务器文件")
     return statement_type
 

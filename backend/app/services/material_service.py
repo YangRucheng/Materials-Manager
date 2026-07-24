@@ -189,6 +189,9 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         plan_no=item.plan_no,
         plan_date=item.plan_date,
         material_code=item.material_code,
+        category=item.category,
+        urgency=item.urgency,
+        demand_department=item.demand_department,
         name=item.name,
         model_spec=item.model_spec,
         unit_id=item.unit_id,
@@ -254,6 +257,9 @@ async def create_purchase_material(
         plan_no=await _next_plan_no(session, plan_date),
         plan_date=plan_date,
         material_code=data.material_code,
+        category=data.category,
+        urgency=data.urgency,
+        demand_department=data.demand_department,
         name=data.name,
         model_spec=data.model_spec,
         unit_id=data.unit_id,
@@ -290,6 +296,9 @@ async def update_purchase_material(
     files = await _files(session, data.image_ids)
     for key in (
         "material_code",
+        "category",
+        "urgency",
+        "demand_department",
         "name",
         "model_spec",
         "unit_id",
@@ -429,7 +438,8 @@ async def search_purchase_materials(
     purchase_responsible: str | None,
     subitem_no: str | None,
     empty_subitem_no: bool,
-    status: PurchasePlanStatus | None,
+    category: str | None,
+    status: list[PurchasePlanStatus] | None,
     enabled: bool | None,
     coded: bool | None,
     moved: bool | None,
@@ -446,6 +456,7 @@ async def search_purchase_materials(
             PurchaseMaterial.name,
             PurchaseMaterial.model_spec,
             PurchaseMaterial.material_code,
+            PurchaseMaterial.category,
             MeasurementUnit.name,
             cast(PurchaseMaterial.planned_qty, String),
             PurchaseMaterial.actual_demand_person,
@@ -463,6 +474,7 @@ async def search_purchase_materials(
             "plan_no": PurchaseMaterial.plan_no,
             "plan_date": cast(PurchaseMaterial.plan_date, String),
             "material_code": PurchaseMaterial.material_code,
+            "category": PurchaseMaterial.category,
             "name": PurchaseMaterial.name,
             "model_spec": PurchaseMaterial.model_spec,
             "unit_name": MeasurementUnit.name,
@@ -504,8 +516,10 @@ async def search_purchase_materials(
         )
     elif subitem_no:
         query = query.where(func.trim(PurchaseMaterial.subitem_no) == subitem_no.strip())
-    if status is not None:
-        query = query.where(PurchaseMaterial.status == status)
+    if category:
+        query = query.where(func.trim(PurchaseMaterial.category) == category.strip())
+    if status:
+        query = query.where(PurchaseMaterial.status.in_(status))
     if enabled is not None:
         query = query.where(PurchaseMaterial.enabled == enabled)
     if coded is True:
@@ -539,7 +553,7 @@ async def purchase_filter_options(
     *,
     moved: bool | None,
     status: PurchasePlanStatus | None,
-) -> tuple[list[str], list[str], list[str]]:
+) -> tuple[list[str], list[str], list[str], list[str]]:
     record_exists = (
         select(PurchaseRequestLine.id)
         .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
@@ -555,15 +569,21 @@ async def purchase_filter_options(
         PurchaseMaterial.subitem_no.is_not(None),
         func.trim(PurchaseMaterial.subitem_no) != "",
     )
+    category_query = select(PurchaseMaterial.category).where(
+        PurchaseMaterial.category.is_not(None),
+        func.trim(PurchaseMaterial.category) != "",
+    )
     if status is not None:
         actual_demand_query = actual_demand_query.where(PurchaseMaterial.status == status)
         responsible_query = responsible_query.where(PurchaseMaterial.status == status)
         subitem_query = subitem_query.where(PurchaseMaterial.status == status)
+        category_query = category_query.where(PurchaseMaterial.status == status)
     if moved is not None:
         moved_filter = record_exists if moved else ~record_exists
         actual_demand_query = actual_demand_query.where(moved_filter)
         responsible_query = responsible_query.where(moved_filter)
         subitem_query = subitem_query.where(moved_filter)
+        category_query = category_query.where(moved_filter)
     actual_demand_persons = list(
         await session.scalars(
             actual_demand_query.distinct().order_by(PurchaseMaterial.actual_demand_person)
@@ -577,7 +597,10 @@ async def purchase_filter_options(
     subitem_nos = list(
         await session.scalars(subitem_query.distinct().order_by(PurchaseMaterial.subitem_no))
     )
-    return actual_demand_persons, purchase_responsibles, subitem_nos
+    categories = list(
+        await session.scalars(category_query.distinct().order_by(PurchaseMaterial.category))
+    )
+    return actual_demand_persons, purchase_responsibles, subitem_nos, categories
 
 
 async def purchase_materials_for_export(

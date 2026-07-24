@@ -21,4 +21,5 @@ class SourceType(StrEnum):
 
 class PurchasePlanStatus(StrEnum):
     NORMAL = "正常"
+    DEFERRED = "暂不申购"
     ARCHIVED = "已归档"

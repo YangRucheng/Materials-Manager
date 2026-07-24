@@ -18,6 +18,7 @@ export class AppError extends Error {
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 15_000,
+  paramsSerializer: { indexes: null },
 })
 
 apiClient.interceptors.request.use((config) => {
