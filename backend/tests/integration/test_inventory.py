@@ -46,11 +46,37 @@ async def test_inbound_reason_defaults_empty_but_outbound_still_requires_it(
     outbound = await client.post("/api/v1/inventory/outbounds", headers=headers, json=payload)
     assert outbound.status_code == 400
     assert outbound.json()["code"] == "BUSINESS_REASON_REQUIRED"
+    assert outbound.json()["message"] == "出库必须填写用途"
 
     payload["business_reason"] = "测试出库"
     outbound = await client.post("/api/v1/inventory/outbounds", headers=headers, json=payload)
     assert outbound.status_code == 400
     assert outbound.json()["code"] == "RECEIVER_REQUIRED"
+
+    payload["receiver_name"] = "测试领用人"
+    outbound = await client.post("/api/v1/inventory/outbounds", headers=headers, json=payload)
+    assert outbound.status_code == 201, outbound.text
+    assert outbound.json()["receiver_unit"] is None
+    assert outbound.json()["subitem_no"] is None
+
+    changed = await client.patch(
+        f"/api/v1/inventory/operations/{outbound.json()['id']}",
+        headers=headers,
+        json={
+            "version": outbound.json()["version"],
+            "operation_type": "OUTBOUND",
+            "occurred_at": payload["occurred_at"],
+            "source_type": "MANUAL",
+            "business_reason": "检修领用",
+            "receiver_unit": "电气检修班",
+            "receiver_name": "测试领用人",
+            "subitem_no": "01-02",
+            "lines": payload["lines"],
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["receiver_unit"] == "电气检修班"
+    assert changed.json()["subitem_no"] == "01-02"
 
 
 @pytest.mark.asyncio

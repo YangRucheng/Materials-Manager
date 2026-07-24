@@ -349,6 +349,7 @@ export const operations: StockOperation[] = [
     operation_type: 'OUTBOUND',
     occurred_at: '2026-07-17T03:00:00Z',
     business_reason: '控制柜故障更换',
+    receiver_unit: '电气检修班',
     receiver_name: '张工',
     subitem_no: '01-01',
     source_type: 'MANUAL',

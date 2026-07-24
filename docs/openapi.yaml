@@ -4124,6 +4124,13 @@ components:
           maxLength: 500
           title: Business Reason
           default: ''
+        receiver_unit:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Receiver Unit
         receiver_name:
           anyOf:
           - type: string
@@ -4194,6 +4201,13 @@ components:
           maxLength: 500
           title: Business Reason
           default: ''
+        receiver_unit:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Receiver Unit
         receiver_name:
           anyOf:
           - type: string
@@ -5564,6 +5578,11 @@ components:
         business_reason:
           type: string
           title: Business Reason
+        receiver_unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Receiver Unit
         receiver_name:
           anyOf:
           - type: string

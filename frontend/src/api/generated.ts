@@ -147,6 +147,7 @@ export interface StockOperation {
   operation_type: OperationType
   occurred_at: string
   business_reason: string
+  receiver_unit?: string
   receiver_name?: string
   subitem_no?: string
   source_type: SourceType
@@ -161,6 +162,7 @@ export interface OperationWrite {
   occurred_at: string
   source_type: SourceType
   business_reason: string
+  receiver_unit?: string
   receiver_name?: string
   subitem_no?: string
   lines: Array<{ stock_material_id: number; quantity: string }>
@@ -171,6 +173,7 @@ export interface OperationUpdate {
   occurred_at: string
   source_type: SourceType
   business_reason: string
+  receiver_unit?: string
   receiver_name?: string
   subitem_no?: string
   lines: Array<{ stock_material_id: number; quantity: string }>
