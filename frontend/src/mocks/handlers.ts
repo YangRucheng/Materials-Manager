@@ -182,6 +182,7 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
     const after =
       type === 'INBOUND' ? before + Number(line.quantity) : before - Number(line.quantity)
     material.current_qty = String(after)
+    material.has_operation_records = true
     material.updated_at = now()
     material.version++
     return {
@@ -322,9 +323,9 @@ export const handlers = [
 
   http.get(`${api}/stock-materials`, ({ request }) => {
     const url = new URL(request.url)
-    const q = (url.searchParams.get('keyword') || '').toLowerCase()
-    const list = stockMaterials.filter(
-      (x) => !q || `${x.name}${x.model_spec}`.toLowerCase().includes(q),
+    const keyword = url.searchParams.get('keyword')
+    const list = stockMaterials.filter((item) =>
+      matchesOrSearch(`${item.name} ${item.model_spec}`, keyword),
     )
     return HttpResponse.json(page(list, url))
   }),
@@ -354,6 +355,7 @@ export const handlers = [
       remark: body.remark,
       current_qty: '0',
       images: [],
+      has_operation_records: false,
       created_at: now(),
       updated_at: now(),
       version: 1,
@@ -373,21 +375,35 @@ export const handlers = [
     })
     return HttpResponse.json(item)
   }),
+  http.delete(`${api}/stock-materials/:id`, ({ params }) => {
+    const index = stockMaterials.findIndex((item) => item.id === Number(params.id))
+    if (index < 0) return error(400, 'NOT_FOUND', '物资不存在')
+    const item = stockMaterials[index]
+    if (item.has_operation_records) {
+      return error(409, 'STOCK_MATERIAL_IN_USE', '该物资已有出入库操作记录，仅支持编辑，不能删除')
+    }
+    stockMaterials.splice(index, 1)
+    return new HttpResponse(null, { status: 204 })
+  }),
   http.put(`${api}/stock-materials/:id/replenishment-policy`, async ({ params, request }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '物资不存在')
-    item.replenishment_policy = (await request.json()) as ReplenishmentPolicy
-    item.version++
+    const body = (await request.json()) as ReplenishmentPolicy
+    item.replenishment_policy = {
+      minimum_qty: body.minimum_qty,
+      enabled: body.enabled,
+      version: (item.replenishment_policy?.version ?? 0) + 1,
+    }
     return HttpResponse.json(item)
   }),
   http.get(`${api}/inventory/balances`, ({ request }) => {
     const url = new URL(request.url)
-    const q = (url.searchParams.get('keyword') || '').toLowerCase()
+    const keyword = url.searchParams.get('keyword')
     return HttpResponse.json(
       page(
         stockMaterials
           .map(inventoryBalance)
-          .filter((x) => !q || `${x.name}${x.model_spec}`.toLowerCase().includes(q)),
+          .filter((item) => matchesOrSearch(`${item.name} ${item.model_spec}`, keyword)),
         url,
       ),
     )
@@ -424,12 +440,18 @@ export const handlers = [
     const url = new URL(request.url)
     const operationNo = url.searchParams.get('operation_no') || ''
     const type = url.searchParams.get('operation_type')
-    const material = url.searchParams.get('material_name') || ''
+    const material = url.searchParams.get('material_name')
+    const startAt = url.searchParams.get('start_at')
+    const endAt = url.searchParams.get('end_at')
     const list = operations.filter(
-      (x) =>
-        (!operationNo || x.operation_no.includes(operationNo)) &&
-        (!type || x.operation_type === type) &&
-        (!material || x.lines.some((l) => l.material_name.includes(material))),
+      (operation) =>
+        (!operationNo || operation.operation_no.includes(operationNo)) &&
+        (!type || operation.operation_type === type) &&
+        operation.lines.some((line) =>
+          matchesOrSearch(`${line.material_name} ${line.model_spec}`, material),
+        ) &&
+        (!startAt || new Date(operation.occurred_at) >= new Date(startAt)) &&
+        (!endAt || new Date(operation.occurred_at) <= new Date(endAt)),
     )
     return HttpResponse.json(page(list, url))
   }),

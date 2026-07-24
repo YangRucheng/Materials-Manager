@@ -12,6 +12,7 @@ const material: StockMaterial = {
   unit_name: '个',
   current_qty: '10',
   images: [],
+  has_operation_records: false,
   created_at: '2026-07-18T00:00:00Z',
   updated_at: '2026-07-18T00:00:00Z',
   version: 1,
