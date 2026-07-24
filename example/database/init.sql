@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `operation_type` ENUM('INBOUND', 'OUTBOUND') NOT NULL,
   `occurred_at` DATETIME(6) NOT NULL,
   `business_reason` VARCHAR(500) NOT NULL,
+  `receiver_unit` VARCHAR(128) NULL,
   `receiver_name` VARCHAR(64) NULL,
   `subitem_no` VARCHAR(64) NULL,
   `source_type` ENUM('MANUAL', 'REVERSAL', 'INITIALIZATION') NOT NULL,

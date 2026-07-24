@@ -202,6 +202,7 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
     operation_type: type,
     occurred_at: payload.occurred_at,
     business_reason: payload.business_reason,
+    receiver_unit: payload.receiver_unit,
     receiver_name: payload.receiver_name,
     subitem_no: payload.subitem_no,
     source_type: payload.source_type,
@@ -431,6 +432,8 @@ export const handlers = [
   }),
   http.post(`${api}/inventory/outbounds`, async ({ request }) => {
     const body = (await request.json()) as OperationWrite
+    if (!body.business_reason?.trim())
+      return error(400, 'BUSINESS_REASON_REQUIRED', '出库必须填写用途')
     if (!body.receiver_name?.trim()) return error(400, 'RECEIVER_REQUIRED', '出库必须填写领用人')
     return HttpResponse.json(makeOperation(body, 'OUTBOUND'), {
       status: 201,
@@ -493,6 +496,7 @@ export const handlers = [
       occurred_at: body.occurred_at,
       source_type: body.source_type,
       business_reason: body.business_reason,
+      receiver_unit: body.receiver_unit,
       receiver_name: body.receiver_name,
       subitem_no: body.subitem_no,
       version: item.version + 1,

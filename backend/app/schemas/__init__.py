@@ -359,6 +359,10 @@ class OperationCreate(RequestModel):
     occurred_at: datetime
     source_type: SourceType
     business_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
+    receiver_unit: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
     receiver_name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
@@ -384,6 +388,10 @@ class OperationUpdate(RequestModel):
     occurred_at: datetime
     source_type: SourceType
     business_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
+    receiver_unit: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
     receiver_name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
@@ -427,6 +435,7 @@ class StockOperationRead(ReadModel):
     operation_type: OperationType
     occurred_at: datetime
     business_reason: str
+    receiver_unit: str | None = None
     receiver_name: str | None = None
     subitem_no: str | None = None
     source_type: SourceType

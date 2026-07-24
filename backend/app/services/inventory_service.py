@@ -101,6 +101,7 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
         operation_type=item.operation_type,
         occurred_at=utc_aware(item.occurred_at),
         business_reason=item.business_reason,
+        receiver_unit=item.receiver_unit,
         receiver_name=item.receiver_name,
         subitem_no=item.subitem_no,
         source_type=item.source_type,
@@ -130,6 +131,7 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
         "occurred_at": item.occurred_at.isoformat(),
         "source_type": item.source_type.value,
         "business_reason": item.business_reason,
+        "receiver_unit": item.receiver_unit,
         "receiver_name": item.receiver_name,
         "subitem_no": item.subitem_no,
         "lines": [
@@ -188,12 +190,15 @@ async def _lock_and_validate_materials(
 def _validate_operation_semantics(
     operation_type: OperationType,
     source_type: SourceType,
+    receiver_unit: str | None,
     receiver_name: str | None,
 ) -> None:
     if source_type == SourceType.INITIALIZATION and operation_type != OperationType.INBOUND:
         raise AppError("INVALID_SOURCE_TYPE", "初始化业务只能是入库")
     if operation_type == OperationType.INBOUND and receiver_name:
         raise AppError("INVALID_RECEIVER", "只有出库业务可以填写领用人")
+    if operation_type == OperationType.INBOUND and receiver_unit:
+        raise AppError("INVALID_RECEIVER_UNIT", "只有出库业务可以填写领用单位")
     if (
         operation_type == OperationType.OUTBOUND
         and source_type != SourceType.REVERSAL
@@ -245,8 +250,10 @@ async def create_operation(
     if data.source_type == SourceType.REVERSAL and reversal_of_id is None:
         raise AppError("INVALID_SOURCE_TYPE", "冲销来源只能由冲销接口创建")
     if operation_type == OperationType.OUTBOUND and not data.business_reason:
-        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写业务原因")
-    _validate_operation_semantics(operation_type, data.source_type, data.receiver_name)
+        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写用途")
+    _validate_operation_semantics(
+        operation_type, data.source_type, data.receiver_unit, data.receiver_name
+    )
     materials = await _lock_and_validate_materials(session, data.lines)
     existing = cast(
         StockOperation | None,
@@ -263,6 +270,7 @@ async def create_operation(
         operation_type=operation_type,
         occurred_at=utc_naive(data.occurred_at),
         business_reason=data.business_reason,
+        receiver_unit=data.receiver_unit,
         receiver_name=data.receiver_name,
         subitem_no=data.subitem_no,
         source_type=data.source_type,
@@ -304,8 +312,10 @@ async def update_operation(
 ) -> StockOperation:
     validate_version(data.version, item.version)
     if data.operation_type == OperationType.OUTBOUND and not data.business_reason:
-        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写业务原因")
-    _validate_operation_semantics(data.operation_type, data.source_type, data.receiver_name)
+        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写用途")
+    _validate_operation_semantics(
+        data.operation_type, data.source_type, data.receiver_unit, data.receiver_name
+    )
     before = _operation_snapshot(item)
     old_material_ids = {line.stock_material_id for line in item.lines}
     materials = await _lock_and_validate_materials(
@@ -315,6 +325,7 @@ async def update_operation(
     item.occurred_at = utc_naive(data.occurred_at)
     item.source_type = data.source_type
     item.business_reason = data.business_reason
+    item.receiver_unit = data.receiver_unit
     item.receiver_name = data.receiver_name
     item.subitem_no = data.subitem_no
     item.version += 1
@@ -371,6 +382,7 @@ async def reverse_operation(
         occurred_at=reverse_at,
         source_type=SourceType.REVERSAL,
         business_reason=data.reason,
+        receiver_unit=None,
         receiver_name=None,
         subitem_no=original.subitem_no,
         lines=[

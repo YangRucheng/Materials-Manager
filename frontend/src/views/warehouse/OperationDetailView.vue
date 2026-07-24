@@ -24,6 +24,7 @@ const edit = reactive({
   operation_type: 'INBOUND' as OperationType,
   occurred_at: Date.now(),
   business_reason: '',
+  receiver_unit: '',
   receiver_name: '',
   subitem_no: '',
   source_type: 'MANUAL' as SourceType,
@@ -38,6 +39,7 @@ async function resetEditor(value: StockOperation) {
     operation_type: value.operation_type,
     occurred_at: new Date(value.occurred_at).getTime(),
     business_reason: value.business_reason,
+    receiver_unit: value.receiver_unit || '',
     receiver_name: value.receiver_name || '',
     subitem_no: value.subitem_no || '',
     source_type: value.source_type,
@@ -58,7 +60,7 @@ async function load() {
   }
 }
 function validationError(): string | null {
-  if (edit.operation_type === 'OUTBOUND' && !edit.business_reason.trim()) return '业务原因必填'
+  if (edit.operation_type === 'OUTBOUND' && !edit.business_reason.trim()) return '用途必填'
   if (edit.operation_type === 'OUTBOUND' && !edit.receiver_name.trim()) return '领用人必填'
   if (
     !edit.lines.length ||
@@ -76,6 +78,8 @@ async function save() {
       operation_type: edit.operation_type,
       occurred_at: toIsoWithTimezone(edit.occurred_at),
       business_reason: edit.business_reason.trim(),
+      receiver_unit:
+        edit.operation_type === 'OUTBOUND' ? edit.receiver_unit.trim() || undefined : undefined,
       receiver_name:
         edit.operation_type === 'OUTBOUND' ? edit.receiver_name.trim() || undefined : undefined,
       subitem_no:
@@ -170,14 +174,17 @@ onMounted(load)
                 }))
               "
           /></n-form-item>
+          <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="领用单位"
+            ><n-input v-model:value="edit.receiver_unit" maxlength="128"
+          /></n-form-item>
           <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="领用人" required
             ><n-input v-model:value="edit.receiver_name" maxlength="64"
           /></n-form-item>
           <n-form-item v-if="edit.operation_type === 'OUTBOUND'" label="子项号"
-            ><n-input v-model:value="edit.subitem_no" maxlength="64" placeholder="选填"
+            ><n-input v-model:value="edit.subitem_no" maxlength="64"
           /></n-form-item>
         </div>
-        <n-form-item label="业务原因" required
+        <n-form-item label="用途" :required="edit.operation_type === 'OUTBOUND'"
           ><n-input v-model:value="edit.business_reason" maxlength="500"
         /></n-form-item>
       </n-form>
@@ -186,13 +193,18 @@ onMounted(load)
           operation.operation_type === 'INBOUND' ? '入库' : '出库'
         }}</n-descriptions-item>
         <n-descriptions-item label="来源">{{ operation.source_type }}</n-descriptions-item>
-        <n-descriptions-item label="业务原因" :span="2">{{
+        <n-descriptions-item label="用途" :span="2">{{
           operation.business_reason || '—'
         }}</n-descriptions-item>
-        <n-descriptions-item label="领用人">{{
+        <n-descriptions-item v-if="operation.operation_type === 'OUTBOUND'" label="领用单位">{{
+          operation.receiver_unit || '—'
+        }}</n-descriptions-item>
+        <n-descriptions-item v-if="operation.operation_type === 'OUTBOUND'" label="领用人">{{
           operation.receiver_name || '—'
         }}</n-descriptions-item>
-        <n-descriptions-item label="子项号">{{ operation.subitem_no || '—' }}</n-descriptions-item>
+        <n-descriptions-item v-if="operation.operation_type === 'OUTBOUND'" label="子项号">{{
+          operation.subitem_no || '—'
+        }}</n-descriptions-item>
         <n-descriptions-item label="请求幂等 ID" :span="2">{{
           operation.client_request_id
         }}</n-descriptions-item>
