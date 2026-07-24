@@ -23,7 +23,12 @@ export const inventoryApi = {
     apiClient.post<StockMaterial>('/stock-materials', payload).then((r) => r.data),
   updateMaterial: (id: number, payload: StockMaterialWrite) =>
     apiClient.patch<StockMaterial>(`/stock-materials/${id}`, payload).then((r) => r.data),
-  savePolicy: (id: number, payload: ReplenishmentPolicy & { version?: number }) =>
+  deleteMaterial: (id: number, version: number) =>
+    apiClient.delete(`/stock-materials/${id}`, { params: { version } }),
+  savePolicy: (
+    id: number,
+    payload: Pick<ReplenishmentPolicy, 'minimum_qty' | 'enabled'> & { version?: number },
+  ) =>
     apiClient
       .put<StockMaterial>(`/stock-materials/${id}/replenishment-policy`, payload)
       .then((r) => r.data),
