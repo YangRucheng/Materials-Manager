@@ -774,6 +774,8 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
                 {"id": second["id"], "version": second["version"]},
             ],
             "plan_date": "2026-07-15",
+            "category": "工具",
+            "demand_department": "HXNI 设备管理部",
             "actual_demand_person": "统一需求人",
             "subitem_no": None,
             "usage": "统一批量修改用途",
@@ -784,6 +786,8 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
     payload = response.json()
     assert [item["id"] for item in payload] == [first["id"], second["id"]]
     assert {item["plan_date"] for item in payload} == {"2026-07-15"}
+    assert {item["category"] for item in payload} == {"工具"}
+    assert {item["demand_department"] for item in payload} == {"HXNI 设备管理部"}
     assert {item["actual_demand_person"] for item in payload} == {"统一需求人"}
     assert {item["subitem_no"] for item in payload} == {None}
     assert {item["usage"] for item in payload} == {"统一批量修改用途"}
@@ -1016,18 +1020,26 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
     plan_export = await client.post(
         "/api/v1/purchase-materials/export-results",
         headers=headers,
-        json={"columns": ["name", "usage"], "name": "导出电机", "status": "正常"},
+        json={
+            "columns": ["name", "unit_name", "usage"],
+            "name": "导出电机",
+            "status": "正常",
+        },
     )
     assert plan_export.status_code == 200, plan_export.text
     assert f"申购计划导出_{date.today():%Y%m%d}.xlsx" in unquote(
         plan_export.headers["content-disposition"]
     )
     plan_sheet = load_workbook(BytesIO(plan_export.content)).active
-    assert [plan_sheet.cell(1, column).value for column in range(1, 3)] == ["名称", "用途"]
-    assert plan_sheet.max_column == 2
+    assert [plan_sheet.cell(1, column).value for column in range(1, 4)] == [
+        "名称",
+        "计量单位",
+        "用途",
+    ]
+    assert plan_sheet.max_column == 3
     assert plan_sheet.max_row == 2
     assert plan_sheet["A2"].value == motor["name"]
-    assert plan_sheet["B2"].alignment.wrap_text is True
+    assert plan_sheet["C2"].alignment.wrap_text is True
 
     record = await move_to_record(client, headers, int(motor["id"]))
     record_export = await client.post(

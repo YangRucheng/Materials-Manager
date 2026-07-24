@@ -95,7 +95,7 @@ onMounted(load)
       <div>
         <h1 class="page-title">计量单位</h1>
       </div>
-      <n-button type="primary" @click="open()">新建单位</n-button>
+      <n-button type="primary" @click="open()">新建计量单位</n-button>
     </div>
     <n-card class="data-card"
       ><n-data-table
@@ -108,7 +108,7 @@ onMounted(load)
     ><n-modal
       v-model:show="show"
       preset="card"
-      :title="editing ? '编辑单位' : '新建单位'"
+      :title="editing ? '编辑计量单位' : '新建计量单位'"
       style="width: 500px"
       ><n-form label-placement="top"
         ><n-form-item label="编码" required

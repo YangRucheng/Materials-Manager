@@ -72,8 +72,8 @@ const availableColumns: Array<{
   },
   {
     key: 'unit_name',
-    label: '单位',
-    column: { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+    label: '计量单位',
+    column: { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
   },
   {
     key: 'created_at',

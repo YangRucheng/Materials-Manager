@@ -123,6 +123,12 @@ const router = createRouter({
           component: () => import('@/views/settings/UsersView.vue'),
           meta: { title: '用户管理', permission: 'settings:write' },
         },
+        {
+          path: 'settings/about',
+          name: 'about',
+          component: () => import('@/views/settings/AboutView.vue'),
+          meta: { title: '关于', permission: 'settings:write' },
+        },
       ],
     },
     {
