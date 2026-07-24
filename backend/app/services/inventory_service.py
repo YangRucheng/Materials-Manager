@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import cast
 from uuid import uuid4
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -30,6 +30,7 @@ from app.schemas import (
     StockOperationRead,
 )
 from app.services.common import (
+    contains_any,
     log_event,
     utc_aware,
     utc_naive,
@@ -201,8 +202,6 @@ def _validate_operation_semantics(
         raise AppError("RECEIVER_REQUIRED", "出库必须填写领用人")
 
 
-
-
 async def replay_materials(session: AsyncSession, material_ids: Iterable[int]) -> None:
     for material_id in sorted(set(material_ids)):
         balance = await session.get(StockBalance, material_id)
@@ -229,8 +228,6 @@ async def replay_materials(session: AsyncSession, material_ids: Iterable[int]) -
         balance.quantity = running
         balance.version += 1
         balance.updated_at = utcnow()
-
-
 
 
 async def create_operation(
@@ -411,8 +408,12 @@ async def search_operations(
         query = query.where(StockOperation.operation_type == operation_type)
     if material_name:
         query = query.join(StockOperationLine)
-    if material_name:
-        query = query.where(StockOperationLine.material_name_snapshot.like(f"%{material_name}%"))
+    material_condition = contains_any(
+        (StockOperationLine.material_name_snapshot, StockOperationLine.model_spec_snapshot),
+        material_name,
+    )
+    if material_condition is not None:
+        query = query.where(material_condition)
     if source_type:
         query = query.where(StockOperation.source_type == source_type)
     if start_at:
@@ -449,9 +450,9 @@ async def inventory_balances(
     query = select(StockMaterial).join(StockBalance)
     if material_id is not None:
         query = query.where(StockMaterial.id == material_id)
-    if keyword:
-        like = f"%{keyword}%"
-        query = query.where(or_(StockMaterial.name.like(like), StockMaterial.model_spec.like(like)))
+    keyword_condition = contains_any((StockMaterial.name, StockMaterial.model_spec), keyword)
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
     if minimum_qty is not None:
         query = query.where(StockBalance.quantity >= minimum_qty)
     if maximum_qty is not None:
@@ -471,9 +472,7 @@ async def inventory_balances(
         .unique()
         .all()
     )
-    recent_consumption = await recent_outbound_consumption(
-        session, (item.id for item in materials)
-    )
+    recent_consumption = await recent_outbound_consumption(session, (item.id for item in materials))
     result = []
     for item in materials:
         balance = item.balance

@@ -7,6 +7,7 @@ import type { InventoryBalance, ReplenishmentDraftWrite } from '@/api/generated'
 import { useAuthStore } from '@/stores/auth'
 import { formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { isDecimalString } from '@/utils/decimal'
+import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import QuantityInput from '@/components/QuantityInput.vue'
 import {
   getTableScrollX,
@@ -18,6 +19,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const rowClickGuard = createTableRowClickGuard()
 const loading = ref(false)
 const items = ref<InventoryBalance[]>([])
 const total = ref(0)
@@ -128,6 +130,8 @@ async function load() {
     })
     items.value = data.items
     total.value = data.total
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '库存查询失败')
   } finally {
     loading.value = false
   }
@@ -135,6 +139,24 @@ async function load() {
 function query() {
   page.value = 1
   void load()
+}
+function resetFilters() {
+  Object.assign(filters, { keyword: '', low_stock: null, min_qty: '', max_qty: '' })
+  query()
+}
+function rowProps(row: InventoryBalance) {
+  return {
+    style: 'cursor: pointer',
+    onMousedown: rowClickGuard.onMouseDown,
+    onClick: (event: MouseEvent) => {
+      if (!rowClickGuard.shouldIgnore(event)) {
+        void router.push({
+          name: 'stock-material-detail',
+          params: { id: row.stock_material_id },
+        })
+      }
+    },
+  }
 }
 async function openReplenishment(row: InventoryBalance) {
   replenishmentRow.value = row
@@ -197,38 +219,56 @@ onMounted(load)
         <h1 class="page-title">库存查询</h1>
       </div>
     </div>
-    <n-card class="filter-card"
-      ><div class="filter-bar">
-        <n-input
-          v-model:value="filters.keyword"
-          clearable
-          placeholder="名称或型号"
-          style="width: 220px"
-        /><n-input
-          v-model:value="filters.min_qty"
-          placeholder="库存下限"
-          style="width: 120px"
-        /><n-input
-          v-model:value="filters.max_qty"
-          placeholder="库存上限"
-          style="width: 120px"
-        /><n-select
-          v-model:value="filters.low_stock"
-          clearable
-          :options="[
-            { label: '仅低库存', value: true },
-            { label: '全部库存', value: false },
-          ]"
-          style="width: 140px"
-        /><n-button type="primary" @click="query">查询</n-button>
-      </div></n-card
-    >
-    <n-card class="data-card"
+    <n-card class="filter-card" :bordered="false">
+      <div class="filter-heading">
+        <div>
+          <div class="filter-title">筛选条件</div>
+          <div class="filter-hint">名称和型号支持使用 | 分隔多个关键词，按 OR 查询</div>
+        </div>
+      </div>
+      <div class="warehouse-filter-grid">
+        <label class="filter-field">
+          <span>名称或型号规格</span>
+          <n-input
+            v-model:value="filters.keyword"
+            clearable
+            placeholder="输入物资名称或型号规格"
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>库存下限</span>
+          <n-input v-model:value="filters.min_qty" clearable placeholder="输入库存下限" />
+        </label>
+        <label class="filter-field">
+          <span>库存上限</span>
+          <n-input v-model:value="filters.max_qty" clearable placeholder="输入库存上限" />
+        </label>
+        <label class="filter-field">
+          <span>预警状态</span>
+          <n-select
+            v-model:value="filters.low_stock"
+            clearable
+            :options="[
+              { label: '仅低库存', value: true },
+              { label: '全部库存', value: false },
+            ]"
+            placeholder="选择预警状态"
+          />
+        </label>
+      </div>
+      <div class="filter-actions">
+        <n-button @click="resetFilters">重置</n-button>
+        <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+      </div>
+    </n-card>
+    <n-card class="data-card" :bordered="false"
       ><n-data-table
         :bordered="false"
         :columns="columns"
         :data="items"
         :loading="loading"
+        :row-props="rowProps"
         :scroll-x="tableScrollX"
         :row-key="(r: InventoryBalance) => r.stock_material_id" />
       <div class="pagination-bar">
@@ -309,3 +349,59 @@ onMounted(load)
     </n-modal>
   </div>
 </template>
+
+<style scoped>
+.filter-heading,
+.filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.filter-heading {
+  margin-bottom: 18px;
+}
+
+.filter-hint {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.warehouse-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-field > span {
+  color: #4b5565;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-actions {
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+@media (max-width: 1100px) {
+  .warehouse-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .warehouse-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

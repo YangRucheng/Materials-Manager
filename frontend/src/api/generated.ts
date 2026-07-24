@@ -84,6 +84,7 @@ export interface FileObject {
 export interface ReplenishmentPolicy {
   minimum_qty: string
   enabled: boolean
+  version: number
 }
 export interface StockMaterial {
   id: number
@@ -95,6 +96,7 @@ export interface StockMaterial {
   current_qty: string
   images: FileObject[]
   replenishment_policy?: ReplenishmentPolicy
+  has_operation_records: boolean
   created_at: string
   updated_at: string
   version: number

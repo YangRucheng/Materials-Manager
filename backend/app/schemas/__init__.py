@@ -313,6 +313,7 @@ class StockMaterialRead(ReadModel):
     current_qty: Decimal
     images: list[FileObjectRead]
     replenishment_policy: ReplenishmentPolicyRead | None = None
+    has_operation_records: bool = False
     created_at: datetime
     updated_at: datetime
     version: int
