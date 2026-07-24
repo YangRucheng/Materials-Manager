@@ -25,6 +25,8 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import ExportButton from '@/components/ExportButton.vue'
+import type { ExportOption } from '@/types/export'
 import {
   getTableScrollX,
   preventTableColumnCompression,
@@ -144,6 +146,18 @@ const selectedPlans = computed(() => {
   const selected = new Set(checkedRowKeys.value.map(Number))
   return items.value.filter((item) => selected.has(item.id))
 })
+const exportOptions = computed<ExportOption[]>(() => {
+  const options: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
+  if (auth.can('purchase:write')) {
+    options.push({
+      label: `导出采购申请表（已选 ${selectedPlans.value.length} 条）`,
+      key: 'purchase-application',
+      disabled: !selectedPlans.value.length,
+    })
+  }
+  return options
+})
+const exportLoading = computed(() => resultExporting.value || batchExporting.value)
 const form = reactive<PurchaseMaterialWrite>({
   status: defaultPurchasePlanStatus,
   material_code: '',
@@ -634,6 +648,13 @@ async function exportPurchaseApplication() {
     batchExporting.value = false
   }
 }
+function handleExport(key: string) {
+  if (key === 'results') {
+    void exportResults()
+    return
+  }
+  if (key === 'purchase-application') void exportPurchaseApplication()
+}
 onMounted(() => {
   document.addEventListener('fullscreenchange', syncTableFullscreen)
   void dictionaries.load()
@@ -655,21 +676,17 @@ onBeforeUnmount(() => {
       <div>
         <h1 class="page-title">申购计划</h1>
       </div>
-      <n-space v-if="auth.can('purchase:write')">
-        <n-button
-          :disabled="!selectedPlans.length"
-          :loading="batchExporting"
-          @click="exportPurchaseApplication"
-        >
-          导出采购申请表（{{ selectedPlans.length }}）
-        </n-button>
-        <n-button :disabled="!selectedPlans.length" @click="openBatchEdit">
-          批量修改（{{ selectedPlans.length }}）
-        </n-button>
-        <n-button :disabled="!selectedPlans.length" @click="openBatchMove">
-          批量转为申购记录（{{ selectedPlans.length }}）
-        </n-button>
-        <n-button type="primary" @click="openCreate">新建申购计划</n-button>
+      <n-space>
+        <ExportButton :options="exportOptions" :loading="exportLoading" @select="handleExport" />
+        <template v-if="auth.can('purchase:write')">
+          <n-button :disabled="!selectedPlans.length" @click="openBatchEdit">
+            批量修改（{{ selectedPlans.length }}）
+          </n-button>
+          <n-button :disabled="!selectedPlans.length" @click="openBatchMove">
+            批量转为申购记录（{{ selectedPlans.length }}）
+          </n-button>
+          <n-button type="primary" @click="openCreate">新建申购计划</n-button>
+        </template>
       </n-space>
     </div>
     <n-card class="filter-card" :bordered="false">
@@ -726,7 +743,6 @@ onBeforeUnmount(() => {
         />
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
-          <n-button :loading="resultExporting" @click="exportResults">导出结果</n-button>
           <n-button
             secondary
             type="primary"

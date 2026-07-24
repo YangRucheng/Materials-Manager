@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import ExportButton from '@/components/ExportButton.vue'
+import type { ExportOption } from '@/types/export'
 import {
   getTableScrollX,
   preventTableColumnCompression,
@@ -25,6 +27,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
 const exporting = ref(false)
+const exportOptions: ExportOption[] = [{ label: '导出物料编码申请表', key: 'application' }]
 type UncodedColumnKey = 'plan_no' | 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
 
 const availableColumns: Array<{
@@ -147,6 +150,10 @@ async function exportExcel() {
   }
 }
 
+function handleExport(key: string) {
+  if (key === 'application') void exportExcel()
+}
+
 onMounted(load)
 </script>
 
@@ -163,9 +170,12 @@ onMounted(load)
           storage-key="procurement.uncoded-materials.visible-columns.v1"
           @update:value="setVisibleColumnKeys"
         />
-        <n-button :loading="exporting" :disabled="!total" @click="exportExcel">
-          导出 Excel
-        </n-button>
+        <ExportButton
+          :options="exportOptions"
+          :loading="exporting"
+          :disabled="!total"
+          @select="handleExport"
+        />
       </n-space>
     </div>
     <n-card class="data-card">
