@@ -5,7 +5,14 @@ import { useDialog, useMessage } from 'naive-ui'
 import type { FileObject, PurchaseMaterial, PurchaseMaterialWrite } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
-import { defaultPurchasePlanStatus, purchasePlanStatusOptions } from '@/constants/purchase'
+import {
+  defaultDemandDepartment,
+  defaultPurchasePlanStatus,
+  defaultPurchaseUrgency,
+  purchaseCategoryOptions,
+  purchaseUrgencyOptions,
+  purchasePlanStatusOptions,
+} from '@/constants/purchase'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
@@ -28,6 +35,11 @@ const moving = ref(false)
 const moveForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
   trace_no: '',
+  contract_no: '',
+  vessel_no: '',
+  consolidation_date: null as number | null,
+  consolidation_port: '',
+  sailing_date: null as number | null,
   purchase_date: Date.now(),
   salesperson: '',
   status: '已申购',
@@ -38,6 +50,9 @@ const planDate = ref<number | null>(null)
 const form = reactive<PurchaseMaterialWrite>({
   status: defaultPurchasePlanStatus,
   material_code: '',
+  category: '备品备件',
+  urgency: defaultPurchaseUrgency,
+  demand_department: defaultDemandDepartment,
   name: '',
   model_spec: '',
   unit_id: null,
@@ -63,6 +78,9 @@ function syncForm(value: PurchaseMaterial) {
   Object.assign(form, {
     status: value.status,
     material_code: value.material_code || '',
+    category: value.category || '',
+    urgency: value.urgency,
+    demand_department: value.demand_department,
     name: value.name,
     model_spec: value.model_spec,
     unit_id: value.unit_id,
@@ -141,6 +159,11 @@ function openMove() {
   Object.assign(moveForm, {
     purchase_order_no: defaultPurchaseOrderNo(),
     trace_no: '',
+    contract_no: '',
+    vessel_no: '',
+    consolidation_date: null,
+    consolidation_port: '',
+    sailing_date: null,
     purchase_date: Date.now(),
     salesperson: '',
     status: '已申购',
@@ -158,6 +181,13 @@ async function moveToRecord() {
     const record = await procurementApi.movePlanToRecord(material.value.id, {
       purchase_order_no: moveForm.purchase_order_no.trim() || null,
       trace_no: moveForm.trace_no.trim() || null,
+      contract_no: moveForm.contract_no.trim() || null,
+      vessel_no: moveForm.vessel_no.trim() || null,
+      consolidation_date: moveForm.consolidation_date
+        ? toShanghaiDate(moveForm.consolidation_date)
+        : undefined,
+      consolidation_port: moveForm.consolidation_port.trim() || null,
+      sailing_date: moveForm.sailing_date ? toShanghaiDate(moveForm.sailing_date) : undefined,
       purchase_date: toShanghaiDate(moveForm.purchase_date),
       salesperson: moveForm.salesperson || undefined,
       status: moveForm.status.trim(),
@@ -210,6 +240,21 @@ onMounted(() => {
           </n-form-item>
           <n-form-item label="物料编码">
             <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="类别">
+            <n-select
+              v-model:value="form.category"
+              :options="purchaseCategoryOptions"
+              filterable
+              clearable
+              placeholder="选择类别"
+            />
+          </n-form-item>
+          <n-form-item label="紧急程度" required>
+            <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
+          </n-form-item>
+          <n-form-item label="需求部门" required>
+            <n-input v-model:value="form.demand_department" maxlength="128" />
           </n-form-item>
           <n-form-item label="名称" required>
             <n-input v-model:value="form.name" maxlength="128" />
@@ -277,6 +322,35 @@ onMounted(() => {
           </n-form-item>
           <n-form-item label="追溯号">
             <n-input v-model:value="moveForm.trace_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="合同号">
+            <n-input v-model:value="moveForm.contract_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="船号">
+            <n-input v-model:value="moveForm.vessel_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="集港日期">
+            <n-date-picker
+              v-model:value="moveForm.consolidation_date"
+              type="date"
+              class="full-width"
+              clearable
+            />
+          </n-form-item>
+          <n-form-item label="集港港口">
+            <n-input
+              v-model:value="moveForm.consolidation_port"
+              maxlength="128"
+              placeholder="可留空"
+            />
+          </n-form-item>
+          <n-form-item label="发船日期">
+            <n-date-picker
+              v-model:value="moveForm.sailing_date"
+              type="date"
+              class="full-width"
+              clearable
+            />
           </n-form-item>
           <n-form-item label="申购日期" required>
             <n-date-picker v-model:value="moveForm.purchase_date" type="date" class="full-width" />

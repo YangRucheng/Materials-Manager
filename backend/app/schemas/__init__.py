@@ -63,6 +63,7 @@ class PurchaseFilterOptions(ReadModel):
     actual_demand_persons: list[str]
     purchase_responsibles: list[str]
     subitem_nos: list[str]
+    categories: list[str]
 
 
 class PurchaseRecordFilterOptions(PurchaseFilterOptions):
@@ -86,7 +87,7 @@ class AgentDatabaseExecuteRequest(RequestModel):
 
 
 class AgentDatabaseExecuteRead(ReadModel):
-    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE"]
+    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"]
     columns: list[str] = Field(default_factory=list)
     rows: list[dict[str, object]] = Field(default_factory=list)
     row_count: int
@@ -451,6 +452,15 @@ class PurchaseMaterialBase(RequestModel):
     material_code: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
+    category: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    urgency: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)
+    ] = "正常"
+    demand_department: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ] = "HXNI 检修维护部"
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
     model_spec: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
@@ -479,9 +489,9 @@ class PurchaseMaterialBase(RequestModel):
     def unique_images(cls, value: list[str]) -> list[str]:
         return _ensure_unique_image_ids(value)
 
-    @field_validator("material_code", mode="before")
+    @field_validator("material_code", "category", mode="before")
     @classmethod
-    def empty_code_to_none(cls, value: object) -> object:
+    def empty_optional_text_to_none(cls, value: object) -> object:
         return _empty_string_to_none(value)
 
 
@@ -539,6 +549,9 @@ class PurchaseMaterialRead(ReadModel):
     plan_no: str
     plan_date: date
     material_code: str | None = None
+    category: str | None = None
+    urgency: str
+    demand_department: str
     name: str
     model_spec: str
     unit_id: int
@@ -574,6 +587,17 @@ class MovePurchasePlanRequest(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
     trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
+    contract_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = (
+        None
+    )
+    vessel_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = (
+        None
+    )
+    consolidation_date: date | None = None
+    consolidation_port: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    sailing_date: date | None = None
     purchase_date: date
     salesperson: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -611,6 +635,9 @@ PurchasePlanResultColumn = Literal[
     "plan_no",
     "plan_date",
     "material_code",
+    "category",
+    "urgency",
+    "demand_department",
     "name",
     "model_spec",
     "planned_qty",
@@ -623,14 +650,15 @@ PurchasePlanResultColumn = Literal[
 
 
 class PurchasePlanResultExportRequest(RequestModel):
-    columns: list[PurchasePlanResultColumn] = Field(min_length=1, max_length=11)
+    columns: list[PurchasePlanResultColumn] = Field(min_length=1, max_length=14)
     name: str | None = Field(default=None, max_length=128)
     model_spec: str | None = Field(default=None, max_length=255)
     actual_demand_person: str | None = Field(default=None, max_length=128)
     empty_actual_demand_person: bool = False
     subitem_no: str | None = Field(default=None, max_length=64)
     empty_subitem_no: bool = False
-    status: PurchasePlanStatus | None = None
+    status: PurchasePlanStatus | list[PurchasePlanStatus] | None = None
+    category: str | None = Field(default=None, max_length=64)
 
     @field_validator("columns")
     @classmethod
@@ -647,6 +675,12 @@ class PurchaseRecordUpdate(RequestModel):
     material_code: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
+    category: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    demand_department: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ] = "HXNI 检修维护部"
     material_name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
     ]
@@ -672,6 +706,17 @@ class PurchaseRecordUpdate(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
     trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
+    contract_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = (
+        None
+    )
+    vessel_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = (
+        None
+    )
+    consolidation_date: date | None = None
+    consolidation_port: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    sailing_date: date | None = None
     purchase_date: date | None = None
     salesperson: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -686,9 +731,9 @@ class PurchaseRecordUpdate(RequestModel):
     def unique_images(cls, value: list[str]) -> list[str]:
         return _ensure_unique_image_ids(value)
 
-    @field_validator("material_code", mode="before")
+    @field_validator("material_code", "category", mode="before")
     @classmethod
-    def empty_code_to_none(cls, value: object) -> object:
+    def empty_optional_text_to_none(cls, value: object) -> object:
         return _empty_string_to_none(value)
 
 
@@ -700,8 +745,15 @@ class PurchaseRecordRead(ReadModel):
     plan_date: date
     purchase_order_no: str | None = None
     trace_no: str | None = None
+    contract_no: str | None = None
+    vessel_no: str | None = None
+    consolidation_date: date | None = None
+    consolidation_port: str | None = None
+    sailing_date: date | None = None
     status: str
     material_code: str | None = None
+    category: str | None = None
+    demand_department: str
     material_name: str
     model_spec: str
     unit_id: int
@@ -727,6 +779,13 @@ PurchaseRecordResultColumn = Literal[
     "plan_date",
     "purchase_order_no",
     "trace_no",
+    "contract_no",
+    "vessel_no",
+    "consolidation_date",
+    "consolidation_port",
+    "sailing_date",
+    "category",
+    "demand_department",
     "material_name",
     "actual_demand_person",
     "purchase_responsible",
@@ -737,9 +796,10 @@ PurchaseRecordResultColumn = Literal[
 
 
 class PurchaseRecordResultExportRequest(RequestModel):
-    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=10)
+    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=17)
     purchase_order_no: str | None = Field(default=None, max_length=255)
     trace_no: str | None = Field(default=None, max_length=255)
+    category: str | None = Field(default=None, max_length=64)
     name: str | None = Field(default=None, max_length=128)
     model_spec: str | None = Field(default=None, max_length=255)
     purchase_responsible: str | None = Field(default=None, max_length=128)

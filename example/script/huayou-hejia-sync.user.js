@@ -1,35 +1,34 @@
 // ==UserScript==
-// @name         华友何佳 - 备件管理系统状态同步
-// @namespace    https://quick-hejia.qcloud.19890605.xyz/hjerp/
-// @version      1.4.0
-// @description  在华友何佳系统中查询“物资状态查询”，同步备件管理系统中的状态、业务员和申购日期。
-// @match        https://quick-hejia.qcloud.19890605.xyz/hjerp/*
-// @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
-// @downloadURL  https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
+// @name         备件管理系统 - 华友何佳状态同步
+// @namespace    https://materials-manager.qcloud.19890605.xyz/
+// @version      1.1.0
+// @description  查询华友何佳“物资状态查询”，自动补全业务员、状态、合同和发运信息。
+// @match        https://materials-manager.qcloud.19890605.xyz/*
 // @connect      materials-manager.qcloud.19890605.xyz
+// @connect      quick-hejia.qcloud.19890605.xyz
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
-// @noframes
 // @run-at       document-idle
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  const HEJIA_BASE = `${location.origin}/hjerp`;
+  const HEJIA_BASE = "https://quick-hejia.qcloud.19890605.xyz/hjerp";
   const MATERIALS_API = "https://materials-manager.qcloud.19890605.xyz/api/v1";
   const MENU_ID = "820017687";
   const MENU_NAME = "物资状态查询";
+  const COMPANY_NAME = "华越物资供应追踪系统";
   const PREFIX = "hejia_sync_";
-  const NOT_FOUND_CACHE_NAME = "notFoundCache";
-  const NOT_FOUND_TTL = 3 * 24 * 60 * 60 * 1000;
   const defaults = {
+    hejiaUsername: "hync",
+    hejiaPassword: "",
     adminUsername: "admin",
     adminPassword: "",
-    intervalMinutes: 1,
-    batchSize: 100,
+    intervalMinutes: 10,
+    batchSize: 50,
     autoEnabled: false,
     dryRun: false,
     minimized: false,
@@ -43,14 +42,7 @@
   let host;
   let ui;
   const logs = [];
-  let stats = {
-    scanned: 0,
-    found: 0,
-    updated: 0,
-    skipped: 0,
-    failed: 0,
-    cached: 0,
-  };
+  let stats = { scanned: 0, found: 0, updated: 0, skipped: 0, failed: 0 };
 
   function key(name) {
     return `${PREFIX}${name}`;
@@ -96,56 +88,6 @@
     return String(value ?? "")
       .replace(/\s+/g, " ")
       .trim();
-  }
-  function notFoundCache(now = Date.now()) {
-    const stored = GM_getValue(key(NOT_FOUND_CACHE_NAME), {});
-    const source =
-      stored && typeof stored === "object" && !Array.isArray(stored)
-        ? stored
-        : {};
-    const active = {};
-    let changed = source !== stored;
-    Object.entries(source).forEach(([rawTraceNo, rawTimestamp]) => {
-      const traceNo = clean(rawTraceNo);
-      const timestamp = Number(rawTimestamp);
-      if (
-        !traceNo ||
-        !Number.isFinite(timestamp) ||
-        timestamp <= 0 ||
-        timestamp > now ||
-        now - timestamp >= NOT_FOUND_TTL
-      ) {
-        changed = true;
-        return;
-      }
-      if (traceNo !== rawTraceNo || active[traceNo]) changed = true;
-      active[traceNo] = Math.max(active[traceNo] || 0, timestamp);
-    });
-    if (changed) GM_setValue(key(NOT_FOUND_CACHE_NAME), active);
-    return active;
-  }
-  function notFoundTraceNos() {
-    return Object.keys(notFoundCache());
-  }
-  function rememberNotFound(traceNo) {
-    const value = clean(traceNo);
-    if (!value) return;
-    const cache = notFoundCache();
-    cache[value] = Date.now();
-    GM_setValue(key(NOT_FOUND_CACHE_NAME), cache);
-  }
-  function forgetNotFound(traceNo) {
-    const value = clean(traceNo);
-    const cache = notFoundCache();
-    if (!value || !(value in cache)) return;
-    delete cache[value];
-    GM_setValue(key(NOT_FOUND_CACHE_NAME), cache);
-  }
-  function clearNotFoundCache() {
-    GM_setValue(key(NOT_FOUND_CACHE_NAME), {});
-    stats.cached = 0;
-    renderStats();
-    log("已清空何佳无结果缓存", "success");
   }
   function reverse(value) {
     return String(value ?? "")
@@ -209,41 +151,6 @@
       throw new Error(`接口返回的不是有效 JSON：${text.slice(0, 200)}`);
     }
   }
-  async function hejiaJson(path, data, timeout = 30000) {
-    const response = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${HEJIA_BASE}${path}`, true);
-      xhr.withCredentials = true;
-      xhr.timeout = timeout;
-      xhr.setRequestHeader(
-        "Content-Type",
-        "application/x-www-form-urlencoded; charset=UTF-8",
-      );
-      xhr.onload = () =>
-        resolve({
-          status: xhr.status,
-          url: xhr.responseURL,
-          text: xhr.responseText || "",
-        });
-      xhr.ontimeout = () => reject(new Error(`何佳请求超时：${path}`));
-      xhr.onerror = () => reject(new Error(`何佳请求失败：${path}`));
-      xhr.send(data);
-    });
-    const { text } = response;
-    if (response.status < 200 || response.status >= 300)
-      throw new Error(`何佳 HTTP ${response.status}：${text.slice(0, 200)}`);
-    if (
-      response.url.includes("/hjerp/login") ||
-      /^\s*<!doctype html/i.test(text) ||
-      /^\s*<html/i.test(text)
-    )
-      throw new Error("请先登录何佳系统，再执行同步");
-    try {
-      return JSON.parse(text);
-    } catch {
-      throw new Error(`何佳接口返回的不是有效 JSON：${text.slice(0, 200)}`);
-    }
-  }
   async function db(sql, parameters = {}, maxRows = 1000) {
     const result = await json({
       method: "POST",
@@ -259,76 +166,125 @@
     return result;
   }
   async function targets() {
-    const limit = int(config.batchSize, defaults.batchSize, 1, 200);
-    const excludedTraceNos = notFoundTraceNos();
-    const parameters = {};
-    const exclusion = excludedTraceNos.length
-      ? "\n  AND JSON_CONTAINS(:not_found_trace_nos, JSON_QUOTE(TRIM(pr.trace_no))) = 0"
-      : "";
-    if (excludedTraceNos.length)
-      parameters.not_found_trace_nos = JSON.stringify(excludedTraceNos);
+    const limit = int(config.batchSize, 50, 1, 200);
     const result = await db(
       `SELECT pr.trace_no, COUNT(*) AS target_count
 FROM purchase_request pr
 JOIN purchase_request_line prl ON prl.purchase_request_id = pr.id
 WHERE pr.trace_no IS NOT NULL AND TRIM(pr.trace_no) <> ''
-  AND (pr.salesperson IS NULL OR TRIM(pr.salesperson) = '')${exclusion}
+  AND (
+    pr.salesperson IS NULL OR TRIM(pr.salesperson) = ''
+    OR pr.contract_no IS NULL OR TRIM(pr.contract_no) = ''
+    OR pr.vessel_no IS NULL OR TRIM(pr.vessel_no) = ''
+    OR pr.consolidation_date IS NULL
+    OR pr.consolidation_port IS NULL OR TRIM(pr.consolidation_port) = ''
+    OR pr.sailing_date IS NULL
+  )
 GROUP BY pr.trace_no
 ORDER BY MAX(prl.id) DESC
 LIMIT ${limit}`,
-      parameters,
+      {},
       limit,
     );
-    return {
-      rows: Array.isArray(result.rows) ? result.rows : [],
-      excludedCount: excludedTraceNos.length,
-    };
+    return Array.isArray(result.rows) ? result.rows : [];
   }
-  async function updateTarget(traceNo, status, salesperson, purchaseDate) {
-    const set = [];
+  async function updateTarget(traceNo, result) {
+    const requestSet = [];
+    const lineSet = [];
     const parameters = { trace_no: traceNo };
-    let purchaseRequestChanged = false;
-    if (salesperson) {
-      set.push("pr.salesperson = :salesperson");
-      parameters.salesperson = salesperson;
-      purchaseRequestChanged = true;
-    }
-    if (purchaseDate) {
-      set.push("pr.purchase_date = :purchase_date");
-      parameters.purchase_date = purchaseDate;
-      purchaseRequestChanged = true;
-    }
-    if (purchaseRequestChanged) {
-      set.push(
+    const optionalTextFields = [
+      ["salesperson", "salesperson"],
+      ["contract_no", "contractNo"],
+      ["vessel_no", "vesselNo"],
+      ["consolidation_port", "consolidationPort"],
+    ];
+    optionalTextFields.forEach(([column, key]) => {
+      if (!result[key]) return;
+      requestSet.push(
+        `pr.${column} = CASE WHEN pr.${column} IS NULL OR TRIM(pr.${column}) = '' THEN :${column} ELSE pr.${column} END`,
+      );
+      parameters[column] = result[key];
+    });
+    [["consolidation_date", "consolidationDate"], ["sailing_date", "sailingDate"]].forEach(
+      ([column, key]) => {
+        if (!result[key]) return;
+        requestSet.push(`pr.${column} = COALESCE(pr.${column}, :${column})`);
+        parameters[column] = result[key];
+      },
+    );
+    if (requestSet.length) {
+      requestSet.push(
         "pr.version = pr.version + 1",
         "pr.updated_at = CURRENT_TIMESTAMP(6)",
       );
     }
-    if (status) {
-      set.push(
+    if (result.status) {
+      lineSet.push(
         "prl.status = :status",
         "prl.version = prl.version + 1",
         "prl.updated_at = CURRENT_TIMESTAMP(6)",
       );
-      parameters.status = status;
+      parameters.status = result.status;
     }
+    const set = [...requestSet, ...lineSet];
     if (!set.length) return { affected_rows: 0 };
     return db(
       `UPDATE purchase_request pr
 JOIN purchase_request_line prl ON prl.purchase_request_id = pr.id
 SET ${set.join(", ")}
 WHERE pr.trace_no = :trace_no
-  AND (pr.salesperson IS NULL OR TRIM(pr.salesperson) = '')`,
+  AND (
+    pr.salesperson IS NULL OR TRIM(pr.salesperson) = ''
+    OR pr.contract_no IS NULL OR TRIM(pr.contract_no) = ''
+    OR pr.vessel_no IS NULL OR TRIM(pr.vessel_no) = ''
+    OR pr.consolidation_date IS NULL
+    OR pr.consolidation_port IS NULL OR TRIM(pr.consolidation_port) = ''
+    OR pr.sailing_date IS NULL
+  )`,
       parameters,
       1,
     );
   }
 
+  async function loginHejia() {
+    const companies = await json({
+      method: "POST",
+      url: `${HEJIA_BASE}/servlet/ComIDServlet`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      data: "",
+    });
+    const company =
+      array(companies).find((item) => item.nameCom === COMPANY_NAME) ||
+      array(companies)[0];
+    if (!company?.idCom) throw new Error("未找到华越物资供应追踪系统组织");
+    const result = await json({
+      method: "POST",
+      url: `${HEJIA_BASE}/servlet/login`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      data: form({
+        comId: company.idCom,
+        userId: config.hejiaUsername,
+        password: config.hejiaPassword,
+        uncheck: "Y",
+      }),
+    });
+    if (result.errorCode || result.errorMsg)
+      throw new Error(result.errorMsg || `何佳登录失败：${result.errorCode}`);
+    return result.loginUser;
+  }
   async function dataset() {
-    const result = await hejiaJson(
-      "/servlet/FlexUIServlet",
-      form({ menuId: MENU_ID, menuName: MENU_NAME }),
-    );
+    const result = await json({
+      method: "POST",
+      url: `${HEJIA_BASE}/servlet/FlexUIServlet`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      data: form({ menuId: MENU_ID, menuName: MENU_NAME }),
+    });
     if (String(result?.result?.code) !== "1")
       throw new Error(result?.result?.msg || "加载何佳查询配置失败");
     const sets = array(result?.dataSource?.dataSets?.dataSet);
@@ -391,60 +347,56 @@ WHERE pr.trace_no = :trace_no
       cell && typeof cell === "object" && "val" in cell ? cell.val : cell,
     );
   }
-  function limited(value) {
-    const text = clean(value);
+  function joined(values) {
+    const text = [...new Set(values.map(clean).filter(Boolean))].join(" / ");
     return text.length <= 128 ? text : `${text.slice(0, 127)}…`;
   }
-  function validDate(value) {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if (!match) return false;
+  function fieldAlias(fields, names, headers) {
+    const normalizedHeaders = headers.map(clean);
+    const field =
+      fields.find((item) => names.includes(clean(item.name))) ||
+      fields.find((item) => {
+        const header = clean(item.headerText);
+        return normalizedHeaders.some(
+          (candidate) => header === candidate || header.includes(candidate),
+        );
+      });
+    return field?.dataField;
+  }
+  function normalizedDate(value) {
+    const match = clean(value).match(
+      /(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?/,
+    );
+    if (!match) return "";
     const year = Number(match[1]);
     const month = Number(match[2]);
     const day = Number(match[3]);
     const date = new Date(Date.UTC(year, month - 1, day));
-    return (
-      date.getUTCFullYear() === year &&
-      date.getUTCMonth() === month - 1 &&
-      date.getUTCDate() === day
-    );
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    )
+      return "";
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
-  function requestDate(value) {
-    const date = clean(value);
-    if (date && !validDate(date))
-      throw new Error(`何佳申购日期格式异常：${date}`);
-    return date;
-  }
-  function selectBestRow(rows, aliases) {
-    const dataFields = [
-      ...new Set(Object.values(aliases).map(clean).filter(Boolean)),
-    ];
-    let selected = null;
-    let selectedNonEmptyCount = -1;
-    rows.forEach((row) => {
-      const nonEmptyCount = dataFields.reduce(
-        (count, dataField) => count + (rowValue(row, dataField) ? 1 : 0),
-        0,
-      );
-      if (nonEmptyCount > selectedNonEmptyCount) {
-        selected = row;
-        selectedNonEmptyCount = nonEmptyCount;
-      }
-    });
-    return {
-      row: selected,
-      nonEmptyCount: Math.max(0, selectedNonEmptyCount),
-    };
+  function latestDate(values) {
+    return values.map(normalizedDate).filter(Boolean).sort().at(-1) || "";
   }
   async function queryTrace(source, traceNo) {
     const fields = array(source.fields.field);
     const aliases = Object.fromEntries(
       fields.map((field) => [field.name, field.dataField]),
     );
-    const result = await hejiaJson(
-      "/servlet/DataSetQueryServlet",
-      form({ json: base64(queryPayload(source, traceNo)) }),
-      45000,
-    );
+    const result = await json({
+      method: "POST",
+      url: `${HEJIA_BASE}/servlet/DataSetQueryServlet`,
+      timeout: 45000,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      data: form({ json: base64(queryPayload(source, traceNo)) }),
+    });
     if (String(result?.result?.code) !== "1")
       throw new Error(result?.result?.msg || `查询 ${traceNo} 失败`);
     const rows = array(result?.dataSource?.rows?.row);
@@ -452,14 +404,50 @@ WHERE pr.trace_no = :trace_no
       (row) => rowValue(row, aliases.var_trackno) === clean(traceNo),
     );
     const matched = exact.length ? exact : rows;
-    if (!aliases.date_req) throw new Error("何佳配置缺少申购日期字段 date_req");
-    const selected = selectBestRow(matched, aliases);
+    const contractAlias = fieldAlias(
+      fields,
+      ["var_contractno", "var_contract_no", "var_pactno"],
+      ["合同号", "合同编号"],
+    );
+    const vesselAlias = fieldAlias(
+      fields,
+      ["var_shipno", "var_vesselno", "var_boatno"],
+      ["船号", "船名/航次"],
+    );
+    const consolidationDateAlias = fieldAlias(
+      fields,
+      ["date_jg", "date_collectport", "date_consolidation"],
+      ["集港日期"],
+    );
+    const consolidationPortAlias = fieldAlias(
+      fields,
+      ["var_jgport", "var_collectport", "var_consolidation_port"],
+      ["集港港口", "集港口岸"],
+    );
+    const sailingDateAlias = fieldAlias(
+      fields,
+      ["date_ship", "date_sailing", "date_departure"],
+      ["发船日期", "开船日期"],
+    );
     return {
       count: matched.length,
-      selectedNonEmptyCount: selected.nonEmptyCount,
-      status: limited(rowValue(selected.row, aliases.flag_prog)),
-      salesperson: limited(rowValue(selected.row, aliases.var_reqclerk)),
-      purchaseDate: requestDate(rowValue(selected.row, aliases.date_req)),
+      status: joined(matched.map((row) => rowValue(row, aliases.flag_prog))),
+      salesperson: joined(
+        matched.map((row) => rowValue(row, aliases.var_reqclerk)),
+      ),
+      contractNo: joined(
+        matched.map((row) => rowValue(row, contractAlias)),
+      ),
+      vesselNo: joined(matched.map((row) => rowValue(row, vesselAlias))),
+      consolidationDate: latestDate(
+        matched.map((row) => rowValue(row, consolidationDateAlias)),
+      ),
+      consolidationPort: joined(
+        matched.map((row) => rowValue(row, consolidationPortAlias)),
+      ),
+      sailingDate: latestDate(
+        matched.map((row) => rowValue(row, sailingDateAlias)),
+      ),
     };
   }
 
@@ -483,20 +471,17 @@ WHERE pr.trace_no = :trace_no
   }
   function renderStats() {
     if (ui)
-      ui.stats.textContent = `扫描 ${stats.scanned} · 命中 ${stats.found} · 更新 ${stats.updated} · 跳过 ${stats.skipped} · 失败 ${stats.failed} · 缓存 ${stats.cached}`;
+      ui.stats.textContent = `扫描 ${stats.scanned} · 命中 ${stats.found} · 更新 ${stats.updated} · 跳过 ${stats.skipped} · 失败 ${stats.failed}`;
   }
   function status(text, kind = "idle") {
     if (!ui) return;
     ui.status.textContent = text;
     ui.status.dataset.kind = kind;
   }
-  function isLoginPage() {
-    return /\/hjerp\/(?:login|loginServlet)(?:[/?#]|$)/i.test(
-      location.pathname,
-    );
-  }
   function credentials() {
     const missing = [];
+    if (!config.hejiaUsername) missing.push("何佳账号");
+    if (!config.hejiaPassword) missing.push("何佳密码");
     if (!config.adminUsername) missing.push("超管账号");
     if (!config.adminPassword) missing.push("超管密码");
     if (missing.length)
@@ -506,15 +491,8 @@ WHERE pr.trace_no = :trace_no
   async function run(trigger = "manual") {
     if (running) return log("已有同步任务正在执行", "warn");
     running = true;
-    stopSchedule();
-    stats = {
-      scanned: 0,
-      found: 0,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-      cached: 0,
-    };
+    clearTimeout(timer);
+    stats = { scanned: 0, found: 0, updated: 0, skipped: 0, failed: 0 };
     renderStats();
     if (ui) {
       ui.run.disabled = true;
@@ -522,66 +500,59 @@ WHERE pr.trace_no = :trace_no
     }
     status("连接中", "running");
     try {
-      if (isLoginPage()) throw new Error("请先登录何佳系统，再执行同步");
       credentials();
       log(`${trigger === "auto" ? "自动" : "手动"}同步开始`);
-      const source = await dataset();
-      log(
-        `已复用当前何佳会话，加载“${source.headerText || MENU_NAME}”查询配置`,
-      );
-      const targetResult = await targets();
-      const rows = targetResult.rows;
+      const rows = await targets();
       stats.scanned = rows.length;
-      stats.cached = targetResult.excludedCount;
       renderStats();
-      if (stats.cached)
-        log(`SQL 已排除 ${stats.cached} 个三天内无结果的追溯号`);
       if (!rows.length) {
         status("无需同步", "success");
-        log(
-          stats.cached
-            ? "没有需要同步的记录，三天无结果缓存已在 SQL 中排除"
-            : "没有缺失业务员且带追溯号的记录",
-        );
+        log("没有缺失业务员且带追溯号的记录");
         return;
       }
+      const user = await loginHejia();
+      log(`何佳登录成功：${user?.userName || config.hejiaUsername}`);
+      const source = await dataset();
+      log(`已加载“${source.headerText || MENU_NAME}”查询配置`);
       for (let index = 0; index < rows.length; index += 1) {
         const traceNo = clean(rows[index].trace_no);
         status(`${index + 1}/${rows.length} ${traceNo}`, "running");
         try {
           const result = await queryTrace(source, traceNo);
-          if (result.count > 1)
-            log(
-              `${traceNo}：何佳返回 ${result.count} 条，采用非空列最多的一条（${result.selectedNonEmptyCount} 列）`,
-            );
           if (!result.count) {
-            rememberNotFound(traceNo);
-            stats.cached = notFoundTraceNos().length;
             stats.skipped += 1;
-            log(`${traceNo}：何佳未查询到记录，三天内不再尝试`, "warn");
+            log(`${traceNo}：何佳未查询到记录`, "warn");
           } else if (
             !result.status &&
             !result.salesperson &&
-            !result.purchaseDate
+            !result.contractNo &&
+            !result.vesselNo &&
+            !result.consolidationDate &&
+            !result.consolidationPort &&
+            !result.sailingDate
           ) {
-            forgetNotFound(traceNo);
             stats.found += 1;
             stats.skipped += 1;
-            log(`${traceNo}：状态、业务员和申购日期均为空`, "warn");
+            log(`${traceNo}：可同步字段均为空`, "warn");
           } else {
-            forgetNotFound(traceNo);
             stats.found += 1;
-            const summary = `业务员=${result.salesperson || "空"}，状态=${result.status || "空"}，申购日期=${result.purchaseDate || "空"}`;
+            const summary = [
+              ["业务员", result.salesperson],
+              ["状态", result.status],
+              ["合同号", result.contractNo],
+              ["船号", result.vesselNo],
+              ["集港日期", result.consolidationDate],
+              ["集港港口", result.consolidationPort],
+              ["发船日期", result.sailingDate],
+            ]
+              .filter(([, value]) => value)
+              .map(([label, value]) => `${label}=${value}`)
+              .join("，");
             if (config.dryRun) {
               stats.skipped += 1;
               log(`${traceNo}：演练模式，${summary}`);
             } else {
-              const updated = await updateTarget(
-                traceNo,
-                result.status,
-                result.salesperson,
-                result.purchaseDate,
-              );
+              const updated = await updateTarget(traceNo, result);
               if (Number(updated.affected_rows || 0) > 0) {
                 stats.updated += 1;
                 log(`${traceNo}：已更新，${summary}`, "success");
@@ -608,12 +579,8 @@ WHERE pr.trace_no = :trace_no
     } catch (error) {
       stats.failed += 1;
       renderStats();
-      const loginRequired = error.message.includes("请先登录何佳系统");
-      status(
-        loginRequired ? "请先登录何佳系统" : "同步失败",
-        loginRequired ? "warn" : "error",
-      );
-      log(error.message, loginRequired ? "warn" : "error");
+      status("同步失败", "error");
+      log(error.message, "error");
     } finally {
       running = false;
       if (ui) {
@@ -623,57 +590,31 @@ WHERE pr.trace_no = :trace_no
       if (config.autoEnabled) schedule();
     }
   }
-  function stopSchedule() {
-    clearTimeout(timer);
-    timer = null;
-  }
-  function countdown(milliseconds) {
-    const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const short = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-    return hours ? `${hours}:${short}` : short;
-  }
   function schedule(delay) {
-    stopSchedule();
+    clearTimeout(timer);
     if (!config.autoEnabled) return;
-    if (isLoginPage()) {
-      status("请先登录何佳系统", "warn");
-      return;
-    }
-    const interval =
-      int(config.intervalMinutes, defaults.intervalMinutes, 1, 1440) * 60000;
-    const runAt = Date.now() + (typeof delay === "number" ? delay : interval);
-    const tick = () => {
-      if (!config.autoEnabled) return stopSchedule();
-      const remaining = runAt - Date.now();
-      if (remaining <= 0) {
-        timer = null;
-        run("auto");
-        return;
-      }
-      status(`自动同步倒计时 ${countdown(remaining)}`);
-      timer = setTimeout(tick, Math.min(1000, remaining));
-    };
-    tick();
+    const milliseconds = int(config.intervalMinutes, 10, 1, 1440) * 60000;
+    timer = setTimeout(
+      () => run("auto"),
+      typeof delay === "number" ? delay : milliseconds,
+    );
+    status(`自动模式：${config.intervalMinutes} 分钟`);
   }
   function formConfig() {
     return {
+      hejiaUsername: ui.hejiaUsername.value.trim(),
+      hejiaPassword: ui.hejiaPassword.value,
       adminUsername: ui.adminUsername.value.trim(),
       adminPassword: ui.adminPassword.value,
-      intervalMinutes: int(
-        ui.interval.value,
-        defaults.intervalMinutes,
-        1,
-        1440,
-      ),
-      batchSize: int(ui.batch.value, defaults.batchSize, 1, 200),
+      intervalMinutes: int(ui.interval.value, 10, 1, 1440),
+      batchSize: int(ui.batch.value, 50, 1, 200),
       dryRun: ui.dryRun.checked,
       autoEnabled: ui.auto.checked,
     };
   }
   function fillForm() {
+    ui.hejiaUsername.value = config.hejiaUsername;
+    ui.hejiaPassword.value = config.hejiaPassword;
     ui.adminUsername.value = config.adminUsername;
     ui.adminPassword.value = config.adminPassword;
     ui.interval.value = config.intervalMinutes;
@@ -723,7 +664,7 @@ WHERE pr.trace_no = :trace_no
 <style>
 :host{all:initial;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2937}*{box-sizing:border-box}.panel{width:380px;overflow:hidden;border:1px solid #cbd5e1;border-radius:14px;background:#fff;box-shadow:0 18px 45px #0f172a38}.head{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 14px;color:#fff;background:linear-gradient(135deg,#0f766e,#2563eb);cursor:move;user-select:none}.title{flex:1;font-size:14px;font-weight:700}.status{max-width:170px;overflow:hidden;padding:3px 8px;border-radius:999px;background:#ffffff2e;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.status[data-kind=success]{background:#10b98155}.status[data-kind=warn]{background:#f59e0b66}.status[data-kind=error]{background:#ef444466}.mini{width:28px;height:28px;border:0;border-radius:8px;color:#fff;background:#ffffff22;cursor:pointer}.body{padding:12px}:host([data-minimized=true]) .body{display:none}:host([data-minimized=true]) .panel{width:260px}.toolbar{display:flex;align-items:center;gap:9px}.run,.save{height:34px;border-radius:9px;padding:0 14px;font-weight:650;cursor:pointer}.run{border:0;color:#fff;background:#2563eb}.save{border:1px solid #cbd5e1;color:#334155;background:#fff}.switch{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#475569}.switch input,.check input{accent-color:#2563eb}.stats{margin:10px 0;padding:8px 10px;border-radius:9px;color:#475569;background:#f1f5f9;font-size:12px}details{border:1px solid #e2e8f0;border-radius:10px}summary{padding:9px 10px;font-size:12px;font-weight:650;cursor:pointer}.settings{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 10px 10px}label{display:grid;gap:4px;color:#64748b;font-size:11px}input[type=text],input[type=password],input[type=number]{width:100%;height:31px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.full{grid-column:1/-1}.check{display:flex;align-items:center;gap:6px}.notice{grid-column:1/-1;color:#92400e;font-size:11px;line-height:1.5}.logs{height:170px;margin-top:10px;overflow:auto;border-radius:9px;padding:8px;color:#cbd5e1;background:#0f172a;font:11px/1.55 Consolas,"Microsoft YaHei",monospace}.logs div{margin-bottom:2px;overflow-wrap:anywhere}.logs .success{color:#6ee7b7}.logs .warn{color:#fcd34d}.logs .error{color:#fca5a5}button:disabled{opacity:.55;cursor:wait}
 </style>
-<section class="panel"><header class="head"><div class="title">华友何佳同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0 · 缓存 0</div><details><summary>本系统连接与同步设置</summary><div class="settings"><label>超管账号<input class="admin-user" type="text"></label><label>超管密码<input class="admin-pass" type="password"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">脚本直接复用当前何佳登录会话；超管密码保存在油猴脚本私有存储中。何佳明确无结果的追溯号缓存三天，并在 SQL 中排除；可通过油猴菜单手动清空。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
+<section class="panel"><header class="head"><div class="title">华友何佳同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>何佳账号<input class="hejia-user" type="text"></label><label>何佳密码<input class="hejia-pass" type="password"></label><label>超管账号<input class="admin-user" type="text"></label><label>超管密码<input class="admin-pass" type="password"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">密码保存在油猴脚本私有存储中。自动模式默认关闭，仅处理存在待补齐字段且追溯号不为空的记录。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
     document.documentElement.append(host);
     ui = {
       status: shadow.querySelector(".status"),
@@ -732,6 +673,8 @@ WHERE pr.trace_no = :trace_no
       auto: shadow.querySelector(".auto"),
       stats: shadow.querySelector(".stats"),
       logs: shadow.querySelector(".logs"),
+      hejiaUsername: shadow.querySelector(".hejia-user"),
+      hejiaPassword: shadow.querySelector(".hejia-pass"),
       adminUsername: shadow.querySelector(".admin-user"),
       adminPassword: shadow.querySelector(".admin-pass"),
       interval: shadow.querySelector(".interval"),
@@ -750,7 +693,7 @@ WHERE pr.trace_no = :trace_no
       log("设置已保存", "success");
       if (config.autoEnabled) schedule(1500);
       else {
-        stopSchedule();
+        clearTimeout(timer);
         status("待机");
       }
     });
@@ -760,7 +703,7 @@ WHERE pr.trace_no = :trace_no
         log("自动模式已开启");
         schedule(1500);
       } else {
-        stopSchedule();
+        clearTimeout(timer);
         status("自动模式已关闭");
         log("自动模式已关闭");
       }
@@ -774,20 +717,10 @@ WHERE pr.trace_no = :trace_no
     saveConfig({ autoEnabled: !config.autoEnabled });
     if (ui) ui.auto.checked = config.autoEnabled;
     if (config.autoEnabled) schedule(1000);
-    else stopSchedule();
+    else clearTimeout(timer);
     log(`自动模式已${config.autoEnabled ? "开启" : "关闭"}`);
   });
-  GM_registerMenuCommand("华友何佳同步：清空三天无结果缓存", () =>
-    clearNotFoundCache(),
-  );
 
-  stats.cached = notFoundTraceNos().length;
   createPanel();
-  if (isLoginPage()) {
-    status("请先登录何佳系统", "warn");
-    log("脚本已加载；请先登录何佳系统，再执行同步", "warn");
-  } else {
-    log("脚本已加载；当前何佳登录会话将用于查询，请填写本系统超管密码");
-  }
-  if (stats.cached) log(`已加载 ${stats.cached} 个三天内无结果的追溯号缓存`);
+  log("脚本已加载；首次使用请填写何佳密码和超管密码");
 })();

@@ -10,6 +10,7 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
+import { purchaseCategoryOptions } from '@/constants/purchase'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,9 +23,13 @@ const saving = ref(false)
 const images = ref<FileObject[]>([])
 const planDate = ref<number | null>(null)
 const purchaseDate = ref<number | null>(null)
+const consolidationDate = ref<number | null>(null)
+const sailingDate = ref<number | null>(null)
 const form = reactive<PurchaseRecordWrite>({
   plan_date: '',
   material_code: '',
+  category: '',
+  demand_department: '',
   material_name: '',
   model_spec: '',
   unit_id: null,
@@ -38,6 +43,11 @@ const form = reactive<PurchaseRecordWrite>({
   image_ids: [],
   purchase_order_no: '',
   trace_no: '',
+  contract_no: '',
+  vessel_no: '',
+  consolidation_date: undefined,
+  consolidation_port: '',
+  sailing_date: undefined,
   purchase_date: '',
   salesperson: '',
   status: '',
@@ -49,6 +59,8 @@ function syncForm(value: PurchaseRecord) {
   Object.assign(form, {
     plan_date: value.plan_date,
     material_code: value.material_code || '',
+    category: value.category || '',
+    demand_department: value.demand_department,
     material_name: value.material_name,
     model_spec: value.model_spec,
     unit_id: value.unit_id,
@@ -62,6 +74,11 @@ function syncForm(value: PurchaseRecord) {
     image_ids: value.images.map((image) => image.id),
     purchase_order_no: value.purchase_order_no || '',
     trace_no: value.trace_no || '',
+    contract_no: value.contract_no || '',
+    vessel_no: value.vessel_no || '',
+    consolidation_date: value.consolidation_date,
+    consolidation_port: value.consolidation_port || '',
+    sailing_date: value.sailing_date,
     purchase_date: value.purchase_date || '',
     salesperson: value.salesperson || '',
     status: value.status,
@@ -70,6 +87,8 @@ function syncForm(value: PurchaseRecord) {
   })
   planDate.value = dateToTimestamp(value.plan_date)
   purchaseDate.value = dateToTimestamp(value.purchase_date)
+  consolidationDate.value = dateToTimestamp(value.consolidation_date)
+  sailingDate.value = dateToTimestamp(value.sailing_date)
   images.value = [...value.images]
 }
 
@@ -106,12 +125,20 @@ async function save() {
       ...form,
       plan_date: toShanghaiDate(planDate.value),
       purchase_date: toShanghaiDate(purchaseDate.value),
+      consolidation_date: consolidationDate.value
+        ? toShanghaiDate(consolidationDate.value)
+        : undefined,
+      sailing_date: sailingDate.value ? toShanghaiDate(sailingDate.value) : undefined,
       material_code: form.material_code?.trim() || undefined,
+      category: form.category?.trim() || undefined,
       subitem_no: form.subitem_no?.trim() || undefined,
       plan_remark: form.plan_remark?.trim() || undefined,
       record_remark: form.record_remark?.trim() || undefined,
       purchase_order_no: form.purchase_order_no?.trim() || null,
       trace_no: form.trace_no?.trim() || null,
+      contract_no: form.contract_no?.trim() || null,
+      vessel_no: form.vessel_no?.trim() || null,
+      consolidation_port: form.consolidation_port?.trim() || null,
       salesperson: form.salesperson?.trim() || undefined,
       image_ids: images.value.map((image) => image.id),
     })
@@ -151,8 +178,40 @@ onMounted(() => {
           <n-form-item label="追溯号">
             <n-input v-model:value="form.trace_no" maxlength="128" placeholder="可留空" />
           </n-form-item>
+          <n-form-item label="合同号">
+            <n-input v-model:value="form.contract_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="船号">
+            <n-input v-model:value="form.vessel_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="集港日期">
+            <n-date-picker
+              v-model:value="consolidationDate"
+              type="date"
+              class="full-width"
+              clearable
+            />
+          </n-form-item>
+          <n-form-item label="集港港口">
+            <n-input v-model:value="form.consolidation_port" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="发船日期">
+            <n-date-picker v-model:value="sailingDate" type="date" class="full-width" clearable />
+          </n-form-item>
           <n-form-item label="物料编码">
             <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="类别">
+            <n-select
+              v-model:value="form.category"
+              :options="purchaseCategoryOptions"
+              filterable
+              clearable
+              placeholder="选择类别"
+            />
+          </n-form-item>
+          <n-form-item label="需求部门" required>
+            <n-input v-model:value="form.demand_department" maxlength="128" />
           </n-form-item>
           <n-form-item label="名称" required>
             <n-input v-model:value="form.material_name" maxlength="128" />

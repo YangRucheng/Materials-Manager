@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_order_no` VARCHAR(128) NULL,
   `trace_no` VARCHAR(128) NULL,
+  `contract_no` VARCHAR(128) NULL,
+  `vessel_no` VARCHAR(128) NULL,
+  `consolidation_date` DATE NULL,
+  `consolidation_port` VARCHAR(128) NULL,
+  `sailing_date` DATE NULL,
   `salesperson` VARCHAR(128) NULL,
   `remark` VARCHAR(1000) NULL,
   `purchase_date` DATE NULL,
@@ -78,7 +83,12 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_request` PRIMARY KEY (`id`),
   INDEX `ix_purchase_request_trace_no` (`trace_no`),
-  INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`)
+  INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`),
+  INDEX `ix_purchase_request_contract_no` (`contract_no`),
+  INDEX `ix_purchase_request_vessel_no` (`vessel_no`),
+  INDEX `ix_purchase_request_consolidation_date` (`consolidation_date`),
+  INDEX `ix_purchase_request_consolidation_port` (`consolidation_port`),
+  INDEX `ix_purchase_request_sailing_date` (`sailing_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_material` (
@@ -131,6 +141,9 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `plan_no` VARCHAR(32) NOT NULL,
   `plan_date` DATE NOT NULL,
   `material_code` VARCHAR(64) NULL,
+  `category` VARCHAR(64) NULL,
+  `urgency` VARCHAR(32) NOT NULL DEFAULT '正常',
+  `demand_department` VARCHAR(128) NOT NULL DEFAULT 'HXNI 检修维护部',
   `name` VARCHAR(128) NOT NULL,
   `model_spec` VARCHAR(255) NOT NULL,
   `unit_id` BIGINT UNSIGNED NOT NULL,
@@ -142,7 +155,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `remark` VARCHAR(1000) NULL,
   `stock_material_id` BIGINT UNSIGNED NULL,
   `identity_hash` VARCHAR(64) NOT NULL,
-  `status` ENUM('NORMAL', 'ARCHIVED') NOT NULL DEFAULT 'NORMAL',
+  `status` ENUM('NORMAL', 'DEFERRED', 'ARCHIVED') NOT NULL DEFAULT 'NORMAL',
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -156,6 +169,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   INDEX `ix_purchase_material_identity_hash` (`identity_hash`),
   INDEX `ix_purchase_material_plan_date` (`plan_date`),
   INDEX `ix_purchase_material_material_code` (`material_code`),
+  INDEX `ix_purchase_material_category` (`category`),
   INDEX `ix_purchase_material_model_spec` (`model_spec`),
   INDEX `ix_purchase_material_name` (`name`),
   INDEX `ix_purchase_material_purchase_responsible` (`purchase_responsible`),

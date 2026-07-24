@@ -10,7 +10,7 @@ X-Agent-Password: <超级管理员密码>
 ```
 
 - `GET /api/v1/agent/database/schema`：读取全库表、字段、主键和外键结构。
-- `POST /api/v1/agent/database/execute`：执行单条参数化 `SELECT`、`INSERT`、`UPDATE` 或 `DELETE`。
+- `POST /api/v1/agent/database/execute`：执行单条参数化 `SELECT`、`INSERT`、`UPDATE`、`DELETE`，或对申购计划/申购记录表执行不含删除与重命名的受限 `ALTER TABLE`。
 
 请求示例：
 

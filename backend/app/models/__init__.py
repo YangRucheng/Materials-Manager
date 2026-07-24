@@ -178,6 +178,13 @@ class PurchaseMaterial(AuditMixin, Base):
     plan_no: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     plan_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     material_code: Mapped[str | None] = mapped_column(String(64), index=True)
+    category: Mapped[str | None] = mapped_column(String(64), index=True)
+    urgency: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="正常", server_default="正常"
+    )
+    demand_department: Mapped[str] = mapped_column(
+        String(128), nullable=False, default="HXNI 检修维护部", server_default="HXNI 检修维护部"
+    )
     name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     unit_id: Mapped[int] = mapped_column(
@@ -230,6 +237,11 @@ class PurchaseRequest(AuditMixin, Base):
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     purchase_order_no: Mapped[str | None] = mapped_column(String(128), index=True)
     trace_no: Mapped[str | None] = mapped_column(String(128), index=True)
+    contract_no: Mapped[str | None] = mapped_column(String(128), index=True)
+    vessel_no: Mapped[str | None] = mapped_column(String(128), index=True)
+    consolidation_date: Mapped[date | None] = mapped_column(Date, index=True)
+    consolidation_port: Mapped[str | None] = mapped_column(String(128), index=True)
+    sailing_date: Mapped[date | None] = mapped_column(Date, index=True)
     salesperson: Mapped[str | None] = mapped_column(String(128))
     remark: Mapped[str | None] = mapped_column(String(1000))
     purchase_date: Mapped[date | None] = mapped_column(Date)
