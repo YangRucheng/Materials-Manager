@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ColumnVisibilityPicker: typeof import('./src/components/ColumnVisibilityPicker.vue')['default']
+    ExportButton: typeof import('./src/components/ExportButton.vue')['default']
     ImageUploader: typeof import('./src/components/ImageUploader.vue')['default']
     MaterialSelector: typeof import('./src/components/MaterialSelector.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']

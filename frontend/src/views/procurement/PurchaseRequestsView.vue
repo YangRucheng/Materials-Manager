@@ -6,6 +6,8 @@ import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generate
 import { procurementApi } from '@/api/procurement'
 import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import ExportButton from '@/components/ExportButton.vue'
+import type { ExportOption } from '@/types/export'
 import {
   getTableScrollX,
   preventTableColumnCompression,
@@ -26,6 +28,7 @@ const loading = ref(false)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
 const resultExporting = ref(false)
+const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
 const total = ref(0)
 const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
@@ -315,6 +318,10 @@ async function exportResults() {
   }
 }
 
+function handleExport(key: string) {
+  if (key === 'results') void exportResults()
+}
+
 function resetFilters() {
   filters.purchase_order_no = ''
   filters.trace_no = ''
@@ -350,7 +357,10 @@ onActivated(() => {
       <div>
         <h1 class="page-title">申购记录</h1>
       </div>
-      <n-tag :bordered="false" round type="info">共 {{ total }} 条记录</n-tag>
+      <n-space align="center">
+        <n-tag :bordered="false" round type="info">共 {{ total }} 条记录</n-tag>
+        <ExportButton :options="exportOptions" :loading="resultExporting" @select="handleExport" />
+      </n-space>
     </div>
     <n-card class="filter-card" :bordered="false">
       <div class="filter-heading">
@@ -436,7 +446,6 @@ onActivated(() => {
         />
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
-          <n-button :loading="resultExporting" @click="exportResults">导出结果</n-button>
           <n-button
             secondary
             type="primary"
