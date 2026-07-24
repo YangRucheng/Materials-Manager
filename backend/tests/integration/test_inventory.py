@@ -300,3 +300,82 @@ async def test_low_stock_replenishment_uses_recent_consumption_and_defaults(
     assert plan.json()["purchase_responsible"] == "自定义负责人李工"
     low = await client.get("/api/v1/inventory/low-stock", headers=warehouse)
     assert low.json()["items"][0]["suggested_purchase_qty"] == "7"
+
+
+@pytest.mark.asyncio
+async def test_stock_material_search_supports_or_terms(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    first_id = await create_stock(client, headers, "交流接触器")
+    second = await client.post(
+        "/api/v1/stock-materials",
+        headers=headers,
+        json={
+            "name": "温度传感器",
+            "model_spec": "PT100",
+            "unit_id": 1,
+            "remark": "测试 OR 查询",
+            "image_ids": [],
+        },
+    )
+    assert second.status_code == 201, second.text
+
+    materials = await client.get(
+        "/api/v1/stock-materials", headers=headers, params={"keyword": "交流|PT100"}
+    )
+    assert materials.status_code == 200, materials.text
+    assert {item["id"] for item in materials.json()["items"]} == {
+        first_id,
+        second.json()["id"],
+    }
+
+    balances = await client.get(
+        "/api/v1/inventory/balances", headers=headers, params={"keyword": "交流｜PT100"}
+    )
+    assert balances.status_code == 200, balances.text
+    assert {item["stock_material_id"] for item in balances.json()["items"]} == {
+        first_id,
+        second.json()["id"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_stock_material_delete_requires_no_operation_records(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    deletable_id = await create_stock(client, headers, "可删除物资")
+    deletable = await client.get(f"/api/v1/stock-materials/{deletable_id}", headers=headers)
+    assert deletable.status_code == 200, deletable.text
+    assert deletable.json()["has_operation_records"] is False
+
+    deleted = await client.delete(
+        f"/api/v1/stock-materials/{deletable_id}",
+        headers=headers,
+        params={"version": deletable.json()["version"]},
+    )
+    assert deleted.status_code == 204, deleted.text
+    missing = await client.get(f"/api/v1/stock-materials/{deletable_id}", headers=headers)
+    assert missing.status_code == 400
+    assert missing.json()["code"] == "NOT_FOUND"
+
+    protected_id = await create_stock(client, headers, "有操作记录物资")
+    inbound = await client.post(
+        "/api/v1/inventory/inbounds",
+        headers=headers,
+        json=operation_payload(
+            "delete-protected-material",
+            protected_id,
+            "1",
+            "2026-07-24T10:00:00+08:00",
+        ),
+    )
+    assert inbound.status_code == 201, inbound.text
+    protected = await client.get(f"/api/v1/stock-materials/{protected_id}", headers=headers)
+    assert protected.status_code == 200, protected.text
+    assert protected.json()["has_operation_records"] is True
+
+    rejected = await client.delete(
+        f"/api/v1/stock-materials/{protected_id}",
+        headers=headers,
+        params={"version": protected.json()["version"]},
+    )
+    assert rejected.status_code == 409, rejected.text
+    assert rejected.json()["code"] == "STOCK_MATERIAL_IN_USE"

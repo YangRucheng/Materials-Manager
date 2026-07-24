@@ -45,7 +45,7 @@ async function savePolicy() {
   try {
     material.value = await inventoryApi.savePolicy(Number(route.params.id), {
       ...policy,
-      version: material.value?.version,
+      version: material.value?.replenishment_policy?.version,
     })
     if (balance.value) {
       balance.value.minimum_qty = policy.minimum_qty

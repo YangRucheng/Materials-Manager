@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, cast, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from app.models import (
     StockBalance,
     StockMaterial,
     StockMaterialImage,
+    StockOperationLine,
 )
 from app.schemas import (
     BatchUpdatePurchasePlansRequest,
@@ -59,7 +60,7 @@ async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject
     return [by_id[item_id] for item_id in image_ids]
 
 
-def stock_read(item: StockMaterial) -> StockMaterialRead:
+def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> StockMaterialRead:
     return StockMaterialRead(
         id=item.id,
         name=item.name,
@@ -70,6 +71,7 @@ def stock_read(item: StockMaterial) -> StockMaterialRead:
         current_qty=item.balance.quantity if item.balance else 0,
         images=[file_read(link.file) for link in item.images],
         replenishment_policy=item.replenishment_policy,
+        has_operation_records=has_operation_records,
         created_at=utc_aware(item.created_at),
         updated_at=utc_aware(item.updated_at),
         version=item.version,
@@ -81,6 +83,36 @@ async def get_stock_material(session: AsyncSession, material_id: int) -> StockMa
     if item is None:
         raise not_found("二级库物资")
     return item
+
+
+async def stock_material_ids_with_operations(
+    session: AsyncSession, material_ids: list[int]
+) -> set[int]:
+    if not material_ids:
+        return set()
+    ids = await session.scalars(
+        select(StockOperationLine.stock_material_id)
+        .where(StockOperationLine.stock_material_id.in_(material_ids))
+        .distinct()
+    )
+    return set(ids.all())
+
+
+async def delete_stock_material(session: AsyncSession, item: StockMaterial, version: int) -> None:
+    validate_version(version, item.version)
+    if await stock_material_ids_with_operations(session, [item.id]):
+        raise AppError(
+            "STOCK_MATERIAL_IN_USE",
+            "该物资已有出入库操作记录，仅支持编辑，不能删除",
+            status_code=409,
+        )
+    await session.execute(
+        update(PurchaseMaterial)
+        .where(PurchaseMaterial.stock_material_id == item.id)
+        .values(stock_material_id=None)
+    )
+    await session.delete(item)
+    await session.flush()
 
 
 async def create_stock_material(session: AsyncSession, data: StockMaterialCreate) -> StockMaterial:
@@ -366,9 +398,9 @@ async def search_stock_materials(
     page_size: int,
 ) -> tuple[list[StockMaterial], int]:
     query = select(StockMaterial)
-    if keyword:
-        like = f"%{keyword}%"
-        query = query.where(or_(StockMaterial.name.like(like), StockMaterial.model_spec.like(like)))
+    keyword_condition = contains_any((StockMaterial.name, StockMaterial.model_spec), keyword)
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
     count = await session.scalar(select(func.count()).select_from(query.subquery()))
     items = list(
         (
@@ -543,9 +575,7 @@ async def purchase_filter_options(
         )
     )
     subitem_nos = list(
-        await session.scalars(
-            subitem_query.distinct().order_by(PurchaseMaterial.subitem_no)
-        )
+        await session.scalars(subitem_query.distinct().order_by(PurchaseMaterial.subitem_no))
     )
     return actual_demand_persons, purchase_responsibles, subitem_nos
 
