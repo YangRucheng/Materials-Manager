@@ -5,7 +5,7 @@
 export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_ONLY'
 export type OperationType = 'INBOUND' | 'OUTBOUND'
 export type SourceType = 'MANUAL' | 'REVERSAL' | 'INITIALIZATION'
-export type PurchasePlanStatus = '正常' | '已归档'
+export type PurchasePlanStatus = '正常' | '暂不申购' | '已归档'
 
 export interface ApiError {
   code: string
@@ -188,6 +188,7 @@ export interface PurchaseFilterOptions {
   actual_demand_persons: string[]
   purchase_responsibles: string[]
   subitem_nos: string[]
+  categories: string[]
 }
 export interface PurchaseRecordFilterOptions extends PurchaseFilterOptions {
   salespersons: string[]
@@ -197,6 +198,9 @@ export type PurchasePlanResultColumn =
   | 'plan_no'
   | 'plan_date'
   | 'material_code'
+  | 'category'
+  | 'urgency'
+  | 'demand_department'
   | 'name'
   | 'model_spec'
   | 'planned_qty'
@@ -213,13 +217,21 @@ export interface PurchasePlanResultExportRequest {
   empty_actual_demand_person: boolean
   subitem_no?: string
   empty_subitem_no: boolean
-  status?: PurchasePlanStatus
+  status?: PurchasePlanStatus[]
+  category?: string
 }
 export type PurchaseRecordResultColumn =
   | 'purchase_qty'
   | 'plan_date'
   | 'purchase_order_no'
   | 'trace_no'
+  | 'contract_no'
+  | 'vessel_no'
+  | 'consolidation_date'
+  | 'consolidation_port'
+  | 'sailing_date'
+  | 'category'
+  | 'demand_department'
   | 'material_name'
   | 'actual_demand_person'
   | 'purchase_responsible'
@@ -230,6 +242,7 @@ export interface PurchaseRecordResultExportRequest {
   columns: PurchaseRecordResultColumn[]
   purchase_order_no?: string
   trace_no?: string
+  category?: string
   name?: string
   model_spec?: string
   purchase_responsible?: string
@@ -242,6 +255,9 @@ export interface PurchaseMaterial {
   plan_no: string
   plan_date: string
   material_code?: string
+  category?: string
+  urgency: string
+  demand_department: string
   name: string
   model_spec: string
   unit_id: number
@@ -265,6 +281,9 @@ export interface PurchaseMaterial {
 export interface PurchaseMaterialWrite {
   plan_date?: string
   material_code?: string
+  category?: string
+  urgency?: string
+  demand_department?: string
   name: string
   model_spec: string
   unit_id: number | null
@@ -303,6 +322,11 @@ export interface PurchaseRequest {
   id: number
   purchase_order_no?: string | null
   trace_no?: string | null
+  contract_no?: string | null
+  vessel_no?: string | null
+  consolidation_date?: string
+  consolidation_port?: string | null
+  sailing_date?: string
   salesperson?: string
   record_remark?: string
   purchase_date?: string
@@ -318,8 +342,15 @@ export interface PurchaseRecord {
   plan_date: string
   purchase_order_no?: string | null
   trace_no?: string | null
+  contract_no?: string | null
+  vessel_no?: string | null
+  consolidation_date?: string
+  consolidation_port?: string | null
+  sailing_date?: string
   status: string
   material_code?: string
+  category?: string
+  demand_department: string
   material_name: string
   model_spec: string
   unit_id: number
@@ -342,6 +373,8 @@ export interface PurchaseRecord {
 export interface PurchaseRecordWrite {
   plan_date: string
   material_code?: string
+  category?: string
+  demand_department: string
   material_name: string
   model_spec: string
   unit_id: number | null
@@ -355,6 +388,11 @@ export interface PurchaseRecordWrite {
   image_ids: string[]
   purchase_order_no?: string | null
   trace_no?: string | null
+  contract_no?: string | null
+  vessel_no?: string | null
+  consolidation_date?: string
+  consolidation_port?: string | null
+  sailing_date?: string
   purchase_date: string
   salesperson?: string
   status: string
@@ -364,6 +402,11 @@ export interface PurchaseRecordWrite {
 export interface MovePurchasePlansWrite {
   purchase_order_no?: string | null
   trace_no?: string | null
+  contract_no?: string | null
+  vessel_no?: string | null
+  consolidation_date?: string
+  consolidation_port?: string | null
+  sailing_date?: string
   purchase_date: string
   salesperson?: string
   status: string

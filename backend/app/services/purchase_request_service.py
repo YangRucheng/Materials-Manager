@@ -36,8 +36,15 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         plan_date=material.plan_date,
         purchase_order_no=request.purchase_order_no,
         trace_no=request.trace_no,
+        contract_no=request.contract_no,
+        vessel_no=request.vessel_no,
+        consolidation_date=request.consolidation_date,
+        consolidation_port=request.consolidation_port,
+        sailing_date=request.sailing_date,
         status=line.status,
         material_code=material.material_code,
+        category=material.category,
+        demand_department=material.demand_department,
         material_name=material.name,
         model_spec=material.model_spec,
         unit_id=material.unit_id,
@@ -125,6 +132,11 @@ async def move_plans_to_record(
             else default_purchase_order_no()
         ),
         trace_no=data.trace_no or None,
+        contract_no=data.contract_no or None,
+        vessel_no=data.vessel_no or None,
+        consolidation_date=data.consolidation_date,
+        consolidation_port=data.consolidation_port or None,
+        sailing_date=data.sailing_date,
         salesperson=data.salesperson,
         remark=data.record_remark,
         purchase_date=data.purchase_date,
@@ -176,6 +188,9 @@ async def update_purchase_record(
         PurchaseMaterialUpdate(
             plan_date=data.plan_date,
             material_code=data.material_code,
+            category=data.category,
+            urgency=material.urgency,
+            demand_department=data.demand_department,
             name=data.material_name,
             model_spec=data.model_spec,
             unit_id=data.unit_id,
@@ -193,6 +208,11 @@ async def update_purchase_record(
     )
     request.purchase_order_no = data.purchase_order_no or None
     request.trace_no = data.trace_no or None
+    request.contract_no = data.contract_no or None
+    request.vessel_no = data.vessel_no or None
+    request.consolidation_date = data.consolidation_date
+    request.consolidation_port = data.consolidation_port or None
+    request.sailing_date = data.sailing_date
     request.purchase_date = data.purchase_date
     request.salesperson = data.salesperson
     request.remark = data.record_remark
@@ -220,6 +240,7 @@ async def search_purchase_records(
     search_value: str | None,
     purchase_order_no: str | None,
     trace_no: str | None,
+    category: str | None,
     name: str | None,
     model_spec: str | None,
     actual_demand_person: str | None,
@@ -244,12 +265,18 @@ async def search_purchase_records(
         (
             PurchaseRequest.purchase_order_no,
             PurchaseRequest.trace_no,
+            PurchaseRequest.contract_no,
+            PurchaseRequest.vessel_no,
+            cast(PurchaseRequest.consolidation_date, String),
+            PurchaseRequest.consolidation_port,
+            cast(PurchaseRequest.sailing_date, String),
             PurchaseRequest.salesperson,
             PurchaseRequest.remark,
             PurchaseMaterial.plan_no,
             cast(PurchaseMaterial.plan_date, String),
             PurchaseRequestLine.status,
             PurchaseMaterial.material_code,
+            PurchaseMaterial.category,
             PurchaseMaterial.name,
             PurchaseMaterial.model_spec,
             MeasurementUnit.name,
@@ -271,6 +298,12 @@ async def search_purchase_records(
             "plan_date": cast(PurchaseMaterial.plan_date, String),
             "purchase_order_no": PurchaseRequest.purchase_order_no,
             "trace_no": PurchaseRequest.trace_no,
+            "contract_no": PurchaseRequest.contract_no,
+            "vessel_no": PurchaseRequest.vessel_no,
+            "consolidation_date": cast(PurchaseRequest.consolidation_date, String),
+            "consolidation_port": PurchaseRequest.consolidation_port,
+            "sailing_date": cast(PurchaseRequest.sailing_date, String),
+            "category": PurchaseMaterial.category,
             "material_code": PurchaseMaterial.material_code,
             "material_name": PurchaseMaterial.name,
             "model_spec": PurchaseMaterial.model_spec,
@@ -287,6 +320,8 @@ async def search_purchase_records(
         search_condition = contains_any((search_columns[search_field],), search_value)
         if search_condition is not None:
             query = query.where(search_condition)
+    if category:
+        query = query.where(func.trim(PurchaseMaterial.category) == category.strip())
     field_filters = (
         ((PurchaseRequest.purchase_order_no,), purchase_order_no),
         ((PurchaseRequest.trace_no,), trace_no),

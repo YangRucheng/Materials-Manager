@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from app.services.agent_database_service import validate_sql
+
 
 def agent_headers(username: str = "admin", password: str = "123456") -> dict[str, str]:
     return {
@@ -145,3 +147,10 @@ async def test_agent_database_rejects_ddl_multi_statement_and_server_files(
     )
     assert response.status_code == 400, response.text
     assert response.json()["code"] == "AGENT_DATABASE_SQL_FORBIDDEN"
+
+
+def test_agent_database_allows_restricted_purchase_table_alter() -> None:
+    assert validate_sql("ALTER TABLE purchase_material ADD COLUMN urgency VARCHAR(32)") == "ALTER"
+    assert (
+        validate_sql("ALTER TABLE `purchase_request` MODIFY COLUMN status VARCHAR(128)") == "ALTER"
+    )

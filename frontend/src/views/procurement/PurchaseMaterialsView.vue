@@ -39,15 +39,18 @@ import {
 } from '@/utils/purchase'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import {
+  defaultDemandDepartment,
   defaultPurchasePlanStatus,
-  purchasePlanStatusFilterOptions,
+  defaultPurchaseUrgency,
+  purchaseCategoryOptions,
+  purchaseUrgencyOptions,
   purchasePlanStatusOptions,
-  type PurchasePlanStatusFilter,
 } from '@/constants/purchase'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
+import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,29 +82,34 @@ const createPlanDate = ref(Date.now())
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const ALL_SUBITEM_FILTER = '__all_subitem_no__'
 const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
-const routeStatus = routeQueryString(route.query.status)
+const routeStatuses = routeQueryString(route.query.status)
+  .split(',')
+  .filter((value): value is PurchasePlanStatus =>
+    purchasePlanStatusOptions.some((option) => option.value === value),
+  )
 const canViewArchivedPlans = computed(() => auth.user?.role === 'SUPER_ADMIN')
 const statusFilterOptions = computed(() =>
-  canViewArchivedPlans.value
-    ? purchasePlanStatusFilterOptions
-    : purchasePlanStatusFilterOptions.filter(
-        (option) => option.value === defaultPurchasePlanStatus,
-      ),
+  purchasePlanStatusOptions.filter(
+    (option) => canViewArchivedPlans.value || option.value !== '已归档',
+  ),
 )
 const filters = reactive({
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
   actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
   subitem_no: routeQueryString(route.query.subitem_no) || ALL_SUBITEM_FILTER,
-  status: statusFilterOptions.value.some((option) => option.value === routeStatus)
-    ? (routeStatus as PurchasePlanStatusFilter)
-    : defaultPurchasePlanStatus,
+  category: routeQueryString(route.query.category) || null,
+  status:
+    routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档').length > 0
+      ? routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档')
+      : [defaultPurchasePlanStatus],
 })
 const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
   subitem_nos: [],
+  categories: [],
 })
 const actualDemandPersonOptions = computed(() => [
   { label: '空需求人', value: EMPTY_DEMAND_PERSON_FILTER },
@@ -112,6 +120,13 @@ const subitemOptions = computed(() => [
   { label: '空子项号', value: EMPTY_SUBITEM_FILTER },
   ...filterOptions.value.subitem_nos.map((value) => ({ label: value, value })),
 ])
+const categoryOptions = computed(() => {
+  const values = new Set([
+    ...purchaseCategoryOptions.map((option) => option.value),
+    ...filterOptions.value.categories,
+  ])
+  return [...values].map((value) => ({ label: value, value }))
+})
 const activeFilterCount = computed(
   () =>
     [
@@ -119,12 +134,20 @@ const activeFilterCount = computed(
       filters.model_spec.trim(),
       filters.actual_demand_person,
       filters.subitem_no === ALL_SUBITEM_FILTER ? '' : filters.subitem_no,
-      filters.status === defaultPurchasePlanStatus ? '' : filters.status,
+      filters.category,
+      filters.status.length === 1 && filters.status[0] === defaultPurchasePlanStatus
+        ? ''
+        : filters.status.join(','),
     ].filter(Boolean).length,
 )
 const batchForm = reactive({
   purchase_order_no: defaultPurchaseOrderNo(),
   trace_no: '',
+  contract_no: '',
+  vessel_no: '',
+  consolidation_date: null as number | null,
+  consolidation_port: '',
+  sailing_date: null as number | null,
   purchase_date: Date.now(),
   salesperson: '',
   status: '已申购',
@@ -161,6 +184,9 @@ const exportLoading = computed(() => resultExporting.value || batchExporting.val
 const form = reactive<PurchaseMaterialWrite>({
   status: defaultPurchasePlanStatus,
   material_code: '',
+  category: '备品备件',
+  urgency: defaultPurchaseUrgency,
+  demand_department: defaultDemandDepartment,
   name: '',
   model_spec: '',
   unit_id: null,
@@ -186,6 +212,9 @@ type PlanColumnKey =
   | 'plan_no'
   | 'plan_date'
   | 'material_code'
+  | 'category'
+  | 'urgency'
+  | 'demand_department'
   | 'name'
   | 'model_spec'
   | 'unit_name'
@@ -226,6 +255,26 @@ const availableColumns: Array<{
         row.material_code ||
         h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
     },
+  },
+  {
+    key: 'category',
+    label: '类别',
+    column: {
+      title: '类别',
+      key: 'category',
+      width: tableColumnWidths.person,
+      render: (row) => row.category || '\\',
+    },
+  },
+  {
+    key: 'urgency',
+    label: '紧急程度',
+    column: { title: '紧急程度', key: 'urgency', width: tableColumnWidths.person },
+  },
+  {
+    key: 'demand_department',
+    label: '需求部门',
+    column: { title: '需求部门', key: 'demand_department', width: tableColumnWidths.person },
   },
   {
     key: 'name',
@@ -313,6 +362,7 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
   ]),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
+useShiftWheelHorizontalScroll(tableAreaRef)
 function setVisibleColumnKeys(value: string[]) {
   visibleColumnKeys.value = value as PlanColumnKey[]
 }
@@ -362,7 +412,8 @@ async function load() {
           ? filters.subitem_no
           : undefined,
       empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
-      status: filters.status === '全部' ? undefined : filters.status,
+      category: filters.category || undefined,
+      status: filters.status.length ? filters.status : undefined,
     })
     items.value = d.items
     total.value = d.total
@@ -391,7 +442,11 @@ async function syncRoute() {
       model_spec: filters.model_spec,
       actual_demand_person: filters.actual_demand_person,
       subitem_no: filters.subitem_no === ALL_SUBITEM_FILTER ? undefined : filters.subitem_no,
-      status: filters.status === defaultPurchasePlanStatus ? undefined : filters.status,
+      category: filters.category,
+      status:
+        filters.status.length === 1 && filters.status[0] === defaultPurchasePlanStatus
+          ? undefined
+          : filters.status.join(','),
     }),
   })
 }
@@ -446,7 +501,8 @@ async function exportResults() {
           ? filters.subitem_no
           : undefined,
       empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER,
-      status: filters.status === '全部' ? undefined : filters.status,
+      category: filters.category || undefined,
+      status: filters.status.length ? filters.status : undefined,
     })
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
     downloadBlob(content, `申购计划导出_${date}.xlsx`)
@@ -462,7 +518,8 @@ function resetFilters() {
   filters.model_spec = ''
   filters.actual_demand_person = null
   filters.subitem_no = ALL_SUBITEM_FILTER
-  filters.status = defaultPurchasePlanStatus
+  filters.category = null
+  filters.status = [defaultPurchasePlanStatus]
   query()
 }
 function changePageSize() {
@@ -475,6 +532,9 @@ function openCreate() {
   Object.assign(form, {
     status: defaultPurchasePlanStatus,
     material_code: '',
+    category: '备品备件',
+    urgency: defaultPurchaseUrgency,
+    demand_department: defaultDemandDepartment,
     name: '',
     model_spec: '',
     unit_id: null,
@@ -528,6 +588,11 @@ function openBatchMove() {
   Object.assign(batchForm, {
     purchase_order_no: defaultPurchaseOrderNo(),
     trace_no: '',
+    contract_no: '',
+    vessel_no: '',
+    consolidation_date: null,
+    consolidation_port: '',
+    sailing_date: null,
     purchase_date: Date.now(),
     salesperson: '',
     status: '已申购',
@@ -613,6 +678,13 @@ async function batchMove() {
       {
         purchase_order_no: batchForm.purchase_order_no.trim() || null,
         trace_no: batchForm.trace_no.trim() || null,
+        contract_no: batchForm.contract_no.trim() || null,
+        vessel_no: batchForm.vessel_no.trim() || null,
+        consolidation_date: batchForm.consolidation_date
+          ? toShanghaiDate(batchForm.consolidation_date)
+          : undefined,
+        consolidation_port: batchForm.consolidation_port.trim() || null,
+        sailing_date: batchForm.sailing_date ? toShanghaiDate(batchForm.sailing_date) : undefined,
         purchase_date: toShanghaiDate(batchForm.purchase_date),
         salesperson: batchForm.salesperson.trim() || undefined,
         status: batchForm.status.trim(),
@@ -730,15 +802,31 @@ onBeforeUnmount(() => {
           <n-select v-model:value="filters.subitem_no" :options="subitemOptions" filterable />
         </label>
         <label class="filter-field">
-          <span>计划状态</span>
-          <n-select v-model:value="filters.status" :options="statusFilterOptions" />
+          <span>类别</span>
+          <n-select
+            v-model:value="filters.category"
+            :options="categoryOptions"
+            placeholder="选择类别"
+            filterable
+            clearable
+          />
+        </label>
+        <label class="filter-field">
+          <span>申购状态</span>
+          <n-select
+            v-model:value="filters.status"
+            :options="statusFilterOptions"
+            multiple
+            clearable
+            placeholder="选择一个或多个状态"
+          />
         </label>
       </div>
       <div class="filter-actions">
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
-          storage-key="procurement.purchase-materials.visible-columns.v2"
+          storage-key="procurement.purchase-materials.visible-columns.v3"
           @update:value="setVisibleColumnKeys"
         />
         <div class="filter-action-buttons">
@@ -763,7 +851,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </n-card>
-    <div ref="tableAreaRef" class="purchase-plan-table-area">
+    <div
+      ref="tableAreaRef"
+      class="purchase-plan-table-area"
+      title="按住 Shift 并滚动鼠标滚轮可横向浏览表格"
+    >
+      <div class="table-scroll-hint">Shift + 滚轮：横向滚动</div>
       <n-button
         class="table-fullscreen-toggle"
         :class="{ 'is-fullscreen': isTableFullscreen }"
@@ -899,6 +992,35 @@ onBeforeUnmount(() => {
           <n-form-item label="追溯号">
             <n-input v-model:value="batchForm.trace_no" maxlength="128" placeholder="可留空" />
           </n-form-item>
+          <n-form-item label="合同号">
+            <n-input v-model:value="batchForm.contract_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="船号">
+            <n-input v-model:value="batchForm.vessel_no" maxlength="128" placeholder="可留空" />
+          </n-form-item>
+          <n-form-item label="集港日期">
+            <n-date-picker
+              v-model:value="batchForm.consolidation_date"
+              type="date"
+              class="full-width"
+              clearable
+            />
+          </n-form-item>
+          <n-form-item label="集港港口">
+            <n-input
+              v-model:value="batchForm.consolidation_port"
+              maxlength="128"
+              placeholder="可留空"
+            />
+          </n-form-item>
+          <n-form-item label="发船日期">
+            <n-date-picker
+              v-model:value="batchForm.sailing_date"
+              type="date"
+              class="full-width"
+              clearable
+            />
+          </n-form-item>
           <n-form-item label="申购日期" required>
             <n-date-picker v-model:value="batchForm.purchase_date" type="date" class="full-width" />
           </n-form-item>
@@ -946,6 +1068,21 @@ onBeforeUnmount(() => {
           </n-form-item>
           <n-form-item label="状态" required>
             <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
+          </n-form-item>
+          <n-form-item label="类别">
+            <n-select
+              v-model:value="form.category"
+              :options="categoryOptions"
+              filterable
+              clearable
+              placeholder="选择类别"
+            />
+          </n-form-item>
+          <n-form-item label="紧急程度">
+            <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
+          </n-form-item>
+          <n-form-item label="需求部门">
+            <n-input v-model:value="form.demand_department" maxlength="128" />
           </n-form-item>
           <n-form-item label="名称" path="name">
             <n-input v-model:value="form.name" maxlength="128" />
@@ -1058,6 +1195,13 @@ onBeforeUnmount(() => {
 
 .purchase-plan-table-area {
   position: relative;
+}
+
+.table-scroll-hint {
+  margin: 0 44px 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
 }
 
 .table-fullscreen-toggle {

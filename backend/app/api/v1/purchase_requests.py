@@ -30,6 +30,12 @@ RecordSearchField = Literal[
     "plan_date",
     "purchase_order_no",
     "trace_no",
+    "contract_no",
+    "vessel_no",
+    "consolidation_date",
+    "consolidation_port",
+    "sailing_date",
+    "category",
     "material_code",
     "material_name",
     "model_spec",
@@ -49,6 +55,13 @@ RECORD_RESULT_HEADERS = {
     "plan_date": "需求日期",
     "purchase_order_no": "申购单号",
     "trace_no": "追溯号",
+    "contract_no": "合同号",
+    "vessel_no": "船号",
+    "consolidation_date": "集港日期",
+    "consolidation_port": "集港港口",
+    "sailing_date": "发船日期",
+    "category": "类别",
+    "demand_department": "需求部门",
     "material_name": "物资",
     "actual_demand_person": "实际需求人",
     "purchase_responsible": "申购负责人",
@@ -83,6 +96,7 @@ async def purchase_records(
     search_value: OrSearch255 = None,
     purchase_order_no: OrSearch255 = None,
     trace_no: OrSearch255 = None,
+    category: Annotated[str | None, Query(max_length=64)] = None,
     name: OrSearch128 = None,
     model_spec: OrSearch255 = None,
     actual_demand_person: OrSearch128 = None,
@@ -104,6 +118,7 @@ async def purchase_records(
         search_value=search_value,
         purchase_order_no=purchase_order_no,
         trace_no=trace_no,
+        category=category,
         name=name,
         model_spec=model_spec,
         actual_demand_person=actual_demand_person,
@@ -124,13 +139,17 @@ async def purchase_records(
 async def purchase_record_filter_options(
     session: DbSession, user: CurrentUser
 ) -> PurchaseRecordFilterOptions:
-    actual_demand_persons, purchase_responsibles, subitem_nos = (
-        await material_service.purchase_filter_options(session, moved=True, status=None)
-    )
+    (
+        actual_demand_persons,
+        purchase_responsibles,
+        subitem_nos,
+        categories,
+    ) = await material_service.purchase_filter_options(session, moved=True, status=None)
     return PurchaseRecordFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
         subitem_nos=subitem_nos,
+        categories=categories,
         salespersons=await service.purchase_salesperson_options(session),
         statuses=await service.purchase_status_options(session),
     )
@@ -151,6 +170,7 @@ async def export_purchase_record_results(
         search_value=None,
         purchase_order_no=data.purchase_order_no,
         trace_no=data.trace_no,
+        category=data.category,
         name=data.name,
         model_spec=data.model_spec,
         actual_demand_person=None,
@@ -180,6 +200,13 @@ async def export_purchase_record_results(
                 "plan_date": record.plan_date,
                 "purchase_order_no": record.purchase_order_no,
                 "trace_no": record.trace_no,
+                "contract_no": record.contract_no,
+                "vessel_no": record.vessel_no,
+                "consolidation_date": record.consolidation_date,
+                "consolidation_port": record.consolidation_port,
+                "sailing_date": record.sailing_date,
+                "category": record.category,
+                "demand_department": record.demand_department,
                 "material_name": "\n".join(material_details),
                 "actual_demand_person": record.actual_demand_person,
                 "purchase_responsible": record.purchase_responsible,
@@ -189,9 +216,7 @@ async def export_purchase_record_results(
             }
         )
     columns = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
-    return _excel_response(
-        *excel_export_service.render_result_excel("申购记录导出", columns, rows)
-    )
+    return _excel_response(*excel_export_service.render_result_excel("申购记录导出", columns, rows))
 
 
 @router.get("/purchase-records/{line_id}", response_model=PurchaseRecordRead)
