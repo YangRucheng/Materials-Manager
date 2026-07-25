@@ -51,6 +51,7 @@ import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
+import { renderTwoLineText } from '@/utils/tableText'
 
 const route = useRoute()
 const router = useRouter()
@@ -238,7 +239,12 @@ const availableColumns: Array<{
   {
     key: 'plan_no',
     label: '计划 ID',
-    column: { title: '计划 ID', key: 'plan_no', width: tableColumnWidths.identifier },
+    column: {
+      title: '计划 ID',
+      key: 'plan_no',
+      width: tableColumnWidths.identifier,
+      render: (row) => renderTwoLineText(row.plan_no),
+    },
   },
   {
     key: 'plan_date',
@@ -258,7 +264,7 @@ const availableColumns: Array<{
       key: 'material_code',
       width: tableColumnWidths.code,
       render: (row) =>
-        row.material_code ||
+        (row.material_code && renderTwoLineText(row.material_code)) ||
         h(NTag, { type: 'warning', size: 'small' }, { default: () => '暂无编码' }),
     },
   },
@@ -269,18 +275,28 @@ const availableColumns: Array<{
       title: '类别',
       key: 'category',
       width: tableColumnWidths.person,
-      render: (row) => row.category || '\\',
+      render: (row) => renderTwoLineText(row.category),
     },
   },
   {
     key: 'urgency',
     label: '紧急程度',
-    column: { title: '紧急程度', key: 'urgency', width: tableColumnWidths.person },
+    column: {
+      title: '紧急程度',
+      key: 'urgency',
+      width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.urgency),
+    },
   },
   {
     key: 'demand_department',
     label: '需求部门',
-    column: { title: '需求部门', key: 'demand_department', width: tableColumnWidths.person },
+    column: {
+      title: '需求部门',
+      key: 'demand_department',
+      width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.demand_department),
+    },
   },
   {
     key: 'name',
@@ -289,7 +305,7 @@ const availableColumns: Array<{
       title: '名称',
       key: 'name',
       width: tableColumnWidths.name,
-      ellipsis: { tooltip: true },
+      render: (row) => renderTwoLineText(row.name),
     },
   },
   {
@@ -299,8 +315,7 @@ const availableColumns: Array<{
       title: '型号规格',
       key: 'model_spec',
       width: tableColumnWidths.model,
-      render: (row) =>
-        h('div', { class: 'model-spec-clamp', title: row.model_spec }, row.model_spec),
+      render: (row) => renderTwoLineText(row.model_spec),
     },
   },
   {
@@ -311,7 +326,12 @@ const availableColumns: Array<{
   {
     key: 'unit_name',
     label: '计量单位',
-    column: { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
+    column: {
+      title: '计量单位',
+      key: 'unit_name',
+      width: tableColumnWidths.unit,
+      render: (row) => renderTwoLineText(row.unit_name),
+    },
   },
   {
     key: 'actual_demand_person',
@@ -320,7 +340,7 @@ const availableColumns: Array<{
       title: '实际需求人',
       key: 'actual_demand_person',
       width: tableColumnWidths.person,
-      render: (row) => row.actual_demand_person || '\\',
+      render: (row) => renderTwoLineText(row.actual_demand_person),
     },
   },
   {
@@ -330,7 +350,7 @@ const availableColumns: Array<{
       title: '申购负责人',
       key: 'purchase_responsible',
       width: tableColumnWidths.person,
-      render: (row) => row.purchase_responsible || '\\',
+      render: (row) => renderTwoLineText(row.purchase_responsible),
     },
   },
   {
@@ -340,7 +360,7 @@ const availableColumns: Array<{
       title: '子项号',
       key: 'subitem_no',
       width: tableColumnWidths.person,
-      render: (row) => row.subitem_no || '\\',
+      render: (row) => renderTwoLineText(row.subitem_no),
     },
   },
   {
@@ -350,7 +370,7 @@ const availableColumns: Array<{
       title: '用途',
       key: 'usage',
       width: tableColumnWidths.text,
-      ellipsis: { tooltip: true },
+      render: (row) => renderTwoLineText(row.usage),
     },
   },
 ]
@@ -1295,18 +1315,6 @@ onBeforeUnmount(() => {
 .table-fullscreen-toggle:hover {
   background: rgb(148 163 184 / 10%);
   color: #8e99a8;
-}
-
-.model-spec-clamp {
-  display: -webkit-box;
-  max-height: 3em;
-  overflow: hidden;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  word-break: break-all;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 .purchase-plan-table-area:fullscreen {

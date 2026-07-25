@@ -1672,6 +1672,384 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/mini-program-users:
+    get:
+      tags:
+      - 小程序用户管理
+      summary: List Mini Program Users
+      operationId: list_mini_program_users_api_v1_mini_program_users_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Keyword
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_MiniProgramUserRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      tags:
+      - 小程序用户管理
+      summary: Create Mini Program User
+      operationId: create_mini_program_user_api_v1_mini_program_users_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniProgramUserCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramUserRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program-users/{user_id}:
+    patch:
+      tags:
+      - 小程序用户管理
+      summary: Update Mini Program User
+      operationId: update_mini_program_user_api_v1_mini_program_users__user_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniProgramUserUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramUserRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/auth/login:
+    post:
+      tags:
+      - 小程序扫码出库
+      summary: Mini Program Login
+      operationId: mini_program_login_api_v1_mini_program_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramLoginResponse'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/me:
+    get:
+      tags:
+      - 小程序扫码出库
+      summary: Mini Program Me
+      operationId: mini_program_me_api_v1_mini_program_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramUserRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+  /api/v1/mini-program/materials/{material_uuid}:
+    get:
+      tags:
+      - 小程序扫码出库
+      summary: Scan Material
+      operationId: scan_material_api_v1_mini_program_materials__material_uuid__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: material_uuid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Material Uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramMaterialRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/outbound:
+    post:
+      tags:
+      - 小程序扫码出库
+      summary: Mini Program Outbound
+      operationId: mini_program_outbound_api_v1_mini_program_outbound_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniProgramOutboundCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramOutboundRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/purchase-materials:
     get:
       tags:
@@ -4386,6 +4764,277 @@ components:
       required:
       - version
       title: MeasurementUnitUpdate
+    MiniProgramLoginResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          const: bearer
+          title: Token Type
+          default: bearer
+        user:
+          $ref: '#/components/schemas/MiniProgramUserRead'
+      type: object
+      required:
+      - access_token
+      - user
+      title: MiniProgramLoginResponse
+    MiniProgramMaterialRead:
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          title: Uuid
+        name:
+          type: string
+          title: Name
+        model_spec:
+          type: string
+          title: Model Spec
+        unit_name:
+          type: string
+          title: Unit Name
+        current_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Current Qty
+      type: object
+      required:
+      - uuid
+      - name
+      - model_spec
+      - unit_name
+      - current_qty
+      title: MiniProgramMaterialRead
+    MiniProgramOutboundCreate:
+      properties:
+        client_request_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Client Request Id
+        material_uuid:
+          type: string
+          format: uuid
+          title: Material Uuid
+        occurred_at:
+          type: string
+          format: date-time
+          title: Occurred At
+        quantity:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,17}|(?=[\d.]{1,19}0*$)\d{0,17}\.\d{0,1}0*$)
+          title: Quantity
+        business_reason:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Business Reason
+        receiver_unit:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Receiver Unit
+        receiver_name:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Receiver Name
+        subitem_no:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Subitem No
+      additionalProperties: false
+      type: object
+      required:
+      - client_request_id
+      - material_uuid
+      - occurred_at
+      - quantity
+      - business_reason
+      - receiver_name
+      title: MiniProgramOutboundCreate
+    MiniProgramOutboundRead:
+      properties:
+        operation_id:
+          type: integer
+          title: Operation Id
+        operation_no:
+          type: string
+          title: Operation No
+        material_uuid:
+          type: string
+          format: uuid
+          title: Material Uuid
+        material_name:
+          type: string
+          title: Material Name
+        model_spec:
+          type: string
+          title: Model Spec
+        unit_name:
+          type: string
+          title: Unit Name
+        quantity:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Quantity
+        before_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Before Qty
+        after_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: After Qty
+        occurred_at:
+          type: string
+          format: date-time
+          title: Occurred At
+        business_reason:
+          type: string
+          title: Business Reason
+        receiver_unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Receiver Unit
+        receiver_name:
+          type: string
+          title: Receiver Name
+        subitem_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No
+        executed_by:
+          type: string
+          title: Executed By
+      type: object
+      required:
+      - operation_id
+      - operation_no
+      - material_uuid
+      - material_name
+      - model_spec
+      - unit_name
+      - quantity
+      - before_qty
+      - after_qty
+      - occurred_at
+      - business_reason
+      - receiver_name
+      - executed_by
+      title: MiniProgramOutboundRead
+    MiniProgramUserCreate:
+      properties:
+        username:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Username
+        password:
+          type: string
+          maxLength: 128
+          minLength: 6
+          title: Password
+        display_name:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Display Name
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - username
+      - password
+      - display_name
+      title: MiniProgramUserCreate
+    MiniProgramUserRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        username:
+          type: string
+          title: Username
+        display_name:
+          type: string
+          title: Display Name
+        enabled:
+          type: boolean
+          title: Enabled
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        version:
+          type: integer
+          title: Version
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      - enabled
+      - created_at
+      - updated_at
+      - version
+      title: MiniProgramUserRead
+    MiniProgramUserUpdate:
+      properties:
+        username:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Username
+        password:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 6
+          - type: 'null'
+          title: Password
+        display_name:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Display Name
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+        version:
+          type: integer
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - version
+      title: MiniProgramUserUpdate
     MovePurchasePlanRequest:
       properties:
         purchase_order_no:
@@ -4737,6 +5386,29 @@ components:
       - page_size
       - total
       title: Page[MeasurementUnitRead]
+    Page_MiniProgramUserRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MiniProgramUserRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[MiniProgramUserRead]
     Page_PurchaseMaterialRead_:
       properties:
         items:
@@ -5968,6 +6640,10 @@ components:
         id:
           type: integer
           title: Id
+        uuid:
+          type: string
+          format: uuid
+          title: Uuid
         name:
           type: string
           title: Name
@@ -6016,6 +6692,7 @@ components:
       type: object
       required:
       - id
+      - uuid
       - name
       - model_spec
       - unit_id
@@ -6147,6 +6824,16 @@ components:
         client_request_id:
           type: string
           title: Client Request Id
+        mini_program_user_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Mini Program User Id
+        mini_program_user_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mini Program User Name
         lines:
           items:
             $ref: '#/components/schemas/StockOperationLineRead'

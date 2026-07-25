@@ -27,6 +27,15 @@ export interface User {
   enabled: boolean
   version: number
 }
+export interface MiniProgramUser {
+  id: number
+  username: string
+  display_name: string
+  enabled: boolean
+  created_at: string
+  updated_at: string
+  version: number
+}
 export interface LoginRequest {
   username: string
   password: string
@@ -102,6 +111,7 @@ export interface ReplenishmentPolicy {
 }
 export interface StockMaterial {
   id: number
+  uuid: string
   name: string
   model_spec: string
   unit_id: number
@@ -167,9 +177,45 @@ export interface StockOperation {
   source_type: SourceType
   reversal_of_id?: number
   client_request_id: string
+  mini_program_user_id?: number
+  mini_program_user_name?: string
   lines: StockOperationLine[]
   created_at: string
   version: number
+}
+export interface MiniProgramMaterial {
+  uuid: string
+  name: string
+  model_spec: string
+  unit_name: string
+  current_qty: string
+}
+export interface MiniProgramOutboundWrite {
+  client_request_id: string
+  material_uuid: string
+  occurred_at: string
+  quantity: string
+  business_reason: string
+  receiver_unit?: string
+  receiver_name: string
+  subitem_no?: string
+}
+export interface MiniProgramOutbound {
+  operation_id: number
+  operation_no: string
+  material_uuid: string
+  material_name: string
+  model_spec: string
+  unit_name: string
+  quantity: string
+  before_qty: string
+  after_qty: string
+  occurred_at: string
+  business_reason: string
+  receiver_unit?: string
+  receiver_name: string
+  subitem_no?: string
+  executed_by: string
 }
 export interface OperationWrite {
   client_request_id: string

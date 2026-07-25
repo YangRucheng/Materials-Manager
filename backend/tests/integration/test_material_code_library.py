@@ -74,6 +74,25 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
     assert by_model.status_code == 200, by_model.text
     assert by_model.json()["items"][0]["material_code"] == "Y002"
 
+    by_name_or_model = await client.get(
+        "/api/v1/material-code-library",
+        headers=purchase_headers,
+        params={"keyword": "接触器|4×1.5"},
+    )
+    assert by_name_or_model.status_code == 200, by_name_or_model.text
+    assert {item["material_code"] for item in by_name_or_model.json()["items"]} == {
+        "Y001",
+        "Y002",
+    }
+
+    by_code = await client.get(
+        "/api/v1/material-code-library",
+        headers=purchase_headers,
+        params={"keyword": "Y001"},
+    )
+    assert by_code.status_code == 200, by_code.text
+    assert by_code.json()["total"] == 0
+
     replacement = await client.post(
         "/api/v1/material-code-library/import",
         headers=purchase_headers,

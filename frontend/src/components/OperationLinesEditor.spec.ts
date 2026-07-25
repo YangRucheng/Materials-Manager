@@ -6,6 +6,7 @@ import type { StockMaterial } from '@/api/generated'
 
 const material: StockMaterial = {
   id: 7,
+  uuid: '10000000-0000-4000-8000-000000000007',
   name: '微型断路器',
   model_spec: 'C20 3P',
   unit_id: 1,

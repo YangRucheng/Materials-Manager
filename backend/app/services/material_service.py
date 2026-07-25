@@ -63,6 +63,7 @@ async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject
 def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> StockMaterialRead:
     return StockMaterialRead(
         id=item.id,
+        uuid=item.uuid,
         name=item.name,
         model_spec=item.model_spec,
         unit_id=item.unit_id,

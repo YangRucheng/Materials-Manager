@@ -1,5 +1,6 @@
 import type {
   MeasurementUnit,
+  MiniProgramUser,
   PurchaseMaterial,
   PurchaseRequest,
   StockMaterial,
@@ -43,6 +44,17 @@ export const users: User[] = [
     version: 1,
   },
 ]
+export const miniProgramUsers: MiniProgramUser[] = [
+  {
+    id: 1,
+    username: 'scanner',
+    display_name: '扫码出库员',
+    enabled: true,
+    created_at: now,
+    updated_at: now,
+    version: 1,
+  },
+]
 export const units: MeasurementUnit[] = [
   { id: 1, code: 'PCS', name: '个', decimal_places: 0, enabled: true, version: 1 },
   { id: 2, code: 'SET', name: '套', decimal_places: 0, enabled: true, version: 1 },
@@ -52,6 +64,7 @@ export const units: MeasurementUnit[] = [
 export const stockMaterials: StockMaterial[] = [
   {
     id: 1,
+    uuid: '10000000-0000-4000-8000-000000000001',
     name: '交流接触器',
     model_spec: 'CJX2-2510 220V',
     unit_id: 1,
@@ -76,6 +89,7 @@ export const stockMaterials: StockMaterial[] = [
   },
   {
     id: 2,
+    uuid: '10000000-0000-4000-8000-000000000002',
     name: '小型断路器',
     model_spec: 'C65N-C16/2P',
     unit_id: 1,
@@ -91,6 +105,7 @@ export const stockMaterials: StockMaterial[] = [
   },
   {
     id: 3,
+    uuid: '10000000-0000-4000-8000-000000000003',
     name: '铜芯控制电缆',
     model_spec: 'KVV 4×1.5mm²',
     unit_id: 3,
@@ -106,6 +121,7 @@ export const stockMaterials: StockMaterial[] = [
   },
   {
     id: 4,
+    uuid: '10000000-0000-4000-8000-000000000004',
     name: '中间继电器',
     model_spec: 'MY4N-GS DC24V',
     unit_id: 1,
@@ -121,6 +137,7 @@ export const stockMaterials: StockMaterial[] = [
   },
   {
     id: 5,
+    uuid: '10000000-0000-4000-8000-000000000005',
     name: '熔断器芯',
     model_spec: 'RT18-32 10A',
     unit_id: 1,
@@ -136,6 +153,7 @@ export const stockMaterials: StockMaterial[] = [
   },
   {
     id: 6,
+    uuid: '10000000-0000-4000-8000-000000000006',
     name: '绝缘胶带',
     model_spec: '18mm×20m 黑色',
     unit_id: 1,
@@ -391,4 +409,5 @@ export const nextIds = {
   file: 10,
   unit: 10,
   user: 10,
+  miniProgramUser: 10,
 }

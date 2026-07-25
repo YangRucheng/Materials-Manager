@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -142,6 +143,44 @@ class UserUpdate(RequestModel):
     role: Role | None = None
     enabled: bool | None = None
     version: int
+
+
+class MiniProgramUserRead(ReadModel):
+    id: int
+    username: str
+    display_name: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    version: int
+
+
+class MiniProgramUserCreate(RequestModel):
+    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+    password: Annotated[str, StringConstraints(min_length=6, max_length=128)]
+    display_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    enabled: bool = True
+
+
+class MiniProgramUserUpdate(RequestModel):
+    username: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    password: Annotated[str, StringConstraints(min_length=6, max_length=128)] | None = None
+    display_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    enabled: bool | None = None
+    version: int
+
+
+class MiniProgramLoginResponse(ReadModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    user: MiniProgramUserRead
 
 
 class AiSearchSettingsRead(ReadModel):
@@ -306,6 +345,7 @@ class StockMaterialUpdate(StockMaterialBase):
 
 class StockMaterialRead(ReadModel):
     id: int
+    uuid: UUID
     name: str
     model_spec: str
     unit_id: int
@@ -442,9 +482,64 @@ class StockOperationRead(ReadModel):
     source_type: SourceType
     reversal_of_id: int | None = None
     client_request_id: str
+    mini_program_user_id: int | None = None
+    mini_program_user_name: str | None = None
     lines: list[StockOperationLineRead]
     created_at: datetime
     version: int
+
+
+class MiniProgramMaterialRead(ReadModel):
+    uuid: UUID
+    name: str
+    model_spec: str
+    unit_name: str
+    current_qty: Decimal
+
+
+class MiniProgramOutboundCreate(RequestModel):
+    client_request_id: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+    ]
+    material_uuid: UUID
+    occurred_at: datetime
+    quantity: PositiveQuantity
+    business_reason: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
+    ]
+    receiver_unit: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    receiver_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+    ]
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+
+    @field_validator("occurred_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        return _require_aware_datetime(value)
+
+
+class MiniProgramOutboundRead(ReadModel):
+    operation_id: int
+    operation_no: str
+    material_uuid: UUID
+    material_name: str
+    model_spec: str
+    unit_name: str
+    quantity: Decimal
+    before_qty: Decimal
+    after_qty: Decimal
+    occurred_at: datetime
+    business_reason: str
+    receiver_unit: str | None = None
+    receiver_name: str
+    subitem_no: str | None = None
+    executed_by: str
 
 
 class PurchaseMaterialBase(RequestModel):
