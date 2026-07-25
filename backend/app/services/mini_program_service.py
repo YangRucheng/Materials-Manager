@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import secrets
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
@@ -14,14 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import AppError, not_found
-from app.core.security import hash_password, verify_password
 from app.domain.enums import OperationType, SourceType
 from app.models import MiniProgramUser, StockMaterial, StockOperation
 from app.schemas import (
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
-    MiniProgramUserCreate,
     MiniProgramUserUpdate,
     OperationCreate,
     OperationLineWrite,
@@ -37,7 +33,7 @@ async def list_users(
     if keyword:
         query = query.where(
             or_(
-                MiniProgramUser.username.contains(keyword, autoescape=True),
+                MiniProgramUser.wechat_openid.contains(keyword, autoescape=True),
                 MiniProgramUser.display_name.contains(keyword, autoescape=True),
             )
         )
@@ -54,23 +50,6 @@ async def list_users(
     return items, total
 
 
-async def create_user(session: AsyncSession, data: MiniProgramUserCreate) -> MiniProgramUser:
-    item = MiniProgramUser(
-        username=data.username,
-        password_hash=hash_password(data.password),
-        display_name=data.display_name,
-        enabled=data.enabled,
-    )
-    session.add(item)
-    try:
-        await session.flush()
-    except IntegrityError as exc:
-        raise AppError(
-            "DUPLICATE_MINI_PROGRAM_USERNAME", "小程序用户名已存在", status_code=409
-        ) from exc
-    return item
-
-
 async def update_user(
     session: AsyncSession, item_id: int, data: MiniProgramUserUpdate
 ) -> MiniProgramUser:
@@ -78,31 +57,13 @@ async def update_user(
     if item is None:
         raise not_found("小程序用户")
     validate_version(data.version, item.version)
-    for key in ("username", "display_name", "enabled"):
-        value = getattr(data, key)
-        if value is not None:
-            setattr(item, key, value)
-    if data.password:
-        item.password_hash = hash_password(data.password)
+    if data.display_name is not None:
+        item.display_name = data.display_name
+    if data.enabled is not None:
+        item.enabled = data.enabled
     item.version += 1
-    try:
-        await session.flush()
-    except IntegrityError as exc:
-        raise AppError(
-            "DUPLICATE_MINI_PROGRAM_USERNAME", "小程序用户名已存在", status_code=409
-        ) from exc
+    await session.flush()
     return item
-
-
-async def authenticate(
-    session: AsyncSession, username: str, password: str
-) -> MiniProgramUser:
-    user = await session.scalar(
-        select(MiniProgramUser).where(MiniProgramUser.username == username)
-    )
-    if user is None or not user.enabled or not verify_password(password, user.password_hash):
-        raise AppError("INVALID_CREDENTIALS", "用户名或密码错误", status_code=401)
-    return user
 
 
 async def exchange_wechat_code(code: str) -> str:
@@ -148,50 +109,43 @@ async def exchange_wechat_code(code: str) -> str:
     return openid
 
 
-async def login_with_wechat(session: AsyncSession, code: str) -> MiniProgramUser:
+async def login_with_wechat(
+    session: AsyncSession, code: str
+) -> tuple[MiniProgramUser | None, str]:
     openid = await exchange_wechat_code(code)
     user = await session.scalar(
         select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
     )
-    if user is None:
-        username = f"wx_{hashlib.sha256(openid.encode()).hexdigest()[:61]}"
-        user = MiniProgramUser(
-            username=username,
-            password_hash=hash_password(secrets.token_urlsafe(32)),
-            wechat_openid=openid,
-            display_name="",
-            enabled=True,
-        )
-        session.add(user)
-        try:
-            await session.flush()
-        except IntegrityError as exc:
-            raise AppError(
-                "WECHAT_USER_CREATE_CONFLICT",
-                "微信用户创建冲突，请重试",
-                status_code=409,
-            ) from exc
-    if not user.enabled:
+    if user is not None and not user.enabled:
         raise AppError("ACCOUNT_DISABLED", "账号已停用", status_code=403)
-    return user
+    return user, openid
 
 
-async def update_profile(
-    session: AsyncSession, user: MiniProgramUser, display_name: str
+async def register_user(
+    session: AsyncSession, openid: str, display_name: str
 ) -> MiniProgramUser:
-    user.display_name = display_name
-    user.version += 1
-    await session.flush()
-    return user
-
-
-def require_profile(user: MiniProgramUser) -> None:
-    if not user.display_name.strip():
+    existing = await session.scalar(
+        select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
+    )
+    if existing is not None:
+        if not existing.enabled:
+            raise AppError("ACCOUNT_DISABLED", "账号已停用", status_code=403)
+        return existing
+    user = MiniProgramUser(
+        wechat_openid=openid,
+        display_name=display_name,
+        enabled=True,
+    )
+    session.add(user)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
         raise AppError(
-            "MINI_PROGRAM_PROFILE_REQUIRED",
-            "请先设置姓名",
+            "WECHAT_USER_CREATE_CONFLICT",
+            "微信用户创建冲突，请重新登录",
             status_code=409,
-        )
+        ) from exc
+    return user
 
 
 async def get_material(
@@ -255,7 +209,6 @@ def _outbound_read(
 async def create_outbound(
     session: AsyncSession, data: MiniProgramOutboundCreate, user: MiniProgramUser
 ) -> MiniProgramOutboundRead:
-    require_profile(user)
     material = await get_material(session, data.material_uuid, for_update=True)
     operation = await inventory_service.create_operation(
         session,

@@ -1,7 +1,7 @@
 const { apiBaseUrl } = require('../config/index');
 
 function request(options) {
-  const token = wx.getStorageSync('miniProgramAccessToken');
+  const token = options.token || wx.getStorageSync('miniProgramAccessToken');
   const headers = {
     'content-type': 'application/json',
     ...(options.header || {}),
@@ -21,7 +21,7 @@ function request(options) {
           resolve(response.data);
           return;
         }
-        if (response.statusCode === 401 && options.auth !== false) {
+        if (response.statusCode === 401 && options.auth !== false && !options.token) {
           wx.removeStorageSync('miniProgramAccessToken');
         }
         const error = new Error(response.data?.message || '请求失败，请稍后重试');

@@ -15,15 +15,13 @@ const loading = ref(false)
 const show = ref(false)
 const editing = ref<MiniProgramUser | null>(null)
 const form = reactive({
-  username: '',
   display_name: '',
   enabled: true,
-  password: '',
   version: 0,
 })
 const columns = preventTableColumnCompression<MiniProgramUser>([
-  { title: '用户名', key: 'username', width: tableColumnWidths.identifier },
-  { title: '显示名称', key: 'display_name', width: tableColumnWidths.name },
+  { title: '微信 OpenID', key: 'wechat_openid', width: tableColumnWidths.identifier * 2 },
+  { title: '姓名', key: 'display_name', width: tableColumnWidths.name },
   {
     title: '状态',
     key: 'enabled',
@@ -54,49 +52,27 @@ async function load() {
   }
 }
 
-function open(row?: MiniProgramUser) {
-  editing.value = row || null
-  Object.assign(
-    form,
-    row
-      ? {
-          username: row.username,
-          display_name: row.display_name,
-          enabled: row.enabled,
-          password: '',
-          version: row.version,
-        }
-      : {
-          username: '',
-          display_name: '',
-          enabled: true,
-          password: '',
-          version: 0,
-        },
-  )
+function open(row: MiniProgramUser) {
+  editing.value = row
+  Object.assign(form, {
+    display_name: row.display_name,
+    enabled: row.enabled,
+    version: row.version,
+  })
   show.value = true
 }
 
 async function save() {
-  if (!form.username.trim() || !form.display_name.trim() || (!editing.value && !form.password)) {
-    message.error('请完整填写用户名、显示名称和初始密码')
+  if (!editing.value || !form.display_name.trim()) {
+    message.error('请输入姓名')
     return
   }
   try {
-    const payload = {
-      username: form.username,
+    await dictionaryApi.updateMiniProgramUser(editing.value.id, {
       display_name: form.display_name,
       enabled: form.enabled,
-      ...(form.password ? { password: form.password } : {}),
-    }
-    if (editing.value) {
-      await dictionaryApi.updateMiniProgramUser(editing.value.id, {
-        ...payload,
-        version: form.version,
-      })
-    } else {
-      await dictionaryApi.createMiniProgramUser({ ...payload, password: form.password })
-    }
+      version: form.version,
+    })
     message.success('保存成功')
     show.value = false
     await load()
@@ -112,7 +88,6 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <h1 class="page-title">小程序用户</h1>
-      <n-button type="primary" @click="open()">新建用户</n-button>
     </div>
     <n-card class="data-card" :bordered="false">
       <n-data-table
@@ -124,22 +99,13 @@ onMounted(load)
         :row-key="(row: MiniProgramUser) => row.id"
       />
     </n-card>
-    <n-modal
-      v-model:show="show"
-      preset="card"
-      :title="editing ? '编辑小程序用户' : '新建小程序用户'"
-      style="width: 520px"
-    >
+    <n-modal v-model:show="show" preset="card" title="编辑小程序用户" style="width: 520px">
       <n-form label-placement="top">
-        <n-form-item label="用户名" required><n-input v-model:value="form.username" /></n-form-item>
-        <n-form-item label="显示名称" required>
-          <n-input v-model:value="form.display_name" />
+        <n-form-item label="微信 OpenID">
+          <n-input :value="editing?.wechat_openid" disabled />
         </n-form-item>
-        <n-form-item
-          :label="editing ? '重置密码（不修改可留空）' : '初始密码'"
-          :required="!editing"
-        >
-          <n-input v-model:value="form.password" type="password" show-password-on="click" />
+        <n-form-item label="姓名" required>
+          <n-input v-model:value="form.display_name" />
         </n-form-item>
         <n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item>
       </n-form>

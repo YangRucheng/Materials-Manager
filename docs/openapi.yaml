@@ -1744,56 +1744,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-    post:
-      tags:
-      - 小程序用户管理
-      summary: Create Mini Program User
-      operationId: create_mini_program_user_api_v1_mini_program_users_post
-      security:
-      - HTTPBearer: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MiniProgramUserCreate'
-      responses:
-        '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MiniProgramUserRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program-users/{user_id}:
     patch:
       tags:
@@ -1822,55 +1772,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MiniProgramUserRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /api/v1/mini-program/auth/login:
-    post:
-      tags:
-      - 小程序扫码出库
-      summary: Mini Program Login
-      operationId: mini_program_login_api_v1_mini_program_auth_login_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-        required: true
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MiniProgramLoginResponse'
         '400':
           description: 业务校验失败
           content:
@@ -1996,11 +1897,11 @@ paths:
       security:
       - HTTPBearer: []
   /api/v1/mini-program/profile:
-    patch:
+    post:
       tags:
       - 小程序扫码出库
-      summary: Update Mini Program Profile
-      operationId: update_mini_program_profile_api_v1_mini_program_profile_patch
+      summary: Create Mini Program Profile
+      operationId: create_mini_program_profile_api_v1_mini_program_profile_post
       requestBody:
         content:
           application/json:
@@ -2013,7 +1914,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MiniProgramUserRead'
+                $ref: '#/components/schemas/MiniProgramLoginResponse'
         '400':
           description: 业务校验失败
           content:
@@ -4867,22 +4768,29 @@ components:
     MiniProgramLoginResponse:
       properties:
         access_token:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Access Token
+        registration_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Registration Token
         token_type:
           type: string
           const: bearer
           title: Token Type
           default: bearer
         user:
-          $ref: '#/components/schemas/MiniProgramUserRead'
+          anyOf:
+          - $ref: '#/components/schemas/MiniProgramUserRead'
+          - type: 'null'
         requires_profile:
           type: boolean
           title: Requires Profile
       type: object
       required:
-      - access_token
-      - user
       - requires_profile
       title: MiniProgramLoginResponse
     MiniProgramMaterialRead:
@@ -5044,42 +4952,14 @@ components:
       required:
       - display_name
       title: MiniProgramProfileUpdate
-    MiniProgramUserCreate:
-      properties:
-        username:
-          type: string
-          maxLength: 64
-          minLength: 1
-          title: Username
-        password:
-          type: string
-          maxLength: 128
-          minLength: 6
-          title: Password
-        display_name:
-          type: string
-          maxLength: 64
-          minLength: 1
-          title: Display Name
-        enabled:
-          type: boolean
-          title: Enabled
-          default: true
-      additionalProperties: false
-      type: object
-      required:
-      - username
-      - password
-      - display_name
-      title: MiniProgramUserCreate
     MiniProgramUserRead:
       properties:
         id:
           type: integer
           title: Id
-        username:
+        wechat_openid:
           type: string
-          title: Username
+          title: Wechat Openid
         display_name:
           type: string
           title: Display Name
@@ -5100,7 +4980,7 @@ components:
       type: object
       required:
       - id
-      - username
+      - wechat_openid
       - display_name
       - enabled
       - created_at
@@ -5109,20 +4989,6 @@ components:
       title: MiniProgramUserRead
     MiniProgramUserUpdate:
       properties:
-        username:
-          anyOf:
-          - type: string
-            maxLength: 64
-            minLength: 1
-          - type: 'null'
-          title: Username
-        password:
-          anyOf:
-          - type: string
-            maxLength: 128
-            minLength: 6
-          - type: 'null'
-          title: Password
         display_name:
           anyOf:
           - type: string
