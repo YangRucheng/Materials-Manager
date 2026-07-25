@@ -10,7 +10,6 @@ from typing import Any
 from fastapi import FastAPI, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -21,7 +20,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.core.errors import AppError
 from app.core.logging import configure_logging
-from app.core.middleware import RealIPMiddleware
+from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware
 from app.services import ai_search_service
 
 logger = logging.getLogger("spare_parts.api")
@@ -67,14 +66,9 @@ app = FastAPI(
     docs_url="/api/docs",
 )
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_origin_regex=settings.cors_origin_regex,
+    RefererCORSMiddleware,
     allow_credentials=settings.cors_allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Disposition", "X-Request-ID"],
-    max_age=86400,
+    max_age=settings.cors_max_age,
 )
 
 

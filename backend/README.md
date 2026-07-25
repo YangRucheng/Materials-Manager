@@ -37,7 +37,7 @@ FastAPI + SQLAlchemy 2.x async + MySQL 8.0，按 `docs/development-plan.md` 实�
 
 ## 跨域配置
 
-默认通过 `APP_CORS_ORIGIN_REGEX=.*` 允许任意域名，并将请求的 `Origin` 原样写入 `Access-Control-Allow-Origin`，同时返回 `Vary: Origin`。如需收紧访问范围，可清空正则并通过 `APP_CORS_ORIGINS` 配置明确域名。完整示例见 `../docs/frontend-separated-deployment.md`。
+后端通过 `RefererCORSMiddleware` 处理跨域，优先从 `Referer` 解析前端站点，缺失或无效时回退到 `Origin`，并为预检、正常响应和 404 响应补齐 CORS Header。完整说明见 `../docs/frontend-separated-deployment.md`。
 
 ## 本地启动
 
