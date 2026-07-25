@@ -1,0 +1,181 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from typing import cast
+from uuid import UUID
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.errors import AppError, not_found
+from app.core.security import hash_password, verify_password
+from app.domain.enums import OperationType, SourceType
+from app.models import MiniProgramUser, StockMaterial, StockOperation
+from app.schemas import (
+    MiniProgramMaterialRead,
+    MiniProgramOutboundCreate,
+    MiniProgramOutboundRead,
+    MiniProgramUserCreate,
+    MiniProgramUserUpdate,
+    OperationCreate,
+    OperationLineWrite,
+)
+from app.services import inventory_service
+from app.services.common import utc_aware, validate_version
+
+
+async def list_users(
+    session: AsyncSession, keyword: str | None, page: int, page_size: int
+) -> tuple[list[MiniProgramUser], int]:
+    query = select(MiniProgramUser)
+    if keyword:
+        query = query.where(
+            or_(
+                MiniProgramUser.username.contains(keyword, autoescape=True),
+                MiniProgramUser.display_name.contains(keyword, autoescape=True),
+            )
+        )
+    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
+    items = list(
+        (
+            await session.scalars(
+                query.order_by(MiniProgramUser.id)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+    )
+    return items, total
+
+
+async def create_user(session: AsyncSession, data: MiniProgramUserCreate) -> MiniProgramUser:
+    item = MiniProgramUser(
+        username=data.username,
+        password_hash=hash_password(data.password),
+        display_name=data.display_name,
+        enabled=data.enabled,
+    )
+    session.add(item)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise AppError(
+            "DUPLICATE_MINI_PROGRAM_USERNAME", "小程序用户名已存在", status_code=409
+        ) from exc
+    return item
+
+
+async def update_user(
+    session: AsyncSession, item_id: int, data: MiniProgramUserUpdate
+) -> MiniProgramUser:
+    item = await session.get(MiniProgramUser, item_id)
+    if item is None:
+        raise not_found("小程序用户")
+    validate_version(data.version, item.version)
+    for key in ("username", "display_name", "enabled"):
+        value = getattr(data, key)
+        if value is not None:
+            setattr(item, key, value)
+    if data.password:
+        item.password_hash = hash_password(data.password)
+    item.version += 1
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise AppError(
+            "DUPLICATE_MINI_PROGRAM_USERNAME", "小程序用户名已存在", status_code=409
+        ) from exc
+    return item
+
+
+async def authenticate(
+    session: AsyncSession, username: str, password: str
+) -> MiniProgramUser:
+    user = await session.scalar(
+        select(MiniProgramUser).where(MiniProgramUser.username == username)
+    )
+    if user is None or not user.enabled or not verify_password(password, user.password_hash):
+        raise AppError("INVALID_CREDENTIALS", "用户名或密码错误", status_code=401)
+    return user
+
+
+async def get_material(
+    session: AsyncSession, material_uuid: UUID, *, for_update: bool = False
+) -> StockMaterial:
+    query = select(StockMaterial).where(StockMaterial.uuid == str(material_uuid))
+    if for_update:
+        query = query.with_for_update()
+    item = await session.scalar(query)
+    if item is None:
+        raise not_found("二级库物资")
+    if not item.enabled:
+        raise AppError("MATERIAL_DISABLED", "二级库物资已停用", status_code=409)
+    return item
+
+
+def material_read(item: StockMaterial) -> MiniProgramMaterialRead:
+    return MiniProgramMaterialRead(
+        uuid=UUID(item.uuid),
+        name=item.name,
+        model_spec=item.model_spec,
+        unit_name=item.unit.name,
+        current_qty=item.balance.quantity if item.balance else Decimal("0"),
+    )
+
+
+def _outbound_read(
+    item: StockOperation, material: StockMaterial, user: MiniProgramUser
+) -> MiniProgramOutboundRead:
+    if (
+        item.operation_type != OperationType.OUTBOUND
+        or item.mini_program_user_id != user.id
+        or len(item.lines) != 1
+        or item.lines[0].stock_material_id != material.id
+    ):
+        raise AppError(
+            "CLIENT_REQUEST_ID_CONFLICT",
+            "请求标识已被其他出库业务使用",
+            status_code=409,
+        )
+    line = item.lines[0]
+    return MiniProgramOutboundRead(
+        operation_id=item.id,
+        operation_no=item.operation_no,
+        material_uuid=UUID(material.uuid),
+        material_name=line.material_name_snapshot,
+        model_spec=line.model_spec_snapshot,
+        unit_name=line.unit_name_snapshot,
+        quantity=line.quantity,
+        before_qty=line.before_qty,
+        after_qty=line.after_qty,
+        occurred_at=cast(datetime, utc_aware(item.occurred_at)),
+        business_reason=item.business_reason,
+        receiver_unit=item.receiver_unit,
+        receiver_name=item.receiver_name or "",
+        subitem_no=item.subitem_no,
+        executed_by=item.mini_program_user_name_snapshot or user.display_name,
+    )
+
+
+async def create_outbound(
+    session: AsyncSession, data: MiniProgramOutboundCreate, user: MiniProgramUser
+) -> MiniProgramOutboundRead:
+    material = await get_material(session, data.material_uuid, for_update=True)
+    operation = await inventory_service.create_operation(
+        session,
+        OperationCreate(
+            client_request_id=data.client_request_id,
+            occurred_at=data.occurred_at,
+            source_type=SourceType.MANUAL,
+            business_reason=data.business_reason,
+            receiver_unit=data.receiver_unit,
+            receiver_name=data.receiver_name,
+            subitem_no=data.subitem_no,
+            lines=[OperationLineWrite(stock_material_id=material.id, quantity=data.quantity)],
+        ),
+        OperationType.OUTBOUND,
+        mini_program_user=user,
+    )
+    return _outbound_read(operation, material, user)

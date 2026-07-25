@@ -20,6 +20,7 @@ import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
 import { purchaseCategoryOptions } from '@/constants/purchase'
+import { renderTwoLineText } from '@/utils/tableText'
 
 const route = useRoute()
 const router = useRouter()
@@ -106,7 +107,7 @@ const availableColumns: Array<{
       title: '申购数量',
       key: 'purchase_qty',
       width: tableColumnWidths.quantity,
-      render: (row) => `${row.purchase_qty} ${row.unit_name}`,
+      render: (row) => renderTwoLineText(`${row.purchase_qty} ${row.unit_name}`),
     },
   },
   {
@@ -126,7 +127,7 @@ const availableColumns: Array<{
       title: '申购单号',
       key: 'purchase_order_no',
       width: tableColumnWidths.identifier,
-      render: (row) => row.purchase_order_no || '\\',
+      render: (row) => renderTwoLineText(row.purchase_order_no),
     },
   },
   {
@@ -136,7 +137,7 @@ const availableColumns: Array<{
       title: '追溯号',
       key: 'trace_no',
       width: tableColumnWidths.identifier,
-      render: (row) => row.trace_no || '\\',
+      render: (row) => renderTwoLineText(row.trace_no),
     },
   },
   {
@@ -146,7 +147,7 @@ const availableColumns: Array<{
       title: '合同号',
       key: 'contract_no',
       width: tableColumnWidths.identifier,
-      render: (row) => row.contract_no || '\\',
+      render: (row) => renderTwoLineText(row.contract_no),
     },
   },
   {
@@ -156,7 +157,7 @@ const availableColumns: Array<{
       title: '船号',
       key: 'vessel_no',
       width: tableColumnWidths.identifier,
-      render: (row) => row.vessel_no || '\\',
+      render: (row) => renderTwoLineText(row.vessel_no),
     },
   },
   {
@@ -176,7 +177,7 @@ const availableColumns: Array<{
       title: '集港港口',
       key: 'consolidation_port',
       width: tableColumnWidths.identifier,
-      render: (row) => row.consolidation_port || '\\',
+      render: (row) => renderTwoLineText(row.consolidation_port),
     },
   },
   {
@@ -196,13 +197,18 @@ const availableColumns: Array<{
       title: '类别',
       key: 'category',
       width: tableColumnWidths.person,
-      render: (row) => row.category || '\\',
+      render: (row) => renderTwoLineText(row.category),
     },
   },
   {
     key: 'demand_department',
     label: '需求部门',
-    column: { title: '需求部门', key: 'demand_department', width: tableColumnWidths.person },
+    column: {
+      title: '需求部门',
+      key: 'demand_department',
+      width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.demand_department),
+    },
   },
   {
     key: 'material_name',
@@ -212,10 +218,21 @@ const availableColumns: Array<{
       key: 'material_name',
       width: tableColumnWidths.material,
       render: (row) =>
-        h('div', [
-          h('strong', row.material_name),
-          h('div', { class: 'muted' }, `${row.material_code || '\\'}｜${row.model_spec}`),
-        ]),
+        h(
+          'div',
+          {
+            class: 'table-material-summary',
+            title: `${row.material_name}\n${row.material_code || '\\'}｜${row.model_spec}`,
+          },
+          [
+            h('div', { class: 'table-material-summary__name' }, row.material_name),
+            h(
+              'div',
+              { class: 'table-material-summary__meta' },
+              `${row.material_code || '\\'}｜${row.model_spec}`,
+            ),
+          ],
+        ),
     },
   },
   {
@@ -225,7 +242,7 @@ const availableColumns: Array<{
       title: '实际需求人',
       key: 'actual_demand_person',
       width: tableColumnWidths.person,
-      render: (row) => row.actual_demand_person || '\\',
+      render: (row) => renderTwoLineText(row.actual_demand_person),
     },
   },
   {
@@ -235,7 +252,7 @@ const availableColumns: Array<{
       title: '申购负责人',
       key: 'purchase_responsible',
       width: tableColumnWidths.person,
-      render: (row) => row.purchase_responsible || '\\',
+      render: (row) => renderTwoLineText(row.purchase_responsible),
     },
   },
   {
@@ -245,7 +262,7 @@ const availableColumns: Array<{
       title: '业务员',
       key: 'salesperson',
       width: tableColumnWidths.person,
-      render: (row) => row.salesperson || '\\',
+      render: (row) => renderTwoLineText(row.salesperson),
     },
   },
   {

@@ -15,6 +15,7 @@ import type {
 } from '@/api/generated'
 import {
   mockFileId,
+  miniProgramUsers,
   nextIds,
   operations,
   purchaseMaterials,
@@ -323,6 +324,32 @@ export const handlers = [
     users.splice(users.indexOf(item), 1)
     return new HttpResponse(null, { status: 204 })
   }),
+  http.get(`${api}/mini-program-users`, ({ request }) =>
+    HttpResponse.json(page(miniProgramUsers, new URL(request.url))),
+  ),
+  http.post(`${api}/mini-program-users`, async ({ request }) => {
+    const body = (await request.json()) as Partial<(typeof miniProgramUsers)[number]>
+    const item = {
+      id: nextIds.miniProgramUser++,
+      username: body.username!,
+      display_name: body.display_name!,
+      enabled: body.enabled ?? true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      version: 1,
+    }
+    miniProgramUsers.push(item)
+    return HttpResponse.json(item, { status: 201 })
+  }),
+  http.patch(`${api}/mini-program-users/:id`, async ({ params, request }) => {
+    const item = miniProgramUsers.find((x) => x.id === Number(params.id))
+    if (!item) return error(400, 'NOT_FOUND', '小程序用户不存在')
+    Object.assign(item, await request.json(), {
+      updated_at: new Date().toISOString(),
+      version: item.version + 1,
+    })
+    return HttpResponse.json(item)
+  }),
 
   http.get(`${api}/stock-materials`, ({ request }) => {
     const url = new URL(request.url)
@@ -351,6 +378,7 @@ export const handlers = [
       return error(409, 'DUPLICATE_MATERIAL', '名称、规格和计量单位相同的物资已存在')
     const item = {
       id: nextIds.stock++,
+      uuid: crypto.randomUUID(),
       name: body.name.trim(),
       model_spec: body.model_spec.trim(),
       unit_id: u.id,

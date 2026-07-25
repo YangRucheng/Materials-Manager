@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { h, ref, watch } from 'vue'
-import { type DataTableColumns, useMessage } from 'naive-ui'
+import { NButton, type DataTableColumns, useMessage } from 'naive-ui'
 import type { MaterialCodeLibrary } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
+import { renderTwoLineText } from '@/utils/tableText'
 
 defineProps<{
   modelValue: string
@@ -28,15 +29,13 @@ const columns: DataTableColumns<MaterialCodeLibrary> = [
     title: '名称',
     key: 'name',
     minWidth: 180,
-    ellipsis: { tooltip: true },
-    render: (row) => row.name || '—',
+    render: (row) => renderTwoLineText(row.name, '—'),
   },
   {
     title: '型号',
     key: 'model_spec',
     minWidth: 220,
-    ellipsis: { tooltip: true },
-    render: (row) => row.model_spec || '—',
+    render: (row) => renderTwoLineText(row.model_spec, '—'),
   },
   { title: '计量单位', key: 'unit_name', width: 100 },
   {
@@ -45,13 +44,9 @@ const columns: DataTableColumns<MaterialCodeLibrary> = [
     width: 88,
     render: (row) =>
       h(
-        'button',
-        {
-          type: 'button',
-          class: 'select-action',
-          onClick: () => selectItem(row),
-        },
-        '采用',
+        NButton,
+        { type: 'primary', size: 'small', secondary: true, onClick: () => selectItem(row) },
+        { default: () => '采用' },
       ),
   },
 ]
@@ -118,20 +113,27 @@ watch(page, () => void load())
     v-model:show="show"
     preset="card"
     title="选择物料编码"
-    style="width: min(980px, 92vw)"
+    class="material-code-selector-modal"
+    style="width: min(960px, 92vw)"
     :mask-closable="false"
+    :bordered="false"
   >
     <div class="selector-search">
-      <n-input
-        v-model:value="keyword"
-        clearable
-        placeholder="输入名称、型号或物料编码搜索"
-        @keyup.enter="search"
-      />
-      <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
+      <n-input-group>
+        <n-input
+          v-model:value="keyword"
+          clearable
+          placeholder="搜索名称或型号，多个条件用 | 分隔"
+          @keyup.enter="search"
+        />
+        <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
+      </n-input-group>
     </div>
     <n-data-table
       remote
+      size="small"
+      :bordered="false"
+      :single-line="false"
       :columns="columns"
       :data="items"
       :loading="loading"
@@ -153,19 +155,10 @@ watch(page, () => void load())
 
 <style scoped>
 .selector-search {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  padding: 14px;
   margin-bottom: 16px;
-}
-.select-action {
-  padding: 3px 8px;
-  border: 0;
-  color: var(--color-primary);
-  background: transparent;
-  cursor: pointer;
-}
-.select-action:hover {
-  text-decoration: underline;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+  background: linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
 }
 </style>

@@ -20,6 +20,19 @@ CREATE TABLE IF NOT EXISTS `user` (
   CONSTRAINT `uq_user_username` UNIQUE (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `mini_program_user` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(64) NOT NULL,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `display_name` VARCHAR(128) NOT NULL,
+  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `version` INT UNSIGNED NOT NULL DEFAULT 1,
+  CONSTRAINT `pk_mini_program_user` PRIMARY KEY (`id`),
+  CONSTRAINT `uq_mini_program_user_username` UNIQUE (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `business_event_log` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `business_type` VARCHAR(64) NOT NULL,
@@ -106,6 +119,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
 
 CREATE TABLE IF NOT EXISTS `stock_material` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `uuid` VARCHAR(36) NOT NULL,
   `name` VARCHAR(128) NOT NULL,
   `model_spec` VARCHAR(255) NOT NULL,
   `unit_id` BIGINT UNSIGNED NOT NULL,
@@ -118,6 +132,7 @@ CREATE TABLE IF NOT EXISTS `stock_material` (
   CONSTRAINT `pk_stock_material` PRIMARY KEY (`id`),
   CONSTRAINT `fk_stock_material_unit_id_measurement_unit`
     FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
+  CONSTRAINT `uq_stock_material_uuid` UNIQUE (`uuid`),
   CONSTRAINT `uq_stock_material_identity_hash` UNIQUE (`identity_hash`),
   INDEX `ix_stock_material_model_spec` (`model_spec`),
   INDEX `ix_stock_material_name` (`name`)
@@ -135,6 +150,8 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `source_type` ENUM('MANUAL', 'REVERSAL', 'INITIALIZATION') NOT NULL,
   `reversal_of_id` BIGINT UNSIGNED NULL,
   `client_request_id` VARCHAR(64) NOT NULL,
+  `mini_program_user_id` BIGINT UNSIGNED NULL,
+  `mini_program_user_name_snapshot` VARCHAR(128) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
@@ -143,7 +160,10 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   CONSTRAINT `uq_stock_operation_reversal_of_id` UNIQUE (`reversal_of_id`),
   CONSTRAINT `fk_stock_operation_reversal_of_id_stock_operation`
     FOREIGN KEY (`reversal_of_id`) REFERENCES `stock_operation` (`id`),
+  CONSTRAINT `fk_stock_operation_mini_program_user_id_mini_program_user`
+    FOREIGN KEY (`mini_program_user_id`) REFERENCES `mini_program_user` (`id`),
   CONSTRAINT `uq_stock_operation_client_request_id` UNIQUE (`client_request_id`),
+  INDEX `ix_stock_operation_mini_program_user_id` (`mini_program_user_id`),
   INDEX `ix_stock_operation_occurred_at` (`occurred_at`),
   INDEX `ix_stock_operation_source_occurred` (`source_type`, `occurred_at`),
   INDEX `ix_stock_operation_type_occurred` (`operation_type`, `occurred_at`)

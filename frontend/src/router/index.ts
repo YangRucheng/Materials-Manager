@@ -127,7 +127,13 @@ const router = createRouter({
           path: 'settings/users',
           name: 'users',
           component: () => import('@/views/settings/UsersView.vue'),
-          meta: { title: '用户管理', permission: 'settings:write' },
+          meta: { title: '管理端用户', permission: 'settings:write' },
+        },
+        {
+          path: 'settings/mini-program-users',
+          name: 'mini-program-users',
+          component: () => import('@/views/settings/MiniProgramUsersView.vue'),
+          meta: { title: '小程序用户', permission: 'settings:write' },
         },
         {
           path: 'settings/about',

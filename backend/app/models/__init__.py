@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -73,6 +74,16 @@ class User(Base):
     version: Mapped[int] = mapped_column(UINT, default=1, server_default="1")
 
 
+class MiniProgramUser(AuditMixin, Base):
+    __tablename__ = "mini_program_user"
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+
+
 class MeasurementUnit(AuditMixin, Base):
     __tablename__ = "measurement_unit"
     __table_args__ = (
@@ -115,6 +126,9 @@ class StockMaterial(AuditMixin, Base):
     __tablename__ = "stock_material"
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, default=lambda: str(uuid4())
+    )
     name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     unit_id: Mapped[int] = mapped_column(
@@ -314,6 +328,10 @@ class StockOperation(AuditMixin, Base):
         BIGINT_ID, ForeignKey("stock_operation.id"), unique=True
     )
     client_request_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    mini_program_user_id: Mapped[int | None] = mapped_column(
+        BIGINT_ID, ForeignKey("mini_program_user.id"), index=True
+    )
+    mini_program_user_name_snapshot: Mapped[str | None] = mapped_column(String(128))
 
     lines: Mapped[list[StockOperationLine]] = relationship(
         back_populates="operation",
@@ -372,6 +390,7 @@ __all__ = [
     "BusinessEventLog",
     "FileObject",
     "MeasurementUnit",
+    "MiniProgramUser",
     "PurchaseMaterial",
     "PurchaseMaterialImage",
     "PurchaseRequest",
