@@ -14,5 +14,6 @@ target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(
     yaml.safe_dump(app.openapi(), allow_unicode=True, sort_keys=False),
     encoding="utf-8",
+    newline="\n",
 )
 print(target)

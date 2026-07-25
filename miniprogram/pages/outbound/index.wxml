@@ -1,0 +1,79 @@
+<view class="page-shell outbound-page">
+  <view class="header-row">
+    <view class="page-title">扫码出库</view>
+    <view class="operator-name">{{user.display_name}}</view>
+  </view>
+
+  <view class="section-card scan-card">
+    <t-button
+      theme="primary"
+      size="large"
+      block
+      loading="{{scanning}}"
+      disabled="{{scanning || submitting}}"
+      bind:tap="scanMaterial"
+    >
+      <t-icon name="scan" size="44rpx" />
+      <text class="scan-button-text">{{material ? '重新扫码' : '扫描物资二维码'}}</text>
+    </t-button>
+  </view>
+
+  <view wx:if="{{material}}" class="section-card material-card">
+    <t-cell-group>
+      <t-cell title="物资名称" note="{{material.name}}" />
+      <t-cell title="型号规格" note="{{material.model_spec}}" />
+      <t-cell title="当前库存" note="{{material.current_qty}} {{material.unit_name}}" />
+    </t-cell-group>
+  </view>
+
+  <view wx:if="{{material}}" class="section-card">
+    <t-cell-group>
+      <t-input
+        label="出库数量"
+        type="digit"
+        placeholder="请输入"
+        suffix="{{material.unit_name}}"
+        value="{{form.quantity}}"
+        data-field="quantity"
+        bind:change="onFieldChange"
+      />
+      <t-input
+        label="出库用途"
+        placeholder="请输入"
+        maxlength="500"
+        value="{{form.businessReason}}"
+        data-field="businessReason"
+        bind:change="onFieldChange"
+      />
+      <t-input
+        label="子项号"
+        placeholder="请输入"
+        maxlength="64"
+        value="{{form.subitemNo}}"
+        data-field="subitemNo"
+        bind:change="onFieldChange"
+      />
+      <t-input
+        label="使用单位"
+        placeholder="请输入"
+        maxlength="128"
+        value="{{form.receiverUnit}}"
+        data-field="receiverUnit"
+        bind:change="onFieldChange"
+      />
+    </t-cell-group>
+  </view>
+
+  <t-button
+    wx:if="{{material}}"
+    class="primary-action"
+    theme="primary"
+    size="large"
+    block
+    loading="{{submitting}}"
+    disabled="{{submitting || scanning}}"
+    bind:tap="submitOutbound"
+  >确认出库</t-button>
+
+  <t-toast id="outbound-toast" />
+</view>

@@ -7,6 +7,7 @@
 - 维护物资档案、图片、库存余额以及入库、出库和历史流水。
 - 按安全库存生成申购计划，维护物料编码并导出编码申请表和采购申请表。
 - 跟踪申购、分批到货和入库进度，形成库存—申购—到货闭环。
+- 提供微信小程序无感登录和二级库物资扫码出库。
 - 提供超级管理员、仓库管理员、申购管理员和只读用户四类权限。
 - 申购计划与申购记录支持 AI 同义词扩展搜索，超级管理员可配置 OpenAI 兼容端点。
 
@@ -29,5 +30,7 @@ docker compose pull
 docker compose up -d
 ```
 
-至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。`example/database/init.sql` 仅用于初始化
+至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`；启用扫码出库小程序时还需设置
+`APP_WECHAT_MINI_PROGRAM_APP_ID` 和 `APP_WECHAT_MINI_PROGRAM_APP_SECRET`。
+`example/database/init.sql` 仅用于初始化
 新数据库；已有数据库的结构调整通过 Agent 超级管理员数据库接口执行，并应提前备份。

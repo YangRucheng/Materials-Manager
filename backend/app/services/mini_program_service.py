@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
 from uuid import UUID
 
+import httpx
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.errors import AppError, not_found
 from app.core.security import hash_password, verify_password
 from app.domain.enums import OperationType, SourceType
@@ -101,6 +105,95 @@ async def authenticate(
     return user
 
 
+async def exchange_wechat_code(code: str) -> str:
+    if not settings.wechat_mini_program_app_id or not settings.wechat_mini_program_app_secret:
+        raise AppError(
+            "WECHAT_NOT_CONFIGURED",
+            "微信小程序登录尚未配置",
+            status_code=503,
+        )
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(
+                "https://api.weixin.qq.com/sns/jscode2session",
+                params={
+                    "appid": settings.wechat_mini_program_app_id,
+                    "secret": settings.wechat_mini_program_app_secret,
+                    "js_code": code,
+                    "grant_type": "authorization_code",
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise AppError(
+            "WECHAT_AUTH_UNAVAILABLE",
+            "微信登录服务暂时不可用，请稍后重试",
+            status_code=503,
+        ) from exc
+    if payload.get("errcode"):
+        raise AppError(
+            "WECHAT_AUTH_FAILED",
+            "微信登录凭证无效，请重试",
+            status_code=401,
+            details={"wechat_errcode": payload.get("errcode")},
+        )
+    openid = payload.get("openid")
+    if not isinstance(openid, str) or not openid:
+        raise AppError(
+            "WECHAT_AUTH_INVALID_RESPONSE",
+            "微信登录服务返回异常",
+            status_code=502,
+        )
+    return openid
+
+
+async def login_with_wechat(session: AsyncSession, code: str) -> MiniProgramUser:
+    openid = await exchange_wechat_code(code)
+    user = await session.scalar(
+        select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
+    )
+    if user is None:
+        username = f"wx_{hashlib.sha256(openid.encode()).hexdigest()[:61]}"
+        user = MiniProgramUser(
+            username=username,
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            wechat_openid=openid,
+            display_name="",
+            enabled=True,
+        )
+        session.add(user)
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            raise AppError(
+                "WECHAT_USER_CREATE_CONFLICT",
+                "微信用户创建冲突，请重试",
+                status_code=409,
+            ) from exc
+    if not user.enabled:
+        raise AppError("ACCOUNT_DISABLED", "账号已停用", status_code=403)
+    return user
+
+
+async def update_profile(
+    session: AsyncSession, user: MiniProgramUser, display_name: str
+) -> MiniProgramUser:
+    user.display_name = display_name
+    user.version += 1
+    await session.flush()
+    return user
+
+
+def require_profile(user: MiniProgramUser) -> None:
+    if not user.display_name.strip():
+        raise AppError(
+            "MINI_PROGRAM_PROFILE_REQUIRED",
+            "请先设置姓名",
+            status_code=409,
+        )
+
+
 async def get_material(
     session: AsyncSession, material_uuid: UUID, *, for_update: bool = False
 ) -> StockMaterial:
@@ -162,6 +255,7 @@ def _outbound_read(
 async def create_outbound(
     session: AsyncSession, data: MiniProgramOutboundCreate, user: MiniProgramUser
 ) -> MiniProgramOutboundRead:
+    require_profile(user)
     material = await get_material(session, data.material_uuid, for_update=True)
     operation = await inventory_service.create_operation(
         session,
@@ -171,7 +265,7 @@ async def create_outbound(
             source_type=SourceType.MANUAL,
             business_reason=data.business_reason,
             receiver_unit=data.receiver_unit,
-            receiver_name=data.receiver_name,
+            receiver_name=user.display_name,
             subitem_no=data.subitem_no,
             lines=[OperationLineWrite(stock_material_id=material.id, quantity=data.quantity)],
         ),
