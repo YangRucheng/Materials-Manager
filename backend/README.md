@@ -49,7 +49,7 @@ copy ..\example\template\*.json data\template\
 .venv/Scripts/uvicorn app.main:app --reload
 ```
 
-空数据库初始化通过 `../example/database/init.sql` 完成；Docker 容器启动后由 `/health` 只读校验表结构，不会创建、修改或迁移数据表。已有数据库的结构升级必须在部署前由独立运维流程完成。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
+空数据库初始化通过 `../example/database/init.sql` 完成；`/health` 仅检查数据库连接。已有数据库的结构调整通过 Agent 超级管理员数据库接口执行。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
 
 ## 验证与契约
 
