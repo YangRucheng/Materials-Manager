@@ -14,6 +14,7 @@ from sqlalchemy.orm import aliased
 from app.core.errors import AppError, not_found
 from app.domain.enums import OperationType, SourceType
 from app.models import (
+    MiniProgramUser,
     StockBalance,
     StockMaterial,
     StockOperation,
@@ -107,6 +108,8 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
         source_type=item.source_type,
         reversal_of_id=item.reversal_of_id,
         client_request_id=item.client_request_id,
+        mini_program_user_id=item.mini_program_user_id,
+        mini_program_user_name=item.mini_program_user_name_snapshot,
         lines=[
             StockOperationLineRead(
                 id=line.id,
@@ -134,6 +137,8 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
         "receiver_unit": item.receiver_unit,
         "receiver_name": item.receiver_name,
         "subitem_no": item.subitem_no,
+        "mini_program_user_id": item.mini_program_user_id,
+        "mini_program_user_name": item.mini_program_user_name_snapshot,
         "lines": [
             {
                 "stock_material_id": line.stock_material_id,
@@ -241,6 +246,7 @@ async def create_operation(
     operation_type: OperationType,
     *,
     reversal_of_id: int | None = None,
+    mini_program_user: MiniProgramUser | None = None,
 ) -> StockOperation:
     existing = await session.scalar(
         select(StockOperation).where(StockOperation.client_request_id == data.client_request_id)
@@ -276,6 +282,10 @@ async def create_operation(
         source_type=data.source_type,
         reversal_of_id=reversal_of_id,
         client_request_id=data.client_request_id,
+        mini_program_user_id=mini_program_user.id if mini_program_user else None,
+        mini_program_user_name_snapshot=(
+            mini_program_user.display_name if mini_program_user else None
+        ),
         lines=[],
     )
     session.add(item)

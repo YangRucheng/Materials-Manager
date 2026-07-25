@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { MeasurementUnit, Page, User } from './generated'
+import type { MeasurementUnit, MiniProgramUser, Page, User } from './generated'
 
 export const dictionaryApi = {
   units: (params?: Record<string, unknown>) =>
@@ -15,4 +15,10 @@ export const dictionaryApi = {
   updateUser: (id: number, payload: Partial<User> & { password?: string }) =>
     apiClient.patch<User>(`/users/${id}`, payload).then((r) => r.data),
   deleteUser: (id: number) => apiClient.delete(`/users/${id}`),
+  miniProgramUsers: (params?: Record<string, unknown>) =>
+    apiClient.get<Page<MiniProgramUser>>('/mini-program-users', { params }).then((r) => r.data),
+  createMiniProgramUser: (payload: Partial<MiniProgramUser> & { password: string }) =>
+    apiClient.post<MiniProgramUser>('/mini-program-users', payload).then((r) => r.data),
+  updateMiniProgramUser: (id: number, payload: Partial<MiniProgramUser> & { password?: string }) =>
+    apiClient.patch<MiniProgramUser>(`/mini-program-users/${id}`, payload).then((r) => r.data),
 }

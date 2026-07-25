@@ -113,6 +113,36 @@ a {
 .table-scroll > .n-table {
   min-width: var(--table-min-width, 760px);
 }
+.table-text-two-line {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.table-material-summary {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  line-height: 1.4;
+}
+.table-material-summary__name,
+.table-material-summary__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-material-summary__name {
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+.table-material-summary__meta {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

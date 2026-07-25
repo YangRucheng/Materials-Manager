@@ -142,7 +142,7 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <div>
-        <h1 class="page-title">用户管理</h1>
+        <h1 class="page-title">管理端用户</h1>
       </div>
       <n-button type="primary" @click="open()">新建用户</n-button>
     </div>
@@ -157,7 +157,7 @@ onMounted(load)
     ><n-modal
       v-model:show="show"
       preset="card"
-      :title="editing ? '编辑用户' : '新建用户'"
+      :title="editing ? '编辑管理端用户' : '新建管理端用户'"
       style="width: 520px"
       ><n-form label-placement="top"
         ><n-form-item label="用户名" required><n-input v-model:value="form.username" /></n-form-item
