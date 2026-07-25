@@ -13,6 +13,7 @@ import type {
   StockMaterialWrite,
   StockOperation,
 } from '@/api/generated'
+import { apiBaseUrl, imageBaseUrl } from '@/config/env'
 import {
   mockFileId,
   miniProgramUsers,
@@ -25,7 +26,7 @@ import {
   users,
 } from './data'
 
-const api = '/api/v1'
+const api = apiBaseUrl
 let aiSettings = {
   endpoint: 'https://example.test/v1',
   api_key: 'mock-secret-key',
@@ -965,7 +966,7 @@ export const handlers = [
     return error(400, 'NOT_FOUND', '申购记录不存在')
   }),
   http.get(
-    `${api}/files/images/:id`,
+    `${imageBaseUrl}/:id`,
     ({ params }) =>
       new HttpResponse(mockImage(String(params.id)), {
         headers: { 'Content-Type': 'image/svg+xml' },

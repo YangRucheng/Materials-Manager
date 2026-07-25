@@ -5,7 +5,10 @@ import router from './router'
 import './styles.css'
 
 async function bootstrap() {
-  if (import.meta.env.VITE_USE_MOCK !== 'false') {
+  if (
+    import.meta.env.VITE_USE_MOCK === 'true' ||
+    (import.meta.env.VITE_USE_MOCK !== 'false' && import.meta.env.DEV)
+  ) {
     const { worker } = await import('./mocks/browser')
     await worker.start({
       onUnhandledRequest: 'bypass',
