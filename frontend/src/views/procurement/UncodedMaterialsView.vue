@@ -12,7 +12,7 @@ import {
   preventTableColumnCompression,
   tableColumnWidths,
 } from '@/constants/table'
-import { formatDate, formatShanghaiTime } from '@/utils/time'
+import { formatDate, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { defaultPurchasePlanStatus } from '@/constants/purchase'
@@ -141,7 +141,8 @@ async function exportExcel() {
   exporting.value = true
   try {
     const content = await procurementApi.exportUncodedMaterials()
-    downloadBlob(content, '物料编码申请表.xlsx')
+    const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    downloadBlob(content, `物料编码申请表_${date}.xlsx`)
     message.success('物料编码申请表已导出')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导出失败')
