@@ -827,6 +827,7 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
             ],
             "plan_date": "2026-07-15",
             "category": "工具",
+            "urgency": "非常紧急",
             "demand_department": "HXNI 设备管理部",
             "actual_demand_person": "统一需求人",
             "subitem_no": None,
@@ -839,6 +840,7 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
     assert [item["id"] for item in payload] == [first["id"], second["id"]]
     assert {item["plan_date"] for item in payload} == {"2026-07-15"}
     assert {item["category"] for item in payload} == {"工具"}
+    assert {item["urgency"] for item in payload} == {"非常紧急"}
     assert {item["demand_department"] for item in payload} == {"HXNI 设备管理部"}
     assert {item["actual_demand_person"] for item in payload} == {"统一需求人"}
     assert {item["subitem_no"] for item in payload} == {None}

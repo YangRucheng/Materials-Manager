@@ -3904,6 +3904,13 @@ components:
             minLength: 1
           - type: 'null'
           title: Category
+        urgency:
+          anyOf:
+          - type: string
+            maxLength: 32
+            minLength: 1
+          - type: 'null'
+          title: Urgency
         demand_department:
           anyOf:
           - type: string
