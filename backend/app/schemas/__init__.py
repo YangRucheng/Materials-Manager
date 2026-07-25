@@ -514,6 +514,9 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
     category: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
+    urgency: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)] | None
+    ) = None
     demand_department: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
@@ -544,6 +547,7 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
         update_fields = {
             "plan_date",
             "category",
+            "urgency",
             "demand_department",
             "actual_demand_person",
             "subitem_no",
