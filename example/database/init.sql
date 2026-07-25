@@ -22,16 +22,13 @@ CREATE TABLE IF NOT EXISTS `user` (
 
 CREATE TABLE IF NOT EXISTS `mini_program_user` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `username` VARCHAR(64) NOT NULL,
-  `password_hash` VARCHAR(255) NOT NULL,
-  `wechat_openid` VARCHAR(128) NULL,
+  `wechat_openid` VARCHAR(128) NOT NULL,
   `display_name` VARCHAR(128) NOT NULL,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_mini_program_user` PRIMARY KEY (`id`),
-  CONSTRAINT `uq_mini_program_user_username` UNIQUE (`username`),
   CONSTRAINT `uq_mini_program_user_wechat_openid` UNIQUE (`wechat_openid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

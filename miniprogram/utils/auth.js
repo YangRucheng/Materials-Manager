@@ -25,24 +25,32 @@ async function loginSilently() {
     data: { code },
     auth: false,
   });
-  wx.setStorageSync('miniProgramAccessToken', session.access_token);
-  wx.setStorageSync('miniProgramUser', session.user);
+  storeSession(session);
   return session;
 }
 
-function updateStoredUser(user) {
-  wx.setStorageSync('miniProgramUser', user);
+function storeSession(session) {
+  if (session.access_token) {
+    wx.setStorageSync('miniProgramAccessToken', session.access_token);
+  } else {
+    wx.removeStorageSync('miniProgramAccessToken');
+  }
+  if (session.registration_token) {
+    wx.setStorageSync('miniProgramRegistrationToken', session.registration_token);
+  } else {
+    wx.removeStorageSync('miniProgramRegistrationToken');
+  }
+  if (session.user) {
+    wx.setStorageSync('miniProgramUser', session.user);
+  } else {
+    wx.removeStorageSync('miniProgramUser');
+  }
   const app = getApp();
-  app.globalData.user = user;
-  app.globalData.authPromise = Promise.resolve({
-    access_token: wx.getStorageSync('miniProgramAccessToken'),
-    token_type: 'bearer',
-    user,
-    requires_profile: false,
-  });
+  app.globalData.user = session.user || null;
+  app.globalData.authPromise = Promise.resolve(session);
 }
 
 module.exports = {
   loginSilently,
-  updateStoredUser,
+  storeSession,
 };

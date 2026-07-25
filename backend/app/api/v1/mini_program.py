@@ -3,16 +3,22 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from app.core.permissions import CurrentMiniProgramUser, DbSession, SuperAdmin
-from app.core.security import create_mini_program_access_token
+from app.core.permissions import (
+    CurrentMiniProgramUser,
+    DbSession,
+    MiniProgramRegistrationOpenId,
+    SuperAdmin,
+)
+from app.core.security import (
+    create_mini_program_access_token,
+    create_mini_program_registration_token,
+)
 from app.schemas import (
-    LoginRequest,
     MiniProgramLoginResponse,
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
     MiniProgramProfileUpdate,
-    MiniProgramUserCreate,
     MiniProgramUserRead,
     MiniProgramUserUpdate,
     MiniProgramWechatLoginRequest,
@@ -43,17 +49,6 @@ async def list_mini_program_users(
     )
 
 
-@management_router.post(
-    "", response_model=MiniProgramUserRead, status_code=status.HTTP_201_CREATED
-)
-async def create_mini_program_user(
-    data: MiniProgramUserCreate, session: DbSession, user: SuperAdmin
-) -> MiniProgramUserRead:
-    return MiniProgramUserRead.model_validate(
-        await mini_program_service.create_user(session, data)
-    )
-
-
 @management_router.patch("/{user_id}", response_model=MiniProgramUserRead)
 async def update_mini_program_user(
     user_id: int,
@@ -66,27 +61,20 @@ async def update_mini_program_user(
     )
 
 
-@mini_router.post("/auth/login", response_model=MiniProgramLoginResponse)
-async def mini_program_login(
-    data: LoginRequest, session: DbSession
-) -> MiniProgramLoginResponse:
-    user = await mini_program_service.authenticate(session, data.username, data.password)
-    return MiniProgramLoginResponse(
-        access_token=create_mini_program_access_token(user.id),
-        user=MiniProgramUserRead.model_validate(user),
-        requires_profile=not bool(user.display_name.strip()),
-    )
-
-
 @mini_router.post("/auth/wx-login", response_model=MiniProgramLoginResponse)
 async def mini_program_wechat_login(
     data: MiniProgramWechatLoginRequest, session: DbSession
 ) -> MiniProgramLoginResponse:
-    user = await mini_program_service.login_with_wechat(session, data.code)
+    user, openid = await mini_program_service.login_with_wechat(session, data.code)
+    if user is None:
+        return MiniProgramLoginResponse(
+            registration_token=create_mini_program_registration_token(openid),
+            requires_profile=True,
+        )
     return MiniProgramLoginResponse(
         access_token=create_mini_program_access_token(user.id),
         user=MiniProgramUserRead.model_validate(user),
-        requires_profile=not bool(user.display_name.strip()),
+        requires_profile=False,
     )
 
 
@@ -95,14 +83,17 @@ async def mini_program_me(user: CurrentMiniProgramUser) -> MiniProgramUserRead:
     return MiniProgramUserRead.model_validate(user)
 
 
-@mini_router.patch("/profile", response_model=MiniProgramUserRead)
-async def update_mini_program_profile(
+@mini_router.post("/profile", response_model=MiniProgramLoginResponse)
+async def create_mini_program_profile(
     data: MiniProgramProfileUpdate,
     session: DbSession,
-    user: CurrentMiniProgramUser,
-) -> MiniProgramUserRead:
-    return MiniProgramUserRead.model_validate(
-        await mini_program_service.update_profile(session, user, data.display_name)
+    openid: MiniProgramRegistrationOpenId,
+) -> MiniProgramLoginResponse:
+    user = await mini_program_service.register_user(session, openid, data.display_name)
+    return MiniProgramLoginResponse(
+        access_token=create_mini_program_access_token(user.id),
+        user=MiniProgramUserRead.model_validate(user),
+        requires_profile=False,
     )
 
 
@@ -110,7 +101,6 @@ async def update_mini_program_profile(
 async def scan_material(
     material_uuid: UUID, session: DbSession, user: CurrentMiniProgramUser
 ) -> MiniProgramMaterialRead:
-    mini_program_service.require_profile(user)
     return mini_program_service.material_read(
         await mini_program_service.get_material(session, material_uuid)
     )

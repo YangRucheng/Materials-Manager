@@ -78,9 +78,7 @@ class MiniProgramUser(AuditMixin, Base):
     __tablename__ = "mini_program_user"
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    wechat_openid: Mapped[str | None] = mapped_column(String(128), unique=True)
+    wechat_openid: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 

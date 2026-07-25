@@ -147,7 +147,7 @@ class UserUpdate(RequestModel):
 
 class MiniProgramUserRead(ReadModel):
     id: int
-    username: str
+    wechat_openid: str
     display_name: str
     enabled: bool
     created_at: datetime
@@ -155,20 +155,7 @@ class MiniProgramUserRead(ReadModel):
     version: int
 
 
-class MiniProgramUserCreate(RequestModel):
-    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
-    password: Annotated[str, StringConstraints(min_length=6, max_length=128)]
-    display_name: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
-    ]
-    enabled: bool = True
-
-
 class MiniProgramUserUpdate(RequestModel):
-    username: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
-    ) = None
-    password: Annotated[str, StringConstraints(min_length=6, max_length=128)] | None = None
     display_name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
         | None
@@ -178,9 +165,10 @@ class MiniProgramUserUpdate(RequestModel):
 
 
 class MiniProgramLoginResponse(ReadModel):
-    access_token: str
+    access_token: str | None = None
+    registration_token: str | None = None
     token_type: Literal["bearer"] = "bearer"
-    user: MiniProgramUserRead
+    user: MiniProgramUserRead | None = None
     requires_profile: bool
 
 

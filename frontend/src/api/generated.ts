@@ -29,7 +29,7 @@ export interface User {
 }
 export interface MiniProgramUser {
   id: number
-  username: string
+  wechat_openid: string
   display_name: string
   enabled: boolean
   created_at: string
@@ -44,6 +44,13 @@ export interface LoginResponse {
   access_token: string
   token_type: 'bearer'
   user: User
+}
+export interface MiniProgramLoginResponse {
+  access_token?: string | null
+  registration_token?: string | null
+  token_type: 'bearer'
+  user?: MiniProgramUser | null
+  requires_profile: boolean
 }
 export interface AiSearchSettings {
   endpoint: string
