@@ -79,6 +79,12 @@ export const procurementApi = {
       .then((r) => r.data),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
+  restoreRecordToPlan: (lineId: number, version: number) =>
+    apiClient
+      .post<PurchaseMaterial>(`/purchase-records/${lineId}/restore-to-plan`, null, {
+        params: { version },
+      })
+      .then((r) => r.data),
   updateRecord: (lineId: number, payload: PurchaseRecordWrite) =>
     apiClient.patch<PurchaseRecord>(`/purchase-records/${lineId}`, payload).then((r) => r.data),
 }

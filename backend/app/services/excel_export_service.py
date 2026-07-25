@@ -36,7 +36,7 @@ def _load_spec(file_name: str) -> dict[str, Any]:
     except FileNotFoundError as exc:
         raise AppError(
             "EXPORT_TEMPLATE_MISSING",
-            f"Excel 导出模板缺失：{file_name}，请检查运行目录 data/template",
+            f"Excel 导出模板缺失：{file_name}，请检查后端代码目录 app/templates",
             details={"template": file_name, "template_dir": str(settings.template_dir)},
         ) from exc
     except UnicodeDecodeError as exc:
@@ -202,7 +202,11 @@ def render_excel(template_file: str, rows: list[dict[str, Any]]) -> tuple[bytes,
             workbook = _purchase_application_workbook(spec, rows)
         output = BytesIO()
         workbook.save(output)
-        filename = spec["output_filename"].format(date=date.today().isoformat())
+        today = date.today()
+        filename = spec["output_filename"].format(
+            date=today.isoformat(),
+            date_compact=today.strftime("%Y%m%d"),
+        )
     except (KeyError, TypeError, ValueError) as exc:
         raise AppError(
             "EXPORT_TEMPLATE_INVALID",

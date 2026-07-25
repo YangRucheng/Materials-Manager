@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NInputGroup, useMessage } from 'naive-ui'
+import { NInputGroup, useDialog, useMessage } from 'naive-ui'
 import type { FileObject, PurchaseRecord, PurchaseRecordWrite } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
@@ -16,10 +16,12 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const dictionaries = useDictionaryStore()
+const dialog = useDialog()
 const message = useMessage()
 const record = ref<PurchaseRecord | null>(null)
 const loading = ref(true)
 const saving = ref(false)
+const restoring = ref(false)
 const images = ref<FileObject[]>([])
 const planDate = ref<number | null>(null)
 const purchaseDate = ref<number | null>(null)
@@ -151,6 +153,35 @@ async function save() {
   }
 }
 
+async function restoreToPlan() {
+  if (!record.value) return
+  restoring.value = true
+  try {
+    const restoredPlan = await procurementApi.restoreRecordToPlan(
+      record.value.line_id,
+      record.value.version,
+    )
+    message.success('已恢复为申购计划')
+    await router.push({ name: 'purchase-material-detail', params: { id: restoredPlan.id } })
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '恢复失败')
+  } finally {
+    restoring.value = false
+  }
+}
+
+function confirmRestore() {
+  if (!record.value) return
+  dialog.warning({
+    title: '恢复为申购计划',
+    content:
+      '恢复后，申购单号、追溯号、合同号、船期、申购日期、业务员、申购状态和申购记录备注等记录专属字段将被删除，当前未保存的修改不会保留。',
+    positiveText: '确认恢复',
+    negativeText: '取消',
+    onPositiveClick: restoreToPlan,
+  })
+}
+
 onMounted(() => {
   void dictionaries.load()
   void load()
@@ -161,6 +192,15 @@ onMounted(() => {
   <div v-if="record" v-loading="loading" class="page">
     <div class="detail-toolbar">
       <n-button secondary @click="router.push('/procurement/records')">← 返回申购记录</n-button>
+      <n-button
+        v-if="auth.can('purchase:write')"
+        secondary
+        type="warning"
+        :loading="restoring"
+        @click="confirmRestore"
+      >
+        恢复为申购计划
+      </n-button>
     </div>
 
     <n-card title="申购记录信息">
