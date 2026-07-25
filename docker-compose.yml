@@ -9,6 +9,8 @@ services:
       APP_DATABASE_URL: ${APP_DATABASE_URL:?APP_DATABASE_URL must point to your external MySQL service}
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be configured}
       APP_ACCESS_TOKEN_MINUTES: ${APP_ACCESS_TOKEN_MINUTES:-480}
+      APP_WECHAT_MINI_PROGRAM_APP_ID: ${APP_WECHAT_MINI_PROGRAM_APP_ID:-}
+      APP_WECHAT_MINI_PROGRAM_APP_SECRET: ${APP_WECHAT_MINI_PROGRAM_APP_SECRET:-}
       APP_UPLOAD_DIR: /app/data/uploads
       APP_LOG_DIR: /app/data/logs
     volumes:

@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "pages/outbound/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "backgroundColor": "#f3f5f8",
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "扫码出库"
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

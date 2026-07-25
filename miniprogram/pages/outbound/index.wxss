@@ -1,0 +1,30 @@
+.outbound-page {
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.operator-name {
+  max-width: 280rpx;
+  overflow: hidden;
+  color: #6b7785;
+  font-size: 28rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-card {
+  padding: 24rpx;
+}
+
+.scan-button-text {
+  margin-left: 12rpx;
+}
+
+.material-card {
+  border: 2rpx solid rgba(0, 82, 217, 0.12);
+}

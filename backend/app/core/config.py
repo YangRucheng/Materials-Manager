@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="change-me-in-production", min_length=16)
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 480
+    wechat_mini_program_app_id: str = ""
+    wechat_mini_program_app_secret: str = ""
     upload_dir: Path = BACKEND_DIR / "data" / "uploads"
     template_dir: Path = BACKEND_DIR / "app" / "templates"
     log_dir: Path = BACKEND_DIR / "data" / "logs"

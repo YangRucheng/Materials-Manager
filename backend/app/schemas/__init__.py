@@ -159,7 +159,7 @@ class MiniProgramUserCreate(RequestModel):
     username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
     password: Annotated[str, StringConstraints(min_length=6, max_length=128)]
     display_name: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
     ]
     enabled: bool = True
 
@@ -170,7 +170,7 @@ class MiniProgramUserUpdate(RequestModel):
     ) = None
     password: Annotated[str, StringConstraints(min_length=6, max_length=128)] | None = None
     display_name: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
         | None
     ) = None
     enabled: bool | None = None
@@ -181,6 +181,17 @@ class MiniProgramLoginResponse(ReadModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     user: MiniProgramUserRead
+    requires_profile: bool
+
+
+class MiniProgramWechatLoginRequest(RequestModel):
+    code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]
+
+
+class MiniProgramProfileUpdate(RequestModel):
+    display_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+    ]
 
 
 class AiSearchSettingsRead(ReadModel):
@@ -507,16 +518,12 @@ class MiniProgramOutboundCreate(RequestModel):
     business_reason: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
     ]
-    receiver_unit: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
-        | None
-    ) = None
-    receiver_name: Annotated[
+    receiver_unit: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    subitem_no: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
     ]
-    subitem_no: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
-    ) = None
 
     @field_validator("occurred_at")
     @classmethod
