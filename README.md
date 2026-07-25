@@ -29,6 +29,5 @@ docker compose pull
 docker compose up -d
 ```
 
-至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。数据库结构以
-`example/database/init.sql` 为准；后端只校验结构，不会在运行时创建、修改或迁移数据库表。
-已有数据库的结构升级必须在部署新版本前由运维流程独立完成，并提前备份。
+至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`。`example/database/init.sql` 仅用于初始化
+新数据库；已有数据库的结构调整通过 Agent 超级管理员数据库接口执行，并应提前备份。
