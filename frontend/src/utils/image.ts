@@ -1,8 +1,10 @@
+import { imageBaseUrl, joinUrl } from '@/config/env'
+
 export const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const maxImageBytes = 10 * 1024 * 1024
 
 export function imageUrl(fileId: string): string {
-  return `/api/v1/files/images/${encodeURIComponent(fileId)}`
+  return joinUrl(imageBaseUrl, encodeURIComponent(fileId))
 }
 
 export function imagePreviewUrl(fileId: string, size: number): string {

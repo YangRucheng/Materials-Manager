@@ -20,7 +20,9 @@
 
 ## 部署
 
-依赖 Docker Compose、外部 MySQL 8.0+ 和外部网络 `1panel-network`。配置示例、初始化
+前端由独立 CI/CD 构建并与后端分离部署时，参见 [前后端分离部署](docs/frontend-separated-deployment.md)，通过构建变量注入后端和图片 CDN 地址。
+
+Docker Compose 方案依赖外部 MySQL 8.0+ 和外部网络 `1panel-network`。配置示例、初始化
 SQL 位于 `example/`；Excel 模板位于 `backend/app/templates/`，随代码一同构建和发布。
 
 ```bash

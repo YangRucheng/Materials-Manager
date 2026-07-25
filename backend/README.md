@@ -35,6 +35,10 @@ X-Agent-Password: <超级管理员密码>
 
 FastAPI + SQLAlchemy 2.x async + MySQL 8.0，按 `docs/development-plan.md` 实现。
 
+## 跨域配置
+
+默认通过 `APP_CORS_ORIGIN_REGEX=.*` 允许任意域名，并将请求的 `Origin` 原样写入 `Access-Control-Allow-Origin`，同时返回 `Vary: Origin`。如需收紧访问范围，可清空正则并通过 `APP_CORS_ORIGINS` 配置明确域名。完整示例见 `../docs/frontend-separated-deployment.md`。
+
 ## 本地启动
 
 要求 Python 3.12 和 MySQL 8.0：
