@@ -19,11 +19,11 @@ npm run dev
 
 ```dotenv
 VITE_USE_MOCK=false
-VITE_API_BASE_URL=https://api.example.com/api/v1
-VITE_IMAGE_BASE_URL=https://img.example.com/api/v1/files/images
+VITE_API_BASE_URL=https://api.example.com
+VITE_IMAGE_BASE_URL=https://img.example.com
 ```
 
-`VITE_IMAGE_BASE_URL` 可省略，省略后图片从后端 API 读取。完整的前后端分离、跨域和 CDN 配置见 `../docs/frontend-separated-deployment.md`。
+`VITE_API_BASE_URL` 和 `VITE_IMAGE_BASE_URL` 只填写服务器域名时会自动补全接口路径；`VITE_IMAGE_BASE_URL` 可省略，省略后图片从后端 API 读取。完整的前后端分离、跨域和 CDN 配置见 `../docs/frontend-separated-deployment.md`。
 
 运行 `npm run generate:api` 可依据 `../docs/openapi.yaml` 更新 `src/api/generated.ts`；页面和组件没有另建 DTO。
 
