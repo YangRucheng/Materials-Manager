@@ -59,11 +59,33 @@ async def get_current_mini_program_user(
     if user is None or not user.enabled:
         raise AppError("USER_DISABLED", "用户不存在或已停用", status_code=401)
     request.state.mini_program_user_id = user.id
-    request.state.username = f"mini:{user.username}"
+    request.state.username = f"mini:{user.id}"
     return user
 
 
 CurrentMiniProgramUser = Annotated[MiniProgramUser, Depends(get_current_mini_program_user)]
+
+
+async def get_mini_program_registration_openid(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+) -> str:
+    if credentials is None:
+        raise AppError("UNAUTHORIZED", "请先完成微信登录", status_code=401)
+    try:
+        payload = decode_access_token(credentials.credentials)
+        if payload.get("token_type") != "mini_program_registration":
+            raise ValueError("wrong token type")
+        openid = str(payload["sub"])
+        if not openid:
+            raise ValueError("missing openid")
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError) as exc:
+        raise AppError("INVALID_TOKEN", "注册凭证无效或已过期", status_code=401) from exc
+    return openid
+
+
+MiniProgramRegistrationOpenId = Annotated[
+    str, Depends(get_mini_program_registration_openid)
+]
 
 
 def require_roles(*roles: Role) -> Callable[[CurrentUser], Awaitable[User]]:

@@ -17,8 +17,6 @@ export const dictionaryApi = {
   deleteUser: (id: number) => apiClient.delete(`/users/${id}`),
   miniProgramUsers: (params?: Record<string, unknown>) =>
     apiClient.get<Page<MiniProgramUser>>('/mini-program-users', { params }).then((r) => r.data),
-  createMiniProgramUser: (payload: Partial<MiniProgramUser> & { password: string }) =>
-    apiClient.post<MiniProgramUser>('/mini-program-users', payload).then((r) => r.data),
-  updateMiniProgramUser: (id: number, payload: Partial<MiniProgramUser> & { password?: string }) =>
+  updateMiniProgramUser: (id: number, payload: Partial<MiniProgramUser>) =>
     apiClient.patch<MiniProgramUser>(`/mini-program-users/${id}`, payload).then((r) => r.data),
 }

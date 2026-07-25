@@ -327,20 +327,6 @@ export const handlers = [
   http.get(`${api}/mini-program-users`, ({ request }) =>
     HttpResponse.json(page(miniProgramUsers, new URL(request.url))),
   ),
-  http.post(`${api}/mini-program-users`, async ({ request }) => {
-    const body = (await request.json()) as Partial<(typeof miniProgramUsers)[number]>
-    const item = {
-      id: nextIds.miniProgramUser++,
-      username: body.username!,
-      display_name: body.display_name!,
-      enabled: body.enabled ?? true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      version: 1,
-    }
-    miniProgramUsers.push(item)
-    return HttpResponse.json(item, { status: 201 })
-  }),
   http.patch(`${api}/mini-program-users/:id`, async ({ params, request }) => {
     const item = miniProgramUsers.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '小程序用户不存在')

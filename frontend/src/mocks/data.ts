@@ -47,7 +47,7 @@ export const users: User[] = [
 export const miniProgramUsers: MiniProgramUser[] = [
   {
     id: 1,
-    username: 'scanner',
+    wechat_openid: 'openid_mock_scanner',
     display_name: '扫码出库员',
     enabled: true,
     created_at: now,
@@ -409,5 +409,4 @@ export const nextIds = {
   file: 10,
   unit: 10,
   user: 10,
-  miniProgramUser: 10,
 }

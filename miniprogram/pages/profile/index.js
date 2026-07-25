@@ -1,6 +1,6 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
-const { updateStoredUser } = require('../../utils/auth');
+const { storeSession } = require('../../utils/auth');
 const Toast = toastModule.default || toastModule;
 
 Page({
@@ -32,12 +32,13 @@ Page({
     }
     this.setData({ loading: true });
     try {
-      const user = await request({
+      const session = await request({
         url: '/mini-program/profile',
-        method: 'PATCH',
+        method: 'POST',
         data: { display_name: displayName },
+        token: wx.getStorageSync('miniProgramRegistrationToken'),
       });
-      updateStoredUser(user);
+      storeSession(session);
       wx.reLaunch({ url: '/pages/outbound/index' });
     } catch (error) {
       this.showError(error);
