@@ -94,6 +94,12 @@ const router = createRouter({
           meta: { title: '未编码物资' },
         },
         {
+          path: 'procurement/material-code-library',
+          name: 'material-code-library',
+          component: () => import('@/views/procurement/MaterialCodeLibraryView.vue'),
+          meta: { title: '物料编码库' },
+        },
+        {
           path: 'procurement/records',
           name: 'purchase-records',
           component: () => import('@/views/procurement/PurchaseRequestsView.vue'),

@@ -2,7 +2,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDialog, useMessage } from 'naive-ui'
-import type { FileObject, PurchaseMaterial, PurchaseMaterialWrite } from '@/api/generated'
+import type {
+  FileObject,
+  MaterialCodeLibrary,
+  PurchaseMaterial,
+  PurchaseMaterialWrite,
+} from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -14,6 +19,7 @@ import {
   purchasePlanStatusOptions,
 } from '@/constants/purchase'
 import MaterialSelector from '@/components/MaterialSelector.vue'
+import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -72,6 +78,16 @@ async function load() {
     syncForm(material.value)
   } finally {
     loading.value = false
+  }
+}
+function applyMaterialCode(item: MaterialCodeLibrary) {
+  form.material_code = item.material_code
+  if (item.name?.trim()) form.name = item.name
+  if (item.model_spec?.trim()) form.model_spec = item.model_spec
+  if (item.unit_id) {
+    form.unit_id = item.unit_id
+  } else {
+    message.warning(`计量单位“${item.unit_name}”尚未在系统配置，请手动选择计量单位`)
   }
 }
 function syncForm(value: PurchaseMaterial) {
@@ -239,7 +255,11 @@ onMounted(() => {
             <n-date-picker v-model:value="planDate" type="date" class="full-width" />
           </n-form-item>
           <n-form-item label="物料编码">
-            <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
+            <MaterialCodeSelector
+              :model-value="form.material_code || ''"
+              @update:model-value="form.material_code = $event"
+              @select="applyMaterialCode"
+            />
           </n-form-item>
           <n-form-item label="类别">
             <n-select
