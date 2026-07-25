@@ -158,6 +158,8 @@ const batchEditForm = reactive({
   plan_date: null as number | null,
   update_category: false,
   category: '',
+  update_urgency: false,
+  urgency: defaultPurchaseUrgency,
   update_demand_department: false,
   demand_department: defaultDemandDepartment,
   update_actual_demand_person: false,
@@ -614,6 +616,8 @@ function openBatchEdit() {
     plan_date: null,
     update_category: false,
     category: '',
+    update_urgency: false,
+    urgency: defaultPurchaseUrgency,
     update_demand_department: false,
     demand_department: defaultDemandDepartment,
     update_actual_demand_person: false,
@@ -640,6 +644,9 @@ async function batchUpdate() {
   }
   if (batchEditForm.update_category) {
     payload.category = batchEditForm.category.trim() || null
+  }
+  if (batchEditForm.update_urgency) {
+    payload.urgency = batchEditForm.urgency
   }
   if (batchEditForm.update_demand_department) {
     if (!batchEditForm.demand_department.trim()) {
@@ -939,6 +946,16 @@ onBeforeUnmount(() => {
               clearable
               placeholder="留空将清除类别"
               :disabled="!batchEditForm.update_category"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_urgency"> 修改紧急程度 </n-checkbox>
+            </template>
+            <n-select
+              v-model:value="batchEditForm.urgency"
+              :options="purchaseUrgencyOptions"
+              :disabled="!batchEditForm.update_urgency"
             />
           </n-form-item>
           <n-form-item>

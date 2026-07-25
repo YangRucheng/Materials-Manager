@@ -720,6 +720,7 @@ export const handlers = [
         item.actual_demand_person = body.actual_demand_person
       if ('subitem_no' in body) item.subitem_no = body.subitem_no || undefined
       if (body.usage !== undefined) item.usage = body.usage
+      if (body.urgency !== undefined) item.urgency = body.urgency
       if (body.status !== undefined) item.status = body.status
       item.version++
       item.updated_at = now()
