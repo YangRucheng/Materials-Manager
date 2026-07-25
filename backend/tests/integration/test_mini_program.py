@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from app.services import mini_program_service
 from tests.conftest import auth_headers
 
 
@@ -82,7 +83,6 @@ async def test_mini_program_user_scan_and_outbound_flow(client: AsyncClient) -> 
         "quantity": "2",
         "business_reason": "现场检修领用",
         "receiver_unit": "电气检修班",
-        "receiver_name": "张工",
         "subitem_no": "01-01",
     }
     outbound = await client.post(
@@ -95,6 +95,7 @@ async def test_mini_program_user_scan_and_outbound_flow(client: AsyncClient) -> 
     assert outbound.json()["operation_id"] == repeated.json()["operation_id"]
     assert outbound.json()["after_qty"] == "3"
     assert outbound.json()["executed_by"] == "扫码出库员"
+    assert outbound.json()["receiver_name"] == "扫码出库员"
 
     operation = await client.get(
         f"/api/v1/inventory/operations/{outbound.json()['operation_id']}", headers=warehouse
@@ -109,3 +110,50 @@ async def test_mini_program_users_require_super_admin(client: AsyncClient) -> No
     warehouse = await auth_headers(client, "warehouse")
     response = await client.get("/api/v1/mini-program-users", headers=warehouse)
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_wechat_login_requires_profile_before_scan(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(code: str) -> str:
+        assert code == "temporary-login-code"
+        return "openid-for-test-user"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+
+    login = await client.post(
+        "/api/v1/mini-program/auth/wx-login",
+        json={"code": "temporary-login-code"},
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["requires_profile"] is True
+    assert login.json()["user"]["display_name"] == ""
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    blocked = await client.get(
+        "/api/v1/mini-program/materials/00000000-0000-0000-0000-000000000001",
+        headers=headers,
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["code"] == "MINI_PROGRAM_PROFILE_REQUIRED"
+
+    profile = await client.patch(
+        "/api/v1/mini-program/profile",
+        headers=headers,
+        json={"display_name": "张三"},
+    )
+    assert profile.status_code == 200, profile.text
+    assert profile.json()["display_name"] == "张三"
+
+    repeated_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login",
+        json={"code": "temporary-login-code"},
+    )
+    assert repeated_login.status_code == 200, repeated_login.text
+    assert repeated_login.json()["requires_profile"] is False
+    assert repeated_login.json()["user"]["id"] == login.json()["user"]["id"]

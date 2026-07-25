@@ -1,0 +1,11 @@
+{
+  "name": "spare-parts-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check.js"
+  },
+  "dependencies": {
+    "tdesign-miniprogram": "^1.15.3"
+  }
+}

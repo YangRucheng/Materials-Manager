@@ -196,9 +196,8 @@ export interface MiniProgramOutboundWrite {
   occurred_at: string
   quantity: string
   business_reason: string
-  receiver_unit?: string
-  receiver_name: string
-  subitem_no?: string
+  receiver_unit: string
+  subitem_no: string
 }
 export interface MiniProgramOutbound {
   operation_id: number
