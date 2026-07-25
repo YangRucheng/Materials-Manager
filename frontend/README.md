@@ -13,13 +13,17 @@ npm run dev
 
 ## 接入后端
 
-复制 `../example/frontend.env.example` 为 `.env.local`，设置：
+复制 `../example/frontend.env.example` 为 `.env.local`。本地联调可将 `VITE_API_BASE_URL` 设置为 `http://localhost:8000/api/v1`；使用 Vite 同源代理时则设置为 `/api/v1`，并通过 `VITE_API_PROXY` 指定后端。
+
+生产环境由 CI/CD 在 `npm run build` 前注入：
 
 ```dotenv
 VITE_USE_MOCK=false
-VITE_API_BASE_URL=/api/v1
-VITE_API_PROXY=http://localhost:8000
+VITE_API_BASE_URL=https://api.example.com/api/v1
+VITE_IMAGE_BASE_URL=https://img.example.com/api/v1/files/images
 ```
+
+`VITE_IMAGE_BASE_URL` 可省略，省略后图片从后端 API 读取。完整的前后端分离、跨域和 CDN 配置见 `../docs/frontend-separated-deployment.md`。
 
 运行 `npm run generate:api` 可依据 `../docs/openapi.yaml` 更新 `src/api/generated.ts`；页面和组件没有另建 DTO。
 

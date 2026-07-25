@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios'
+import { apiBaseUrl } from '@/config/env'
 import type { ApiError } from './generated'
 
 export class AppError extends Error {
@@ -16,7 +17,7 @@ export class AppError extends Error {
 }
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  baseURL: apiBaseUrl,
   timeout: 15_000,
   paramsSerializer: { indexes: null },
 })
