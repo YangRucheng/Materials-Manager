@@ -129,10 +129,7 @@ onMounted(() => void load())
 <template>
   <div class="page">
     <div class="page-header">
-      <div>
-        <h1 class="page-title">物料编码库</h1>
-        <div class="muted">编码库只允许通过 Excel 全量更新，不支持直接新增、编辑或删除。</div>
-      </div>
+      <h1 class="page-title">物料编码库</h1>
       <n-button
         v-if="auth.can('purchase:write')"
         type="primary"
@@ -149,10 +146,6 @@ onMounted(() => void load())
         @change="onFileChange"
       />
     </div>
-
-    <n-alert type="info" :bordered="false">
-      导入列：编码、名称、型号、记账单位名称。文件只在本次请求中读取，导入结束后不会保存在服务器。
-    </n-alert>
 
     <n-card class="filter-card">
       <div class="filter-bar">
