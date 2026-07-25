@@ -138,7 +138,6 @@ def _material_code_workbook(spec: dict[str, Any], rows: list[dict[str, Any]]) ->
             _style(cell, styles[column.get("data_style", "data")])
         sheet.row_dimensions[data_start + offset].height = 24
     sheet.print_area = f"B2:AA{data_start + data_row_count - 1}"
-    sheet.freeze_panes = f"B{data_start}"
     return workbook
 
 

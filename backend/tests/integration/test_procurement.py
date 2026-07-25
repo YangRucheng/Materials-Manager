@@ -1050,6 +1050,7 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert code_sheet["L7"].value == "非资产"
     assert code_sheet["M7"].value == "当前无准确编码对应，需要新增编码"
     assert code_sheet["N7"].value == "HXNI 检修维护部"
+    assert code_sheet.freeze_panes is None
     assert f"物料编码申请表_{date.today():%Y%m%d}.xlsx" in unquote(
         code_export.headers["content-disposition"]
     )
