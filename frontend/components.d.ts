@@ -11,6 +11,7 @@ declare module 'vue' {
     ColumnVisibilityPicker: typeof import('./src/components/ColumnVisibilityPicker.vue')['default']
     ExportButton: typeof import('./src/components/ExportButton.vue')['default']
     ImageUploader: typeof import('./src/components/ImageUploader.vue')['default']
+    MaterialCodeSelector: typeof import('./src/components/MaterialCodeSelector.vue')['default']
     MaterialSelector: typeof import('./src/components/MaterialSelector.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
     NBreadcrumb: typeof import('naive-ui')['NBreadcrumb']

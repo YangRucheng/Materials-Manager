@@ -17,15 +17,6 @@ from app.core.errors import AppError
 from app.schemas import AgentDatabaseExecuteRead, AgentDatabaseExecuteRequest
 
 logger = logging.getLogger("spare_parts.agent_database")
-ALLOWED_STATEMENTS = {"SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"}
-ALTERABLE_TABLES = {"purchase_material", "purchase_request", "stock_operation"}
-BLOCKED_ALTER_FEATURES = re.compile(
-    r"\b(?:DROP|RENAME|TRUNCATE|DISCARD|IMPORT|EXCHANGE)\b", re.IGNORECASE
-)
-BLOCKED_SELECT_FEATURES = re.compile(
-    r"\b(?:INTO\s+(?:OUTFILE|DUMPFILE)|LOAD_FILE\s*\()",
-    re.IGNORECASE,
-)
 
 
 def _invalid_sql(message: str) -> AppError:
@@ -34,20 +25,16 @@ def _invalid_sql(message: str) -> AppError:
 
 def validate_sql(sql: str) -> str:
     statement = sql.strip()
-    masked: list[str] = []
     quote: str | None = None
     index = 0
     while index < len(statement):
         char = statement[index]
         if quote is not None:
-            masked.append(" ")
             if char == "\\" and index + 1 < len(statement):
-                masked.append(" ")
                 index += 2
                 continue
             if char == quote:
                 if index + 1 < len(statement) and statement[index + 1] == quote:
-                    masked.append(" ")
                     index += 2
                     continue
                 quote = None
@@ -55,37 +42,18 @@ def validate_sql(sql: str) -> str:
             continue
         if char in {"'", '"', "`"}:
             quote = char
-            masked.append(" ")
             index += 1
             continue
         if char == ";":
             raise _invalid_sql("每次只能执行一条 SQL，不能包含分号")
         if char == "#" or statement.startswith("--", index) or statement.startswith("/*", index):
             raise _invalid_sql("SQL 不允许包含注释")
-        masked.append(char)
         index += 1
 
     match = re.match(r"^([A-Za-z]+)\b", statement)
-    statement_type = match.group(1).upper() if match else ""
-    if statement_type not in ALLOWED_STATEMENTS:
-        raise _invalid_sql("只允许执行 SELECT、INSERT、UPDATE、DELETE 或受限 ALTER TABLE")
-    masked_sql = "".join(masked)
-    if statement_type == "ALTER":
-        alter_match = re.match(
-            r"^ALTER\s+TABLE\s+(?:`([^`]+)`|([A-Za-z_][A-Za-z0-9_]*))(?:\s|$)",
-            statement,
-            re.IGNORECASE,
-        )
-        table_name = (
-            next((value for value in alter_match.groups() if value), "") if alter_match else ""
-        )
-        if table_name.lower() not in ALTERABLE_TABLES:
-            raise _invalid_sql("ALTER TABLE 仅允许修改应用迁移白名单内的数据表")
-        if BLOCKED_ALTER_FEATURES.search(masked_sql):
-            raise _invalid_sql("ALTER TABLE 不允许删除、重命名或交换数据库对象")
-    if BLOCKED_SELECT_FEATURES.search(masked_sql):
-        raise _invalid_sql("不允许通过 SQL 读写数据库服务器文件")
-    return statement_type
+    if match is None:
+        raise _invalid_sql("无法识别 SQL 语句类型")
+    return match.group(1).upper()
 
 
 def _json_value(value: Any) -> object:

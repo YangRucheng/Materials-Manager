@@ -7,6 +7,7 @@ from app.api.v1 import (
     dictionaries,
     files,
     inventory,
+    material_code_library,
     purchase_materials,
     purchase_requests,
     stock_materials,
@@ -27,6 +28,7 @@ router.include_router(agent_database.router)
 router.include_router(ai_search.router)
 router.include_router(stock_materials.router)
 router.include_router(inventory.router)
+router.include_router(material_code_library.router)
 router.include_router(purchase_materials.router)
 router.include_router(purchase_requests.router)
 router.include_router(dictionaries.router)

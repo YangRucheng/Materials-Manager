@@ -33,6 +33,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     children: [
       link('申购计划', 'purchase-materials'),
       link('未编码物资', 'uncoded-materials'),
+      link('物料编码库', 'material-code-library'),
       link('申购记录', 'purchase-records'),
     ],
   })

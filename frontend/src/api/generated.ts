@@ -73,6 +73,20 @@ export interface MeasurementUnit {
   enabled: boolean
   version: number
 }
+export interface MaterialCodeLibrary {
+  id: number
+  material_code: string
+  name?: string | null
+  model_spec?: string | null
+  unit_name: string
+  unit_id?: number | null
+}
+export interface MaterialCodeLibraryImportResult {
+  imported_count: number
+  blank_name_count: number
+  blank_model_spec_count: number
+  unmatched_unit_names: string[]
+}
 export interface FileObject {
   id: string
   original_name: string

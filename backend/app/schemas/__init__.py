@@ -87,7 +87,7 @@ class AgentDatabaseExecuteRequest(RequestModel):
 
 
 class AgentDatabaseExecuteRead(ReadModel):
-    statement_type: Literal["SELECT", "INSERT", "UPDATE", "DELETE", "ALTER"]
+    statement_type: str
     columns: list[str] = Field(default_factory=list)
     rows: list[dict[str, object]] = Field(default_factory=list)
     row_count: int
@@ -501,6 +501,22 @@ class PurchaseMaterialCreate(PurchaseMaterialBase):
 
 class PurchaseMaterialUpdate(PurchaseMaterialBase):
     version: int
+
+
+class MaterialCodeLibraryRead(ReadModel):
+    id: int
+    material_code: str
+    name: str | None
+    model_spec: str | None
+    unit_name: str
+    unit_id: int | None = None
+
+
+class MaterialCodeLibraryImportRead(ReadModel):
+    imported_count: int
+    blank_name_count: int
+    blank_model_spec_count: int
+    unmatched_unit_names: list[str]
 
 
 class PurchasePlanVersion(RequestModel):

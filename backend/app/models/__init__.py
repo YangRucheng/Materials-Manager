@@ -86,6 +86,19 @@ class MeasurementUnit(AuditMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
 
+class MaterialCodeLibrary(Base):
+    __tablename__ = "material_code_library"
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    material_code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str | None] = mapped_column(String(128), index=True)
+    model_spec: Mapped[str | None] = mapped_column(String(255), index=True)
+    unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now()
+    )
+
+
 class FileObject(AuditMixin, Base):
     __tablename__ = "file_object"
 
