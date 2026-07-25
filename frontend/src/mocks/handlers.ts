@@ -867,6 +867,30 @@ export const handlers = [
     }
     return error(400, 'NOT_FOUND', '申购记录不存在')
   }),
+  http.post(`${api}/purchase-records/:id/restore-to-plan`, ({ params, request }) => {
+    const version = Number(new URL(request.url).searchParams.get('version'))
+    for (let requestIndex = 0; requestIndex < purchaseRequests.length; requestIndex += 1) {
+      const purchaseRequest = purchaseRequests[requestIndex]
+      const lineIndex = purchaseRequest.lines.findIndex((item) => item.id === Number(params.id))
+      if (lineIndex < 0) continue
+      if (purchaseRequest.version !== version) {
+        return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改，请刷新后重试')
+      }
+      const [line] = purchaseRequest.lines.splice(lineIndex, 1)
+      if (!purchaseRequest.lines.length) purchaseRequests.splice(requestIndex, 1)
+      else purchaseRequest.version += 1
+      const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
+      Object.assign(material, {
+        moved_to_record: false,
+        status: '正常',
+        enabled: true,
+        updated_at: now(),
+        version: material.version + 1,
+      })
+      return HttpResponse.json(material)
+    }
+    return error(400, 'NOT_FOUND', '申购记录不存在')
+  }),
   http.patch(`${api}/purchase-records/:id`, async ({ params, request }) => {
     for (const purchaseRequest of purchaseRequests) {
       const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))

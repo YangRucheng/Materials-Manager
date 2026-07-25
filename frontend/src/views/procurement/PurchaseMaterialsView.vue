@@ -833,6 +833,7 @@ onBeforeUnmount(() => {
           <span>申购状态</span>
           <n-select
             v-model:value="filters.status"
+            class="status-filter-select"
             :options="statusFilterOptions"
             multiple
             clearable
@@ -1213,6 +1214,19 @@ onBeforeUnmount(() => {
 
 .filter-field :deep(.n-input) {
   background-color: rgb(255 255 255 / 88%);
+}
+
+.status-filter-select :deep(.n-base-selection-tags) {
+  min-height: 34px;
+  padding: 4px 30px 1px 10px;
+}
+
+.status-filter-select :deep(.n-base-selection-tag-wrapper) {
+  padding: 0 6px 3px 0;
+}
+
+.status-filter-select :deep(.n-base-selection-placeholder) {
+  padding: 0 30px 0 10px;
 }
 
 .filter-actions {

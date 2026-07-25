@@ -11,7 +11,7 @@ from PIL import Image
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.models import PurchaseRequestLine
+from app.models import PurchaseRequest, PurchaseRequestLine
 from tests.conftest import auth_headers, create_stock
 
 
@@ -717,6 +717,43 @@ async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) ->
 
 
 @pytest.mark.asyncio
+async def test_purchase_record_can_restore_to_purchase_plan(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    plan = await create_purchase_plan(
+        client,
+        headers,
+        "被打回的申购物资",
+        code="DQ-RESTORE-1",
+        category="工具",
+    )
+    record = await move_to_record(client, headers, int(plan["id"]))
+
+    restored = await client.post(
+        f"/api/v1/purchase-records/{record['line_id']}/restore-to-plan",
+        headers=headers,
+        params={"version": record["version"]},
+    )
+    assert restored.status_code == 200, restored.text
+    restored_plan = restored.json()
+    assert restored_plan["id"] == plan["id"]
+    assert restored_plan["category"] == "工具"
+    assert restored_plan["status"] == "正常"
+    assert restored_plan["enabled"] is True
+    assert restored_plan["moved_to_record"] is False
+    assert "contract_no" not in restored_plan
+    assert "purchase_date" not in restored_plan
+
+    missing_record = await client.get(
+        f"/api/v1/purchase-records/{record['line_id']}", headers=headers
+    )
+    assert missing_record.status_code == 400
+
+    async with SessionLocal() as session:
+        request = await session.get(PurchaseRequest, int(record["purchase_request_id"]))
+        assert request is None
+
+
+@pytest.mark.asyncio
 async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
     first = await create_purchase_plan(client, headers, "批量计划一", code="DQ-BATCH-1")
@@ -751,6 +788,21 @@ async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: Asyn
     assert {record["trace_no"] for record in records} == {"ZS-BATCH-001"}
     assert {record["purchase_order_no"] for record in records} == {"SG-BATCH-001"}
     assert {record["status"] for record in records} == {"采购处理中"}
+
+    restored = await client.post(
+        f"/api/v1/purchase-records/{records[0]['line_id']}/restore-to-plan",
+        headers=headers,
+        params={"version": records[0]["version"]},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["moved_to_record"] is False
+
+    remaining = await client.get(
+        f"/api/v1/purchase-records/{records[1]['line_id']}", headers=headers
+    )
+    assert remaining.status_code == 200, remaining.text
+    assert remaining.json()["purchase_request_id"] == records[1]["purchase_request_id"]
+    assert remaining.json()["version"] == records[1]["version"] + 1
 
 
 @pytest.mark.asyncio
@@ -992,6 +1044,13 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert code_sheet["D7"].value == "待编码接触器"
     assert code_sheet["E7"].value == uncoded["model_spec"]
     assert code_sheet["I7"].value == uncoded["unit_name"]
+    assert code_sheet["J7"].value == "否"
+    assert code_sheet["L7"].value == "非资产"
+    assert code_sheet["M7"].value == "当前无准确编码对应，需要新增编码"
+    assert code_sheet["N7"].value == "HXNI 检修维护部"
+    assert f"物料编码申请表_{date.today():%Y%m%d}.xlsx" in unquote(
+        code_export.headers["content-disposition"]
+    )
 
     purchase_export = await client.post(
         "/api/v1/purchase-materials/export-purchase-application",

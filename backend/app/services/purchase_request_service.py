@@ -6,6 +6,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
+from app.domain.enums import PurchasePlanStatus
 from app.models import MeasurementUnit, PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
 from app.schemas import (
     BatchMovePurchasePlansRequest,
@@ -228,6 +229,42 @@ async def update_purchase_record(
     line.version += 1
     await session.flush()
     return line
+
+
+async def restore_purchase_record_to_plan(
+    session: AsyncSession,
+    line: PurchaseRequestLine,
+    version: int,
+) -> PurchaseMaterial:
+    request = await session.scalar(
+        select(PurchaseRequest)
+        .where(PurchaseRequest.id == line.purchase_request_id)
+        .with_for_update()
+    )
+    if request is None:
+        raise not_found("申购记录")
+    validate_version(version, request.version)
+
+    material = line.purchase_material
+    material.status = PurchasePlanStatus.NORMAL
+    material.enabled = True
+    material.version += 1
+
+    other_line_id = await session.scalar(
+        select(PurchaseRequestLine.id)
+        .where(
+            PurchaseRequestLine.purchase_request_id == request.id,
+            PurchaseRequestLine.id != line.id,
+        )
+        .limit(1)
+    )
+    if other_line_id is None:
+        await session.delete(request)
+    else:
+        request.version += 1
+        await session.delete(line)
+    await session.flush()
+    return material
 
 
 async def search_purchase_records(

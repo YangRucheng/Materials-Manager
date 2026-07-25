@@ -1,146 +1,203 @@
 <template>
-  <div class="about-page">
-    <n-card class="about-card" :bordered="false">
-      <div class="about-heading">
-        <div class="about-mark">HXNI</div>
-        <div>
-          <h1>电气车间备件管理系统</h1>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">关于系统</h1>
+        <p class="page-description">系统信息、使用提示与版权说明。</p>
+      </div>
+    </div>
+
+    <n-card class="data-card about-card" :bordered="false">
+      <section class="product-overview">
+        <div class="product-mark">HXNI</div>
+        <div class="product-copy">
+          <h2>电气车间备件管理系统</h2>
           <p>面向备件库存、申购计划和采购跟踪的一体化管理工具。</p>
         </div>
-      </div>
+        <n-tag :bordered="false" round type="success">内部使用</n-tag>
+      </section>
 
       <n-divider />
 
       <section class="about-section">
-        <h2>小贴士</h2>
-        <div class="tips-grid">
+        <div class="section-heading">
+          <h3>使用小贴士</h3>
+          <p>通过以下功能可以更高效地查看和定位数据。</p>
+        </div>
+        <div class="tips-list">
           <div class="tip-item">
-            <strong>快速横向浏览</strong>
-            <span>在较宽的表格中，按住 Shift 并滚动鼠标滚轮即可横向移动。</span>
+            <span class="tip-index">01</span>
+            <div>
+              <strong>自定义列表字段</strong>
+              <p>使用列表右上角的字段设置，只展示当前工作需要关注的信息。</p>
+            </div>
           </div>
           <div class="tip-item">
-            <strong>自定义列表字段</strong>
-            <span>使用列表右上角的字段设置，只展示当前工作需要关注的信息。</span>
-          </div>
-          <div class="tip-item">
-            <strong>组合搜索</strong>
-            <span>部分搜索框支持使用竖线分隔多个关键词，快速匹配任意一项。</span>
+            <span class="tip-index">02</span>
+            <div>
+              <strong>组合搜索</strong>
+              <p>部分搜索框支持使用竖线分隔多个关键词，快速匹配任意一项。</p>
+            </div>
           </div>
         </div>
       </section>
 
       <n-divider />
 
-      <footer class="copyright">
-        <p>本系统为华星镍业检修维护部电气自动化车间设计。</p>
-        <p>
-          版权归
-          <a href="https://github.com/YangRucheng" target="_blank" rel="noopener noreferrer">
-            github.com/YangRucheng
-          </a>
-          所有。
-        </p>
-      </footer>
+      <section class="about-section">
+        <div class="section-heading">
+          <h3>版权信息</h3>
+        </div>
+        <div class="copyright-panel">
+          <p>本系统为华星镍业检修维护部电气自动化车间设计。</p>
+          <p>
+            版权归
+            <a href="https://github.com/YangRucheng" target="_blank" rel="noopener noreferrer">
+              github.com/YangRucheng
+            </a>
+            所有。
+          </p>
+        </div>
+      </section>
     </n-card>
   </div>
 </template>
 
 <style scoped>
-.about-page {
-  display: flex;
-  justify-content: center;
+.page-description {
+  margin: 5px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
-.about-card {
-  width: min(880px, 100%);
+.about-card :deep(.n-card__content) {
+  padding: 24px 28px;
 }
 
-.about-heading {
+.product-overview {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
 }
 
-.about-mark {
+.product-mark {
   display: grid;
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   flex: none;
   place-items: center;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #1d6f5f, #2e9b7f);
-  color: #fff;
-  font-size: 18px;
+  border: 1px solid #dce5ff;
+  border-radius: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: 1px;
-  box-shadow: 0 10px 24px rgb(29 111 95 / 20%);
+  letter-spacing: 0.08em;
 }
 
-.about-heading h1,
-.about-section h2 {
+.product-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.product-copy h2,
+.section-heading h3 {
   margin: 0;
-  color: #1f2937;
+  color: var(--color-text-strong);
 }
 
-.about-heading p {
-  margin: 8px 0 0;
-  color: var(--muted);
+.product-copy h2 {
+  font-size: 20px;
+  font-weight: 650;
 }
 
-.about-section h2 {
-  margin-bottom: 16px;
-  font-size: 18px;
+.product-copy p,
+.section-heading p,
+.tip-item p,
+.copyright-panel p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.7;
 }
 
-.tips-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+.product-copy p {
+  margin-top: 6px;
+}
+
+.section-heading {
+  margin-bottom: 14px;
+}
+
+.section-heading h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section-heading p {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.tips-list {
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  background: var(--color-surface-soft);
 }
 
 .tip-item {
   display: flex;
-  min-height: 112px;
-  flex-direction: column;
-  gap: 9px;
-  padding: 18px;
-  border: 1px solid #e6ecea;
-  border-radius: 12px;
-  background: #f8fbfa;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.tip-item + .tip-item {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.tip-index {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .tip-item strong {
-  color: #1d6f5f;
-  font-size: 15px;
+  display: block;
+  margin-bottom: 3px;
+  color: var(--color-text-strong);
+  font-size: 14px;
 }
 
-.tip-item span,
-.copyright {
-  color: #5f6b76;
-  line-height: 1.7;
+.tip-item p,
+.copyright-panel {
+  font-size: 13px;
 }
 
-.copyright p {
-  margin: 4px 0;
+.copyright-panel {
+  padding: 16px 18px;
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 10px 10px 0;
+  background: var(--color-surface-soft);
 }
 
-.copyright a {
-  color: #1d6f5f;
+.copyright-panel p + p {
+  margin-top: 3px;
+}
+
+.copyright-panel a {
+  color: var(--color-primary);
   font-weight: 600;
-  text-decoration: none;
 }
 
-.copyright a:hover {
+.copyright-panel a:hover {
   text-decoration: underline;
-}
-
-@media (max-width: 760px) {
-  .about-heading {
-    align-items: flex-start;
-  }
-
-  .tips-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

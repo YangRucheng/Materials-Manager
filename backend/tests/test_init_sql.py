@@ -107,7 +107,7 @@ def test_file_identifiers_are_uuid_strings() -> None:
 
 
 def test_excel_templates_are_json_specs_not_binary_workbooks() -> None:
-    template_dir = Path(__file__).parents[2] / "example" / "template"
+    template_dir = Path(__file__).parents[1] / "app" / "templates"
     assert {path.name for path in template_dir.iterdir()} == {
         "material-code-application.json",
         "purchase-application.json",

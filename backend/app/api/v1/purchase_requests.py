@@ -9,6 +9,7 @@ from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
 from app.schemas import (
     Page,
+    PurchaseMaterialRead,
     PurchaseRecordFilterOptions,
     PurchaseRecordRead,
     PurchaseRecordResultExportRequest,
@@ -224,6 +225,18 @@ async def purchase_record(
     line_id: int, session: DbSession, user: CurrentUser
 ) -> PurchaseRecordRead:
     return service.purchase_record_read(await service.get_purchase_record(session, line_id))
+
+
+@router.post("/purchase-records/{line_id}/restore-to-plan", response_model=PurchaseMaterialRead)
+async def restore_purchase_record_to_plan(
+    line_id: int,
+    version: Annotated[int, Query(ge=1)],
+    session: DbSession,
+    user: PurchaseWriter,
+) -> PurchaseMaterialRead:
+    line = await service.get_purchase_record(session, line_id, for_update=True)
+    material = await service.restore_purchase_record_to_plan(session, line, version)
+    return await material_service.purchase_read(session, material)
 
 
 @router.patch("/purchase-records/{line_id}", response_model=PurchaseRecordRead)
