@@ -127,16 +127,11 @@ async def test_agent_database_requires_super_admin_password_headers(client: Asyn
 @pytest.mark.parametrize(
     "sql",
     [
-        "CREATE TABLE forbidden (id INT)",
-        "ALTER TABLE measurement_unit ADD COLUMN forbidden INT",
-        "ALTER USER admin IDENTIFIED BY 'forbidden'",
-        "DROP TABLE user",
         "SELECT id FROM user; DELETE FROM user",
         "SELECT id FROM user -- comment",
-        "SELECT id FROM user INTO OUTFILE '/tmp/users.csv'",
     ],
 )
-async def test_agent_database_rejects_ddl_multi_statement_and_server_files(
+async def test_agent_database_rejects_multi_statement_and_comments(
     client: AsyncClient,
     sql: str,
 ) -> None:
@@ -149,8 +144,35 @@ async def test_agent_database_rejects_ddl_multi_statement_and_server_files(
     assert response.json()["code"] == "AGENT_DATABASE_SQL_FORBIDDEN"
 
 
-def test_agent_database_allows_restricted_purchase_table_alter() -> None:
-    assert validate_sql("ALTER TABLE purchase_material ADD COLUMN urgency VARCHAR(32)") == "ALTER"
-    assert (
-        validate_sql("ALTER TABLE `purchase_request` MODIFY COLUMN status VARCHAR(128)") == "ALTER"
+@pytest.mark.asyncio
+async def test_agent_database_allows_arbitrary_ddl(client: AsyncClient) -> None:
+    created = await client.post(
+        "/api/v1/agent/database/execute",
+        headers=agent_headers(),
+        json={"sql": "CREATE TABLE agent_database_test (id INTEGER PRIMARY KEY, value TEXT)"},
     )
+    assert created.status_code == 200, created.text
+    assert created.json()["statement_type"] == "CREATE"
+
+    altered = await client.post(
+        "/api/v1/agent/database/execute",
+        headers=agent_headers(),
+        json={"sql": "ALTER TABLE agent_database_test ADD COLUMN remark TEXT"},
+    )
+    assert altered.status_code == 200, altered.text
+    assert altered.json()["statement_type"] == "ALTER"
+
+    dropped = await client.post(
+        "/api/v1/agent/database/execute",
+        headers=agent_headers(),
+        json={"sql": "DROP TABLE agent_database_test"},
+    )
+    assert dropped.status_code == 200, dropped.text
+    assert dropped.json()["statement_type"] == "DROP"
+
+
+def test_agent_database_accepts_all_statement_types() -> None:
+    assert validate_sql("CREATE TABLE example (id INT)") == "CREATE"
+    assert validate_sql("DROP TABLE example") == "DROP"
+    assert validate_sql("TRUNCATE TABLE example") == "TRUNCATE"
+    assert validate_sql("GRANT SELECT ON example TO reader") == "GRANT"

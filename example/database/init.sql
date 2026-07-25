@@ -66,6 +66,19 @@ CREATE TABLE IF NOT EXISTS `measurement_unit` (
   CONSTRAINT `uq_measurement_unit_name` UNIQUE (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `material_code_library` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `material_code` VARCHAR(64) NOT NULL,
+  `name` VARCHAR(128) NULL,
+  `model_spec` VARCHAR(255) NULL,
+  `unit_name` VARCHAR(32) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_material_code_library` PRIMARY KEY (`id`),
+  CONSTRAINT `uq_material_code_library_material_code` UNIQUE (`material_code`),
+  INDEX `ix_material_code_library_name` (`name`),
+  INDEX `ix_material_code_library_model_spec` (`model_spec`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_order_no` VARCHAR(128) NULL,

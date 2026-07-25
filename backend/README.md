@@ -10,7 +10,7 @@ X-Agent-Password: <超级管理员密码>
 ```
 
 - `GET /api/v1/agent/database/schema`：读取全库表、字段、主键和外键结构。
-- `POST /api/v1/agent/database/execute`：执行单条参数化 `SELECT`、`INSERT`、`UPDATE`、`DELETE`，或对应用迁移白名单内的数据表执行不含删除与重命名的受限 `ALTER TABLE`。
+- `POST /api/v1/agent/database/execute`：执行任意单条参数化 SQL，包括 `CREATE`、`ALTER`、`DROP`、`TRUNCATE`、授权语句及数据读写操作。
 
 请求示例：
 
@@ -22,7 +22,7 @@ X-Agent-Password: <超级管理员密码>
 }
 ```
 
-接口不接受分号、SQL 注释、任何 DDL 或数据库服务器文件操作。数据库账号本身也应只授予当前业务库所需的最小权限。生产环境必须使用 HTTPS，避免请求头密码在传输过程中泄露。
+接口不接受分号或 SQL 注释，但不限制语句类型、数据库对象或目标表。该接口等同于直接使用应用数据库账号，能够造成不可逆的数据或结构变更；应严格保护超级管理员密码，并由数据库账号自身的权限控制最终可执行范围。生产环境必须使用 HTTPS，避免请求头密码在传输过程中泄露。
 
 ## 图片一致性与悬空文件
 
