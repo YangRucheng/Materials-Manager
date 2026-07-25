@@ -17,7 +17,7 @@ from app.domain.enums import Role
 from app.main import app
 from app.models import MeasurementUnit, User
 
-settings.template_dir = Path(__file__).parents[2] / "example" / "template"
+settings.template_dir = Path(__file__).parents[1] / "app" / "templates"
 
 
 @pytest_asyncio.fixture

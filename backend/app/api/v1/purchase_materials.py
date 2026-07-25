@@ -266,8 +266,11 @@ async def export_uncoded_materials(
             "name": item.name,
             "model_spec": item.model_spec,
             "unit_name": item.unit.name,
+            "warranty_managed": "否",
+            "asset_category": "非资产",
+            "application_reason": "当前无准确编码对应，需要新增编码",
+            "department": "HXNI 检修维护部",
             "actual_demand_person": item.actual_demand_person,
-            "application_reason": "；".join(value for value in (item.usage, item.remark) if value),
         }
         for index, item in enumerate(materials, start=1)
     ]

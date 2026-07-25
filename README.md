@@ -14,14 +14,13 @@
 
 - 库存流水可修正、冲销并自动重算后续余额，完整保留业务轨迹。
 - 申购计划可暂缺编码，到货时可关联或新建二级库物资。
-- 前后端契约统一维护在 [docs/openapi.yaml](docs/openapi.yaml)，Excel 模板和初始化数据集中在 [example](example)。
+- 前后端契约统一维护在 [docs/openapi.yaml](docs/openapi.yaml)，Excel 模板随后端代码版本管理，初始化数据集中在 [example](example)。
 - FastAPI + SQLAlchemy 异步后端、Vue 3 + TypeScript 前端，支持 Docker 镜像部署。
 
 ## 部署
 
 依赖 Docker Compose、外部 MySQL 8.0+ 和外部网络 `1panel-network`。配置示例、初始化
-SQL 和 Excel 模板位于 `example/`；发布镜像会将模板复制到后端运行目录
-`/app/data/template`。
+SQL 位于 `example/`；Excel 模板位于 `backend/app/templates/`，随代码一同构建和发布。
 
 ```bash
 cp example/.env.example .env

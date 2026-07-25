@@ -463,9 +463,9 @@ backend/
 | GET | `/purchase-materials/export-uncoded` | 按当前关键词导出未编码物资的物料编码申请表 |
 | POST | `/purchase-materials/export-purchase-application` | 按所选计划导出采购申请表 |
 | POST | `/purchase-materials/batch-move-to-record` | 将多条已编码计划批量转为同一批申购记录 |
+| POST | `/purchase-records/{id}/restore-to-plan` | 将被打回的申购记录恢复为正常申购计划，并删除记录专属字段 |
 
-Excel 布局示例位于 `example/template/*.json`，部署时复制到运行目录的
-`data/template/`，运行时生成工作簿；仓库不保存原始 XLSX 模板。
+Excel 布局模板位于 `backend/app/templates/*.json`，随后端代码统一版本管理并在运行时生成工作簿；仓库不保存原始 XLSX 模板。
 
 补录编码直接修改申购计划：
 
