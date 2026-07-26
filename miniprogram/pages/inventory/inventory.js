@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { decorateStock } = require('../../utils/inventory');
+const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
 Page({
@@ -14,9 +15,12 @@ Page({
     hasMore: false,
     loading: true,
     loadingMore: false,
+    resultCount: '',
+    i18n: getMessages(),
   },
 
   async onLoad() {
+    setNavigationBarTitle('inventoryTitle');
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
@@ -101,6 +105,7 @@ Page({
         items,
         page,
         total: result.total || 0,
+        resultCount: t('resultCount', { count: result.total || 0 }),
         hasMore: items.length < (result.total || 0),
       });
     } catch (error) {
@@ -124,7 +129,7 @@ Page({
     Toast({
       context: this,
       selector: '#inventory-toast',
-      message: error.message || '库存加载失败，请重试',
+      message: error.message || t('inventoryLoadFailed'),
       theme: 'error',
       direction: 'column',
     });

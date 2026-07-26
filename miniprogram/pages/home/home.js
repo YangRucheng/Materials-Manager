@@ -1,11 +1,12 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { extractMaterialUuid } = require('../../utils/material');
+const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
 function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return '未知';
+    return t('unknown');
   }
   const pad = (part) => String(part).padStart(2, '0');
   return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -16,9 +17,11 @@ Page({
     user: null,
     scanning: false,
     userProfileVisible: false,
+    i18n: getMessages(),
   },
 
   async onLoad() {
+    setNavigationBarTitle('appTitle');
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
@@ -64,7 +67,7 @@ Page({
       });
       const materialUuid = extractMaterialUuid(scanResult.path || scanResult.result);
       if (!materialUuid) {
-        throw new Error('小程序码中未识别到物资 UUID');
+        throw new Error(t('materialUuidMissing'));
       }
       wx.navigateTo({ url: `/pages/outbound/outbound?uuid=${materialUuid}` });
     } catch (error) {
@@ -80,7 +83,7 @@ Page({
     Toast({
       context: this,
       selector: '#home-toast',
-      message: error.message || '操作失败，请重试',
+      message: error.message || t('actionFailed'),
       theme: 'error',
       direction: 'column',
     });

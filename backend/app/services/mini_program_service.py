@@ -336,7 +336,10 @@ async def list_inventory(
         )
         .where(StockMaterial.enabled.is_(True))
     )
-    keyword_condition = contains_any((StockMaterial.name, StockMaterial.model_spec), keyword)
+    keyword_condition = contains_any(
+        (StockMaterial.name, StockMaterial.name_id, StockMaterial.alias, StockMaterial.model_spec),
+        keyword,
+    )
     if keyword_condition is not None:
         query = query.where(keyword_condition)
     if stock_status == MiniProgramStockStatus.OUT_OF_STOCK:
@@ -362,10 +365,21 @@ async def list_inventory(
     return items, total
 
 
-def inventory_item_read(item: StockMaterial) -> MiniProgramInventoryItemRead:
+def localized_material_name(item: StockMaterial, language: str | None) -> str:
+    """Localize the name; aliases are shown only with the canonical Chinese name."""
+    preferred = (language or "").split(",", maxsplit=1)[0].split(";", maxsplit=1)[0]
+    language_code = preferred.strip().replace("_", "-").lower().split("-", maxsplit=1)[0]
+    if language_code in {"id", "in"}:
+        return item.name_id or item.name
+    return f"{item.name}（{item.alias}）" if item.alias else item.name
+
+
+def inventory_item_read(
+    item: StockMaterial, language: str | None = None
+) -> MiniProgramInventoryItemRead:
     return MiniProgramInventoryItemRead(
         uuid=UUID(item.uuid),
-        name=item.name,
+        name=localized_material_name(item, language),
         model_spec=item.model_spec,
         unit_name=item.unit.name,
         current_qty=item.balance.quantity if item.balance else Decimal("0"),
@@ -373,11 +387,11 @@ def inventory_item_read(item: StockMaterial) -> MiniProgramInventoryItemRead:
     )
 
 
-def material_read(item: StockMaterial) -> MiniProgramMaterialRead:
+def material_read(item: StockMaterial, language: str | None = None) -> MiniProgramMaterialRead:
     policy = item.replenishment_policy
     return MiniProgramMaterialRead(
         uuid=UUID(item.uuid),
-        name=item.name,
+        name=localized_material_name(item, language),
         model_spec=item.model_spec,
         unit_name=item.unit.name,
         current_qty=item.balance.quantity if item.balance else Decimal("0"),

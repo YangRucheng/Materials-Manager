@@ -2,8 +2,8 @@
   <view class="disabled-card">
     <t-result
       theme="error"
-      title="您的账号已被禁用"
-      description="请联系管理员启用账号后，再重新进入小程序"
+      title="{{i18n.accountDisabled}}"
+      description="{{i18n.accountDisabledDescription}}"
     />
   </view>
 </view>

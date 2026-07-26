@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Header, Query, status
 
 from app.core.permissions import (
     CurrentMiniProgramUser,
@@ -33,6 +33,7 @@ management_router = APIRouter(prefix="/mini-program-users", tags=["小程序用�
 mini_router = APIRouter(prefix="/mini-program", tags=["小程序扫码出库"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
+AcceptLanguage = Annotated[str | None, Header(alias="Accept-Language")]
 
 
 @management_router.get("", response_model=Page[MiniProgramUserRead])
@@ -114,10 +115,13 @@ async def create_mini_program_profile(
 
 @mini_router.get("/materials/{material_uuid}", response_model=MiniProgramMaterialRead)
 async def scan_material(
-    material_uuid: UUID, session: DbSession, user: CurrentMiniProgramUser
+    material_uuid: UUID,
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    accept_language: AcceptLanguage = None,
 ) -> MiniProgramMaterialRead:
     return mini_program_service.material_read(
-        await mini_program_service.get_material(session, material_uuid)
+        await mini_program_service.get_material(session, material_uuid), accept_language
     )
 
 
@@ -129,6 +133,7 @@ async def mini_program_inventory(
     page_size: PageSize = 20,
     keyword: Annotated[str | None, Query(max_length=255)] = None,
     stock_status: MiniProgramStockStatus | None = None,
+    accept_language: AcceptLanguage = None,
 ) -> Page[MiniProgramInventoryItemRead]:
     items, total = await mini_program_service.list_inventory(
         session,
@@ -138,7 +143,9 @@ async def mini_program_inventory(
         page_size=page_size,
     )
     return Page(
-        items=[mini_program_service.inventory_item_read(item) for item in items],
+        items=[
+            mini_program_service.inventory_item_read(item, accept_language) for item in items
+        ],
         page=page,
         page_size=page_size,
         total=total,

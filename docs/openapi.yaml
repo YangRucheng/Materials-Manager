@@ -2163,6 +2163,14 @@ paths:
           type: string
           format: uuid
           title: Material Uuid
+      - name: Accept-Language
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Accept-Language
       responses:
         '200':
           description: Successful Response
@@ -2243,6 +2251,14 @@ paths:
           - $ref: '#/components/schemas/MiniProgramStockStatus'
           - type: 'null'
           title: Stock Status
+      - name: Accept-Language
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Accept-Language
       responses:
         '200':
           description: Successful Response
@@ -4861,6 +4877,15 @@ components:
       - width
       - height
       title: FileObjectRead
+    ImageAccelerationSettingsRead:
+      properties:
+        image_acceleration_server_url:
+          type: string
+          title: Image Acceleration Server Url
+      type: object
+      required:
+      - image_acceleration_server_url
+      title: ImageAccelerationSettingsRead
     InventoryBalanceRead:
       properties:
         stock_material_id:
@@ -4869,6 +4894,11 @@ components:
         name:
           type: string
           title: Name
+        alias:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Alias
         model_spec:
           type: string
           title: Model Spec
@@ -5116,15 +5146,6 @@ components:
       - trial
       - release
       title: MiniProgramCodeEnv
-    ImageAccelerationSettingsRead:
-      properties:
-        image_acceleration_server_url:
-          type: string
-          title: Image Acceleration Server Url
-      type: object
-      required:
-      - image_acceleration_server_url
-      title: ImageAccelerationSettingsRead
     MiniProgramInventoryItemRead:
       properties:
         uuid:
@@ -7066,6 +7087,18 @@ components:
           maxLength: 128
           minLength: 1
           title: Name
+        name_id:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name Id
+        alias:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Alias
         model_spec:
           type: string
           maxLength: 255
@@ -7106,6 +7139,16 @@ components:
         name:
           type: string
           title: Name
+        name_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name Id
+        alias:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Alias
         model_spec:
           type: string
           title: Model Spec
@@ -7169,6 +7212,18 @@ components:
           maxLength: 128
           minLength: 1
           title: Name
+        name_id:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name Id
+        alias:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Alias
         model_spec:
           type: string
           maxLength: 255

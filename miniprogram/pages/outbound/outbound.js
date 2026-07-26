@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { createClientRequestId, extractMaterialUuid } = require('../../utils/material');
+const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
 Page({
@@ -15,9 +16,11 @@ Page({
       businessReason: '',
       subitemNo: '',
     },
+    i18n: getMessages(),
   },
 
   async onLoad(options = {}) {
+    setNavigationBarTitle('outboundTitle');
     const app = getApp();
     const materialUuid =
       extractMaterialUuid(options.uuid) ||
@@ -74,7 +77,7 @@ Page({
       });
       const materialUuid = extractMaterialUuid(scanResult.path || scanResult.result);
       if (!materialUuid) {
-        throw new Error('小程序码中未识别到物资 UUID');
+        throw new Error(t('materialUuidMissing'));
       }
       await this.loadMaterial(materialUuid);
     } catch (error) {
@@ -104,21 +107,21 @@ Page({
 
   validateForm() {
     if (!this.data.material) {
-      return '请先扫描物资小程序码';
+      return t('scanFirst');
     }
     const { quantity, businessReason, subitemNo } = this.data.form;
     const numericQuantity = Number(quantity);
     if (!quantity || !Number.isFinite(numericQuantity) || numericQuantity <= 0) {
-      return '请输入正确的出库数量';
+      return t('invalidQuantity');
     }
     if (numericQuantity > Number(this.data.material.current_qty)) {
-      return '出库数量不能超过当前库存';
+      return t('quantityExceedsStock');
     }
     if (!businessReason.trim()) {
-      return '请输入出库用途';
+      return t('purposeRequired');
     }
     if (!subitemNo.trim()) {
-      return '请输入子项号';
+      return t('subitemRequired');
     }
     return '';
   },
@@ -148,7 +151,10 @@ Page({
       Toast({
         context: this,
         selector: '#outbound-toast',
-        message: `出库成功，剩余 ${result.after_qty} ${result.unit_name}`,
+        message: t('outboundSuccess', {
+          quantity: result.after_qty,
+          unit: result.unit_name,
+        }),
         theme: 'success',
         direction: 'column',
       });
@@ -170,7 +176,7 @@ Page({
     Toast({
       context: this,
       selector: '#outbound-toast',
-      message: error.message || '操作失败，请重试',
+      message: error.message || t('actionFailed'),
       theme: 'error',
       direction: 'column',
     });

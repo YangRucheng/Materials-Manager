@@ -1,7 +1,7 @@
 <view class="page-shell home-page">
   <view class="page-header">
     <view class="header-row">
-      <view class="page-title">备件管理</view>
+      <view class="page-title">{{i18n.appTitle}}</view>
       <view wx:if="{{user}}" class="operator-badge" hover-class="operator-badge-active" bind:tap="showUserProfile">
         <view class="operator-dot"></view>
         <view class="operator-name">{{user.display_name}}</view>
@@ -14,16 +14,16 @@
     <view class="action-card inventory-card" hover-class="action-card-active" bind:tap="openInventory">
       <view class="action-icon"><t-icon name="view-list" size="48rpx" /></view>
       <view class="action-content">
-        <view class="action-title">全部库存</view>
-        <view class="action-description">搜索、筛选并查看全库物资</view>
+        <view class="action-title">{{i18n.allInventory}}</view>
+        <view class="action-description">{{i18n.inventoryDescription}}</view>
       </view>
       <t-icon name="chevron-right" size="36rpx" color="#6c83cf" />
     </view>
 
     <view class="section-card scan-card">
       <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
-      <view class="scan-title">扫描物资小程序码</view>
-      <view class="scan-description">识别物资后进入出库确认</view>
+      <view class="scan-title">{{i18n.scanMaterialCode}}</view>
+      <view class="scan-description">{{i18n.scanDescription}}</view>
       <t-button
         class="scan-action"
         theme="primary"
@@ -33,7 +33,7 @@
         disabled="{{scanning}}"
         icon="scan"
         bind:tap="scanMaterial"
-      >开始扫码</t-button>
+      >{{i18n.startScan}}</t-button>
     </view>
   </view>
 
@@ -47,18 +47,18 @@
   >
     <view class="user-profile-popup">
       <view class="user-profile-avatar"><t-icon name="user" size="48rpx" /></view>
-      <view class="user-profile-title">个人信息</view>
+      <view class="user-profile-title">{{i18n.personalInfo}}</view>
       <view class="user-profile-list">
         <view class="user-profile-row">
-          <view class="user-profile-label">姓名</view>
+          <view class="user-profile-label">{{i18n.name}}</view>
           <view class="user-profile-value">{{user.display_name}}</view>
         </view>
         <view class="user-profile-row">
-          <view class="user-profile-label">部门单位</view>
+          <view class="user-profile-label">{{i18n.department}}</view>
           <view class="user-profile-value">{{user.department_name}}</view>
         </view>
         <view class="user-profile-row">
-          <view class="user-profile-label">注册时间</view>
+          <view class="user-profile-label">{{i18n.registeredAt}}</view>
           <view class="user-profile-value">{{user.registered_at}}</view>
         </view>
       </view>

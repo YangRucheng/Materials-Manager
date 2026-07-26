@@ -66,6 +66,8 @@ def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> S
         id=item.id,
         uuid=item.uuid,
         name=item.name,
+        name_id=item.name_id,
+        alias=item.alias,
         model_spec=item.model_spec,
         unit_id=item.unit_id,
         unit_name=item.unit.name,
@@ -133,6 +135,8 @@ async def create_stock_material(session: AsyncSession, data: StockMaterialCreate
     files = await _files(session, data.image_ids)
     item = StockMaterial(
         name=data.name,
+        name_id=data.name_id or None,
+        alias=data.alias or None,
         model_spec=data.model_spec,
         unit_id=data.unit_id,
         remark=data.remark,
@@ -163,6 +167,8 @@ async def update_stock_material(
     unit = await _unit(session, data.unit_id)
     files = await _files(session, data.image_ids)
     item.name = data.name
+    item.name_id = data.name_id or None
+    item.alias = data.alias or None
     item.model_spec = data.model_spec
     item.unit_id = data.unit_id
     item.unit = unit
@@ -431,7 +437,10 @@ async def search_stock_materials(
     page_size: int,
 ) -> tuple[list[StockMaterial], int]:
     query = select(StockMaterial)
-    keyword_condition = contains_any((StockMaterial.name, StockMaterial.model_spec), keyword)
+    keyword_condition = contains_any(
+        (StockMaterial.name, StockMaterial.name_id, StockMaterial.alias, StockMaterial.model_spec),
+        keyword,
+    )
     if keyword_condition is not None:
         query = query.where(keyword_condition)
     count = await session.scalar(select(func.count()).select_from(query.subquery()))
