@@ -143,8 +143,6 @@ class StockMaterial(AuditMixin, Base):
     )
     remark: Mapped[str | None] = mapped_column(String(1000))
     identity_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
-
     unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
     balance: Mapped[StockBalance | None] = relationship(
         back_populates="material", uselist=False, lazy="selectin", cascade="all, delete-orphan"

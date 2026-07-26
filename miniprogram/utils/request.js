@@ -5,7 +5,6 @@ const errorMessageKeys = {
   ACCOUNT_DISABLED: 'accountDisabled',
   FORBIDDEN: 'forbidden',
   INVALID_TOKEN: 'invalidToken',
-  MATERIAL_DISABLED: 'materialDisabled',
   MINI_PROGRAM_REGISTRATION_DISABLED: 'registrationClosed',
   UNAUTHORIZED: 'loginRequired',
   USER_DISABLED: 'invalidToken',

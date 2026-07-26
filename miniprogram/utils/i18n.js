@@ -84,7 +84,6 @@ const dictionaries = {
     wxLoginFailed: '微信登录失败，请重试',
     loginRequired: '请先登录',
     invalidToken: '登录凭证无效或已过期',
-    materialDisabled: '二级库物资已停用',
     forbidden: '没有执行此操作的权限',
   },
   [LOCALE_ID_ID]: {
@@ -169,7 +168,6 @@ const dictionaries = {
     wxLoginFailed: 'Login WeChat gagal. Silakan coba lagi',
     loginRequired: 'Silakan login terlebih dahulu',
     invalidToken: 'Sesi login tidak valid atau telah kedaluwarsa',
-    materialDisabled: 'Material gudang sekunder telah dinonaktifkan',
     forbidden: 'Anda tidak memiliki izin untuk melakukan operasi ini',
   },
 };

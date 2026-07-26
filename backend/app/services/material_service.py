@@ -141,7 +141,6 @@ async def create_stock_material(session: AsyncSession, data: StockMaterialCreate
         unit_id=data.unit_id,
         remark=data.remark,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
-        enabled=True,
     )
     item.unit = unit
     item.balance = StockBalance(quantity=0)
