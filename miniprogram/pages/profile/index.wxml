@@ -44,6 +44,6 @@
     disabled="{{loading}}"
     bind:tap="submitProfile"
   >进入扫码出库</t-button>
-  <view class="privacy-tip">姓名和部门单位用于识别出库人员</view>
+  <view class="binding-warning">本小程序仅对车间内部使用，请勿随意绑定！</view>
   <t-toast id="profile-toast" />
 </view>

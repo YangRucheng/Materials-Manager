@@ -1,13 +1,6 @@
 <view class="page-shell inventory-page">
   <view class="inventory-header">
     <view class="page-title">全库库存</view>
-    <t-button
-      theme="primary"
-      variant="light"
-      size="small"
-      icon="scan"
-      bind:tap="goOutbound"
-    >扫码出库</t-button>
   </view>
 
   <view class="inventory-tools">
@@ -18,7 +11,13 @@
       confirm-type="search"
       bind:change="onSearchChange"
     />
-    <t-tabs value="{{stockStatus}}" theme="tag" bind:change="onStatusChange">
+    <t-tabs
+      value="{{stockStatus}}"
+      theme="tag"
+      split="{{false}}"
+      show-bottom-line="{{false}}"
+      bind:change="onStatusChange"
+    >
       <t-tab-panel value="all" label="全部" />
       <t-tab-panel value="out_of_stock" label="无库存" />
       <t-tab-panel value="low_stock" label="低库存" />

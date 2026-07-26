@@ -76,6 +76,14 @@
       </view>
       <view wx:else class="no-image">暂无图片附件</view>
     </view>
+    <t-button
+      class="outbound-entry"
+      theme="primary"
+      size="large"
+      block
+      icon="cart"
+      bind:tap="goOutbound"
+    >去出库</t-button>
   </block>
 
   <t-toast id="detail-toast" />

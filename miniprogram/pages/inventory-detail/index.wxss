@@ -151,3 +151,13 @@
   font-size: 24rpx;
   text-align: center;
 }
+
+.outbound-entry {
+  margin-top: 28rpx;
+  --td-button-primary-bg-color: #3f63d8;
+  --td-button-primary-border-color: #3f63d8;
+  --td-button-primary-active-bg-color: #3151bd;
+  --td-button-primary-active-border-color: #3151bd;
+  --td-button-border-radius: 18rpx;
+  box-shadow: 0 12rpx 28rpx rgba(63, 99, 216, 0.2);
+}
