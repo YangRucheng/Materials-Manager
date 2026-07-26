@@ -5,20 +5,17 @@
     <view class="brand-content">
       <view class="brand-eyebrow">ELECTRICAL WORKSHOP</view>
       <view class="brand-title">电气车间备件</view>
-      <view class="brand-description">连接仓库库存与现场领用，让每次扫码出库清晰可追溯。</view>
     </view>
   </view>
 
   <view class="page-header profile-header">
     <view class="page-eyebrow">首次使用</view>
     <view class="page-title">设置使用人</view>
-    <view class="page-description">请输入真实姓名，后续出库记录将自动关联到当前使用人。</view>
   </view>
 
   <view class="section-card profile-card">
     <view class="section-heading">
       <view class="section-title">身份信息</view>
-      <view class="section-description">姓名提交后可直接进入扫码出库。</view>
     </view>
     <view class="section-divider"></view>
     <t-cell-group>
