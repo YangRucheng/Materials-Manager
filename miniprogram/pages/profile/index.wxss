@@ -38,13 +38,6 @@
   line-height: 1.3;
 }
 
-.brand-description {
-  margin-top: 16rpx;
-  opacity: 0.82;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
-
 .brand-orbit {
   position: absolute;
   border: 2rpx solid rgba(255, 255, 255, 0.16);
