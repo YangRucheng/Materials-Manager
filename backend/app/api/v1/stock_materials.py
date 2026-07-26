@@ -1,7 +1,8 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
 from app.domain.enums import MiniProgramCodeEnv
@@ -12,7 +13,12 @@ from app.schemas import (
     StockMaterialRead,
     StockMaterialUpdate,
 )
-from app.services import material_service, mini_program_service, replenishment_service
+from app.services import (
+    ai_search_service,
+    material_service,
+    mini_program_service,
+    replenishment_service,
+)
 
 router = APIRouter(prefix="/stock-materials", tags=["二级库物资"])
 PageNo = Annotated[int, Query(ge=1)]
@@ -72,18 +78,19 @@ async def material_detail(
 
 
 @router.get(
-    "/{material_id}/mini-program-code",
+    "/mini-program-codes/{material_uuid}",
     responses={200: {"content": {"image/png": {}}}},
     response_class=Response,
+    name="material_mini_program_code",
 )
 async def material_mini_program_code(
-    material_id: int,
+    material_uuid: UUID,
     env: MiniProgramCodeEnv,
     session: DbSession,
     user: CurrentUser,
 ) -> Response:
-    item = await material_service.get_stock_material(session, material_id)
-    code = await mini_program_service.generate_unlimited_material_code(UUID(item.uuid), env)
+    item = await material_service.get_stock_material_by_uuid(session, material_uuid)
+    code = await mini_program_service.generate_unlimited_material_code(material_uuid, env)
     return Response(
         content=code,
         media_type="image/png",
@@ -93,6 +100,28 @@ async def material_mini_program_code(
                 f'inline; filename="material-{item.uuid}-{env}-mini-program-code.png"'
             ),
         },
+    )
+
+
+@router.get(
+    "/{material_id}/mini-program-code",
+    response_class=RedirectResponse,
+    status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+)
+async def material_mini_program_code_redirect(
+    material_id: int,
+    request: Request,
+    session: DbSession,
+    user: CurrentUser,
+) -> RedirectResponse:
+    item = await material_service.get_stock_material(session, material_id)
+    env = await ai_search_service.get_mini_program_code_env(session)
+    target = request.url_for("material_mini_program_code", material_uuid=item.uuid)
+    target = target.include_query_params(env=env.value)
+    return RedirectResponse(
+        url=str(target),
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        headers={"Cache-Control": "no-store"},
     )
 
 
