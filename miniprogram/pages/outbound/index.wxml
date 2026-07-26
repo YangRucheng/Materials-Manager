@@ -1,11 +1,26 @@
 <view class="page-shell outbound-page">
-  <view class="header-row">
-    <view class="page-title">扫码出库</view>
-    <view class="operator-name">{{user.display_name}}</view>
+  <view class="page-header">
+    <view class="header-row">
+      <view>
+        <view class="page-eyebrow">WAREHOUSE OUTBOUND</view>
+        <view class="page-title">扫码出库</view>
+      </view>
+      <view class="operator-badge">
+        <view class="operator-dot"></view>
+        <view class="operator-name">{{user.display_name}}</view>
+      </view>
+    </view>
+    <view class="page-description">扫描二级库物资二维码，核对信息后提交本次领用。</view>
   </view>
 
   <view class="section-card scan-card">
+    <view class="scan-card-heading">
+      <view class="scan-kicker">第一步</view>
+      <view class="scan-title">扫描物资二维码</view>
+      <view class="scan-description">请将二维码完整放入扫描框内</view>
+    </view>
     <t-button
+      class="scan-action"
       theme="primary"
       size="large"
       block
@@ -19,6 +34,14 @@
   </view>
 
   <view wx:if="{{material}}" class="section-card material-card">
+    <view class="section-heading material-heading">
+      <view>
+        <view class="section-title">物资信息</view>
+        <view class="section-description">请确认物资与现场实物一致。</view>
+      </view>
+      <view class="status-badge">已识别</view>
+    </view>
+    <view class="section-divider"></view>
     <t-cell-group>
       <t-cell title="物资名称" note="{{material.name}}" />
       <t-cell title="型号规格" note="{{material.model_spec}}" />
@@ -26,7 +49,12 @@
     </t-cell-group>
   </view>
 
-  <view wx:if="{{material}}" class="section-card">
+  <view wx:if="{{material}}" class="section-card form-card">
+    <view class="section-heading">
+      <view class="section-title">出库信息</view>
+      <view class="section-description">填写数量、用途和接收单位后提交。</view>
+    </view>
+    <view class="section-divider"></view>
     <t-cell-group>
       <t-input
         label="出库数量"
@@ -74,6 +102,7 @@
     disabled="{{submitting || scanning}}"
     bind:tap="submitOutbound"
   >确认出库</t-button>
+  <view wx:if="{{material}}" class="submit-tip">提交前请再次核对物资名称与出库数量</view>
 
   <t-toast id="outbound-toast" />
 </view>

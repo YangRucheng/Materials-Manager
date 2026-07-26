@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "check": "node scripts/check.js"
+    "check": "node scripts/check.js",
+    "upload": "node scripts/upload.js"
   },
   "dependencies": {
     "tdesign-miniprogram": "^1.15.3"
+  },
+  "devDependencies": {
+    "miniprogram-ci": "2.1.31"
   }
 }

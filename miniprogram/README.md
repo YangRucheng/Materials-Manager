@@ -19,6 +19,17 @@ APP_WECHAT_MINI_PROGRAM_APP_SECRET=正式小程序AppSecret
 
 AppSecret 仅配置在后端，不得写入小程序代码。
 
+## GitHub Actions 自动上传
+
+推送 `miniprogram/` 下的改动到 `main` 分支后，工作流“自动上传微信小程序代码”会检查并上传开发版本。也可以在 GitHub Actions 页面手动运行，并填写版本号和上传说明。
+
+请在仓库的 `Settings → Secrets and variables → Actions` 中添加：
+
+- `WECHAT_MINIPROGRAM_APPID`：正式小程序 AppID。
+- `WECHAT_MINIPROGRAM_PRIVATE_KEY`：微信公众平台“小程序代码上传”中生成的上传私钥完整内容。
+
+如果微信公众平台启用了上传 IP 白名单，GitHub 托管运行器的动态出口 IP 可能导致上传失败。此时需要关闭上传 IP 白名单，或改用具有固定出口 IP 的自托管运行器。
+
 ## 二维码内容
 
 支持直接存储物资 UUID，也支持在任意 URL 或文本中包含标准 UUID。小程序只会使用识别到的 UUID 查询二级库物资。

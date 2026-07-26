@@ -20,9 +20,29 @@ for (const file of requiredFiles) {
   }
 }
 
-JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+const appConfig = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
 JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'));
-JSON.parse(fs.readFileSync(path.join(root, 'pages/profile/index.json'), 'utf8'));
-JSON.parse(fs.readFileSync(path.join(root, 'pages/outbound/index.json'), 'utf8'));
+const pageConfigs = [
+  JSON.parse(fs.readFileSync(path.join(root, 'pages/profile/index.json'), 'utf8')),
+  JSON.parse(fs.readFileSync(path.join(root, 'pages/outbound/index.json'), 'utf8')),
+];
+
+if (appConfig.window.backgroundColor !== '#f4f6fa') {
+  throw new Error('Mini Program background color must match the web theme.');
+}
+
+const appStyles = fs.readFileSync(path.join(root, 'app.wxss'), 'utf8');
+for (const token of ['--td-brand-color: #3f63d8', '--td-text-color-primary: #172033']) {
+  if (!appStyles.includes(token)) {
+    throw new Error(`Missing shared TDesign theme token: ${token}`);
+  }
+}
+
+for (const pageConfig of pageConfigs) {
+  const components = Object.values(pageConfig.usingComponents || {});
+  if (!components.length || components.some((component) => !component.startsWith('tdesign-miniprogram/'))) {
+    throw new Error('Mini Program pages must use TDesign components.');
+  }
+}
 
 console.log('Mini Program static structure check passed.');

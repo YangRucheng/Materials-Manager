@@ -1,31 +1,110 @@
 page {
+  --td-brand-color: #3f63d8;
+  --td-brand-color-active: #3151bd;
+  --td-brand-color-disabled: #aebce8;
+  --td-brand-color-light: #edf2ff;
+  --td-brand-color-light-active: #e6edff;
+  --td-success-color: #229b6b;
+  --td-warning-color: #d99020;
+  --td-error-color: #d94b64;
+  --td-bg-color-page: #f4f6fa;
+  --td-bg-color-container: #ffffff;
+  --td-bg-color-secondarycontainer: #f8faff;
+  --td-bg-color-component: #f4f6fa;
+  --td-bg-color-container-active: #f4f7ff;
+  --td-text-color-primary: #172033;
+  --td-text-color-secondary: #4b5565;
+  --td-text-color-placeholder: #a1a9b7;
+  --td-text-color-brand: #3f63d8;
+  --td-border-level-1-color: #edf0f5;
+  --td-border-level-2-color: #e2e7ef;
+  --td-component-stroke: #edf0f5;
+  --td-component-border: #e2e7ef;
+  --td-radius-default: 18rpx;
+  --td-radius-large: 28rpx;
+  --td-button-border-radius: 18rpx;
   min-height: 100%;
-  background: #f3f5f8;
-  color: #1d2129;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f4f6fa;
+  color: #172033;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .page-shell {
   box-sizing: border-box;
   min-height: 100vh;
-  padding: 32rpx;
+  padding: 36rpx 32rpx;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(63, 99, 216, 0.08), transparent 28%),
+    #f4f6fa;
+}
+
+.page-header {
+  margin: 8rpx 4rpx 32rpx;
+}
+
+.page-eyebrow {
+  margin-bottom: 10rpx;
+  color: #3f63d8;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 3rpx;
+  line-height: 1.4;
 }
 
 .page-title {
-  margin: 8rpx 0 28rpx;
-  font-size: 44rpx;
-  font-weight: 600;
-  line-height: 1.3;
+  color: #172033;
+  font-size: 48rpx;
+  font-weight: 650;
+  letter-spacing: -1rpx;
+  line-height: 1.25;
+}
+
+.page-description {
+  margin-top: 12rpx;
+  color: #7d8798;
+  font-size: 26rpx;
+  line-height: 1.6;
 }
 
 .section-card {
   overflow: hidden;
   margin-bottom: 24rpx;
-  border-radius: 20rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 28rpx;
   background: #ffffff;
-  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 16rpx 48rpx rgba(15, 23, 42, 0.05);
+}
+
+.section-heading {
+  padding: 30rpx 32rpx 22rpx;
+}
+
+.section-title {
+  color: #172033;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.section-description {
+  margin-top: 8rpx;
+  color: #7d8798;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.section-divider {
+  height: 2rpx;
+  margin: 0 32rpx;
+  background: #edf0f5;
 }
 
 .primary-action {
   margin-top: 32rpx;
+  --td-button-primary-bg-color: #3f63d8;
+  --td-button-primary-border-color: #3f63d8;
+  --td-button-primary-active-bg-color: #3151bd;
+  --td-button-primary-active-border-color: #3151bd;
+  --td-button-border-radius: 18rpx;
+  box-shadow: 0 12rpx 28rpx rgba(63, 99, 216, 0.2);
 }
