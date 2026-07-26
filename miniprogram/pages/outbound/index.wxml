@@ -10,14 +10,12 @@
         <view class="operator-name">{{user.display_name}}</view>
       </view>
     </view>
-    <view class="page-description">扫描二级库物资二维码，核对信息后提交本次领用。</view>
   </view>
 
   <view class="section-card scan-card">
     <view class="scan-card-heading">
       <view class="scan-kicker">第一步</view>
       <view class="scan-title">扫描物资二维码</view>
-      <view class="scan-description">请将二维码完整放入扫描框内</view>
     </view>
     <t-button
       class="scan-action"
@@ -26,18 +24,15 @@
       block
       loading="{{scanning}}"
       disabled="{{scanning || submitting}}"
+      icon="scan"
       bind:tap="scanMaterial"
-    >
-      <t-icon name="scan" size="44rpx" />
-      <text class="scan-button-text">{{material ? '重新扫码' : '扫描物资二维码'}}</text>
-    </t-button>
+    >{{material ? '重新扫码' : '扫描物资二维码'}}</t-button>
   </view>
 
   <view wx:if="{{material}}" class="section-card material-card">
     <view class="section-heading material-heading">
       <view>
         <view class="section-title">物资信息</view>
-        <view class="section-description">请确认物资与现场实物一致。</view>
       </view>
       <view class="status-badge">已识别</view>
     </view>
@@ -52,7 +47,6 @@
   <view wx:if="{{material}}" class="section-card form-card">
     <view class="section-heading">
       <view class="section-title">出库信息</view>
-      <view class="section-description">填写数量、用途和接收单位后提交。</view>
     </view>
     <view class="section-divider"></view>
     <t-cell-group>

@@ -64,13 +64,6 @@
   line-height: 1.4;
 }
 
-.scan-description {
-  margin-top: 6rpx;
-  color: #7d8798;
-  font-size: 24rpx;
-  line-height: 1.5;
-}
-
 .scan-action {
   --td-button-primary-bg-color: #3f63d8;
   --td-button-primary-border-color: #3f63d8;
@@ -78,10 +71,6 @@
   --td-button-primary-active-border-color: #3151bd;
   --td-button-border-radius: 18rpx;
   box-shadow: 0 12rpx 28rpx rgba(63, 99, 216, 0.18);
-}
-
-.scan-button-text {
-  margin-left: 12rpx;
 }
 
 .material-card {

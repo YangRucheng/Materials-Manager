@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage, type FormInst, type FormRules } from 'naive-ui'
+import QRCode from 'qrcode'
 import { inventoryApi } from '@/api/inventory'
 import type {
   FileObject,
@@ -24,10 +25,12 @@ const dictionaries = useDictionaryStore()
 const material = ref<StockMaterial | null>(null)
 const balance = ref<InventoryBalance | null>(null)
 const images = ref<FileObject[]>([])
+const qrCodeDataUrl = ref('')
 const formRef = ref<FormInst | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const canWrite = computed(() => auth.can('warehouse:write'))
+const qrCodeFilename = computed(() => `物资-${material.value?.uuid ?? '出库'}-二维码.png`)
 const form = reactive<StockMaterialWrite>({
   name: '',
   model_spec: '',
@@ -63,6 +66,18 @@ function syncForm(value: StockMaterial) {
   images.value = [...value.images]
 }
 
+async function generateQrCode(uuid: string) {
+  qrCodeDataUrl.value = await QRCode.toDataURL(uuid, {
+    width: 320,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+    color: {
+      dark: '#172033',
+      light: '#ffffff',
+    },
+  })
+}
+
 async function load() {
   loading.value = true
   try {
@@ -74,6 +89,7 @@ async function load() {
     material.value = nextMaterial
     balance.value = nextBalance
     syncForm(nextMaterial)
+    await generateQrCode(nextMaterial.uuid)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '物资档案加载失败')
   } finally {
@@ -190,6 +206,30 @@ onMounted(() => {
           <n-form-item label="备注" class="wide-form-item">
             <n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count />
           </n-form-item>
+          <n-form-item label="出库二维码" class="wide-form-item qr-form-item">
+            <div class="qr-code-field">
+              <img
+                v-if="qrCodeDataUrl"
+                class="qr-code-image"
+                :src="qrCodeDataUrl"
+                :alt="`${material.name}出库二维码`"
+              />
+              <div class="qr-code-details">
+                <strong>小程序扫码出库</strong>
+                <span class="muted">使用小程序“扫码出库”功能扫描此二维码</span>
+                <code>{{ material.uuid }}</code>
+                <n-button
+                  tag="a"
+                  secondary
+                  size="small"
+                  :href="qrCodeDataUrl"
+                  :download="qrCodeFilename"
+                >
+                  下载二维码
+                </n-button>
+              </div>
+            </div>
+          </n-form-item>
           <n-form-item label="图片附件" class="wide-form-item attachment-form-item">
             <ImageUploader v-model:files="images" :disabled="!canWrite" />
           </n-form-item>
@@ -226,5 +266,60 @@ onMounted(() => {
 
 .attachment-form-item {
   margin-bottom: 0;
+}
+
+.qr-code-field {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 24px;
+  padding: 20px;
+  border: 1px solid #e3e8f2;
+  border-radius: 10px;
+  background: #f8faff;
+  box-sizing: border-box;
+}
+
+.qr-code-image {
+  width: 168px;
+  height: 168px;
+  flex: none;
+  padding: 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(31, 52, 118, 0.1);
+  box-sizing: border-box;
+}
+
+.qr-code-details {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qr-code-details strong {
+  color: #172033;
+  font-size: 16px;
+}
+
+.qr-code-details code {
+  max-width: 100%;
+  padding: 6px 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #edf2ff;
+  color: #3658c7;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .qr-code-field {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>
