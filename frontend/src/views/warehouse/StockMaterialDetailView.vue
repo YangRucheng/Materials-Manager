@@ -1,23 +1,68 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { useMessage, type FormInst, type FormRules } from 'naive-ui'
 import { inventoryApi } from '@/api/inventory'
-import type { InventoryBalance, StockMaterial } from '@/api/generated'
+import type {
+  FileObject,
+  InventoryBalance,
+  StockMaterial,
+  StockMaterialWrite,
+} from '@/api/generated'
+import ImageUploader from '@/components/ImageUploader.vue'
+import QuantityInput from '@/components/QuantityInput.vue'
 import { useAuthStore } from '@/stores/auth'
-import { formatShanghaiTime } from '@/utils/time'
+import { useDictionaryStore } from '@/stores/dictionaries'
 import { isDecimalString } from '@/utils/decimal'
-import { imagePreviewUrl, imageUrl } from '@/utils/image'
+import { formatShanghaiTime } from '@/utils/time'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+const dictionaries = useDictionaryStore()
 const material = ref<StockMaterial | null>(null)
 const balance = ref<InventoryBalance | null>(null)
+const images = ref<FileObject[]>([])
+const formRef = ref<FormInst | null>(null)
 const loading = ref(true)
 const saving = ref(false)
-const policy = reactive({ minimum_qty: '0', enabled: true })
+const canWrite = computed(() => auth.can('warehouse:write'))
+const form = reactive<StockMaterialWrite>({
+  name: '',
+  model_spec: '',
+  unit_id: null,
+  remark: '',
+  image_ids: [],
+})
+const policy = reactive({
+  minimum_qty: '0',
+  enabled: true,
+  version: undefined as number | undefined,
+})
+const rules: FormRules = {
+  name: { required: true, message: '请输入物资名称' },
+  model_spec: { required: true, message: '请输入型号规格；无型号时填写“无”' },
+  unit_id: { type: 'number', required: true, message: '请选择计量单位' },
+}
+
+function syncForm(value: StockMaterial) {
+  Object.assign(form, {
+    name: value.name,
+    model_spec: value.model_spec,
+    unit_id: value.unit_id,
+    remark: value.remark || '',
+    image_ids: value.images.map((image) => image.id),
+    version: value.version,
+  })
+  Object.assign(policy, {
+    minimum_qty: value.replenishment_policy?.minimum_qty ?? '0',
+    enabled: value.replenishment_policy?.enabled ?? true,
+    version: value.replenishment_policy?.version,
+  })
+  images.value = [...value.images]
+}
+
 async function load() {
   loading.value = true
   try {
@@ -28,109 +73,158 @@ async function load() {
     ])
     material.value = nextMaterial
     balance.value = nextBalance
-    Object.assign(
-      policy,
-      material.value.replenishment_policy || { minimum_qty: '0', enabled: true },
-    )
+    syncForm(nextMaterial)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '物资档案加载失败')
   } finally {
     loading.value = false
   }
 }
-async function savePolicy() {
+
+async function save() {
+  if (!material.value) return
+  await formRef.value?.validate()
   if (!isDecimalString(policy.minimum_qty, 1, true)) {
     message.error('最低库存必须为非负数，且最多 1 位小数')
     return
   }
+
   saving.value = true
   try {
-    material.value = await inventoryApi.savePolicy(Number(route.params.id), {
-      ...policy,
-      version: material.value?.replenishment_policy?.version,
+    const materialId = material.value.id
+    await inventoryApi.updateMaterial(materialId, {
+      ...form,
+      name: form.name.trim(),
+      model_spec: form.model_spec.trim(),
+      remark: form.remark?.trim() || undefined,
+      image_ids: images.value.map((image) => image.id),
+      version: material.value.version,
     })
-    if (balance.value) {
-      balance.value.minimum_qty = policy.minimum_qty
-    }
-    message.success('安全库存策略已保存')
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存失败')
+    material.value = await inventoryApi.savePolicy(materialId, {
+      minimum_qty: policy.minimum_qty,
+      enabled: policy.enabled,
+      version: policy.version,
+    })
+    balance.value = await inventoryApi.balance(materialId)
+    syncForm(material.value)
+    message.success('物资档案已保存')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
     saving.value = false
   }
 }
-onMounted(load)
+
+onMounted(() => {
+  void dictionaries.load()
+  void load()
+})
 </script>
 
 <template>
   <div v-if="material" v-loading="loading" class="page">
-    <div class="page-header">
-      <div>
-        <n-button text @click="router.back()">← 返回物资列表</n-button>
-        <h1 class="page-title">{{ material.name }}</h1>
-      </div>
-      <n-space v-if="auth.can('warehouse:write')"
-        ><n-button @click="router.push({ name: 'inbound', query: { material_id: material.id } })"
-          >入库</n-button
-        ><n-button
+    <div class="detail-toolbar">
+      <n-button secondary @click="router.push({ name: 'stock-materials' })">
+        ← 返回物资档案
+      </n-button>
+      <n-space v-if="canWrite">
+        <n-button
+          secondary
+          @click="router.push({ name: 'inbound', query: { material_id: material.id } })"
+        >
+          入库
+        </n-button>
+        <n-button
           type="primary"
           @click="router.push({ name: 'outbound', query: { material_id: material.id } })"
-          >出库</n-button
-        ></n-space
-      >
+        >
+          出库
+        </n-button>
+      </n-space>
     </div>
-    <div class="detail-grid">
-      <n-card title="物资信息"
-        ><n-descriptions label-placement="left" :column="2"
-          ><n-descriptions-item label="名称">{{ material.name }}</n-descriptions-item
-          ><n-descriptions-item label="型号规格">{{ material.model_spec }}</n-descriptions-item
-          ><n-descriptions-item label="计量单位">{{ material.unit_name }}</n-descriptions-item
-          ><n-descriptions-item label="当前库存"
-            ><strong>{{ material.current_qty }}</strong></n-descriptions-item
-          ><n-descriptions-item label="更新时间">{{
-            formatShanghaiTime(material.updated_at)
-          }}</n-descriptions-item
-          ><n-descriptions-item label="备注" :span="2">{{
-            material.remark || '—'
-          }}</n-descriptions-item></n-descriptions
-        ><n-divider>图片</n-divider
-        ><n-space v-if="material.images.length"
-          ><n-image
-            v-for="image in material.images"
-            :key="image.id"
-            :src="imagePreviewUrl(image.id, 320)"
-            :preview-src="imageUrl(image.id)"
-            width="120"
-            height="120"
-            object-fit="cover" /></n-space
-        ><n-empty v-else description="暂无图片" size="small"
-      /></n-card>
-      <n-card title="安全库存策略"
-        ><n-descriptions :column="2" style="margin-bottom: 16px"
-          ><n-descriptions-item label="最低库存">{{
-            balance?.minimum_qty ?? '—'
-          }}</n-descriptions-item
-          ><n-descriptions-item label="建议申购">{{
-            balance?.suggested_purchase_qty ?? '0'
-          }}</n-descriptions-item></n-descriptions
-        ><n-form label-placement="top"
-          ><n-form-item label="最低库存"
-            ><n-input v-model:value="policy.minimum_qty" :disabled="!auth.can('warehouse:write')"
-              ><template #suffix>{{ material.unit_name }}</template></n-input
-            ></n-form-item
-          ><n-form-item
-            ><n-switch
-              v-model:value="policy.enabled"
-              :disabled="!auth.can('warehouse:write')"
-            />&nbsp;启用低库存预警</n-form-item
-          ><n-button
-            v-if="auth.can('warehouse:write')"
-            type="primary"
-            block
-            :loading="saving"
-            @click="savePolicy"
-            >保存策略</n-button
-          ></n-form
-        ></n-card
+
+    <n-card title="物资档案信息">
+      <n-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-placement="top"
+        :disabled="!canWrite"
       >
-    </div>
+        <div class="form-grid">
+          <n-form-item label="物资名称" path="name" required>
+            <n-input v-model:value="form.name" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="型号规格" path="model_spec" required>
+            <n-input
+              v-model:value="form.model_spec"
+              maxlength="255"
+              placeholder="无型号时填写“无”"
+            />
+          </n-form-item>
+          <n-form-item label="计量单位" path="unit_id" required>
+            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+          </n-form-item>
+          <n-form-item label="当前库存">
+            <n-input :value="material.current_qty" disabled>
+              <template #suffix>{{ material.unit_name }}</template>
+            </n-input>
+          </n-form-item>
+          <n-form-item label="最低库存">
+            <QuantityInput v-model:value="policy.minimum_qty" :disabled="!canWrite">
+              <template #suffix>{{ material.unit_name }}</template>
+            </QuantityInput>
+          </n-form-item>
+          <n-form-item label="建议申购数量">
+            <n-input :value="balance?.suggested_purchase_qty ?? '0'" disabled>
+              <template #suffix>{{ material.unit_name }}</template>
+            </n-input>
+          </n-form-item>
+          <n-form-item label="低库存预警" class="wide-form-item">
+            <div class="switch-field">
+              <n-switch v-model:value="policy.enabled" :disabled="!canWrite" />
+              <span>{{ policy.enabled ? '已启用' : '已停用' }}</span>
+              <span class="muted">库存低于最低库存时进入低库存清单</span>
+            </div>
+          </n-form-item>
+          <n-form-item label="备注" class="wide-form-item">
+            <n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count />
+          </n-form-item>
+          <n-form-item label="图片附件" class="wide-form-item attachment-form-item">
+            <ImageUploader v-model:files="images" :disabled="!canWrite" />
+          </n-form-item>
+        </div>
+      </n-form>
+      <template #footer>
+        <n-space justify="space-between" align="center">
+          <n-space align="center">
+            <span class="muted">最后更新：{{ formatShanghaiTime(material.updated_at) }}</span>
+            <n-tag size="small" :type="material.has_operation_records ? 'default' : 'success'">
+              {{ material.has_operation_records ? '已有操作记录' : '暂无操作记录' }}
+            </n-tag>
+          </n-space>
+          <n-button v-if="canWrite" type="primary" :loading="saving" @click="save">
+            保存修改
+          </n-button>
+        </n-space>
+      </template>
+    </n-card>
   </div>
 </template>
+
+<style scoped>
+.wide-form-item {
+  grid-column: 1 / -1;
+}
+
+.switch-field {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 10px;
+}
+
+.attachment-form-item {
+  margin-bottom: 0;
+}
+</style>
