@@ -830,21 +830,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/stock-materials/{material_id}/mini-program-code:
+  /api/v1/stock-materials/mini-program-codes/{material_uuid}:
     get:
       tags:
       - 二级库物资
       summary: Material Mini Program Code
-      operationId: material_mini_program_code_api_v1_stock_materials__material_id__mini_program_code_get
+      operationId: material_mini_program_code_api_v1_stock_materials_mini_program_codes__material_uuid__get
       security:
       - HTTPBearer: []
       parameters:
-      - name: material_id
+      - name: material_uuid
         in: path
         required: true
         schema:
-          type: integer
-          title: Material Id
+          type: string
+          format: uuid
+          title: Material Uuid
       - name: env
         in: query
         required: true
@@ -855,6 +856,54 @@ paths:
           description: Successful Response
           content:
             image/png: {}
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/stock-materials/{material_id}/mini-program-code:
+    get:
+      tags:
+      - 二级库物资
+      summary: Material Mini Program Code Redirect
+      operationId: material_mini_program_code_redirect_api_v1_stock_materials__material_id__mini_program_code_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: material_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Material Id
+      responses:
+        '307':
+          description: Successful Response
         '400':
           description: 业务校验失败
           content:

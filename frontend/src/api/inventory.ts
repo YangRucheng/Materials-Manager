@@ -2,7 +2,6 @@ import { apiClient } from './client'
 import type {
   DashboardSummary,
   InventoryBalance,
-  MiniProgramCodeEnv,
   OperationUpdate,
   OperationWrite,
   Page,
@@ -20,10 +19,9 @@ export const inventoryApi = {
     apiClient.get<Page<StockMaterial>>('/stock-materials', { params }).then((r) => r.data),
   material: (id: number) =>
     apiClient.get<StockMaterial>(`/stock-materials/${id}`).then((r) => r.data),
-  materialMiniProgramCode: (id: number, env: MiniProgramCodeEnv) =>
+  materialMiniProgramCode: (id: number) =>
     apiClient
       .get<Blob>(`/stock-materials/${id}/mini-program-code`, {
-        params: { env },
         responseType: 'blob',
       })
       .then((r) => r.data),

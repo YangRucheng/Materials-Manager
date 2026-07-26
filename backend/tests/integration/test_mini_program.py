@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from PIL import Image
 
 from app.domain.enums import MiniProgramCodeEnv
-from app.services import mini_program_service
+from app.services import ai_search_service, mini_program_service
 from tests.conftest import auth_headers
 
 
@@ -103,18 +103,36 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "generate_unlimited_material_code",
         fake_generate_unlimited_material_code,
     )
-    mini_program_code_url = f"/api/v1/stock-materials/{material_data['id']}/mini-program-code"
+    async def fake_mini_program_code_env(_session):
+        return MiniProgramCodeEnv.TRIAL
+
+    monkeypatch.setattr(
+        ai_search_service,
+        "get_mini_program_code_env",
+        fake_mini_program_code_env,
+    )
+    mini_program_code_entry_url = (
+        f"/api/v1/stock-materials/{material_data['id']}/mini-program-code"
+    )
+    mini_program_code_url = (
+        f"/api/v1/stock-materials/mini-program-codes/{material_data['uuid']}"
+    )
+    redirect = await client.get(mini_program_code_entry_url, headers=warehouse)
     missing_env = await client.get(mini_program_code_url, headers=warehouse)
     invalid_env = await client.get(
         mini_program_code_url, headers=warehouse, params={"env": "develop"}
+    )
+    assert redirect.status_code == 307
+    assert redirect.headers["cache-control"] == "no-store"
+    assert redirect.headers["location"].endswith(
+        f"/api/v1/stock-materials/mini-program-codes/{material_data['uuid']}?env=trial"
     )
     assert missing_env.status_code == 422
     assert invalid_env.status_code == 422
 
     material_code = await client.get(
-        mini_program_code_url,
+        redirect.headers["location"],
         headers=warehouse,
-        params={"env": "trial"},
     )
     assert material_code.status_code == 200, material_code.text
     assert material_code.headers["content-type"] == "image/png"
