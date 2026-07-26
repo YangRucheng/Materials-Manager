@@ -367,7 +367,6 @@ export interface PurchaseMaterial {
   stock_material_name?: string
   status: PurchasePlanStatus
   moved_to_record: boolean
-  enabled: boolean
   images: FileObject[]
   created_at: string
   updated_at: string

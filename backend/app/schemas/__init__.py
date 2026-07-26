@@ -748,7 +748,6 @@ class PurchaseMaterialRead(ReadModel):
     stock_material_name: str | None = None
     status: PurchasePlanStatus
     moved_to_record: bool
-    enabled: bool
     images: list[FileObjectRead]
     created_at: datetime
     updated_at: datetime

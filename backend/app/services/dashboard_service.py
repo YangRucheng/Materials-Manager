@@ -33,7 +33,6 @@ async def dashboard_summary(session: AsyncSession) -> DashboardSummaryRead:
             await session.scalar(
                 select(func.count(PurchaseMaterial.id)).where(
                     PurchaseMaterial.material_code.is_(None),
-                    PurchaseMaterial.enabled.is_(True),
                     PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
                 )
             )
