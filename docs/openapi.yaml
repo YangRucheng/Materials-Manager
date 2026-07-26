@@ -1902,6 +1902,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - 小程序用户管理
+      summary: Delete Mini Program User
+      operationId: delete_mini_program_user_api_v1_mini_program_users__user_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      - name: version
+        in: query
+        required: true
+        schema:
+          type: integer
+          title: Version
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program/auth/wx-login:
     post:
       tags:
@@ -6764,6 +6817,7 @@ components:
       type: string
       enum:
       - MANUAL
+      - MINI_PROGRAM
       - REVERSAL
       - INITIALIZATION
       title: SourceType

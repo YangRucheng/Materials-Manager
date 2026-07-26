@@ -62,6 +62,16 @@ async def update_mini_program_user(
     )
 
 
+@management_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_mini_program_user(
+    user_id: int,
+    version: int,
+    session: DbSession,
+    user: SuperAdmin,
+) -> None:
+    await mini_program_service.delete_user(session, user_id, version)
+
+
 @mini_router.post("/auth/wx-login", response_model=MiniProgramLoginResponse)
 async def mini_program_wechat_login(
     data: MiniProgramWechatLoginRequest, session: DbSession

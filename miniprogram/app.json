@@ -1,7 +1,8 @@
 {
   "pages": [
     "pages/outbound/index",
-    "pages/profile/index"
+    "pages/profile/index",
+    "pages/disabled/index"
   ],
   "window": {
     "backgroundColor": "#f4f6fa",

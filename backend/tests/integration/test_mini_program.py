@@ -145,6 +145,21 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "current_qty": "10",
     }
 
+    forged_mini_program_source = await client.post(
+        "/api/v1/inventory/outbounds",
+        headers=warehouse,
+        json={
+            "client_request_id": "forged-mini-program-source",
+            "occurred_at": "2026-07-25T10:30:00+08:00",
+            "source_type": "MINI_PROGRAM",
+            "business_reason": "不应允许伪造来源",
+            "receiver_name": "管理端用户",
+            "lines": [{"stock_material_id": material_data["id"], "quantity": "1"}],
+        },
+    )
+    assert forged_mini_program_source.status_code == 400
+    assert forged_mini_program_source.json()["code"] == "INVALID_SOURCE_TYPE"
+
     payload = {
         "client_request_id": "mini-program-outbound-001",
         "material_uuid": material_data["uuid"],
@@ -171,9 +186,28 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         f"/api/v1/inventory/operations/{outbound.json()['operation_id']}", headers=warehouse
     )
     assert operation.status_code == 200, operation.text
+    assert operation.json()["source_type"] == "MINI_PROGRAM"
     assert operation.json()["mini_program_user_id"] == created_user["id"]
     assert operation.json()["mini_program_user_name"] == "扫码出库员"
     assert operation.json()["receiver_unit"] is None
+
+    mini_program_operations = await client.get(
+        "/api/v1/inventory/operations",
+        headers=warehouse,
+        params={"source_type": "MINI_PROGRAM"},
+    )
+    manual_operations = await client.get(
+        "/api/v1/inventory/operations",
+        headers=warehouse,
+        params={"source_type": "MANUAL"},
+    )
+    assert mini_program_operations.status_code == manual_operations.status_code == 200
+    assert outbound.json()["operation_id"] in {
+        item["id"] for item in mini_program_operations.json()["items"]
+    }
+    assert outbound.json()["operation_id"] not in {
+        item["id"] for item in manual_operations.json()["items"]
+    }
 
     for index, reason in enumerate(["全员用途一", "全员用途二", "全员用途三", "全员用途四"]):
         system_outbound = await client.post(
@@ -217,9 +251,63 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert repeated_login.json()["user"]["id"] == created_user["id"]
     assert repeated_login.json()["user"]["display_name"] == "管理员修改"
 
+    disabled = await client.patch(
+        f"/api/v1/mini-program-users/{created_user['id']}",
+        headers=admin,
+        json={"enabled": False, "version": rename.json()["version"]},
+    )
+    assert disabled.status_code == 200, disabled.text
+    disabled_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login",
+        json={"code": "temporary-login-code"},
+    )
+    assert disabled_login.status_code == 403
+    assert disabled_login.json()["code"] == "ACCOUNT_DISABLED"
+    assert disabled_login.json()["message"] == "您的账号已被禁用"
+    disabled_request = await client.get(
+        "/api/v1/mini-program/outbound-reasons", headers=mini_headers
+    )
+    assert disabled_request.status_code == 403
+    assert disabled_request.json()["code"] == "ACCOUNT_DISABLED"
+
+    deleted = await client.delete(
+        f"/api/v1/mini-program-users/{created_user['id']}",
+        headers=admin,
+        params={"version": disabled.json()["version"]},
+    )
+    assert deleted.status_code == 204, deleted.text
+    historical_operation = await client.get(
+        f"/api/v1/inventory/operations/{outbound.json()['operation_id']}", headers=warehouse
+    )
+    assert historical_operation.status_code == 200
+    assert historical_operation.json()["source_type"] == "MINI_PROGRAM"
+    assert historical_operation.json()["mini_program_user_id"] is None
+    assert historical_operation.json()["mini_program_user_name"] == "扫码出库员"
+
+    login_after_delete = await client.post(
+        "/api/v1/mini-program/auth/wx-login",
+        json={"code": "temporary-login-code"},
+    )
+    assert login_after_delete.status_code == 200
+    assert login_after_delete.json()["requires_profile"] is True
+    rebound = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={
+            "Authorization": f"Bearer {login_after_delete.json()['registration_token']}"
+        },
+        json={"display_name": "重新绑定姓名"},
+    )
+    assert rebound.status_code == 200, rebound.text
+    assert rebound.json()["user"]["display_name"] == "重新绑定姓名"
+    assert rebound.json()["user"]["wechat_openid"] == "openid-for-scan-user"
+
 
 @pytest.mark.asyncio
 async def test_mini_program_users_require_super_admin(client: AsyncClient) -> None:
     warehouse = await auth_headers(client, "warehouse")
     response = await client.get("/api/v1/mini-program-users", headers=warehouse)
     assert response.status_code == 403
+    deleted = await client.delete(
+        "/api/v1/mini-program-users/1", headers=warehouse, params={"version": 1}
+    )
+    assert deleted.status_code == 403

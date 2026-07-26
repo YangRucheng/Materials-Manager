@@ -32,16 +32,6 @@
   <view wx:if="{{material}}" class="section-card material-card">
     <view class="section-heading material-heading">
       <view class="section-title">物资信息</view>
-      <t-button
-        class="rescan-action"
-        theme="primary"
-        variant="text"
-        size="small"
-        icon="scan"
-        loading="{{scanning}}"
-        disabled="{{scanning || submitting}}"
-        bind:tap="scanMaterial"
-      >重新扫码</t-button>
     </view>
     <view class="material-summary">
       <view class="material-main">
@@ -71,50 +61,6 @@
         bind:change="onFieldChange"
       />
       <t-input
-        label="出库用途"
-        placeholder="请输入"
-        maxlength="500"
-        value="{{form.businessReason}}"
-        data-field="businessReason"
-        bind:change="onFieldChange"
-      />
-      <view wx:if="{{personalReasons.length || systemReasons.length}}" class="reason-shortcuts">
-        <view wx:if="{{personalReasons.length}}" class="reason-group">
-          <view class="reason-label">我的最近用途</view>
-          <scroll-view class="reason-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-            <view class="reason-tags">
-              <t-tag
-                wx:for="{{personalReasons}}"
-                wx:key="*this"
-                theme="primary"
-                variant="light"
-                size="small"
-                max-width="300rpx"
-                data-reason="{{item}}"
-                bind:click="selectReason"
-              >{{item}}</t-tag>
-            </view>
-          </scroll-view>
-        </view>
-        <view wx:if="{{systemReasons.length}}" class="reason-group">
-          <view class="reason-label">全员最近用途</view>
-          <scroll-view class="reason-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-            <view class="reason-tags">
-              <t-tag
-                wx:for="{{systemReasons}}"
-                wx:key="*this"
-                theme="default"
-                variant="light"
-                size="small"
-                max-width="300rpx"
-                data-reason="{{item}}"
-                bind:click="selectReason"
-              >{{item}}</t-tag>
-            </view>
-          </scroll-view>
-        </view>
-      </view>
-      <t-input
         label="子项号"
         placeholder="请输入"
         maxlength="64"
@@ -122,19 +68,55 @@
         data-field="subitemNo"
         bind:change="onFieldChange"
       />
+      <t-input
+        label="出库用途"
+        placeholder="请输入"
+        maxlength="500"
+        value="{{form.businessReason}}"
+        data-field="businessReason"
+        bind:change="onFieldChange"
+      />
+      <view wx:if="{{recentReasons.length}}" class="reason-shortcuts">
+        <view class="reason-label">一键采用近期出库用途</view>
+        <scroll-view class="reason-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+          <view class="reason-tags">
+            <t-tag
+              wx:for="{{recentReasons}}"
+              wx:key="*this"
+              theme="primary"
+              variant="light"
+              size="small"
+              max-width="300rpx"
+              data-reason="{{item}}"
+              bind:click="selectReason"
+            >{{item}}</t-tag>
+          </view>
+        </scroll-view>
+      </view>
     </t-cell-group>
   </view>
 
-  <t-button
-    wx:if="{{material}}"
-    class="primary-action"
-    theme="primary"
-    size="large"
-    block
-    loading="{{submitting}}"
-    disabled="{{submitting || scanning}}"
-    bind:tap="submitOutbound"
-  >确认出库</t-button>
+  <view wx:if="{{material}}" class="outbound-actions">
+    <t-button
+      class="outbound-action rescan-action"
+      theme="default"
+      variant="outline"
+      size="large"
+      icon="scan"
+      loading="{{scanning}}"
+      disabled="{{scanning || submitting}}"
+      bind:tap="scanMaterial"
+    >重新扫码</t-button>
+    <t-button
+      class="outbound-action confirm-action"
+      theme="primary"
+      size="large"
+      icon="check-circle"
+      loading="{{submitting}}"
+      disabled="{{submitting || scanning}}"
+      bind:tap="submitOutbound"
+    >确认出库</t-button>
+  </view>
 
   <t-toast id="outbound-toast" />
 </view>

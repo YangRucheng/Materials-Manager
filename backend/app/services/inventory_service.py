@@ -105,7 +105,7 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
         receiver_unit=item.receiver_unit,
         receiver_name=item.receiver_name,
         subitem_no=item.subitem_no,
-        source_type=item.source_type,
+        source_type=_operation_source_type(item),
         reversal_of_id=item.reversal_of_id,
         client_request_id=item.client_request_id,
         mini_program_user_id=item.mini_program_user_id,
@@ -132,7 +132,7 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
     return {
         "operation_type": item.operation_type.value,
         "occurred_at": item.occurred_at.isoformat(),
-        "source_type": item.source_type.value,
+        "source_type": _operation_source_type(item).value,
         "business_reason": item.business_reason,
         "receiver_unit": item.receiver_unit,
         "receiver_name": item.receiver_name,
@@ -147,6 +147,12 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
             for line in item.lines
         ],
     }
+
+
+def _operation_source_type(item: StockOperation) -> SourceType:
+    if item.mini_program_user_name_snapshot is not None:
+        return SourceType.MINI_PROGRAM
+    return item.source_type
 
 
 async def _lock_and_validate_materials(
@@ -200,6 +206,8 @@ def _validate_operation_semantics(
 ) -> None:
     if source_type == SourceType.INITIALIZATION and operation_type != OperationType.INBOUND:
         raise AppError("INVALID_SOURCE_TYPE", "初始化业务只能是入库")
+    if source_type == SourceType.MINI_PROGRAM and operation_type != OperationType.OUTBOUND:
+        raise AppError("INVALID_SOURCE_TYPE", "小程序来源只能是出库")
     if operation_type == OperationType.INBOUND and receiver_name:
         raise AppError("INVALID_RECEIVER", "只有出库业务可以填写领用人")
     if operation_type == OperationType.INBOUND and receiver_unit:
@@ -253,6 +261,10 @@ async def create_operation(
     )
     if existing is not None:
         return existing
+    if data.source_type == SourceType.MINI_PROGRAM and mini_program_user is None:
+        raise AppError("INVALID_SOURCE_TYPE", "小程序来源只能由小程序出库创建")
+    if mini_program_user is not None and data.source_type != SourceType.MINI_PROGRAM:
+        raise AppError("INVALID_SOURCE_TYPE", "小程序出库必须使用小程序来源")
     if data.source_type == SourceType.REVERSAL and reversal_of_id is None:
         raise AppError("INVALID_SOURCE_TYPE", "冲销来源只能由冲销接口创建")
     if operation_type == OperationType.OUTBOUND and not data.business_reason:
@@ -279,7 +291,11 @@ async def create_operation(
         receiver_unit=data.receiver_unit,
         receiver_name=data.receiver_name,
         subitem_no=data.subitem_no,
-        source_type=data.source_type,
+        source_type=(
+            SourceType.MANUAL
+            if data.source_type == SourceType.MINI_PROGRAM
+            else data.source_type
+        ),
         reversal_of_id=reversal_of_id,
         client_request_id=data.client_request_id,
         mini_program_user_id=mini_program_user.id if mini_program_user else None,
@@ -321,6 +337,13 @@ async def update_operation(
     session: AsyncSession, item: StockOperation, data: OperationUpdate
 ) -> StockOperation:
     validate_version(data.version, item.version)
+    if (
+        item.mini_program_user_name_snapshot is not None
+        and data.source_type != SourceType.MINI_PROGRAM
+    ):
+        raise AppError("INVALID_SOURCE_TYPE", "小程序流水必须保留小程序来源")
+    if item.mini_program_user_name_snapshot is None and data.source_type == SourceType.MINI_PROGRAM:
+        raise AppError("INVALID_SOURCE_TYPE", "普通流水不能改为小程序来源")
     if data.operation_type == OperationType.OUTBOUND and not data.business_reason:
         raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写用途")
     _validate_operation_semantics(
@@ -333,7 +356,9 @@ async def update_operation(
     )
     item.operation_type = data.operation_type
     item.occurred_at = utc_naive(data.occurred_at)
-    item.source_type = data.source_type
+    item.source_type = (
+        SourceType.MANUAL if data.source_type == SourceType.MINI_PROGRAM else data.source_type
+    )
     item.business_reason = data.business_reason
     item.receiver_unit = data.receiver_unit
     item.receiver_name = data.receiver_name
@@ -436,7 +461,14 @@ async def search_operations(
     )
     if material_condition is not None:
         query = query.where(material_condition)
-    if source_type:
+    if source_type == SourceType.MINI_PROGRAM:
+        query = query.where(StockOperation.mini_program_user_name_snapshot.is_not(None))
+    elif source_type == SourceType.MANUAL:
+        query = query.where(
+            StockOperation.source_type == SourceType.MANUAL,
+            StockOperation.mini_program_user_name_snapshot.is_(None),
+        )
+    elif source_type:
         query = query.where(StockOperation.source_type == source_type)
     if start_at:
         query = query.where(StockOperation.occurred_at >= start_at)

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "账号已禁用",
+  "usingComponents": {
+    "t-result": "tdesign-miniprogram/result/result"
+  }
+}
