@@ -45,6 +45,7 @@ class AiSearchConfig:
     model: str
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
+    mini_program_registration_enabled: bool
     updated_at: datetime | None
     version: int
 
@@ -83,6 +84,7 @@ def _payload(config: AiSearchConfig) -> dict[str, object]:
         "model": config.model,
         "enabled": config.enabled,
         "mini_program_code_env": config.mini_program_code_env,
+        "mini_program_registration_enabled": config.mini_program_registration_enabled,
     }
 
 
@@ -123,6 +125,11 @@ async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
         model=model if isinstance(model, str) else "",
         enabled=enabled if isinstance(enabled, bool) else False,
         mini_program_code_env=_mini_program_code_env(data.get("mini_program_code_env")),
+        mini_program_registration_enabled=(
+            data.get("mini_program_registration_enabled")
+            if isinstance(data.get("mini_program_registration_enabled"), bool)
+            else True
+        ),
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -136,6 +143,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
             model="",
             enabled=False,
             mini_program_code_env=MiniProgramCodeEnv.RELEASE,
+            mini_program_registration_enabled=True,
             updated_at=None,
             version=0,
         )
@@ -145,6 +153,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
         model=setting.model,
         enabled=setting.enabled,
         mini_program_code_env=setting.mini_program_code_env,
+        mini_program_registration_enabled=setting.mini_program_registration_enabled,
         updated_at=setting.updated_at,
         version=setting.version,
     )
@@ -157,7 +166,7 @@ async def update_setting(
     actual_version = current.version if current else 0
     if data.version != actual_version:
         raise version_conflict(data.version, actual_version)
-    api_key_encrypted = _encrypt_api_key(data.api_key)
+    api_key_encrypted = _encrypt_api_key(data.api_key) if data.api_key else ""
 
     event = await log_event(
         session,
@@ -174,6 +183,7 @@ async def update_setting(
             "model": data.model,
             "enabled": data.enabled,
             "mini_program_code_env": data.mini_program_code_env,
+            "mini_program_registration_enabled": data.mini_program_registration_enabled,
         },
     )
     _cache.clear()
@@ -183,6 +193,7 @@ async def update_setting(
         model=data.model,
         enabled=data.enabled,
         mini_program_code_env=data.mini_program_code_env,
+        mini_program_registration_enabled=data.mini_program_registration_enabled,
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -191,6 +202,11 @@ async def update_setting(
 async def get_mini_program_code_env(session: AsyncSession) -> MiniProgramCodeEnv:
     setting = await get_setting(session)
     return setting.mini_program_code_env if setting else MiniProgramCodeEnv.RELEASE
+
+
+async def is_mini_program_registration_enabled(session: AsyncSession) -> bool:
+    setting = await get_setting(session)
+    return setting.mini_program_registration_enabled if setting else True
 
 
 async def is_available(session: AsyncSession) -> bool:

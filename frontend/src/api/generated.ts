@@ -7,6 +7,7 @@ export type OperationType = 'INBOUND' | 'OUTBOUND'
 export type SourceType = 'MANUAL' | 'MINI_PROGRAM' | 'REVERSAL' | 'INITIALIZATION'
 export type PurchasePlanStatus = '正常' | '暂不申购' | '已归档'
 export type MiniProgramCodeEnv = 'trial' | 'release'
+export type MiniProgramStockStatus = 'normal' | 'out_of_stock' | 'low_stock'
 
 export interface ApiError {
   code: string
@@ -32,6 +33,7 @@ export interface MiniProgramUser {
   id: number
   wechat_openid: string
   display_name: string
+  department_name: string
   enabled: boolean
   created_at: string
   updated_at: string
@@ -59,6 +61,7 @@ export interface AiSearchSettings {
   model: string
   enabled: boolean
   mini_program_code_env: MiniProgramCodeEnv
+  mini_program_registration_enabled: boolean
   updated_at?: string
   version: number
 }
@@ -68,6 +71,7 @@ export interface AiSearchSettingsWrite {
   model: string
   enabled: boolean
   mini_program_code_env: MiniProgramCodeEnv
+  mini_program_registration_enabled: boolean
   version: number
 }
 export interface MiniProgramCodeSettings {
@@ -202,6 +206,18 @@ export interface MiniProgramMaterial {
   model_spec: string
   unit_name: string
   current_qty: string
+  stock_status: MiniProgramStockStatus
+  minimum_qty?: string
+  remark?: string
+  images: FileObject[]
+}
+export interface MiniProgramInventoryItem {
+  uuid: string
+  name: string
+  model_spec: string
+  unit_name: string
+  current_qty: string
+  stock_status: MiniProgramStockStatus
 }
 export interface MiniProgramOutboundWrite {
   client_request_id: string

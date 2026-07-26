@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "暂未开放绑定",
+  "usingComponents": {
+    "t-result": "tdesign-miniprogram/result/result"
+  }
+}

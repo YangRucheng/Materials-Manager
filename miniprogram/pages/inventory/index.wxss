@@ -1,0 +1,142 @@
+.inventory-page {
+  padding: 24rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.inventory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin: 4rpx 4rpx 24rpx;
+}
+
+.inventory-header .page-title {
+  font-size: 44rpx;
+}
+
+.inventory-tools {
+  overflow: hidden;
+  margin-bottom: 20rpx;
+  padding: 16rpx 16rpx 6rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.04);
+}
+
+.result-count {
+  margin: 0 8rpx 14rpx;
+  color: #7d8798;
+  font-size: 23rpx;
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.inventory-card {
+  padding: 24rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.04);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.inventory-card-active {
+  transform: scale(0.99);
+  background: #f8faff;
+}
+
+.card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.material-name {
+  flex: 1;
+  min-width: 0;
+  color: #172033;
+  font-size: 29rpx;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.material-spec {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 8rpx;
+  color: #687386;
+  font-size: 24rpx;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.spec-label {
+  flex: none;
+  color: #9aa3b2;
+}
+
+.card-divider {
+  height: 2rpx;
+  margin: 20rpx 0 16rpx;
+  background: #edf0f5;
+}
+
+.inventory-meta {
+  display: flex;
+  align-items: flex-end;
+}
+
+.meta-item {
+  min-width: 180rpx;
+}
+
+.unit-item {
+  flex: 1;
+}
+
+.meta-label {
+  color: #8a94a5;
+  font-size: 21rpx;
+}
+
+.stock-quantity {
+  margin-top: 4rpx;
+  color: #3658c7;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.meta-value {
+  margin-top: 8rpx;
+  color: #4b5565;
+  font-size: 25rpx;
+  font-weight: 550;
+}
+
+.state-panel {
+  display: flex;
+  min-height: 420rpx;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-panel {
+  padding-top: 40rpx;
+  box-sizing: border-box;
+}
+
+.load-more,
+.load-finished {
+  padding: 28rpx 0 8rpx;
+  color: #a1a9b7;
+  font-size: 22rpx;
+  text-align: center;
+}

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import io
+
 import pytest
 from httpx import AsyncClient
+from PIL import Image
 
 from app.domain.enums import MiniProgramCodeEnv
 from app.services import mini_program_service
@@ -51,7 +54,10 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     profile = await client.post(
         "/api/v1/mini-program/profile",
         headers={"Authorization": f"Bearer {registration_token}"},
-        json={"display_name": "扫码出库员"},
+        json={
+            "display_name": "扫码出库员",
+            "department_name": "华星检修维护部电气车间",
+        },
     )
     assert profile.status_code == 200, profile.text
     assert profile.json()["requires_profile"] is False
@@ -59,12 +65,16 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     created_user = profile.json()["user"]
     assert created_user["wechat_openid"] == "openid-for-scan-user"
     assert created_user["display_name"] == "扫码出库员"
+    assert created_user["department_name"] == "华星检修维护部电气车间"
     mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
 
     replayed_profile = await client.post(
         "/api/v1/mini-program/profile",
         headers={"Authorization": f"Bearer {registration_token}"},
-        json={"display_name": "试图修改姓名"},
+        json={
+            "display_name": "试图修改姓名",
+            "department_name": "试图修改单位",
+        },
     )
     assert replayed_profile.status_code == 200, replayed_profile.text
     assert replayed_profile.json()["user"]["id"] == created_user["id"]
@@ -143,6 +153,10 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "model_spec": "SCAN-001",
         "unit_name": "个",
         "current_qty": "10",
+        "stock_status": "normal",
+        "minimum_qty": None,
+        "remark": None,
+        "images": [],
     }
 
     forged_mini_program_source = await client.post(
@@ -236,10 +250,15 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     rename = await client.patch(
         f"/api/v1/mini-program-users/{created_user['id']}",
         headers=admin,
-        json={"display_name": "管理员修改", "version": created_user["version"]},
+        json={
+            "display_name": "管理员修改",
+            "department_name": "设备保障部",
+            "version": created_user["version"],
+        },
     )
     assert rename.status_code == 200, rename.text
     assert rename.json()["display_name"] == "管理员修改"
+    assert rename.json()["department_name"] == "设备保障部"
 
     repeated_login = await client.post(
         "/api/v1/mini-program/auth/wx-login",
@@ -295,11 +314,226 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         headers={
             "Authorization": f"Bearer {login_after_delete.json()['registration_token']}"
         },
-        json={"display_name": "重新绑定姓名"},
+        json={
+            "display_name": "重新绑定姓名",
+            "department_name": "华星检修维护部电气车间",
+        },
     )
     assert rebound.status_code == 200, rebound.text
     assert rebound.json()["user"]["display_name"] == "重新绑定姓名"
     assert rebound.json()["user"]["wechat_openid"] == "openid-for-scan-user"
+
+
+@pytest.mark.asyncio
+async def test_mini_program_inventory_search_filters_pagination_and_detail(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(code: str) -> str:
+        return f"inventory-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    warehouse = await auth_headers(client, "warehouse")
+    login = await client.post(
+        "/api/v1/mini-program/auth/wx-login",
+        json={"code": "browser-user"},
+    )
+    profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+        json={
+            "display_name": "库存浏览员",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
+
+    source = io.BytesIO()
+    Image.new("RGB", (32, 24), "blue").save(source, format="PNG")
+    uploaded = await client.post(
+        "/api/v1/files/images",
+        headers=warehouse,
+        files={"file": ("inventory.png", source.getvalue(), "image/png")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    file_id = uploaded.json()["id"]
+
+    async def create_material(
+        name: str, model_spec: str, *, image_ids: list[str] | None = None
+    ) -> dict[str, object]:
+        response = await client.post(
+            "/api/v1/stock-materials",
+            headers=warehouse,
+            json={
+                "name": name,
+                "model_spec": model_spec,
+                "unit_id": 1,
+                "remark": f"{name}只读详情",
+                "image_ids": image_ids or [],
+            },
+        )
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    no_stock = await create_material("零库存接触器", "ZERO-1", image_ids=[file_id])
+    low_stock = await create_material("低库存继电器", "LOW-1")
+    normal_stock = await create_material("库存充足电机", "NORMAL-1")
+
+    for material, quantity in ((low_stock, "2"), (normal_stock, "8")):
+        policy = await client.put(
+            f"/api/v1/stock-materials/{material['id']}/replenishment-policy",
+            headers=warehouse,
+            json={"minimum_qty": "5", "enabled": True},
+        )
+        assert policy.status_code == 200, policy.text
+        inbound = await client.post(
+            "/api/v1/inventory/inbounds",
+            headers=warehouse,
+            json={
+                "client_request_id": f"inventory-browser-{material['id']}",
+                "occurred_at": "2026-07-26T09:00:00+08:00",
+                "source_type": "MANUAL",
+                "business_reason": "库存浏览测试",
+                "lines": [{"stock_material_id": material["id"], "quantity": quantity}],
+            },
+        )
+        assert inbound.status_code == 201, inbound.text
+
+    first_page = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        params={"page": 1, "page_size": 2},
+    )
+    second_page = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        params={"page": 2, "page_size": 2},
+    )
+    assert first_page.status_code == second_page.status_code == 200
+    assert first_page.json()["total"] == 3
+    assert len(first_page.json()["items"]) == 2
+    assert len(second_page.json()["items"]) == 1
+    assert set(first_page.json()["items"][0]) == {
+        "uuid",
+        "name",
+        "model_spec",
+        "unit_name",
+        "current_qty",
+        "stock_status",
+    }
+
+    searched = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        params={"keyword": "LOW-1"},
+    )
+    assert searched.status_code == 200
+    assert [item["uuid"] for item in searched.json()["items"]] == [low_stock["uuid"]]
+
+    empty_items = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        params={"stock_status": "out_of_stock"},
+    )
+    low_items = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        params={"stock_status": "low_stock"},
+    )
+    assert [item["uuid"] for item in empty_items.json()["items"]] == [no_stock["uuid"]]
+    assert [item["uuid"] for item in low_items.json()["items"]] == [low_stock["uuid"]]
+
+    detail = await client.get(
+        f"/api/v1/mini-program/materials/{no_stock['uuid']}", headers=mini_headers
+    )
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["stock_status"] == "out_of_stock"
+    assert detail.json()["remark"] == "零库存接触器只读详情"
+    assert detail.json()["minimum_qty"] is None
+    assert [image["id"] for image in detail.json()["images"]] == [file_id]
+
+    write_attempt = await client.post(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        json={"name": "不允许修改"},
+    )
+    assert write_attempt.status_code == 405
+
+
+@pytest.mark.asyncio
+async def test_advanced_setting_can_close_new_mini_program_bindings(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(code: str) -> str:
+        return f"openid-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    admin = await auth_headers(client, "admin")
+
+    existing_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "existing"}
+    )
+    existing_profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={
+            "Authorization": f"Bearer {existing_login.json()['registration_token']}"
+        },
+        json={
+            "display_name": "已绑定用户",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    assert existing_profile.status_code == 200, existing_profile.text
+
+    pending_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "pending"}
+    )
+    pending_token = pending_login.json()["registration_token"]
+
+    settings = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "",
+            "api_key": "",
+            "model": "",
+            "enabled": False,
+            "mini_program_code_env": "release",
+            "mini_program_registration_enabled": False,
+            "version": 0,
+        },
+    )
+    assert settings.status_code == 200, settings.text
+
+    existing_again = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "existing"}
+    )
+    assert existing_again.status_code == 200
+    assert existing_again.json()["requires_profile"] is False
+
+    new_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "new"}
+    )
+    assert new_login.status_code == 403
+    assert new_login.json()["code"] == "MINI_PROGRAM_REGISTRATION_DISABLED"
+
+    stale_registration = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {pending_token}"},
+        json={
+            "display_name": "未完成绑定用户",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    assert stale_registration.status_code == 403
+    assert stale_registration.json()["code"] == "MINI_PROGRAM_REGISTRATION_DISABLED"
 
 
 @pytest.mark.asyncio

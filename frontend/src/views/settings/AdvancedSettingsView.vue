@@ -16,6 +16,7 @@ const form = reactive({
   model: '',
   enabled: true,
   mini_program_code_env: 'release' as 'trial' | 'release',
+  mini_program_registration_enabled: true,
   version: 0,
 })
 
@@ -29,6 +30,7 @@ async function load() {
       model: data.model,
       enabled: data.enabled,
       mini_program_code_env: data.mini_program_code_env,
+      mini_program_registration_enabled: data.mini_program_registration_enabled,
       version: data.version,
     })
   } finally {
@@ -37,7 +39,7 @@ async function load() {
 }
 
 async function save() {
-  if (!form.endpoint.trim() || !form.model.trim() || !form.api_key.trim()) {
+  if (form.enabled && (!form.endpoint.trim() || !form.model.trim() || !form.api_key.trim())) {
     message.error('请填写端点、模型和 API Key')
     return
   }
@@ -49,6 +51,7 @@ async function save() {
       model: form.model.trim(),
       enabled: form.enabled,
       mini_program_code_env: form.mini_program_code_env,
+      mini_program_registration_enabled: form.mini_program_registration_enabled,
       version: form.version,
     })
     form.api_key = data.api_key
@@ -94,13 +97,13 @@ onMounted(load)
           <n-form-item label="启用服务">
             <n-switch v-model:value="form.enabled" />
           </n-form-item>
-          <n-form-item label="兼容端点" required>
+          <n-form-item label="兼容端点" :required="form.enabled">
             <n-input v-model:value="form.endpoint" placeholder="https://api.openai.com/v1" />
           </n-form-item>
-          <n-form-item label="模型" required>
+          <n-form-item label="模型" :required="form.enabled">
             <n-input v-model:value="form.model" placeholder="gpt-4.1-mini" />
           </n-form-item>
-          <n-form-item label="API Key" required>
+          <n-form-item label="API Key" :required="form.enabled">
             <n-input v-model:value="form.api_key" placeholder="请输入 API Key" autocomplete="off" />
           </n-form-item>
         </n-form>
@@ -117,6 +120,17 @@ onMounted(load)
               :options="codeEnvOptions"
               style="max-width: 240px"
             />
+          </n-form-item>
+        </n-form>
+      </n-card>
+
+      <n-card :loading="loading" title="小程序用户">
+        <n-alert type="info" :bordered="false" style="margin-bottom: 20px">
+          关闭后，新微信用户不能填写资料完成绑定；已经绑定的用户不受影响。
+        </n-alert>
+        <n-form label-placement="left" label-width="140">
+          <n-form-item label="允许新用户绑定">
+            <n-switch v-model:value="form.mini_program_registration_enabled" />
           </n-form-item>
         </n-form>
       </n-card>

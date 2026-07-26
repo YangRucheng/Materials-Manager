@@ -12,9 +12,18 @@ const requiredFiles = [
   'pages/outbound/index.js',
   'pages/outbound/index.json',
   'pages/outbound/index.wxml',
+  'pages/inventory/index.js',
+  'pages/inventory/index.json',
+  'pages/inventory/index.wxml',
+  'pages/inventory-detail/index.js',
+  'pages/inventory-detail/index.json',
+  'pages/inventory-detail/index.wxml',
   'pages/disabled/index.js',
   'pages/disabled/index.json',
   'pages/disabled/index.wxml',
+  'pages/registration-closed/index.js',
+  'pages/registration-closed/index.json',
+  'pages/registration-closed/index.wxml',
 ];
 
 for (const file of requiredFiles) {
@@ -28,7 +37,10 @@ JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'));
 const pageConfigs = [
   JSON.parse(fs.readFileSync(path.join(root, 'pages/profile/index.json'), 'utf8')),
   JSON.parse(fs.readFileSync(path.join(root, 'pages/outbound/index.json'), 'utf8')),
+  JSON.parse(fs.readFileSync(path.join(root, 'pages/inventory/index.json'), 'utf8')),
+  JSON.parse(fs.readFileSync(path.join(root, 'pages/inventory-detail/index.json'), 'utf8')),
   JSON.parse(fs.readFileSync(path.join(root, 'pages/disabled/index.json'), 'utf8')),
+  JSON.parse(fs.readFileSync(path.join(root, 'pages/registration-closed/index.json'), 'utf8')),
 ];
 
 if (appConfig.window.backgroundColor !== '#f4f6fa') {

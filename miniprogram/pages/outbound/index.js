@@ -29,6 +29,10 @@ Page({
         wx.reLaunch({ url: '/pages/disabled/index' });
         return;
       }
+      if (session.registration_disabled) {
+        wx.reLaunch({ url: '/pages/registration-closed/index' });
+        return;
+      }
       if (session.requires_profile) {
         wx.reLaunch({ url: '/pages/profile/index' });
         return;
@@ -61,6 +65,10 @@ Page({
     } catch (_error) {
       this.setData({ recentReasons: [] });
     }
+  },
+
+  openInventory() {
+    wx.navigateTo({ url: '/pages/inventory/index' });
   },
 
   async scanMaterial() {

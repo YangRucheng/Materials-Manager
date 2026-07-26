@@ -10,6 +10,14 @@
         <view class="operator-name">{{user.display_name}}</view>
       </view>
     </view>
+    <t-button
+      class="inventory-entry"
+      theme="primary"
+      variant="light"
+      size="small"
+      icon="view-list"
+      bind:tap="openInventory"
+    >全库库存</t-button>
   </view>
 
   <view wx:if="{{!material}}" class="section-card scan-card">
