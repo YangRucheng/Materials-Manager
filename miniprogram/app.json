@@ -4,8 +4,10 @@
     "pages/profile/index"
   ],
   "window": {
-    "backgroundColor": "#f3f5f8",
-    "backgroundTextStyle": "light",
+    "backgroundColor": "#f4f6fa",
+    "backgroundColorTop": "#f4f6fa",
+    "backgroundColorBottom": "#f4f6fa",
+    "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "扫码出库"

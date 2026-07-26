@@ -1,3 +1,85 @@
 .profile-page {
-  padding-top: 72rpx;
+  padding-top: 32rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.brand-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 236rpx;
+  padding: 38rpx 36rpx;
+  border-radius: 32rpx;
+  background:
+    radial-gradient(circle at 14% 12%, rgba(255, 255, 255, 0.18), transparent 25%),
+    linear-gradient(145deg, #2947a6, #5579e7);
+  box-shadow: 0 20rpx 48rpx rgba(41, 71, 166, 0.2);
+  box-sizing: border-box;
+  color: #ffffff;
+}
+
+.brand-content {
+  position: relative;
+  z-index: 1;
+  max-width: 530rpx;
+}
+
+.brand-eyebrow {
+  opacity: 0.72;
+  font-size: 20rpx;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+}
+
+.brand-title {
+  margin-top: 18rpx;
+  font-size: 42rpx;
+  font-weight: 650;
+  letter-spacing: 1rpx;
+  line-height: 1.3;
+}
+
+.brand-description {
+  margin-top: 16rpx;
+  opacity: 0.82;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.brand-orbit {
+  position: absolute;
+  border: 2rpx solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+}
+
+.brand-orbit-large {
+  right: -112rpx;
+  bottom: -184rpx;
+  width: 380rpx;
+  height: 380rpx;
+  box-shadow:
+    0 0 0 56rpx rgba(255, 255, 255, 0.04),
+    0 0 0 112rpx rgba(255, 255, 255, 0.025);
+}
+
+.brand-orbit-small {
+  top: -48rpx;
+  right: 82rpx;
+  width: 112rpx;
+  height: 112rpx;
+}
+
+.profile-header {
+  margin-top: 46rpx;
+}
+
+.profile-card {
+  --td-input-bg-color: #ffffff;
+}
+
+.privacy-tip {
+  margin: 22rpx 28rpx 0;
+  color: #7d8798;
+  font-size: 22rpx;
+  line-height: 1.5;
+  text-align: center;
 }
