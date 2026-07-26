@@ -34,6 +34,7 @@ async function main() {
   project.updateFileAndDirs();
 
   console.log(`正在上传微信小程序，版本号：${version}`);
+  console.log(`上传备注：${desc}`);
   await ci.upload({
     project,
     version,
