@@ -2051,6 +2051,51 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/mini-program/outbound-reasons:
+    get:
+      tags:
+      - 小程序扫码出库
+      summary: Mini Program Outbound Reasons
+      operationId: mini_program_outbound_reasons_api_v1_mini_program_outbound_reasons_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramOutboundReasonOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/purchase-materials:
     get:
       tags:
@@ -4850,8 +4895,8 @@ components:
         receiver_unit:
           type: string
           maxLength: 128
-          minLength: 1
           title: Receiver Unit
+          default: ''
         subitem_no:
           type: string
           maxLength: 64
@@ -4865,7 +4910,6 @@ components:
       - occurred_at
       - quantity
       - business_reason
-      - receiver_unit
       - subitem_no
       title: MiniProgramOutboundCreate
     MiniProgramOutboundRead:
@@ -4940,6 +4984,23 @@ components:
       - receiver_name
       - executed_by
       title: MiniProgramOutboundRead
+    MiniProgramOutboundReasonOptions:
+      properties:
+        personal_reasons:
+          items:
+            type: string
+          type: array
+          title: Personal Reasons
+        system_reasons:
+          items:
+            type: string
+          type: array
+          title: System Reasons
+      type: object
+      required:
+      - personal_reasons
+      - system_reasons
+      title: MiniProgramOutboundReasonOptions
     MiniProgramProfileUpdate:
       properties:
         display_name:

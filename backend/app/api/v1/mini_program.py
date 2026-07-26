@@ -18,6 +18,7 @@ from app.schemas import (
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
+    MiniProgramOutboundReasonOptions,
     MiniProgramProfileUpdate,
     MiniProgramUserRead,
     MiniProgramUserUpdate,
@@ -115,3 +116,17 @@ async def mini_program_outbound(
     user: CurrentMiniProgramUser,
 ) -> MiniProgramOutboundRead:
     return await mini_program_service.create_outbound(session, data, user)
+
+
+@mini_router.get("/outbound-reasons", response_model=MiniProgramOutboundReasonOptions)
+async def mini_program_outbound_reasons(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> MiniProgramOutboundReasonOptions:
+    personal_reasons, system_reasons = await mini_program_service.recent_outbound_reasons(
+        session, user
+    )
+    return MiniProgramOutboundReasonOptions(
+        personal_reasons=personal_reasons,
+        system_reasons=system_reasons,
+    )

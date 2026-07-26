@@ -90,7 +90,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
             "occurred_at": "2026-07-25T10:00:00+08:00",
             "source_type": "MANUAL",
             "business_reason": "扫码出库测试入库",
-            "lines": [{"stock_material_id": material_data["id"], "quantity": "5"}],
+            "lines": [{"stock_material_id": material_data["id"], "quantity": "10"}],
         },
     )
     assert inbound.status_code == 201, inbound.text
@@ -111,7 +111,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "name": "扫码测试物资",
         "model_spec": "SCAN-001",
         "unit_name": "个",
-        "current_qty": "5",
+        "current_qty": "10",
     }
 
     payload = {
@@ -120,7 +120,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "occurred_at": "2026-07-25T11:00:00+08:00",
         "quantity": "2",
         "business_reason": "现场检修领用",
-        "receiver_unit": "电气检修班",
+        "receiver_unit": "",
         "subitem_no": "01-01",
     }
     outbound = await client.post(
@@ -131,9 +131,10 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert outbound.status_code == repeated.status_code == 201
     assert outbound.json()["operation_id"] == repeated.json()["operation_id"]
-    assert outbound.json()["after_qty"] == "3"
+    assert outbound.json()["after_qty"] == "8"
     assert outbound.json()["executed_by"] == "扫码出库员"
     assert outbound.json()["receiver_name"] == "扫码出库员"
+    assert outbound.json()["receiver_unit"] is None
 
     operation = await client.get(
         f"/api/v1/inventory/operations/{outbound.json()['operation_id']}", headers=warehouse
@@ -141,6 +142,31 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert operation.status_code == 200, operation.text
     assert operation.json()["mini_program_user_id"] == created_user["id"]
     assert operation.json()["mini_program_user_name"] == "扫码出库员"
+    assert operation.json()["receiver_unit"] is None
+
+    for index, reason in enumerate(["全员用途一", "全员用途二", "全员用途三", "全员用途四"]):
+        system_outbound = await client.post(
+            "/api/v1/inventory/outbounds",
+            headers=warehouse,
+            json={
+                "client_request_id": f"system-reason-{index}",
+                "occurred_at": f"2026-07-25T{12 + index}:00:00+08:00",
+                "source_type": "MANUAL",
+                "business_reason": reason,
+                "receiver_name": "系统用户",
+                "lines": [{"stock_material_id": material_data["id"], "quantity": "1"}],
+            },
+        )
+        assert system_outbound.status_code == 201, system_outbound.text
+
+    reason_options = await client.get(
+        "/api/v1/mini-program/outbound-reasons", headers=mini_headers
+    )
+    assert reason_options.status_code == 200, reason_options.text
+    assert reason_options.json() == {
+        "personal_reasons": ["现场检修领用"],
+        "system_reasons": ["全员用途四", "全员用途三", "全员用途二"],
+    }
 
     rename = await client.patch(
         f"/api/v1/mini-program-users/{created_user['id']}",

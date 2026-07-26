@@ -9,11 +9,12 @@ Page({
     material: null,
     scanning: false,
     submitting: false,
+    personalReasons: [],
+    systemReasons: [],
     form: {
-      quantity: '',
+      quantity: '1',
       businessReason: '',
       subitemNo: '',
-      receiverUnit: '',
     },
   },
 
@@ -25,8 +26,21 @@ Page({
         return;
       }
       this.setData({ user: session.user });
+      await this.loadReasonOptions();
     } catch (error) {
       this.showError(error);
+    }
+  },
+
+  async loadReasonOptions() {
+    try {
+      const options = await request({ url: '/mini-program/outbound-reasons' });
+      this.setData({
+        personalReasons: options.personal_reasons || [],
+        systemReasons: options.system_reasons || [],
+      });
+    } catch (_error) {
+      this.setData({ personalReasons: [], systemReasons: [] });
     }
   },
 
@@ -47,7 +61,7 @@ Page({
       const material = await request({
         url: `/mini-program/materials/${materialUuid}`,
       });
-      this.setData({ material });
+      this.setData({ material, 'form.quantity': '1' });
     } catch (error) {
       if (!String(error.errMsg || '').includes('cancel')) {
         this.showError(error);
@@ -62,11 +76,15 @@ Page({
     this.setData({ [`form.${field}`]: event.detail.value });
   },
 
+  selectReason(event) {
+    this.setData({ 'form.businessReason': event.currentTarget.dataset.reason });
+  },
+
   validateForm() {
     if (!this.data.material) {
       return '请先扫描物资二维码';
     }
-    const { quantity, businessReason, subitemNo, receiverUnit } = this.data.form;
+    const { quantity, businessReason, subitemNo } = this.data.form;
     const numericQuantity = Number(quantity);
     if (!quantity || !Number.isFinite(numericQuantity) || numericQuantity <= 0) {
       return '请输入正确的出库数量';
@@ -80,9 +98,6 @@ Page({
     if (!subitemNo.trim()) {
       return '请输入子项号';
     }
-    if (!receiverUnit.trim()) {
-      return '请输入使用单位';
-    }
     return '';
   },
 
@@ -92,7 +107,7 @@ Page({
       this.showError(new Error(validationMessage));
       return;
     }
-    const { quantity, businessReason, subitemNo, receiverUnit } = this.data.form;
+    const { quantity, businessReason, subitemNo } = this.data.form;
     this.setData({ submitting: true });
     try {
       const result = await request({
@@ -105,7 +120,7 @@ Page({
           quantity,
           business_reason: businessReason.trim(),
           subitem_no: subitemNo.trim(),
-          receiver_unit: receiverUnit.trim(),
+          receiver_unit: '',
         },
       });
       Toast({
@@ -118,12 +133,12 @@ Page({
       this.setData({
         material: null,
         form: {
-          quantity: '',
+          quantity: '1',
           businessReason: '',
           subitemNo: '',
-          receiverUnit: '',
         },
       });
+      void this.loadReasonOptions();
     } catch (error) {
       this.showError(error);
     } finally {

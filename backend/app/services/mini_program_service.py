@@ -206,6 +206,31 @@ def _outbound_read(
     )
 
 
+async def recent_outbound_reasons(
+    session: AsyncSession, user: MiniProgramUser
+) -> tuple[list[str], list[str]]:
+    async def list_reasons(user_id: int | None = None) -> list[str]:
+        last_used_at = func.max(StockOperation.occurred_at)
+        last_operation_id = func.max(StockOperation.id)
+        query = (
+            select(StockOperation.business_reason)
+            .where(
+                StockOperation.operation_type == OperationType.OUTBOUND,
+                StockOperation.business_reason != "",
+            )
+            .group_by(StockOperation.business_reason)
+            .order_by(last_used_at.desc(), last_operation_id.desc())
+            .limit(3)
+        )
+        if user_id is not None:
+            query = query.where(StockOperation.mini_program_user_id == user_id)
+        return list((await session.scalars(query)).all())
+
+    personal_reasons = await list_reasons(user.id)
+    system_reasons = await list_reasons()
+    return personal_reasons, system_reasons
+
+
 async def create_outbound(
     session: AsyncSession, data: MiniProgramOutboundCreate, user: MiniProgramUser
 ) -> MiniProgramOutboundRead:
@@ -217,7 +242,7 @@ async def create_outbound(
             occurred_at=data.occurred_at,
             source_type=SourceType.MANUAL,
             business_reason=data.business_reason,
-            receiver_unit=data.receiver_unit,
+            receiver_unit=data.receiver_unit or None,
             receiver_name=user.display_name,
             subitem_no=data.subitem_no,
             lines=[OperationLineWrite(stock_material_id=material.id, quantity=data.quantity)],
