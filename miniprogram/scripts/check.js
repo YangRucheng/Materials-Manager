@@ -12,6 +12,9 @@ const requiredFiles = [
   'pages/outbound/index.js',
   'pages/outbound/index.json',
   'pages/outbound/index.wxml',
+  'pages/disabled/index.js',
+  'pages/disabled/index.json',
+  'pages/disabled/index.wxml',
 ];
 
 for (const file of requiredFiles) {
@@ -25,6 +28,7 @@ JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'));
 const pageConfigs = [
   JSON.parse(fs.readFileSync(path.join(root, 'pages/profile/index.json'), 'utf8')),
   JSON.parse(fs.readFileSync(path.join(root, 'pages/outbound/index.json'), 'utf8')),
+  JSON.parse(fs.readFileSync(path.join(root, 'pages/disabled/index.json'), 'utf8')),
 ];
 
 if (appConfig.window.backgroundColor !== '#f4f6fa') {

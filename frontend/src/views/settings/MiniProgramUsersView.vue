@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useMessage } from 'naive-ui'
+import { NButton, NTag, useDialog, useMessage } from 'naive-ui'
 import type { MiniProgramUser } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
 import {
@@ -10,8 +10,10 @@ import {
 } from '@/constants/table'
 
 const message = useMessage()
+const dialog = useDialog()
 const items = ref<MiniProgramUser[]>([])
 const loading = ref(false)
+const deletingId = ref<number | null>(null)
 const show = ref(false)
 const editing = ref<MiniProgramUser | null>(null)
 const form = reactive({
@@ -36,9 +38,22 @@ const columns = preventTableColumnCompression<MiniProgramUser>([
   {
     title: '操作',
     key: 'action',
-    width: tableColumnWidths.action,
+    width: tableColumnWidths.action * 2,
     render: (row) =>
-      h(NButton, { size: 'small', onClick: () => open(row) }, { default: () => '编辑' }),
+      h('div', { class: 'table-actions' }, [
+        h(NButton, { size: 'small', onClick: () => open(row) }, { default: () => '编辑' }),
+        h(
+          NButton,
+          {
+            size: 'small',
+            type: 'error',
+            secondary: true,
+            loading: deletingId.value === row.id,
+            onClick: () => confirmDelete(row),
+          },
+          { default: () => '删除' },
+        ),
+      ]),
   },
 ])
 const tableScrollX = getTableScrollX(columns)
@@ -81,6 +96,28 @@ async function save() {
   }
 }
 
+function confirmDelete(row: MiniProgramUser) {
+  dialog.warning({
+    title: '删除小程序用户',
+    content: `确认删除“${row.display_name}”？删除后，该微信用户可重新填写姓名并完成绑定。`,
+    positiveText: '确认删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      deletingId.value = row.id
+      try {
+        await dictionaryApi.deleteMiniProgramUser(row.id, row.version)
+        message.success('已删除，该用户可以重新绑定姓名')
+        if (editing.value?.id === row.id) show.value = false
+        await load()
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : '删除失败')
+      } finally {
+        deletingId.value = null
+      }
+    },
+  })
+}
+
 onMounted(load)
 </script>
 
@@ -118,3 +155,10 @@ onMounted(load)
     </n-modal>
   </div>
 </template>
+
+<style scoped>
+:deep(.table-actions) {
+  display: flex;
+  gap: 8px;
+}
+</style>

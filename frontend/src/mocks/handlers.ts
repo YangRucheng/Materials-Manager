@@ -345,6 +345,12 @@ export const handlers = [
     })
     return HttpResponse.json(item)
   }),
+  http.delete(`${api}/mini-program-users/:id`, ({ params }) => {
+    const item = miniProgramUsers.find((x) => x.id === Number(params.id))
+    if (!item) return error(400, 'NOT_FOUND', '小程序用户不存在')
+    miniProgramUsers.splice(miniProgramUsers.indexOf(item), 1)
+    return new HttpResponse(null, { status: 204 })
+  }),
 
   http.get(`${api}/stock-materials`, ({ request }) => {
     const url = new URL(request.url)

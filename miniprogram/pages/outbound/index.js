@@ -9,8 +9,7 @@ Page({
     material: null,
     scanning: false,
     submitting: false,
-    personalReasons: [],
-    systemReasons: [],
+    recentReasons: [],
     form: {
       quantity: '1',
       businessReason: '',
@@ -26,6 +25,10 @@ Page({
     }
     try {
       const session = await app.globalData.authPromise;
+      if (session.account_disabled) {
+        wx.reLaunch({ url: '/pages/disabled/index' });
+        return;
+      }
       if (session.requires_profile) {
         wx.reLaunch({ url: '/pages/profile/index' });
         return;
@@ -50,12 +53,13 @@ Page({
   async loadReasonOptions() {
     try {
       const options = await request({ url: '/mini-program/outbound-reasons' });
+      const personalReasons = options.personal_reasons || [];
+      const systemReasons = options.system_reasons || [];
       this.setData({
-        personalReasons: options.personal_reasons || [],
-        systemReasons: options.system_reasons || [],
+        recentReasons: [...new Set([...personalReasons, ...systemReasons])],
       });
     } catch (_error) {
-      this.setData({ personalReasons: [], systemReasons: [] });
+      this.setData({ recentReasons: [] });
     }
   },
 

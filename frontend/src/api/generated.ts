@@ -4,7 +4,7 @@
  */
 export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_ONLY'
 export type OperationType = 'INBOUND' | 'OUTBOUND'
-export type SourceType = 'MANUAL' | 'REVERSAL' | 'INITIALIZATION'
+export type SourceType = 'MANUAL' | 'MINI_PROGRAM' | 'REVERSAL' | 'INITIALIZATION'
 export type PurchasePlanStatus = '正常' | '暂不申购' | '已归档'
 export type MiniProgramCodeEnv = 'trial' | 'release'
 

@@ -8,7 +8,7 @@ from typing import cast
 from uuid import UUID
 
 import httpx
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,6 +72,20 @@ async def update_user(
     item.version += 1
     await session.flush()
     return item
+
+
+async def delete_user(session: AsyncSession, item_id: int, version: int) -> None:
+    item = await session.get(MiniProgramUser, item_id)
+    if item is None:
+        raise not_found("小程序用户")
+    validate_version(version, item.version)
+    await session.execute(
+        update(StockOperation)
+        .where(StockOperation.mini_program_user_id == item.id)
+        .values(mini_program_user_id=None)
+    )
+    await session.delete(item)
+    await session.flush()
 
 
 async def exchange_wechat_code(code: str) -> str:
@@ -222,7 +236,7 @@ async def login_with_wechat(
         select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
     )
     if user is not None and not user.enabled:
-        raise AppError("ACCOUNT_DISABLED", "账号已停用", status_code=403)
+        raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
     return user, openid
 
 
@@ -234,7 +248,7 @@ async def register_user(
     )
     if existing is not None:
         if not existing.enabled:
-            raise AppError("ACCOUNT_DISABLED", "账号已停用", status_code=403)
+            raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
         return existing
     user = MiniProgramUser(
         wechat_openid=openid,
@@ -345,7 +359,7 @@ async def create_outbound(
         OperationCreate(
             client_request_id=data.client_request_id,
             occurred_at=data.occurred_at,
-            source_type=SourceType.MANUAL,
+            source_type=SourceType.MINI_PROGRAM,
             business_reason=data.business_reason,
             receiver_unit=data.receiver_unit or None,
             receiver_name=user.display_name,
