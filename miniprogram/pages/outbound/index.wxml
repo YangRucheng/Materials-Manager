@@ -5,19 +5,26 @@
         <view class="page-eyebrow">WAREHOUSE OUTBOUND</view>
         <view class="page-title">扫码出库</view>
       </view>
-      <view class="operator-badge">
+      <view class="operator-badge" hover-class="operator-badge-active" bind:tap="showUserProfile">
         <view class="operator-dot"></view>
         <view class="operator-name">{{user.display_name}}</view>
+        <t-icon name="chevron-down" size="24rpx" color="#5573d1" />
       </view>
     </view>
-    <t-button
-      class="inventory-entry"
-      theme="primary"
-      variant="light"
-      size="small"
-      icon="view-list"
-      bind:tap="openInventory"
-    >全库库存</t-button>
+  </view>
+
+  <view
+    wx:if="{{!material}}"
+    class="inventory-entry-card"
+    hover-class="inventory-entry-card-active"
+    bind:tap="openInventory"
+  >
+    <view class="inventory-entry-icon"><t-icon name="view-list" size="44rpx" /></view>
+    <view class="inventory-entry-content">
+      <view class="inventory-entry-title">查看全库库存</view>
+      <view class="inventory-entry-description">搜索、筛选并查看物资详情</view>
+    </view>
+    <view class="inventory-entry-arrow"><t-icon name="chevron-right" size="36rpx" /></view>
   </view>
 
   <view wx:if="{{!material}}" class="section-card scan-card">
@@ -127,4 +134,30 @@
   </view>
 
   <t-toast id="outbound-toast" />
+  <t-popup
+    visible="{{userProfileVisible}}"
+    placement="center"
+    close-btn
+    close-on-overlay-click
+    bind:visible-change="onUserProfileVisibleChange"
+  >
+    <view class="user-profile-popup">
+      <view class="user-profile-avatar"><t-icon name="user" size="48rpx" /></view>
+      <view class="user-profile-title">个人信息</view>
+      <view class="user-profile-list">
+        <view class="user-profile-row">
+          <view class="user-profile-label">姓名</view>
+          <view class="user-profile-value">{{user.display_name}}</view>
+        </view>
+        <view class="user-profile-row">
+          <view class="user-profile-label">部门单位</view>
+          <view class="user-profile-value">{{user.department_name}}</view>
+        </view>
+        <view class="user-profile-row">
+          <view class="user-profile-label">注册时间</view>
+          <view class="user-profile-value">{{user.registered_at}}</view>
+        </view>
+      </view>
+    </view>
+  </t-popup>
 </view>

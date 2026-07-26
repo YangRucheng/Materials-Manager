@@ -3,6 +3,15 @@ const { request } = require('../../utils/request');
 const { createClientRequestId, extractMaterialUuid } = require('../../utils/material');
 const Toast = toastModule.default || toastModule;
 
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '未知';
+  }
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 Page({
   data: {
     user: null,
@@ -10,6 +19,7 @@ Page({
     scanning: false,
     submitting: false,
     recentReasons: [],
+    userProfileVisible: false,
     form: {
       quantity: '1',
       businessReason: '',
@@ -37,7 +47,12 @@ Page({
         wx.reLaunch({ url: '/pages/profile/index' });
         return;
       }
-      this.setData({ user: session.user });
+      this.setData({
+        user: {
+          ...session.user,
+          registered_at: formatDateTime(session.user.created_at),
+        },
+      });
       const pendingMaterialUuid = app.globalData.pendingMaterialUuid;
       app.globalData.pendingMaterialUuid = '';
       await this.loadReasonOptions();
@@ -69,6 +84,14 @@ Page({
 
   openInventory() {
     wx.navigateTo({ url: '/pages/inventory/index' });
+  },
+
+  showUserProfile() {
+    this.setData({ userProfileVisible: true });
+  },
+
+  onUserProfileVisibleChange(event) {
+    this.setData({ userProfileVisible: event.detail.visible });
   },
 
   async scanMaterial() {

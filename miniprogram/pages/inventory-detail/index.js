@@ -73,6 +73,11 @@ Page({
     void this.loadMaterial();
   },
 
+  goOutbound() {
+    getApp().globalData.pendingMaterialUuid = this.materialUuid;
+    wx.reLaunch({ url: '/pages/outbound/index' });
+  },
+
   showError(error) {
     Toast({
       context: this,
