@@ -1,0 +1,14 @@
+.disabled-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.disabled-card {
+  width: 100%;
+  padding: 40rpx 20rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 16rpx 48rpx rgba(15, 23, 42, 0.06);
+}

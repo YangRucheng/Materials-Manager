@@ -1,0 +1,9 @@
+<view class="page-shell disabled-page">
+  <view class="disabled-card">
+    <t-result
+      theme="error"
+      title="您的账号已被禁用"
+      description="请联系管理员启用账号后，再重新进入小程序"
+    />
+  </view>
+</view>

@@ -15,6 +15,7 @@ class OperationType(StrEnum):
 
 class SourceType(StrEnum):
     MANUAL = "MANUAL"
+    MINI_PROGRAM = "MINI_PROGRAM"
     REVERSAL = "REVERSAL"
     INITIALIZATION = "INITIALIZATION"
 

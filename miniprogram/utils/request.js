@@ -24,6 +24,12 @@ function request(options) {
         if (response.statusCode === 401 && options.auth !== false && !options.token) {
           wx.removeStorageSync('miniProgramAccessToken');
         }
+        if (response.data?.code === 'ACCOUNT_DISABLED') {
+          wx.removeStorageSync('miniProgramAccessToken');
+          wx.removeStorageSync('miniProgramRegistrationToken');
+          wx.removeStorageSync('miniProgramUser');
+          wx.reLaunch({ url: '/pages/disabled/index' });
+        }
         const error = new Error(response.data?.message || '请求失败，请稍后重试');
         error.code = response.data?.code;
         error.statusCode = response.statusCode;

@@ -12,6 +12,10 @@ Page({
   async onLoad() {
     try {
       const session = await getApp().globalData.authPromise;
+      if (session.account_disabled) {
+        wx.reLaunch({ url: '/pages/disabled/index' });
+        return;
+      }
       if (!session.requires_profile) {
         wx.reLaunch({ url: '/pages/outbound/index' });
       }

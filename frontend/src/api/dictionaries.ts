@@ -19,4 +19,6 @@ export const dictionaryApi = {
     apiClient.get<Page<MiniProgramUser>>('/mini-program-users', { params }).then((r) => r.data),
   updateMiniProgramUser: (id: number, payload: Partial<MiniProgramUser>) =>
     apiClient.patch<MiniProgramUser>(`/mini-program-users/${id}`, payload).then((r) => r.data),
+  deleteMiniProgramUser: (id: number, version: number) =>
+    apiClient.delete(`/mini-program-users/${id}`, { params: { version } }),
 }

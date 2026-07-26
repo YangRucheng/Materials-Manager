@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `receiver_unit` VARCHAR(128) NULL,
   `receiver_name` VARCHAR(64) NULL,
   `subitem_no` VARCHAR(64) NULL,
-  `source_type` ENUM('MANUAL', 'REVERSAL', 'INITIALIZATION') NOT NULL,
+  `source_type` ENUM('MANUAL', 'MINI_PROGRAM', 'REVERSAL', 'INITIALIZATION') NOT NULL,
   `reversal_of_id` BIGINT UNSIGNED NULL,
   `client_request_id` VARCHAR(64) NOT NULL,
   `mini_program_user_id` BIGINT UNSIGNED NULL,

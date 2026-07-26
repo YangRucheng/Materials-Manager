@@ -94,10 +94,6 @@
   font-size: 26rpx;
 }
 
-.rescan-action {
-  flex: none;
-}
-
 .material-summary {
   display: flex;
   align-items: center;
@@ -170,10 +166,6 @@
   border-bottom: 2rpx solid #edf0f5;
 }
 
-.reason-group + .reason-group {
-  margin-top: 12rpx;
-}
-
 .reason-label {
   margin-bottom: 8rpx;
   color: #7d8798;
@@ -192,6 +184,20 @@
   padding-right: 24rpx;
 }
 
-.primary-action {
+.outbound-actions {
+  display: flex;
+  gap: 16rpx;
   margin-top: 20rpx;
+}
+
+.outbound-action {
+  flex: 1;
+  min-width: 0;
+}
+
+.confirm-action {
+  --td-button-primary-bg-color: #3f63d8;
+  --td-button-primary-border-color: #3f63d8;
+  --td-button-primary-active-bg-color: #3151bd;
+  --td-button-primary-active-border-color: #3151bd;
 }
