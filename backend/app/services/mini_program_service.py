@@ -303,8 +303,6 @@ async def get_material(
     item = await session.scalar(query)
     if item is None:
         raise not_found("二级库物资")
-    if not item.enabled:
-        raise AppError("MATERIAL_DISABLED", "二级库物资已停用", status_code=409)
     return item
 
 
@@ -334,7 +332,6 @@ async def list_inventory(
             StockReplenishmentPolicy,
             StockReplenishmentPolicy.stock_material_id == StockMaterial.id,
         )
-        .where(StockMaterial.enabled.is_(True))
     )
     keyword_condition = contains_any(
         (StockMaterial.name, StockMaterial.name_id, StockMaterial.alias, StockMaterial.model_spec),
