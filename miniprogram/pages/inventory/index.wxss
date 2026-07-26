@@ -16,6 +16,7 @@
 }
 
 .inventory-tools {
+  --td-tab-nav-bg-color: transparent;
   overflow: hidden;
   margin-bottom: 20rpx;
   padding: 16rpx 16rpx 6rpx;

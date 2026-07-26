@@ -120,14 +120,6 @@ Page({
     });
   },
 
-  goOutbound() {
-    wx.navigateBack({
-      fail() {
-        wx.reLaunch({ url: '/pages/outbound/index' });
-      },
-    });
-  },
-
   showError(error) {
     Toast({
       context: this,

@@ -25,6 +25,12 @@
   border: 2rpx solid #dce5ff;
   border-radius: 999rpx;
   background: #edf2ff;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.operator-badge-active {
+  transform: scale(0.97);
+  background: #e3eaff;
 }
 
 .operator-dot {
@@ -45,11 +51,119 @@
   white-space: nowrap;
 }
 
-.inventory-entry {
-  margin-top: 16rpx;
-  --td-button-light-bg-color: #edf2ff;
-  --td-button-light-color: #3658c7;
-  --td-button-border-radius: 999rpx;
+.inventory-entry-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 18rpx;
+  padding: 22rpx 24rpx;
+  border: 2rpx solid #dce5ff;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f8faff 0%, #edf2ff 100%);
+  box-shadow: 0 10rpx 28rpx rgba(63, 99, 216, 0.08);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.inventory-entry-card-active {
+  transform: scale(0.99);
+  background: #e9efff;
+}
+
+.inventory-entry-icon {
+  display: flex;
+  flex: none;
+  width: 76rpx;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22rpx;
+  background: #3f63d8;
+  color: #ffffff;
+  box-shadow: 0 10rpx 22rpx rgba(63, 99, 216, 0.22);
+}
+
+.inventory-entry-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.inventory-entry-title {
+  color: #243765;
+  font-size: 28rpx;
+  font-weight: 650;
+}
+
+.inventory-entry-description {
+  margin-top: 6rpx;
+  color: #7180a5;
+  font-size: 22rpx;
+}
+
+.inventory-entry-arrow {
+  display: flex;
+  color: #6c83cf;
+}
+
+.user-profile-popup {
+  box-sizing: border-box;
+  width: 620rpx;
+  padding: 42rpx 34rpx 30rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+}
+
+.user-profile-avatar {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: #edf2ff;
+  color: #3f63d8;
+}
+
+.user-profile-title {
+  margin: 18rpx 0 26rpx;
+  color: #172033;
+  font-size: 32rpx;
+  font-weight: 650;
+  text-align: center;
+}
+
+.user-profile-list {
+  padding: 4rpx 22rpx;
+  border-radius: 20rpx;
+  background: #f8faff;
+}
+
+.user-profile-row {
+  display: flex;
+  gap: 24rpx;
+  padding: 22rpx 0;
+  border-bottom: 2rpx solid #e9edf5;
+}
+
+.user-profile-row:last-child {
+  border-bottom: 0;
+}
+
+.user-profile-label {
+  flex: none;
+  width: 120rpx;
+  color: #8a94a5;
+  font-size: 23rpx;
+}
+
+.user-profile-value {
+  flex: 1;
+  min-width: 0;
+  color: #30394a;
+  font-size: 24rpx;
+  line-height: 1.45;
+  text-align: right;
+  word-break: break-all;
 }
 
 .scan-card {
