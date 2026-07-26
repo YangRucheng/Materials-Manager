@@ -54,6 +54,13 @@ for (const token of ['--td-brand-color: #3f63d8', '--td-text-color-primary: #172
 
 const { extractMaterialUuid } = require(path.join(root, 'utils/material.js'));
 const { resolveImageBaseUrl } = require(path.join(root, 'utils/inventory.js'));
+const {
+  LOCALE_ID_ID,
+  LOCALE_ZH_CN,
+  dictionaries,
+  normalizeLocale,
+  t,
+} = require(path.join(root, 'utils/i18n.js'));
 const expectedUuid = '10000000-0000-4000-8000-000000000001';
 if (extractMaterialUuid('10000000000040008000000000000001') !== expectedUuid) {
   throw new Error('Mini Program scene must support compact material UUIDs.');
@@ -63,6 +70,26 @@ if (
   expectedUuid
 ) {
   throw new Error('Mini Program scanner must support unlimited code paths.');
+}
+if (normalizeLocale('id-ID') !== LOCALE_ID_ID || normalizeLocale('in_ID') !== LOCALE_ID_ID) {
+  throw new Error('Mini Program must recognize Indonesian system locales.');
+}
+if (normalizeLocale('zh_CN') !== LOCALE_ZH_CN || normalizeLocale('en-US') !== LOCALE_ZH_CN) {
+  throw new Error('Mini Program must fall back to Simplified Chinese.');
+}
+const localeKeys = Object.keys(dictionaries[LOCALE_ZH_CN]).sort();
+if (
+  JSON.stringify(localeKeys) !== JSON.stringify(Object.keys(dictionaries[LOCALE_ID_ID]).sort())
+) {
+  throw new Error('Mini Program locale dictionaries must contain the same keys.');
+}
+if (t('resultCount', { count: 3 }, LOCALE_ID_ID) !== '3 material') {
+  throw new Error('Mini Program translations must support parameter interpolation.');
+}
+
+const requestScript = fs.readFileSync(path.join(root, 'utils/request.js'), 'utf8');
+if (!requestScript.includes("'Accept-Language': getLocale()")) {
+  throw new Error('Mini Program API requests must declare the selected locale.');
 }
 if (
   resolveImageBaseUrl('https://images.example.com/') !==

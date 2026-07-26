@@ -351,6 +351,12 @@ class ReplenishmentPolicyWrite(RequestModel):
 
 class StockMaterialBase(RequestModel):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+    name_id: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=128)
+    ] = None
+    alias: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=128)
+    ] = None
     model_spec: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
     ]
@@ -376,6 +382,8 @@ class StockMaterialRead(ReadModel):
     id: int
     uuid: UUID
     name: str
+    name_id: str | None = None
+    alias: str | None = None
     model_spec: str
     unit_id: int
     unit_name: str
@@ -392,6 +400,7 @@ class StockMaterialRead(ReadModel):
 class InventoryBalanceRead(ReadModel):
     stock_material_id: int
     name: str
+    alias: str | None = None
     model_spec: str
     unit_name: str
     decimal_places: int

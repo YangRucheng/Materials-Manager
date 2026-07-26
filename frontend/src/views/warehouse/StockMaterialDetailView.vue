@@ -34,6 +34,8 @@ const miniProgramCodeFilename = computed(
 )
 const form = reactive<StockMaterialWrite>({
   name: '',
+  name_id: '',
+  alias: '',
   model_spec: '',
   unit_id: null,
   remark: '',
@@ -53,6 +55,8 @@ const rules: FormRules = {
 function syncForm(value: StockMaterial) {
   Object.assign(form, {
     name: value.name,
+    name_id: value.name_id || '',
+    alias: value.alias || '',
     model_spec: value.model_spec,
     unit_id: value.unit_id,
     remark: value.remark || '',
@@ -115,6 +119,8 @@ async function save() {
     await inventoryApi.updateMaterial(materialId, {
       ...form,
       name: form.name.trim(),
+      name_id: form.name_id?.trim() || undefined,
+      alias: form.alias?.trim() || undefined,
       model_spec: form.model_spec.trim(),
       remark: form.remark?.trim() || undefined,
       image_ids: images.value.map((image) => image.id),
@@ -178,6 +184,16 @@ onBeforeUnmount(() => {
         <div class="form-grid">
           <n-form-item label="物资名称" path="name" required>
             <n-input v-model:value="form.name" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="物资名称（印尼语）" path="name_id">
+            <n-input
+              v-model:value="form.name_id"
+              maxlength="128"
+              placeholder="选填；未填写时小程序显示默认物资名称"
+            />
+          </n-form-item>
+          <n-form-item label="别名" path="alias">
+            <n-input v-model:value="form.alias" maxlength="128" placeholder="选填，例如：漏保" />
           </n-form-item>
           <n-form-item label="型号规格" path="model_spec" required>
             <n-input

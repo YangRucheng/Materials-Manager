@@ -4,31 +4,31 @@
     <view class="brand-orbit brand-orbit-small"></view>
     <view class="brand-content">
       <view class="brand-eyebrow">ELECTRICAL WORKSHOP</view>
-      <view class="brand-title">电气车间备件</view>
+      <view class="brand-title">{{i18n.electricalWorkshopParts}}</view>
     </view>
   </view>
 
   <view class="page-header profile-header">
-    <view class="page-eyebrow">首次使用</view>
-    <view class="page-title">设置使用人</view>
+    <view class="page-eyebrow">{{i18n.firstUse}}</view>
+    <view class="page-title">{{i18n.setUser}}</view>
   </view>
 
   <view class="section-card profile-card">
     <view class="section-heading">
-      <view class="section-title">身份信息</view>
+      <view class="section-title">{{i18n.identityInfo}}</view>
     </view>
     <view class="section-divider"></view>
     <t-cell-group>
       <t-input
-        label="姓名"
-        placeholder="请输入真实姓名"
+        label="{{i18n.name}}"
+        placeholder="{{i18n.realNamePlaceholder}}"
         maxlength="64"
         value="{{displayName}}"
         bind:change="onNameChange"
       />
       <t-input
-        label="部门单位"
-        placeholder="请输入部门单位"
+        label="{{i18n.department}}"
+        placeholder="{{i18n.departmentPlaceholder}}"
         maxlength="128"
         value="{{departmentName}}"
         bind:change="onDepartmentChange"
@@ -43,7 +43,7 @@
     loading="{{loading}}"
     disabled="{{loading}}"
     bind:tap="submitProfile"
-  >进入扫码出库</t-button>
-  <view class="binding-warning">本小程序仅对车间内部使用，请勿随意绑定！</view>
+  >{{i18n.enterOutbound}}</t-button>
+  <view class="binding-warning">{{i18n.bindingWarning}}</view>
   <t-toast id="profile-toast" />
 </view>

@@ -337,6 +337,7 @@ async def test_stock_material_search_supports_or_terms(client: AsyncClient) -> N
         headers=headers,
         json={
             "name": "温度传感器",
+            "alias": "温感",
             "model_spec": "PT100",
             "unit_id": 1,
             "remark": "测试 OR 查询",
@@ -346,7 +347,7 @@ async def test_stock_material_search_supports_or_terms(client: AsyncClient) -> N
     assert second.status_code == 201, second.text
 
     materials = await client.get(
-        "/api/v1/stock-materials", headers=headers, params={"keyword": "交流|PT100"}
+        "/api/v1/stock-materials", headers=headers, params={"keyword": "交流|温感"}
     )
     assert materials.status_code == 200, materials.text
     assert {item["id"] for item in materials.json()["items"]} == {
@@ -355,13 +356,18 @@ async def test_stock_material_search_supports_or_terms(client: AsyncClient) -> N
     }
 
     balances = await client.get(
-        "/api/v1/inventory/balances", headers=headers, params={"keyword": "交流｜PT100"}
+        "/api/v1/inventory/balances", headers=headers, params={"keyword": "交流｜温感"}
     )
     assert balances.status_code == 200, balances.text
     assert {item["stock_material_id"] for item in balances.json()["items"]} == {
         first_id,
         second.json()["id"],
     }
+    assert next(
+        item
+        for item in balances.json()["items"]
+        if item["stock_material_id"] == second.json()["id"]
+    )["alias"] == "温感"
 
 
 @pytest.mark.asyncio

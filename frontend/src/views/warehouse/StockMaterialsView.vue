@@ -36,6 +36,8 @@ const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const form = reactive<StockMaterialWrite>({
   name: '',
+  name_id: '',
+  alias: '',
   model_spec: '',
   unit_id: null,
   remark: '',
@@ -57,7 +59,7 @@ const columns = preventTableColumnCompression<StockMaterial>([
     title: '物资名称',
     key: 'name',
     width: tableColumnWidths.name,
-    render: (row) => row.name,
+    render: (row) => (row.alias ? `${row.name}（${row.alias}）` : row.name),
   },
   {
     title: '型号规格',
@@ -149,7 +151,15 @@ function resetFilters() {
 }
 
 function resetForm() {
-  Object.assign(form, { name: '', model_spec: '', unit_id: null, remark: '', image_ids: [] })
+  Object.assign(form, {
+    name: '',
+    name_id: '',
+    alias: '',
+    model_spec: '',
+    unit_id: null,
+    remark: '',
+    image_ids: [],
+  })
   Object.assign(policy, { minimum_qty: '0', enabled: true, version: undefined })
   images.value = []
   editing.value = null
@@ -164,6 +174,8 @@ function openEdit(row: StockMaterial) {
   editing.value = row
   Object.assign(form, {
     name: row.name,
+    name_id: row.name_id || '',
+    alias: row.alias || '',
     model_spec: row.model_spec,
     unit_id: row.unit_id,
     remark: row.remark || '',
@@ -188,9 +200,17 @@ async function save() {
   saving.value = true
   try {
     form.image_ids = images.value.map((image) => image.id)
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      name_id: form.name_id?.trim() || undefined,
+      alias: form.alias?.trim() || undefined,
+      model_spec: form.model_spec.trim(),
+      remark: form.remark?.trim() || undefined,
+    }
     const saved = editing.value
-      ? await inventoryApi.updateMaterial(editing.value.id, form)
-      : await inventoryApi.createMaterial(form)
+      ? await inventoryApi.updateMaterial(editing.value.id, payload)
+      : await inventoryApi.createMaterial(payload)
     await inventoryApi.savePolicy(saved.id, {
       minimum_qty: policy.minimum_qty,
       enabled: policy.enabled,
@@ -267,11 +287,11 @@ onMounted(() => {
       </div>
       <div class="warehouse-filter-grid single-column">
         <label class="filter-field">
-          <span>名称或型号规格</span>
+          <span>名称、别名或型号规格</span>
           <n-input
             v-model:value="filters.keyword"
             clearable
-            placeholder="输入物资名称或型号规格"
+            placeholder="输入物资名称、别名或型号规格"
             @keyup.enter="query"
           />
         </label>

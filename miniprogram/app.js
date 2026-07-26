@@ -1,6 +1,7 @@
 const { loginSilently } = require('./utils/auth');
 const { request } = require('./utils/request');
 const { resolveImageBaseUrl } = require('./utils/inventory');
+const { getMessages, initializeI18n } = require('./utils/i18n');
 
 App({
   globalData: {
@@ -10,9 +11,13 @@ App({
     accountDisabled: false,
     imageBaseUrl: '',
     imageSettingsPromise: null,
+    locale: 'zh-CN',
+    messages: getMessages(),
   },
 
   onLaunch() {
+    this.globalData.locale = initializeI18n();
+    this.globalData.messages = getMessages();
     this.globalData.imageSettingsPromise = request({
       url: '/system-settings/image-acceleration',
       auth: false,

@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { storeSession } = require('../../utils/auth');
+const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
 Page({
@@ -8,9 +9,11 @@ Page({
     displayName: '',
     departmentName: '华星检修维护部电气车间',
     loading: false,
+    i18n: getMessages(),
   },
 
   async onLoad() {
+    setNavigationBarTitle('bindTitle');
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
@@ -41,11 +44,11 @@ Page({
     const displayName = this.data.displayName.trim();
     const departmentName = this.data.departmentName.trim();
     if (!displayName) {
-      this.showError(new Error('请输入姓名'));
+      this.showError(new Error(t('nameRequired')));
       return;
     }
     if (!departmentName) {
-      this.showError(new Error('请输入部门单位'));
+      this.showError(new Error(t('departmentRequired')));
       return;
     }
     this.setData({ loading: true });
@@ -77,7 +80,7 @@ Page({
     Toast({
       context: this,
       selector: '#profile-toast',
-      message: error.message || '操作失败，请重试',
+      message: error.message || t('actionFailed'),
       theme: 'error',
       direction: 'column',
     });

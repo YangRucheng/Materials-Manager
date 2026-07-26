@@ -46,7 +46,11 @@ const columns = preventTableColumnCompression<InventoryBalance>([
     title: '物资名称',
     key: 'name',
     width: tableColumnWidths.material,
-    render: (r) => h('div', [h('strong', r.name), h('div', { class: 'muted' }, r.model_spec)]),
+    render: (r) =>
+      h('div', [
+        h('strong', r.alias ? `${r.name}（${r.alias}）` : r.name),
+        h('div', { class: 'muted' }, r.model_spec),
+      ]),
   },
   { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
   { title: '当前库存', key: 'current_qty', width: tableColumnWidths.quantity },
@@ -237,11 +241,11 @@ onMounted(load)
       </div>
       <div class="warehouse-filter-grid">
         <label class="filter-field">
-          <span>名称或型号规格</span>
+          <span>名称、别名或型号规格</span>
           <n-input
             v-model:value="filters.keyword"
             clearable
-            placeholder="输入物资名称或型号规格"
+            placeholder="输入物资名称、别名或型号规格"
             @keyup.enter="query"
           />
         </label>

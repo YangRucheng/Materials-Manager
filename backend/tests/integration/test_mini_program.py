@@ -380,13 +380,20 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
     file_id = uploaded.json()["id"]
 
     async def create_material(
-        name: str, model_spec: str, *, image_ids: list[str] | None = None
+        name: str,
+        model_spec: str,
+        *,
+        name_id: str | None = None,
+        alias: str | None = None,
+        image_ids: list[str] | None = None,
     ) -> dict[str, object]:
         response = await client.post(
             "/api/v1/stock-materials",
             headers=warehouse,
             json={
                 "name": name,
+                "name_id": name_id,
+                "alias": alias,
                 "model_spec": model_spec,
                 "unit_id": 1,
                 "remark": f"{name}只读详情",
@@ -396,9 +403,14 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
         assert response.status_code == 201, response.text
         return response.json()
 
-    no_stock = await create_material("零库存接触器", "ZERO-1", image_ids=[file_id])
+    no_stock = await create_material(
+        "零库存接触器",
+        "ZERO-1",
+        name_id="Kontaktor stok kosong",
+        image_ids=[file_id],
+    )
     low_stock = await create_material("低库存继电器", "LOW-1")
-    normal_stock = await create_material("库存充足电机", "NORMAL-1")
+    normal_stock = await create_material("库存充足电机", "NORMAL-1", alias="备用电机")
 
     for material, quantity in ((low_stock, "2"), (normal_stock, "8")):
         policy = await client.put(
@@ -443,6 +455,44 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
         "stock_status",
     }
 
+    indonesian_inventory = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers={**mini_headers, "Accept-Language": "id-ID,id;q=0.9"},
+        params={"keyword": "Kontaktor stok kosong"},
+    )
+    assert indonesian_inventory.status_code == 200
+    assert [item["name"] for item in indonesian_inventory.json()["items"]] == [
+        "Kontaktor stok kosong"
+    ]
+
+    fallback_inventory = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers={**mini_headers, "Accept-Language": "id-ID"},
+        params={"keyword": "LOW-1"},
+    )
+    assert fallback_inventory.status_code == 200
+    assert [item["name"] for item in fallback_inventory.json()["items"]] == ["低库存继电器"]
+
+    alias_inventory = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers=mini_headers,
+        params={"keyword": "备用电机"},
+    )
+    assert alias_inventory.status_code == 200
+    assert [item["name"] for item in alias_inventory.json()["items"]] == [
+        "库存充足电机（备用电机）"
+    ]
+
+    indonesian_alias_inventory = await client.get(
+        "/api/v1/mini-program/inventory",
+        headers={**mini_headers, "Accept-Language": "id-ID"},
+        params={"keyword": "备用电机"},
+    )
+    assert indonesian_alias_inventory.status_code == 200
+    assert [item["name"] for item in indonesian_alias_inventory.json()["items"]] == [
+        "库存充足电机"
+    ]
+
     searched = await client.get(
         "/api/v1/mini-program/inventory",
         headers=mini_headers,
@@ -472,6 +522,13 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
     assert detail.json()["remark"] == "零库存接触器只读详情"
     assert detail.json()["minimum_qty"] is None
     assert [image["id"] for image in detail.json()["images"]] == [file_id]
+
+    indonesian_detail = await client.get(
+        f"/api/v1/mini-program/materials/{no_stock['uuid']}",
+        headers={**mini_headers, "Accept-Language": "in-ID"},
+    )
+    assert indonesian_detail.status_code == 200
+    assert indonesian_detail.json()["name"] == "Kontaktor stok kosong"
 
     write_attempt = await client.post(
         "/api/v1/mini-program/inventory",

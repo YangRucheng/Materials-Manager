@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { decorateStock, imageUrl } = require('../../utils/inventory');
+const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
 Page({
@@ -8,9 +9,11 @@ Page({
     material: null,
     loading: true,
     failed: false,
+    i18n: getMessages(),
   },
 
   async onLoad(options) {
+    setNavigationBarTitle('materialDetailTitle');
     this.materialUuid = options.uuid || '';
     try {
       const session = await getApp().globalData.authPromise;
@@ -37,7 +40,7 @@ Page({
   async loadMaterial() {
     if (!this.materialUuid) {
       this.setData({ loading: false, failed: true });
-      this.showError(new Error('物资标识无效'));
+      this.showError(new Error(t('invalidMaterial')));
       return;
     }
     this.setData({ loading: true, failed: false });
@@ -47,6 +50,11 @@ Page({
       });
       const material = decorateStock({
         ...result,
+        minimum_stock_label:
+          result.minimum_qty === null
+            ? ''
+            : t('minimumStock', { quantity: result.minimum_qty, unit: result.unit_name }),
+        image_count_label: t('imageCount', { count: (result.images || []).length }),
         images: (result.images || []).map((image) => ({
           ...image,
           preview_url: imageUrl(image.id, 720),
@@ -82,7 +90,7 @@ Page({
     Toast({
       context: this,
       selector: '#detail-toast',
-      message: error.message || '物资详情加载失败',
+      message: error.message || t('materialDetailFailed'),
       theme: 'error',
       direction: 'column',
     });

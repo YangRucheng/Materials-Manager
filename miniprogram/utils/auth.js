@@ -1,4 +1,5 @@
 const { request } = require('./request');
+const { t } = require('./i18n');
 
 function wxLogin() {
   return new Promise((resolve, reject) => {
@@ -8,10 +9,10 @@ function wxLogin() {
           resolve(result.code);
           return;
         }
-        reject(new Error('微信登录失败，请重试'));
+        reject(new Error(t('wxLoginFailed')));
       },
       fail(error) {
-        reject(new Error(error.errMsg || '微信登录失败，请重试'));
+        reject(new Error(error.errMsg || t('wxLoginFailed')));
       },
     });
   });

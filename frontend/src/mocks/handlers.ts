@@ -172,6 +172,7 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
   return {
     stock_material_id: material.id,
     name: material.name,
+    alias: material.alias,
     model_spec: material.model_spec,
     unit_name: material.unit_name,
     decimal_places: unit(material.unit_id)?.decimal_places || 0,
