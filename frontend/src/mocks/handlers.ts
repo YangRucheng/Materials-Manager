@@ -35,6 +35,7 @@ let aiSettings: AiSearchSettings = {
   enabled: true,
   mini_program_code_env: 'release',
   mini_program_registration_enabled: true,
+  image_acceleration_server_url: '',
   updated_at: new Date().toISOString(),
   version: 1,
 }
@@ -241,6 +242,11 @@ export const handlers = [
   http.get(`${api}/system-settings/mini-program-code`, () =>
     HttpResponse.json({ mini_program_code_env: aiSettings.mini_program_code_env }),
   ),
+  http.get(`${api}/system-settings/image-acceleration`, () =>
+    HttpResponse.json({
+      image_acceleration_server_url: aiSettings.image_acceleration_server_url,
+    }),
+  ),
   http.get(`${api}/ai-search/settings`, ({ request }) =>
     actor(request).role === 'SUPER_ADMIN'
       ? HttpResponse.json(aiSettings)
@@ -257,6 +263,7 @@ export const handlers = [
       enabled: body.enabled,
       mini_program_code_env: body.mini_program_code_env,
       mini_program_registration_enabled: body.mini_program_registration_enabled,
+      image_acceleration_server_url: body.image_acceleration_server_url,
       updated_at: now(),
       version: aiSettings.version + 1,
     }

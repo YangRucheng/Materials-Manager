@@ -199,6 +199,7 @@ class AiSearchSettingsRead(ReadModel):
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
     mini_program_registration_enabled: bool
+    image_acceleration_server_url: str
     updated_at: datetime | None = None
     version: int
 
@@ -210,6 +211,7 @@ class AiSearchSettingsUpdate(RequestModel):
     enabled: bool = True
     mini_program_code_env: MiniProgramCodeEnv = MiniProgramCodeEnv.RELEASE
     mini_program_registration_enabled: bool = True
+    image_acceleration_server_url: str = Field(default="", max_length=500)
     version: int = Field(ge=0)
 
     @field_validator("endpoint")
@@ -218,6 +220,14 @@ class AiSearchSettingsUpdate(RequestModel):
         value = value.strip()
         if value and not value.startswith(("http://", "https://")):
             raise ValueError("端点必须使用 http:// 或 https://")
+        return value
+
+    @field_validator("image_acceleration_server_url")
+    @classmethod
+    def validate_image_acceleration_server_url(cls, value: str) -> str:
+        value = value.strip().rstrip("/")
+        if value and not value.startswith(("http://", "https://")):
+            raise ValueError("图片加速服务器必须使用 http:// 或 https://")
         return value
 
     @field_validator("model")
@@ -245,6 +255,10 @@ class AiSearchStatusRead(BaseModel):
 
 class MiniProgramCodeSettingsRead(BaseModel):
     mini_program_code_env: MiniProgramCodeEnv
+
+
+class ImageAccelerationSettingsRead(BaseModel):
+    image_acceleration_server_url: str
 
 
 class AiSearchExpandRequest(RequestModel):

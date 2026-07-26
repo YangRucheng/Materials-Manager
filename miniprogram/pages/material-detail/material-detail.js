@@ -15,17 +15,18 @@ Page({
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
-        wx.reLaunch({ url: '/pages/disabled/index' });
+        wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
       }
       if (session.registration_disabled) {
-        wx.reLaunch({ url: '/pages/registration-closed/index' });
+        wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/profile/index' });
+        wx.reLaunch({ url: '/pages/bind/bind' });
         return;
       }
+      await getApp().globalData.imageSettingsPromise;
       await this.loadMaterial();
     } catch (error) {
       this.setData({ loading: false, failed: true });
@@ -74,8 +75,7 @@ Page({
   },
 
   goOutbound() {
-    getApp().globalData.pendingMaterialUuid = this.materialUuid;
-    wx.reLaunch({ url: '/pages/outbound/index' });
+    wx.navigateTo({ url: `/pages/outbound/outbound?uuid=${this.materialUuid}` });
   },
 
   showError(error) {

@@ -1,9 +1,11 @@
 {
-  "navigationBarTitleText": "设置姓名",
+  "navigationBarTitleText": "扫码出库",
   "usingComponents": {
     "t-button": "tdesign-miniprogram/button/button",
     "t-cell-group": "tdesign-miniprogram/cell-group/cell-group",
     "t-input": "tdesign-miniprogram/input/input",
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-tag": "tdesign-miniprogram/tag/tag",
     "t-toast": "tdesign-miniprogram/toast/toast"
   }
 }

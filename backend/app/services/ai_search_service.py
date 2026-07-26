@@ -46,6 +46,7 @@ class AiSearchConfig:
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
     mini_program_registration_enabled: bool
+    image_acceleration_server_url: str
     updated_at: datetime | None
     version: int
 
@@ -85,6 +86,7 @@ def _payload(config: AiSearchConfig) -> dict[str, object]:
         "enabled": config.enabled,
         "mini_program_code_env": config.mini_program_code_env,
         "mini_program_registration_enabled": config.mini_program_registration_enabled,
+        "image_acceleration_server_url": config.image_acceleration_server_url,
     }
 
 
@@ -130,6 +132,11 @@ async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
             if isinstance(data.get("mini_program_registration_enabled"), bool)
             else True
         ),
+        image_acceleration_server_url=(
+            data.get("image_acceleration_server_url")
+            if isinstance(data.get("image_acceleration_server_url"), str)
+            else ""
+        ),
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -144,6 +151,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
             enabled=False,
             mini_program_code_env=MiniProgramCodeEnv.RELEASE,
             mini_program_registration_enabled=True,
+            image_acceleration_server_url="",
             updated_at=None,
             version=0,
         )
@@ -154,6 +162,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
         enabled=setting.enabled,
         mini_program_code_env=setting.mini_program_code_env,
         mini_program_registration_enabled=setting.mini_program_registration_enabled,
+        image_acceleration_server_url=setting.image_acceleration_server_url,
         updated_at=setting.updated_at,
         version=setting.version,
     )
@@ -184,6 +193,7 @@ async def update_setting(
             "enabled": data.enabled,
             "mini_program_code_env": data.mini_program_code_env,
             "mini_program_registration_enabled": data.mini_program_registration_enabled,
+            "image_acceleration_server_url": data.image_acceleration_server_url,
         },
     )
     _cache.clear()
@@ -194,6 +204,7 @@ async def update_setting(
         enabled=data.enabled,
         mini_program_code_env=data.mini_program_code_env,
         mini_program_registration_enabled=data.mini_program_registration_enabled,
+        image_acceleration_server_url=data.image_acceleration_server_url,
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -207,6 +218,11 @@ async def get_mini_program_code_env(session: AsyncSession) -> MiniProgramCodeEnv
 async def is_mini_program_registration_enabled(session: AsyncSession) -> bool:
     setting = await get_setting(session)
     return setting.mini_program_registration_enabled if setting else True
+
+
+async def get_image_acceleration_server_url(session: AsyncSession) -> str:
+    setting = await get_setting(session)
+    return setting.image_acceleration_server_url if setting else ""
 
 
 async def is_available(session: AsyncSession) -> bool:

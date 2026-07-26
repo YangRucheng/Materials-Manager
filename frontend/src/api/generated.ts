@@ -62,6 +62,7 @@ export interface AiSearchSettings {
   enabled: boolean
   mini_program_code_env: MiniProgramCodeEnv
   mini_program_registration_enabled: boolean
+  image_acceleration_server_url: string
   updated_at?: string
   version: number
 }
@@ -72,10 +73,14 @@ export interface AiSearchSettingsWrite {
   enabled: boolean
   mini_program_code_env: MiniProgramCodeEnv
   mini_program_registration_enabled: boolean
+  image_acceleration_server_url: string
   version: number
 }
 export interface MiniProgramCodeSettings {
   mini_program_code_env: MiniProgramCodeEnv
+}
+export interface ImageAccelerationSettings {
+  image_acceleration_server_url: string
 }
 export interface AiSearchStatus {
   available: boolean

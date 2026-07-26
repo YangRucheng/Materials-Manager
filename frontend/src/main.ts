@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { systemSettingsApi } from './api/systemSettings'
+import { configureImageBaseUrl } from './utils/image'
 import './styles.css'
 
 async function bootstrap() {
@@ -14,6 +16,12 @@ async function bootstrap() {
       onUnhandledRequest: 'bypass',
       serviceWorker: { url: '/mockServiceWorker.js' },
     })
+  }
+  try {
+    const imageSettings = await systemSettingsApi.imageAcceleration()
+    configureImageBaseUrl(imageSettings.image_acceleration_server_url)
+  } catch {
+    configureImageBaseUrl('')
   }
   const app = createApp(App)
   app.directive('loading', {
