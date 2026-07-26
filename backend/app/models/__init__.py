@@ -80,6 +80,12 @@ class MiniProgramUser(AuditMixin, Base):
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     wechat_openid: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    department_name: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        default="华星检修维护部电气车间",
+        server_default="华星检修维护部电气车间",
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
 

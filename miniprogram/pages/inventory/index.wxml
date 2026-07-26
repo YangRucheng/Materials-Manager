@@ -1,0 +1,77 @@
+<view class="page-shell inventory-page">
+  <view class="inventory-header">
+    <view class="page-title">全库库存</view>
+    <t-button
+      theme="primary"
+      variant="light"
+      size="small"
+      icon="scan"
+      bind:tap="goOutbound"
+    >扫码出库</t-button>
+  </view>
+
+  <view class="inventory-tools">
+    <t-search
+      value="{{keyword}}"
+      placeholder="搜索物资名称或型号规格"
+      shape="round"
+      confirm-type="search"
+      bind:change="onSearchChange"
+    />
+    <t-tabs value="{{stockStatus}}" theme="tag" bind:change="onStatusChange">
+      <t-tab-panel value="all" label="全部" />
+      <t-tab-panel value="out_of_stock" label="无库存" />
+      <t-tab-panel value="low_stock" label="低库存" />
+    </t-tabs>
+  </view>
+
+  <view wx:if="{{!loading || items.length}}" class="result-count">共 {{total}} 项物资</view>
+
+  <view wx:if="{{loading && !items.length}}" class="state-panel">
+    <t-loading theme="circular" size="48rpx" text="正在加载库存" />
+  </view>
+
+  <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
+    <t-empty icon="search" description="没有找到符合条件的物资" />
+  </view>
+
+  <view wx:else class="inventory-list">
+    <view
+      wx:for="{{items}}"
+      wx:key="uuid"
+      class="inventory-card"
+      hover-class="inventory-card-active"
+      data-uuid="{{item.uuid}}"
+      bind:tap="openDetail"
+    >
+      <view class="card-heading">
+        <view class="material-name">{{item.name}}</view>
+        <t-tag theme="{{item.stock_status_theme}}" variant="light" size="small">
+          {{item.stock_status_label}}
+        </t-tag>
+      </view>
+      <view class="material-spec">
+        <text class="spec-label">型号规格</text>
+        <text>{{item.model_spec}}</text>
+      </view>
+      <view class="card-divider"></view>
+      <view class="inventory-meta">
+        <view class="meta-item">
+          <view class="meta-label">库存数量</view>
+          <view class="stock-quantity">{{item.current_qty}}</view>
+        </view>
+        <view class="meta-item unit-item">
+          <view class="meta-label">计量单位</view>
+          <view class="meta-value">{{item.unit_name}}</view>
+        </view>
+        <t-icon name="chevron-right" size="36rpx" color="#a1a9b7" />
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loadingMore}}" class="load-more">
+    <t-loading theme="circular" size="36rpx" text="加载更多" />
+  </view>
+  <view wx:elif="{{items.length && !hasMore}}" class="load-finished">已经到底了</view>
+  <t-toast id="inventory-toast" />
+</view>

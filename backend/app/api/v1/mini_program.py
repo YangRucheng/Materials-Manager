@@ -13,7 +13,9 @@ from app.core.security import (
     create_mini_program_access_token,
     create_mini_program_registration_token,
 )
+from app.domain.enums import MiniProgramStockStatus
 from app.schemas import (
+    MiniProgramInventoryItemRead,
     MiniProgramLoginResponse,
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
@@ -100,7 +102,9 @@ async def create_mini_program_profile(
     session: DbSession,
     openid: MiniProgramRegistrationOpenId,
 ) -> MiniProgramLoginResponse:
-    user = await mini_program_service.register_user(session, openid, data.display_name)
+    user = await mini_program_service.register_user(
+        session, openid, data.display_name, data.department_name
+    )
     return MiniProgramLoginResponse(
         access_token=create_mini_program_access_token(user.id),
         user=MiniProgramUserRead.model_validate(user),
@@ -114,6 +118,30 @@ async def scan_material(
 ) -> MiniProgramMaterialRead:
     return mini_program_service.material_read(
         await mini_program_service.get_material(session, material_uuid)
+    )
+
+
+@mini_router.get("/inventory", response_model=Page[MiniProgramInventoryItemRead])
+async def mini_program_inventory(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    keyword: Annotated[str | None, Query(max_length=255)] = None,
+    stock_status: MiniProgramStockStatus | None = None,
+) -> Page[MiniProgramInventoryItemRead]:
+    items, total = await mini_program_service.list_inventory(
+        session,
+        keyword=keyword,
+        stock_status=stock_status,
+        page=page,
+        page_size=page_size,
+    )
+    return Page(
+        items=[mini_program_service.inventory_item_read(item) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
     )
 
 

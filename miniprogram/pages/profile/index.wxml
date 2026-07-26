@@ -26,6 +26,13 @@
         value="{{displayName}}"
         bind:change="onNameChange"
       />
+      <t-input
+        label="部门单位"
+        placeholder="请输入部门单位"
+        maxlength="128"
+        value="{{departmentName}}"
+        bind:change="onDepartmentChange"
+      />
     </t-cell-group>
   </view>
   <t-button
@@ -37,6 +44,6 @@
     disabled="{{loading}}"
     bind:tap="submitProfile"
   >进入扫码出库</t-button>
-  <view class="privacy-tip">仅用于出库记录识别，不会展示给其他小程序用户</view>
+  <view class="privacy-tip">姓名和部门单位用于识别出库人员</view>
   <t-toast id="profile-toast" />
 </view>

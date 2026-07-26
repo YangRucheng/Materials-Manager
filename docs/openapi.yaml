@@ -2153,6 +2153,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/inventory:
+    get:
+      tags:
+      - 小程序扫码出库
+      summary: Mini Program Inventory
+      operationId: mini_program_inventory_api_v1_mini_program_inventory_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Keyword
+      - name: stock_status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/MiniProgramStockStatus'
+          - type: 'null'
+          title: Stock Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_MiniProgramInventoryItemRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program/outbound:
     post:
       tags:
@@ -4405,6 +4485,9 @@ components:
           title: Enabled
         mini_program_code_env:
           $ref: '#/components/schemas/MiniProgramCodeEnv'
+        mini_program_registration_enabled:
+          type: boolean
+          title: Mini Program Registration Enabled
         updated_at:
           anyOf:
           - type: string
@@ -4421,6 +4504,7 @@ components:
       - model
       - enabled
       - mini_program_code_env
+      - mini_program_registration_enabled
       - version
       title: AiSearchSettingsRead
     AiSearchSettingsUpdate:
@@ -4428,18 +4512,18 @@ components:
         endpoint:
           type: string
           maxLength: 500
-          minLength: 1
           title: Endpoint
+          default: ''
         api_key:
           type: string
           maxLength: 1000
-          minLength: 1
           title: Api Key
+          default: ''
         model:
           type: string
           maxLength: 128
-          minLength: 1
           title: Model
+          default: ''
         enabled:
           type: boolean
           title: Enabled
@@ -4447,6 +4531,10 @@ components:
         mini_program_code_env:
           $ref: '#/components/schemas/MiniProgramCodeEnv'
           default: release
+        mini_program_registration_enabled:
+          type: boolean
+          title: Mini Program Registration Enabled
+          default: true
         version:
           type: integer
           minimum: 0.0
@@ -4454,9 +4542,6 @@ components:
       additionalProperties: false
       type: object
       required:
-      - endpoint
-      - api_key
-      - model
       - version
       title: AiSearchSettingsUpdate
     AiSearchStatusRead:
@@ -4983,6 +5068,36 @@ components:
       required:
       - mini_program_code_env
       title: MiniProgramCodeSettingsRead
+    MiniProgramInventoryItemRead:
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          title: Uuid
+        name:
+          type: string
+          title: Name
+        model_spec:
+          type: string
+          title: Model Spec
+        unit_name:
+          type: string
+          title: Unit Name
+        current_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Current Qty
+        stock_status:
+          $ref: '#/components/schemas/MiniProgramStockStatus'
+      type: object
+      required:
+      - uuid
+      - name
+      - model_spec
+      - unit_name
+      - current_qty
+      - stock_status
+      title: MiniProgramInventoryItemRead
     MiniProgramLoginResponse:
       properties:
         access_token:
@@ -5030,6 +5145,24 @@ components:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
           title: Current Qty
+        stock_status:
+          $ref: '#/components/schemas/MiniProgramStockStatus'
+        minimum_qty:
+          anyOf:
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          - type: 'null'
+          title: Minimum Qty
+        remark:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Remark
+        images:
+          items:
+            $ref: '#/components/schemas/FileObjectRead'
+          type: array
+          title: Images
       type: object
       required:
       - uuid
@@ -5037,6 +5170,7 @@ components:
       - model_spec
       - unit_name
       - current_qty
+      - stock_status
       title: MiniProgramMaterialRead
     MiniProgramOutboundCreate:
       properties:
@@ -5181,11 +5315,24 @@ components:
           maxLength: 64
           minLength: 1
           title: Display Name
+        department_name:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Department Name
       additionalProperties: false
       type: object
       required:
       - display_name
+      - department_name
       title: MiniProgramProfileUpdate
+    MiniProgramStockStatus:
+      type: string
+      enum:
+      - normal
+      - out_of_stock
+      - low_stock
+      title: MiniProgramStockStatus
     MiniProgramUserRead:
       properties:
         id:
@@ -5197,6 +5344,9 @@ components:
         display_name:
           type: string
           title: Display Name
+        department_name:
+          type: string
+          title: Department Name
         enabled:
           type: boolean
           title: Enabled
@@ -5216,6 +5366,7 @@ components:
       - id
       - wechat_openid
       - display_name
+      - department_name
       - enabled
       - created_at
       - updated_at
@@ -5230,6 +5381,13 @@ components:
             minLength: 1
           - type: 'null'
           title: Display Name
+        department_name:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Department Name
         enabled:
           anyOf:
           - type: boolean
@@ -5606,6 +5764,29 @@ components:
       - page_size
       - total
       title: Page[MeasurementUnitRead]
+    Page_MiniProgramInventoryItemRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MiniProgramInventoryItemRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[MiniProgramInventoryItemRead]
     Page_MiniProgramUserRead_:
       properties:
         items:

@@ -16,6 +16,7 @@ from pydantic import (
 
 from app.domain.enums import (
     MiniProgramCodeEnv,
+    MiniProgramStockStatus,
     OperationType,
     PurchasePlanStatus,
     Role,
@@ -150,6 +151,7 @@ class MiniProgramUserRead(ReadModel):
     id: int
     wechat_openid: str
     display_name: str
+    department_name: str
     enabled: bool
     created_at: datetime
     updated_at: datetime
@@ -159,6 +161,10 @@ class MiniProgramUserRead(ReadModel):
 class MiniProgramUserUpdate(RequestModel):
     display_name: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+        | None
+    ) = None
+    department_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
     enabled: bool | None = None
@@ -181,6 +187,9 @@ class MiniProgramProfileUpdate(RequestModel):
     display_name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
     ]
+    department_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
 
 
 class AiSearchSettingsRead(ReadModel):
@@ -189,23 +198,25 @@ class AiSearchSettingsRead(ReadModel):
     model: str
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
+    mini_program_registration_enabled: bool
     updated_at: datetime | None = None
     version: int
 
 
 class AiSearchSettingsUpdate(RequestModel):
-    endpoint: str = Field(min_length=1, max_length=500)
-    api_key: str = Field(min_length=1, max_length=1000)
-    model: str = Field(min_length=1, max_length=128)
+    endpoint: str = Field(default="", max_length=500)
+    api_key: str = Field(default="", max_length=1000)
+    model: str = Field(default="", max_length=128)
     enabled: bool = True
     mini_program_code_env: MiniProgramCodeEnv = MiniProgramCodeEnv.RELEASE
+    mini_program_registration_enabled: bool = True
     version: int = Field(ge=0)
 
     @field_validator("endpoint")
     @classmethod
     def validate_endpoint(cls, value: str) -> str:
         value = value.strip()
-        if not value.startswith(("http://", "https://")):
+        if value and not value.startswith(("http://", "https://")):
             raise ValueError("端点必须使用 http:// 或 https://")
         return value
 
@@ -213,17 +224,19 @@ class AiSearchSettingsUpdate(RequestModel):
     @classmethod
     def validate_model(cls, value: str) -> str:
         value = value.strip()
-        if not value:
-            raise ValueError("不能为空")
         return value
 
     @field_validator("api_key")
     @classmethod
     def strip_api_key(cls, value: str) -> str:
         value = value.strip()
-        if not value:
-            raise ValueError("不能为空")
         return value
+
+    @model_validator(mode="after")
+    def require_enabled_model_config(self) -> AiSearchSettingsUpdate:
+        if self.enabled and not (self.endpoint and self.api_key and self.model):
+            raise ValueError("启用模型服务时必须填写端点、模型和 API Key")
+        return self
 
 
 class AiSearchStatusRead(BaseModel):
@@ -501,6 +514,19 @@ class MiniProgramMaterialRead(ReadModel):
     model_spec: str
     unit_name: str
     current_qty: Decimal
+    stock_status: MiniProgramStockStatus
+    minimum_qty: Decimal | None = None
+    remark: str | None = None
+    images: list[FileObjectRead] = Field(default_factory=list)
+
+
+class MiniProgramInventoryItemRead(ReadModel):
+    uuid: UUID
+    name: str
+    model_spec: str
+    unit_name: str
+    current_qty: Decimal
+    stock_status: MiniProgramStockStatus
 
 
 class MiniProgramOutboundCreate(RequestModel):

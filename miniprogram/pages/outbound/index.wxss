@@ -45,6 +45,13 @@
   white-space: nowrap;
 }
 
+.inventory-entry {
+  margin-top: 16rpx;
+  --td-button-light-bg-color: #edf2ff;
+  --td-button-light-color: #3658c7;
+  --td-button-border-radius: 999rpx;
+}
+
 .scan-card {
   padding: 32rpx;
   border-color: #dce5ff;

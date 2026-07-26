@@ -49,6 +49,7 @@ export const miniProgramUsers: MiniProgramUser[] = [
     id: 1,
     wechat_openid: 'openid_mock_scanner',
     display_name: '扫码出库员',
+    department_name: '华星检修维护部电气车间',
     enabled: true,
     created_at: now,
     updated_at: now,
