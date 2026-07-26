@@ -132,6 +132,8 @@ export interface StockMaterial {
   id: number
   uuid: string
   name: string
+  name_id?: string | null
+  alias?: string | null
   model_spec: string
   unit_id: number
   unit_name: string
@@ -146,6 +148,8 @@ export interface StockMaterial {
 }
 export interface StockMaterialWrite {
   name: string
+  name_id?: string
+  alias?: string
   model_spec: string
   unit_id: number | null
   remark?: string
@@ -155,6 +159,7 @@ export interface StockMaterialWrite {
 export interface InventoryBalance {
   stock_material_id: number
   name: string
+  alias?: string | null
   model_spec: string
   unit_name: string
   decimal_places: number

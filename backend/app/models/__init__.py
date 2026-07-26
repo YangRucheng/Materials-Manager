@@ -135,6 +135,8 @@ class StockMaterial(AuditMixin, Base):
         String(36), unique=True, nullable=False, default=lambda: str(uuid4())
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    name_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    alias: Mapped[str | None] = mapped_column(String(128), index=True)
     model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     unit_id: Mapped[int] = mapped_column(
         BIGINT_ID, ForeignKey("measurement_unit.id"), nullable=False

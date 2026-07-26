@@ -121,6 +121,8 @@ CREATE TABLE IF NOT EXISTS `stock_material` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `uuid` VARCHAR(36) NOT NULL,
   `name` VARCHAR(128) NOT NULL,
+  `name_id` VARCHAR(128) NULL,
+  `alias` VARCHAR(128) NULL,
   `model_spec` VARCHAR(255) NOT NULL,
   `unit_id` BIGINT UNSIGNED NOT NULL,
   `remark` VARCHAR(1000) NULL,
@@ -135,7 +137,9 @@ CREATE TABLE IF NOT EXISTS `stock_material` (
   CONSTRAINT `uq_stock_material_uuid` UNIQUE (`uuid`),
   CONSTRAINT `uq_stock_material_identity_hash` UNIQUE (`identity_hash`),
   INDEX `ix_stock_material_model_spec` (`model_spec`),
-  INDEX `ix_stock_material_name` (`name`)
+  INDEX `ix_stock_material_name` (`name`),
+  INDEX `ix_stock_material_name_id` (`name_id`),
+  INDEX `ix_stock_material_alias` (`alias`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_operation` (

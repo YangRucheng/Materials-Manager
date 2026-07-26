@@ -1,11 +1,11 @@
 <view class="page-shell outbound-page">
   <view wx:if="{{loading}}" class="section-card loading-card">
-    <t-loading theme="circular" size="48rpx" text="正在加载物资" />
+    <t-loading theme="circular" size="48rpx" text="{{i18n.loadingMaterial}}" />
   </view>
 
   <view wx:if="{{material}}" class="section-card material-card">
     <view class="section-heading material-heading">
-      <view class="section-title">物资信息</view>
+      <view class="section-title">{{i18n.materialInfo}}</view>
     </view>
     <view class="material-summary">
       <view class="material-main">
@@ -13,7 +13,7 @@
         <view class="material-spec">{{material.model_spec}}</view>
       </view>
       <view class="stock-summary">
-        <view class="stock-label">当前库存</view>
+        <view class="stock-label">{{i18n.currentStock}}</view>
         <view class="stock-value">{{material.current_qty}} {{material.unit_name}}</view>
       </view>
     </view>
@@ -21,37 +21,37 @@
 
   <view wx:if="{{material}}" class="section-card form-card">
     <view class="section-heading">
-      <view class="section-title">出库信息</view>
+      <view class="section-title">{{i18n.outboundInfo}}</view>
     </view>
     <view class="section-divider"></view>
     <t-cell-group>
       <t-input
-        label="出库数量"
+        label="{{i18n.outboundQuantity}}"
         type="digit"
-        placeholder="请输入"
+        placeholder="{{i18n.inputPlaceholder}}"
         suffix="{{material.unit_name}}"
         value="{{form.quantity}}"
         data-field="quantity"
         bind:change="onFieldChange"
       />
       <t-input
-        label="子项号"
-        placeholder="请输入"
+        label="{{i18n.subitemNo}}"
+        placeholder="{{i18n.inputPlaceholder}}"
         maxlength="64"
         value="{{form.subitemNo}}"
         data-field="subitemNo"
         bind:change="onFieldChange"
       />
       <t-input
-        label="出库用途"
-        placeholder="请输入"
+        label="{{i18n.outboundPurpose}}"
+        placeholder="{{i18n.inputPlaceholder}}"
         maxlength="500"
         value="{{form.businessReason}}"
         data-field="businessReason"
         bind:change="onFieldChange"
       />
       <view wx:if="{{recentReasons.length}}" class="reason-shortcuts">
-        <view class="reason-label">一键采用近期出库用途</view>
+        <view class="reason-label">{{i18n.recentReasons}}</view>
         <scroll-view class="reason-scroll" scroll-x enhanced show-scrollbar="{{false}}">
           <view class="reason-tags">
             <t-tag
@@ -80,7 +80,7 @@
       loading="{{scanning}}"
       disabled="{{scanning || submitting}}"
       bind:tap="scanMaterial"
-    >重新扫码</t-button>
+    >{{i18n.rescan}}</t-button>
     <t-button
       class="outbound-action confirm-action"
       theme="primary"
@@ -89,7 +89,7 @@
       loading="{{submitting}}"
       disabled="{{submitting || scanning}}"
       bind:tap="submitOutbound"
-    >确认出库</t-button>
+    >{{i18n.confirmOutbound}}</t-button>
   </view>
 
   <t-toast id="outbound-toast" />

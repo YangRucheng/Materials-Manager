@@ -504,7 +504,9 @@ async def inventory_balances(
     query = select(StockMaterial).join(StockBalance)
     if material_id is not None:
         query = query.where(StockMaterial.id == material_id)
-    keyword_condition = contains_any((StockMaterial.name, StockMaterial.model_spec), keyword)
+    keyword_condition = contains_any(
+        (StockMaterial.name, StockMaterial.alias, StockMaterial.model_spec), keyword
+    )
     if keyword_condition is not None:
         query = query.where(keyword_condition)
     if minimum_qty is not None:
@@ -538,6 +540,7 @@ async def inventory_balances(
             InventoryBalanceRead(
                 stock_material_id=item.id,
                 name=item.name,
+                alias=item.alias,
                 model_spec=item.model_spec,
                 unit_name=item.unit.name,
                 decimal_places=item.unit.decimal_places,
