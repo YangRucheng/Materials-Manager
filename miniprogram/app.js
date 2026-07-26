@@ -3,6 +3,7 @@ const { loginSilently } = require('./utils/auth');
 App({
   globalData: {
     authPromise: null,
+    pendingMaterialUuid: '',
     user: null,
   },
 

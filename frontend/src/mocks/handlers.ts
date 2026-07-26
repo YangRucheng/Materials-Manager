@@ -38,6 +38,8 @@ let aiSettings = {
 const now = () => new Date().toISOString()
 const mockImage = (id: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="100%" height="100%" fill="#e8f5ee"/><text x="160" y="125" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#456">备件图片 ${id}</text></svg>`
+const mockMiniProgramCode = (id: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="430" height="430" viewBox="0 0 430 430"><rect width="430" height="430" rx="28" fill="#fff"/><g fill="none" stroke="#172033" stroke-linecap="round"><circle cx="215" cy="205" r="154" stroke-width="18" stroke-dasharray="16 14 42 10"/><circle cx="215" cy="205" r="116" stroke-width="16" stroke-dasharray="28 12 12 18"/><circle cx="215" cy="205" r="78" stroke-width="14" stroke-dasharray="18 10 34 12"/></g><circle cx="215" cy="205" r="42" fill="#3f63d8"/><text x="215" y="214" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#fff">小程序</text><text x="215" y="394" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#6b7280">物资 ${id}</text></svg>`
 const page = <T>(items: T[], url: URL) => {
   const current = Number(url.searchParams.get('page') || 1)
   const size = Number(url.searchParams.get('page_size') || 20)
@@ -345,6 +347,14 @@ export const handlers = [
       matchesOrSearch(`${item.name} ${item.model_spec}`, keyword),
     )
     return HttpResponse.json(page(list, url))
+  }),
+  http.get(`${api}/stock-materials/:id/mini-program-code`, ({ params }) => {
+    const item = stockMaterials.find((x) => x.id === Number(params.id))
+    return item
+      ? new HttpResponse(mockMiniProgramCode(String(params.id)), {
+          headers: { 'Content-Type': 'image/svg+xml' },
+        })
+      : error(400, 'NOT_FOUND', '二级库物资不存在')
   }),
   http.get(`${api}/stock-materials/:id`, ({ params }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))

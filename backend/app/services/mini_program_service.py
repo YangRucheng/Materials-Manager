@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from decimal import Decimal
+from time import monotonic
 from typing import cast
 from uuid import UUID
 
@@ -24,6 +26,12 @@ from app.schemas import (
 )
 from app.services import inventory_service
 from app.services.common import utc_aware, validate_version
+
+_wechat_access_token: str | None = None
+_wechat_access_token_expires_at = 0.0
+_wechat_access_token_lock = asyncio.Lock()
+_material_code_cache: dict[str, bytes] = {}
+_material_code_lock = asyncio.Lock()
 
 
 async def list_users(
@@ -107,6 +115,102 @@ async def exchange_wechat_code(code: str) -> str:
             status_code=502,
         )
     return openid
+
+
+async def _get_wechat_access_token() -> str:
+    global _wechat_access_token, _wechat_access_token_expires_at
+
+    if not settings.wechat_mini_program_app_id or not settings.wechat_mini_program_app_secret:
+        raise AppError(
+            "WECHAT_NOT_CONFIGURED",
+            "微信小程序登录尚未配置",
+            status_code=503,
+        )
+    if _wechat_access_token and monotonic() < _wechat_access_token_expires_at:
+        return _wechat_access_token
+
+    async with _wechat_access_token_lock:
+        if _wechat_access_token and monotonic() < _wechat_access_token_expires_at:
+            return _wechat_access_token
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                response = await client.get(
+                    "https://api.weixin.qq.com/cgi-bin/token",
+                    params={
+                        "grant_type": "client_credential",
+                        "appid": settings.wechat_mini_program_app_id,
+                        "secret": settings.wechat_mini_program_app_secret,
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise AppError(
+                "WECHAT_ACCESS_TOKEN_UNAVAILABLE",
+                "微信接口调用暂时不可用，请稍后重试",
+                status_code=503,
+            ) from exc
+        token = payload.get("access_token")
+        if payload.get("errcode") or not isinstance(token, str) or not token:
+            raise AppError(
+                "WECHAT_ACCESS_TOKEN_FAILED",
+                "微信接口凭证获取失败",
+                status_code=502,
+                details={"wechat_errcode": payload.get("errcode")},
+            )
+        expires_in = payload.get("expires_in", 7200)
+        _wechat_access_token = token
+        _wechat_access_token_expires_at = monotonic() + max(int(expires_in) - 300, 60)
+        return token
+
+
+async def generate_unlimited_material_code(material_uuid: UUID) -> bytes:
+    cache_key = str(material_uuid)
+    cached = _material_code_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    async with _material_code_lock:
+        cached = _material_code_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        access_token = await _get_wechat_access_token()
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+                    params={"access_token": access_token},
+                    json={
+                        "scene": material_uuid.hex,
+                        "page": "pages/outbound/index",
+                        "check_path": False,
+                        "width": 430,
+                    },
+                )
+                response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise AppError(
+                "WECHAT_MINI_PROGRAM_CODE_UNAVAILABLE",
+                "小程序码生成服务暂时不可用，请稍后重试",
+                status_code=503,
+            ) from exc
+        if response.headers.get("content-type", "").startswith("image/"):
+            _material_code_cache[cache_key] = response.content
+            return response.content
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise AppError(
+                "WECHAT_MINI_PROGRAM_CODE_INVALID_RESPONSE",
+                "小程序码生成服务返回异常",
+                status_code=502,
+            ) from exc
+        raise AppError(
+            "WECHAT_MINI_PROGRAM_CODE_FAILED",
+            "小程序码生成失败",
+            status_code=502,
+            details={"wechat_errcode": payload.get("errcode")},
+        )
 
 
 async def login_with_wechat(
@@ -206,6 +310,31 @@ def _outbound_read(
     )
 
 
+async def recent_outbound_reasons(
+    session: AsyncSession, user: MiniProgramUser
+) -> tuple[list[str], list[str]]:
+    async def list_reasons(user_id: int | None = None) -> list[str]:
+        last_used_at = func.max(StockOperation.occurred_at)
+        last_operation_id = func.max(StockOperation.id)
+        query = (
+            select(StockOperation.business_reason)
+            .where(
+                StockOperation.operation_type == OperationType.OUTBOUND,
+                StockOperation.business_reason != "",
+            )
+            .group_by(StockOperation.business_reason)
+            .order_by(last_used_at.desc(), last_operation_id.desc())
+            .limit(3)
+        )
+        if user_id is not None:
+            query = query.where(StockOperation.mini_program_user_id == user_id)
+        return list((await session.scalars(query)).all())
+
+    personal_reasons = await list_reasons(user.id)
+    system_reasons = await list_reasons()
+    return personal_reasons, system_reasons
+
+
 async def create_outbound(
     session: AsyncSession, data: MiniProgramOutboundCreate, user: MiniProgramUser
 ) -> MiniProgramOutboundRead:
@@ -217,7 +346,7 @@ async def create_outbound(
             occurred_at=data.occurred_at,
             source_type=SourceType.MANUAL,
             business_reason=data.business_reason,
-            receiver_unit=data.receiver_unit,
+            receiver_unit=data.receiver_unit or None,
             receiver_name=user.display_name,
             subitem_no=data.subitem_no,
             lines=[OperationLineWrite(stock_material_id=material.id, quantity=data.quantity)],
