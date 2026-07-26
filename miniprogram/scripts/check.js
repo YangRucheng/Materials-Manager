@@ -38,6 +38,18 @@ for (const token of ['--td-brand-color: #3f63d8', '--td-text-color-primary: #172
   }
 }
 
+const { extractMaterialUuid } = require(path.join(root, 'utils/material.js'));
+const expectedUuid = '10000000-0000-4000-8000-000000000001';
+if (extractMaterialUuid('10000000000040008000000000000001') !== expectedUuid) {
+  throw new Error('Mini Program scene must support compact material UUIDs.');
+}
+if (
+  extractMaterialUuid('pages/outbound/index?scene=10000000000040008000000000000001') !==
+  expectedUuid
+) {
+  throw new Error('Mini Program scanner must support unlimited code paths.');
+}
+
 for (const pageConfig of pageConfigs) {
   const components = Object.values(pageConfig.usingComponents || {});
   if (!components.length || components.some((component) => !component.startsWith('tdesign-miniprogram/'))) {

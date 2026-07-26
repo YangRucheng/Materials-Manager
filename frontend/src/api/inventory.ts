@@ -19,6 +19,10 @@ export const inventoryApi = {
     apiClient.get<Page<StockMaterial>>('/stock-materials', { params }).then((r) => r.data),
   material: (id: number) =>
     apiClient.get<StockMaterial>(`/stock-materials/${id}`).then((r) => r.data),
+  materialMiniProgramCode: (id: number) =>
+    apiClient
+      .get<Blob>(`/stock-materials/${id}/mini-program-code`, { responseType: 'blob' })
+      .then((r) => r.data),
   createMaterial: (payload: StockMaterialWrite) =>
     apiClient.post<StockMaterial>('/stock-materials', payload).then((r) => r.data),
   updateMaterial: (id: number, payload: StockMaterialWrite) =>

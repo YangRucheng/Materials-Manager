@@ -1,6 +1,7 @@
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
 from app.schemas import (
@@ -10,7 +11,7 @@ from app.schemas import (
     StockMaterialRead,
     StockMaterialUpdate,
 )
-from app.services import material_service, replenishment_service
+from app.services import material_service, mini_program_service, replenishment_service
 
 router = APIRouter(prefix="/stock-materials", tags=["二级库物资"])
 PageNo = Annotated[int, Query(ge=1)]
@@ -67,6 +68,26 @@ async def material_detail(
     material_id: int, session: DbSession, user: CurrentUser
 ) -> StockMaterialRead:
     return await _stock_read(session, material_id)
+
+
+@router.get(
+    "/{material_id}/mini-program-code",
+    responses={200: {"content": {"image/png": {}}}},
+    response_class=Response,
+)
+async def material_mini_program_code(
+    material_id: int, session: DbSession, user: CurrentUser
+) -> Response:
+    item = await material_service.get_stock_material(session, material_id)
+    code = await mini_program_service.generate_unlimited_material_code(UUID(item.uuid))
+    return Response(
+        content=code,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "private, max-age=86400",
+            "Content-Disposition": f'inline; filename="material-{item.uuid}-mini-program-code.png"',
+        },
+    )
 
 
 @router.patch("/{material_id}", response_model=StockMaterialRead)

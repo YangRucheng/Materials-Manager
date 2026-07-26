@@ -18,15 +18,30 @@ Page({
     },
   },
 
-  async onLoad() {
+  async onLoad(options = {}) {
+    const app = getApp();
+    const sceneMaterialUuid = extractMaterialUuid(options.scene);
+    if (sceneMaterialUuid) {
+      app.globalData.pendingMaterialUuid = sceneMaterialUuid;
+    }
     try {
-      const session = await getApp().globalData.authPromise;
+      const session = await app.globalData.authPromise;
       if (session.requires_profile) {
         wx.reLaunch({ url: '/pages/profile/index' });
         return;
       }
       this.setData({ user: session.user });
+      const pendingMaterialUuid = app.globalData.pendingMaterialUuid;
+      app.globalData.pendingMaterialUuid = '';
       await this.loadReasonOptions();
+      if (pendingMaterialUuid) {
+        this.setData({ scanning: true });
+        try {
+          await this.loadMaterial(pendingMaterialUuid);
+        } finally {
+          this.setData({ scanning: false });
+        }
+      }
     } catch (error) {
       this.showError(error);
     }
@@ -49,19 +64,15 @@ Page({
     try {
       const scanResult = await new Promise((resolve, reject) => {
         wx.scanCode({
-          scanType: ['qrCode'],
           success: resolve,
           fail: reject,
         });
       });
-      const materialUuid = extractMaterialUuid(scanResult.result);
+      const materialUuid = extractMaterialUuid(scanResult.path || scanResult.result);
       if (!materialUuid) {
-        throw new Error('二维码中未识别到物资 UUID');
+        throw new Error('小程序码中未识别到物资 UUID');
       }
-      const material = await request({
-        url: `/mini-program/materials/${materialUuid}`,
-      });
-      this.setData({ material, 'form.quantity': '1' });
+      await this.loadMaterial(materialUuid);
     } catch (error) {
       if (!String(error.errMsg || '').includes('cancel')) {
         this.showError(error);
@@ -69,6 +80,13 @@ Page({
     } finally {
       this.setData({ scanning: false });
     }
+  },
+
+  async loadMaterial(materialUuid) {
+    const material = await request({
+      url: `/mini-program/materials/${materialUuid}`,
+    });
+    this.setData({ material, 'form.quantity': '1' });
   },
 
   onFieldChange(event) {
@@ -82,7 +100,7 @@ Page({
 
   validateForm() {
     if (!this.data.material) {
-      return '请先扫描物资二维码';
+      return '请先扫描物资小程序码';
     }
     const { quantity, businessReason, subitemNo } = this.data.form;
     const numericQuantity = Number(quantity);

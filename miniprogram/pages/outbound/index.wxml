@@ -15,7 +15,7 @@
   <view wx:if="{{!material}}" class="section-card scan-card">
     <view class="scan-card-heading">
       <view class="scan-kicker">第一步</view>
-      <view class="scan-title">扫描物资二维码</view>
+      <view class="scan-title">扫描物资小程序码</view>
     </view>
     <t-button
       class="scan-action"
@@ -26,7 +26,7 @@
       disabled="{{scanning || submitting}}"
       icon="scan"
       bind:tap="scanMaterial"
-    >{{material ? '重新扫码' : '扫描物资二维码'}}</t-button>
+    >{{material ? '重新扫码' : '扫描物资小程序码'}}</t-button>
   </view>
 
   <view wx:if="{{material}}" class="section-card material-card">

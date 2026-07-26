@@ -82,6 +82,23 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert material.status_code == 201, material.text
     material_data = material.json()
 
+    async def fake_generate_unlimited_material_code(material_uuid):
+        assert str(material_uuid) == material_data["uuid"]
+        return b"mini-program-code"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "generate_unlimited_material_code",
+        fake_generate_unlimited_material_code,
+    )
+    material_code = await client.get(
+        f"/api/v1/stock-materials/{material_data['id']}/mini-program-code",
+        headers=warehouse,
+    )
+    assert material_code.status_code == 200, material_code.text
+    assert material_code.headers["content-type"] == "image/png"
+    assert material_code.content == b"mini-program-code"
+
     inbound = await client.post(
         "/api/v1/inventory/inbounds",
         headers=warehouse,
