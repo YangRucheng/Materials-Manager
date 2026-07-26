@@ -62,7 +62,7 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
             "params": {"access_token": "wechat-access-token"},
             "json": {
                 "scene": "10000000000040008000000000000001",
-                "page": "pages/outbound/index",
+                "page": "pages/outbound/outbound",
                 "check_path": False,
                 "env_version": "trial",
                 "width": 430,
@@ -73,7 +73,7 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
             "params": {"access_token": "wechat-access-token"},
             "json": {
                 "scene": "10000000000040008000000000000001",
-                "page": "pages/outbound/index",
+                "page": "pages/outbound/outbound",
                 "check_path": False,
                 "env_version": "release",
                 "width": 430,

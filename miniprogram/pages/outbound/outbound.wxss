@@ -3,6 +3,13 @@
   padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
 }
 
+.loading-card {
+  display: flex;
+  min-height: 240rpx;
+  align-items: center;
+  justify-content: center;
+}
+
 .page-header {
   margin: 4rpx 4rpx 20rpx;
 }

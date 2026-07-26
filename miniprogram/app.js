@@ -1,4 +1,6 @@
 const { loginSilently } = require('./utils/auth');
+const { request } = require('./utils/request');
+const { resolveImageBaseUrl } = require('./utils/inventory');
 
 App({
   globalData: {
@@ -6,9 +8,22 @@ App({
     pendingMaterialUuid: '',
     user: null,
     accountDisabled: false,
+    imageBaseUrl: '',
+    imageSettingsPromise: null,
   },
 
   onLaunch() {
+    this.globalData.imageSettingsPromise = request({
+      url: '/system-settings/image-acceleration',
+      auth: false,
+    })
+      .then((settings) => {
+        this.globalData.imageBaseUrl = resolveImageBaseUrl(
+          settings.image_acceleration_server_url,
+        );
+        return this.globalData.imageBaseUrl;
+      })
+      .catch(() => '');
     this.globalData.authPromise = loginSilently()
       .then((session) => {
         this.globalData.user = session.user;
@@ -23,11 +38,15 @@ App({
         wx.removeStorageSync('miniProgramUser');
         if (error.code === 'ACCOUNT_DISABLED') {
           this.globalData.accountDisabled = true;
-          wx.reLaunch({ url: '/pages/disabled/index' });
+          wx.reLaunch({ url: '/pages/disabled/disabled' });
           return { account_disabled: true, user: null, requires_profile: false };
         }
-        wx.reLaunch({ url: '/pages/registration-closed/index' });
+        wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
         return { registration_disabled: true, user: null, requires_profile: false };
       });
+  },
+
+  onPageNotFound() {
+    wx.reLaunch({ url: '/pages/home/home' });
   },
 });

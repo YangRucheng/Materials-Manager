@@ -3,23 +3,13 @@ const { request } = require('../../utils/request');
 const { createClientRequestId, extractMaterialUuid } = require('../../utils/material');
 const Toast = toastModule.default || toastModule;
 
-function formatDateTime(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '未知';
-  }
-  const pad = (part) => String(part).padStart(2, '0');
-  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 Page({
   data: {
-    user: null,
     material: null,
+    loading: true,
     scanning: false,
     submitting: false,
     recentReasons: [],
-    userProfileVisible: false,
     form: {
       quantity: '1',
       businessReason: '',
@@ -29,43 +19,37 @@ Page({
 
   async onLoad(options = {}) {
     const app = getApp();
-    const sceneMaterialUuid = extractMaterialUuid(options.scene);
-    if (sceneMaterialUuid) {
-      app.globalData.pendingMaterialUuid = sceneMaterialUuid;
+    const materialUuid =
+      extractMaterialUuid(options.uuid) ||
+      extractMaterialUuid(options.scene) ||
+      extractMaterialUuid(app.globalData.pendingMaterialUuid);
+    if (materialUuid) {
+      app.globalData.pendingMaterialUuid = materialUuid;
     }
     try {
       const session = await app.globalData.authPromise;
       if (session.account_disabled) {
-        wx.reLaunch({ url: '/pages/disabled/index' });
+        wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
       }
       if (session.registration_disabled) {
-        wx.reLaunch({ url: '/pages/registration-closed/index' });
+        wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/profile/index' });
+        wx.reLaunch({ url: '/pages/bind/bind' });
         return;
       }
-      this.setData({
-        user: {
-          ...session.user,
-          registered_at: formatDateTime(session.user.created_at),
-        },
-      });
-      const pendingMaterialUuid = app.globalData.pendingMaterialUuid;
       app.globalData.pendingMaterialUuid = '';
-      await this.loadReasonOptions();
-      if (pendingMaterialUuid) {
-        this.setData({ scanning: true });
-        try {
-          await this.loadMaterial(pendingMaterialUuid);
-        } finally {
-          this.setData({ scanning: false });
-        }
+      if (!materialUuid) {
+        wx.reLaunch({ url: '/pages/home/home' });
+        return;
       }
+      await Promise.all([this.loadReasonOptions(), this.loadMaterial(materialUuid)]);
     } catch (error) {
       this.showError(error);
+    } finally {
+      this.setData({ loading: false });
     }
   },
 
@@ -82,26 +66,11 @@ Page({
     }
   },
 
-  openInventory() {
-    wx.navigateTo({ url: '/pages/inventory/index' });
-  },
-
-  showUserProfile() {
-    this.setData({ userProfileVisible: true });
-  },
-
-  onUserProfileVisibleChange(event) {
-    this.setData({ userProfileVisible: event.detail.visible });
-  },
-
   async scanMaterial() {
     this.setData({ scanning: true });
     try {
       const scanResult = await new Promise((resolve, reject) => {
-        wx.scanCode({
-          success: resolve,
-          fail: reject,
-        });
+        wx.scanCode({ success: resolve, fail: reject });
       });
       const materialUuid = extractMaterialUuid(scanResult.path || scanResult.result);
       if (!materialUuid) {
@@ -183,15 +152,13 @@ Page({
         theme: 'success',
         direction: 'column',
       });
-      this.setData({
-        material: null,
-        form: {
-          quantity: '1',
-          businessReason: '',
-          subitemNo: '',
-        },
-      });
-      void this.loadReasonOptions();
+      setTimeout(() => {
+        if (getCurrentPages().length > 1) {
+          wx.navigateBack();
+          return;
+        }
+        wx.reLaunch({ url: '/pages/home/home' });
+      }, 800);
     } catch (error) {
       this.showError(error);
     } finally {
