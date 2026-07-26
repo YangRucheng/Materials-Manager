@@ -6,6 +6,7 @@ export type Role = 'SUPER_ADMIN' | 'WAREHOUSE_ADMIN' | 'PURCHASE_ADMIN' | 'READ_
 export type OperationType = 'INBOUND' | 'OUTBOUND'
 export type SourceType = 'MANUAL' | 'REVERSAL' | 'INITIALIZATION'
 export type PurchasePlanStatus = '正常' | '暂不申购' | '已归档'
+export type MiniProgramCodeEnv = 'trial' | 'release'
 
 export interface ApiError {
   code: string
@@ -57,6 +58,7 @@ export interface AiSearchSettings {
   api_key: string
   model: string
   enabled: boolean
+  mini_program_code_env: MiniProgramCodeEnv
   updated_at?: string
   version: number
 }
@@ -65,7 +67,11 @@ export interface AiSearchSettingsWrite {
   api_key: string
   model: string
   enabled: boolean
+  mini_program_code_env: MiniProgramCodeEnv
   version: number
+}
+export interface MiniProgramCodeSettings {
+  mini_program_code_env: MiniProgramCodeEnv
 }
 export interface AiSearchStatus {
   available: boolean

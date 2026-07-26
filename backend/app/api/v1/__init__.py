@@ -12,6 +12,7 @@ from app.api.v1 import (
     purchase_materials,
     purchase_requests,
     stock_materials,
+    system_settings,
 )
 from app.schemas import ApiError
 
@@ -27,6 +28,7 @@ router = APIRouter(
 router.include_router(auth.router)
 router.include_router(agent_database.router)
 router.include_router(ai_search.router)
+router.include_router(system_settings.router)
 router.include_router(stock_materials.router)
 router.include_router(inventory.router)
 router.include_router(material_code_library.router)

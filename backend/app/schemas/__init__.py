@@ -15,6 +15,7 @@ from pydantic import (
 )
 
 from app.domain.enums import (
+    MiniProgramCodeEnv,
     OperationType,
     PurchasePlanStatus,
     Role,
@@ -187,6 +188,7 @@ class AiSearchSettingsRead(ReadModel):
     api_key: str
     model: str
     enabled: bool
+    mini_program_code_env: MiniProgramCodeEnv
     updated_at: datetime | None = None
     version: int
 
@@ -196,6 +198,7 @@ class AiSearchSettingsUpdate(RequestModel):
     api_key: str = Field(min_length=1, max_length=1000)
     model: str = Field(min_length=1, max_length=128)
     enabled: bool = True
+    mini_program_code_env: MiniProgramCodeEnv = MiniProgramCodeEnv.RELEASE
     version: int = Field(ge=0)
 
     @field_validator("endpoint")
@@ -225,6 +228,10 @@ class AiSearchSettingsUpdate(RequestModel):
 
 class AiSearchStatusRead(BaseModel):
     available: bool
+
+
+class MiniProgramCodeSettingsRead(BaseModel):
+    mini_program_code_env: MiniProgramCodeEnv
 
 
 class AiSearchExpandRequest(RequestModel):

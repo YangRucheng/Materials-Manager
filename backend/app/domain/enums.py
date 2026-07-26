@@ -19,6 +19,11 @@ class SourceType(StrEnum):
     INITIALIZATION = "INITIALIZATION"
 
 
+class MiniProgramCodeEnv(StrEnum):
+    TRIAL = "trial"
+    RELEASE = "release"
+
+
 class PurchasePlanStatus(StrEnum):
     NORMAL = "正常"
     DEFERRED = "暂不申购"
