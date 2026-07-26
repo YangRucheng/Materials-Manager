@@ -20,15 +20,15 @@ Page({
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
-        wx.reLaunch({ url: '/pages/disabled/index' });
+        wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
       }
       if (session.registration_disabled) {
-        wx.reLaunch({ url: '/pages/registration-closed/index' });
+        wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/profile/index' });
+        wx.reLaunch({ url: '/pages/bind/bind' });
         return;
       }
       await this.loadInventory(true);
@@ -116,7 +116,7 @@ Page({
 
   openDetail(event) {
     wx.navigateTo({
-      url: `/pages/inventory-detail/index?uuid=${event.currentTarget.dataset.uuid}`,
+      url: `/pages/material-detail/material-detail?uuid=${event.currentTarget.dataset.uuid}`,
     });
   },
 

@@ -28,13 +28,13 @@ function request(options) {
           wx.removeStorageSync('miniProgramAccessToken');
           wx.removeStorageSync('miniProgramRegistrationToken');
           wx.removeStorageSync('miniProgramUser');
-          wx.reLaunch({ url: '/pages/disabled/index' });
+          wx.reLaunch({ url: '/pages/disabled/disabled' });
         }
         if (response.data?.code === 'MINI_PROGRAM_REGISTRATION_DISABLED') {
           wx.removeStorageSync('miniProgramAccessToken');
           wx.removeStorageSync('miniProgramRegistrationToken');
           wx.removeStorageSync('miniProgramUser');
-          wx.reLaunch({ url: '/pages/registration-closed/index' });
+          wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
         }
         const error = new Error(response.data?.message || '请求失败，请稍后重试');
         error.code = response.data?.code;

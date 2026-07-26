@@ -86,6 +86,11 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
     )
     assert default_code_settings.status_code == 200
     assert default_code_settings.json() == {"mini_program_code_env": "release"}
+    default_image_settings = await client.get(
+        "/api/v1/system-settings/image-acceleration"
+    )
+    assert default_image_settings.status_code == 200
+    assert default_image_settings.json() == {"image_acceleration_server_url": ""}
 
     saved = await client.put(
         "/api/v1/ai-search/settings",
@@ -97,6 +102,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
             "enabled": True,
             "mini_program_code_env": "trial",
             "mini_program_registration_enabled": False,
+            "image_acceleration_server_url": "http://192.168.1.10/",
             "version": 0,
         },
     )
@@ -108,6 +114,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         "enabled": True,
         "mini_program_code_env": "trial",
         "mini_program_registration_enabled": False,
+        "image_acceleration_server_url": "http://192.168.1.10",
         "updated_at": saved.json()["updated_at"],
         "version": 1,
     }
@@ -119,6 +126,11 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
     code_settings = await client.get("/api/v1/system-settings/mini-program-code", headers=purchase)
     assert code_settings.status_code == 200
     assert code_settings.json() == {"mini_program_code_env": "trial"}
+    image_settings = await client.get("/api/v1/system-settings/image-acceleration")
+    assert image_settings.status_code == 200
+    assert image_settings.json() == {
+        "image_acceleration_server_url": "http://192.168.1.10"
+    }
 
     status = await client.get("/api/v1/ai-search/status", headers=purchase)
     assert status.status_code == 200
@@ -137,6 +149,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         assert "secret-key" not in str(encrypted)
         assert event.after_data["mini_program_code_env"] == "trial"
         assert event.after_data["mini_program_registration_enabled"] is False
+        assert event.after_data["image_acceleration_server_url"] == "http://192.168.1.10"
 
 
 @pytest.mark.asyncio

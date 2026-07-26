@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { imagePreviewUrl, imageUrl, maxImageBytes, validateImageSelection } from './image'
+import {
+  configureImageBaseUrl,
+  imagePreviewUrl,
+  imageUrl,
+  maxImageBytes,
+  validateImageSelection,
+} from './image'
 
 describe('图片上传限制', () => {
   it('只接受 JPG、PNG 和 WebP', () => {
@@ -16,7 +22,13 @@ describe('图片上传限制', () => {
     expect(validateImageSelection(9, [file])).toContain('最多上传 9 张')
   })
   it('仅根据文件 ID 拼接图片地址', () => {
+    configureImageBaseUrl('')
     expect(imageUrl('019abc')).toBe('/api/v1/files/images/019abc')
     expect(imagePreviewUrl('019abc', 192)).toBe('/api/v1/files/images/019abc?size=192')
+  })
+  it('使用运行时配置的图片加速服务器', () => {
+    configureImageBaseUrl('https://images.example.com')
+    expect(imageUrl('019abc')).toBe('https://images.example.com/api/v1/files/images/019abc')
+    configureImageBaseUrl('')
   })
 })

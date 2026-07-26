@@ -14,15 +14,15 @@ Page({
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
-        wx.reLaunch({ url: '/pages/disabled/index' });
+        wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
       }
       if (session.registration_disabled) {
-        wx.reLaunch({ url: '/pages/registration-closed/index' });
+        wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
         return;
       }
       if (!session.requires_profile) {
-        wx.reLaunch({ url: '/pages/outbound/index' });
+        wx.reLaunch({ url: '/pages/home/home' });
       }
     } catch (error) {
       this.showError(error);
@@ -60,7 +60,12 @@ Page({
         token: wx.getStorageSync('miniProgramRegistrationToken'),
       });
       storeSession(session);
-      wx.reLaunch({ url: '/pages/outbound/index' });
+      const materialUuid = getApp().globalData.pendingMaterialUuid;
+      wx.reLaunch({
+        url: materialUuid
+          ? `/pages/outbound/outbound?uuid=${materialUuid}`
+          : '/pages/home/home',
+      });
     } catch (error) {
       this.showError(error);
     } finally {

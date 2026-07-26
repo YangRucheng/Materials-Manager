@@ -210,7 +210,7 @@ async def generate_unlimited_material_code(material_uuid: UUID, env: MiniProgram
                     params={"access_token": access_token},
                     json={
                         "scene": material_uuid.hex,
-                        "page": "pages/outbound/index",
+                        "page": "pages/outbound/outbound",
                         "check_path": False,
                         "env_version": env,
                         "width": 430,

@@ -1,10 +1,15 @@
-import { imageBaseUrl, joinUrl } from '@/config/env'
+import { apiBaseUrl, imageBaseUrl, joinUrl, resolveImageBaseUrl } from '@/config/env'
 
 export const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const maxImageBytes = 10 * 1024 * 1024
+let activeImageBaseUrl = imageBaseUrl
+
+export function configureImageBaseUrl(serverUrl: string): void {
+  activeImageBaseUrl = serverUrl.trim() ? resolveImageBaseUrl(serverUrl, apiBaseUrl) : imageBaseUrl
+}
 
 export function imageUrl(fileId: string): string {
-  return joinUrl(imageBaseUrl, encodeURIComponent(fileId))
+  return joinUrl(activeImageBaseUrl, encodeURIComponent(fileId))
 }
 
 export function imagePreviewUrl(fileId: string, size: number): string {
