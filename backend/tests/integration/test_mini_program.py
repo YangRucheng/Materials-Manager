@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from app.domain.enums import MiniProgramCodeEnv
 from app.services import mini_program_service
 from tests.conftest import auth_headers
 
@@ -82,8 +83,9 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert material.status_code == 201, material.text
     material_data = material.json()
 
-    async def fake_generate_unlimited_material_code(material_uuid):
+    async def fake_generate_unlimited_material_code(material_uuid, env):
         assert str(material_uuid) == material_data["uuid"]
+        assert env == MiniProgramCodeEnv.TRIAL
         return b"mini-program-code"
 
     monkeypatch.setattr(
@@ -91,12 +93,24 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "generate_unlimited_material_code",
         fake_generate_unlimited_material_code,
     )
+    mini_program_code_url = f"/api/v1/stock-materials/{material_data['id']}/mini-program-code"
+    missing_env = await client.get(mini_program_code_url, headers=warehouse)
+    invalid_env = await client.get(
+        mini_program_code_url, headers=warehouse, params={"env": "develop"}
+    )
+    assert missing_env.status_code == 422
+    assert invalid_env.status_code == 422
+
     material_code = await client.get(
-        f"/api/v1/stock-materials/{material_data['id']}/mini-program-code",
+        mini_program_code_url,
         headers=warehouse,
+        params={"env": "trial"},
     )
     assert material_code.status_code == 200, material_code.text
     assert material_code.headers["content-type"] == "image/png"
+    assert material_code.headers["cache-control"] == (
+        "public, max-age=31536000, s-maxage=31536000, immutable"
+    )
     assert material_code.content == b"mini-program-code"
 
     inbound = await client.post(

@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type {
+  AiSearchSettings,
   AiSearchSettingsWrite,
   OperationUpdate,
   OperationWrite,
@@ -27,11 +28,12 @@ import {
 } from './data'
 
 const api = apiBaseUrl
-let aiSettings = {
+let aiSettings: AiSearchSettings = {
   endpoint: 'https://example.test/v1',
   api_key: 'mock-secret-key',
   model: 'fast-model',
   enabled: true,
+  mini_program_code_env: 'release',
   updated_at: new Date().toISOString(),
   version: 1,
 }
@@ -235,6 +237,9 @@ export const handlers = [
   http.get(`${api}/ai-search/status`, () =>
     HttpResponse.json({ available: aiSettings.enabled && Boolean(aiSettings.api_key) }),
   ),
+  http.get(`${api}/system-settings/mini-program-code`, () =>
+    HttpResponse.json({ mini_program_code_env: aiSettings.mini_program_code_env }),
+  ),
   http.get(`${api}/ai-search/settings`, ({ request }) =>
     actor(request).role === 'SUPER_ADMIN'
       ? HttpResponse.json(aiSettings)
@@ -249,6 +254,7 @@ export const handlers = [
       api_key: body.api_key,
       model: body.model,
       enabled: body.enabled,
+      mini_program_code_env: body.mini_program_code_env,
       updated_at: now(),
       version: aiSettings.version + 1,
     }
@@ -348,11 +354,16 @@ export const handlers = [
     )
     return HttpResponse.json(page(list, url))
   }),
-  http.get(`${api}/stock-materials/:id/mini-program-code`, ({ params }) => {
+  http.get(`${api}/stock-materials/:id/mini-program-code`, ({ params, request }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
+    const env = new URL(request.url).searchParams.get('env')
+    if (!env) return error(422, 'VALIDATION_ERROR', '缺少小程序码环境版本')
     return item
       ? new HttpResponse(mockMiniProgramCode(String(params.id)), {
-          headers: { 'Content-Type': 'image/svg+xml' },
+          headers: {
+            'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
+            'Content-Type': 'image/svg+xml',
+          },
         })
       : error(400, 'NOT_FOUND', '二级库物资不存在')
   }),

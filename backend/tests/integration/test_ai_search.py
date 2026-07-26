@@ -81,6 +81,11 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
 
     forbidden = await client.get("/api/v1/ai-search/settings", headers=purchase)
     assert forbidden.status_code == 403
+    default_code_settings = await client.get(
+        "/api/v1/system-settings/mini-program-code", headers=purchase
+    )
+    assert default_code_settings.status_code == 200
+    assert default_code_settings.json() == {"mini_program_code_env": "release"}
 
     saved = await client.put(
         "/api/v1/ai-search/settings",
@@ -90,6 +95,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
             "api_key": "secret-key",
             "model": "fast-model",
             "enabled": True,
+            "mini_program_code_env": "trial",
             "version": 0,
         },
     )
@@ -99,6 +105,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         "api_key": "secret-key",
         "model": "fast-model",
         "enabled": True,
+        "mini_program_code_env": "trial",
         "updated_at": saved.json()["updated_at"],
         "version": 1,
     }
@@ -107,6 +114,9 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
     loaded = await client.get("/api/v1/ai-search/settings", headers=admin)
     assert loaded.status_code == 200, loaded.text
     assert loaded.json()["api_key"] == "secret-key"
+    code_settings = await client.get("/api/v1/system-settings/mini-program-code", headers=purchase)
+    assert code_settings.status_code == 200
+    assert code_settings.json() == {"mini_program_code_env": "trial"}
 
     status = await client.get("/api/v1/ai-search/status", headers=purchase)
     assert status.status_code == 200
@@ -123,6 +133,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         encrypted = event.after_data["api_key_encrypted"]
         assert encrypted != "secret-key"
         assert "secret-key" not in str(encrypted)
+        assert event.after_data["mini_program_code_env"] == "trial"
 
 
 @pytest.mark.asyncio
@@ -141,6 +152,7 @@ async def test_ai_expansion_applies_to_plans_and_records(
             "api_key": "secret-key",
             "model": "fast-model",
             "enabled": True,
+            "mini_program_code_env": "release",
             "version": 0,
         },
     )
@@ -201,6 +213,7 @@ async def test_ai_response_timeout_returns_specific_bad_request(
             "api_key": "secret-key",
             "model": "slow-model",
             "enabled": True,
+            "mini_program_code_env": "release",
             "version": 0,
         },
     )
@@ -232,6 +245,7 @@ async def test_glm_models_disable_thinking_and_request_json_output(
             "api_key": "secret-key",
             "model": "glm-4.7-flash",
             "enabled": True,
+            "mini_program_code_env": "release",
             "version": 0,
         },
     )

@@ -2,6 +2,7 @@ from uuid import UUID
 
 import pytest
 
+from app.domain.enums import MiniProgramCodeEnv
 from app.services import mini_program_service
 
 
@@ -10,14 +11,16 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     material_uuid = UUID("10000000-0000-4000-8000-000000000001")
-    captured: dict[str, object] = {}
+    captured: list[dict[str, object]] = []
 
     async def fake_access_token() -> str:
         return "wechat-access-token"
 
     class FakeResponse:
         headers = {"content-type": "image/png"}
-        content = b"png-content"
+
+        def __init__(self, content: bytes) -> None:
+            self.content = content
 
         def raise_for_status(self) -> None:
             return None
@@ -30,8 +33,8 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
             return None
 
         async def post(self, url, *, params, json):
-            captured.update(url=url, params=params, json=json)
-            return FakeResponse()
+            captured.append({"url": url, "params": params, "json": json})
+            return FakeResponse(f"png-{json['env_version']}".encode())
 
     monkeypatch.setattr(mini_program_service, "_get_wechat_access_token", fake_access_token)
     monkeypatch.setattr(
@@ -39,18 +42,41 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
         "AsyncClient",
         lambda **_kwargs: FakeClient(),
     )
-    mini_program_service._material_code_cache.pop(str(material_uuid), None)
+    mini_program_service._material_code_cache.clear()
 
-    result = await mini_program_service.generate_unlimited_material_code(material_uuid)
+    trial = await mini_program_service.generate_unlimited_material_code(
+        material_uuid, MiniProgramCodeEnv.TRIAL
+    )
+    repeated_trial = await mini_program_service.generate_unlimited_material_code(
+        material_uuid, MiniProgramCodeEnv.TRIAL
+    )
+    release = await mini_program_service.generate_unlimited_material_code(
+        material_uuid, MiniProgramCodeEnv.RELEASE
+    )
 
-    assert result == b"png-content"
-    assert captured == {
-        "url": "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
-        "params": {"access_token": "wechat-access-token"},
-        "json": {
-            "scene": "10000000000040008000000000000001",
-            "page": "pages/outbound/index",
-            "check_path": False,
-            "width": 430,
+    assert trial == repeated_trial == b"png-trial"
+    assert release == b"png-release"
+    assert captured == [
+        {
+            "url": "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+            "params": {"access_token": "wechat-access-token"},
+            "json": {
+                "scene": "10000000000040008000000000000001",
+                "page": "pages/outbound/index",
+                "check_path": False,
+                "env_version": "trial",
+                "width": 430,
+            },
         },
-    }
+        {
+            "url": "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+            "params": {"access_token": "wechat-access-token"},
+            "json": {
+                "scene": "10000000000040008000000000000001",
+                "page": "pages/outbound/index",
+                "check_path": False,
+                "env_version": "release",
+                "width": 430,
+            },
+        },
+    ]

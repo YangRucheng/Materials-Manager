@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Response, status
 
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
+from app.domain.enums import MiniProgramCodeEnv
 from app.schemas import (
     Page,
     ReplenishmentPolicyWrite,
@@ -76,16 +77,21 @@ async def material_detail(
     response_class=Response,
 )
 async def material_mini_program_code(
-    material_id: int, session: DbSession, user: CurrentUser
+    material_id: int,
+    env: MiniProgramCodeEnv,
+    session: DbSession,
+    user: CurrentUser,
 ) -> Response:
     item = await material_service.get_stock_material(session, material_id)
-    code = await mini_program_service.generate_unlimited_material_code(UUID(item.uuid))
+    code = await mini_program_service.generate_unlimited_material_code(UUID(item.uuid), env)
     return Response(
         content=code,
         media_type="image/png",
         headers={
-            "Cache-Control": "private, max-age=86400",
-            "Content-Disposition": f'inline; filename="material-{item.uuid}-mini-program-code.png"',
+            "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "Content-Disposition": (
+                f'inline; filename="material-{item.uuid}-{env}-mini-program-code.png"'
+            ),
         },
     )
 
