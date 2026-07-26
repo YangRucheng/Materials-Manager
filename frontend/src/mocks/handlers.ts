@@ -371,10 +371,17 @@ export const handlers = [
   }),
   http.get(`${api}/stock-materials/:id/mini-program-code`, ({ params, request }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
+    if (!item) return error(400, 'NOT_FOUND', '二级库物资不存在')
+    const target = new URL(`${api}/stock-materials/mini-program-codes/${item.uuid}`, request.url)
+    target.searchParams.set('env', aiSettings.mini_program_code_env)
+    return HttpResponse.redirect(target, 307)
+  }),
+  http.get(`${api}/stock-materials/mini-program-codes/:uuid`, ({ params, request }) => {
+    const item = stockMaterials.find((x) => x.uuid === String(params.uuid))
     const env = new URL(request.url).searchParams.get('env')
     if (!env) return error(422, 'VALIDATION_ERROR', '缺少小程序码环境版本')
     return item
-      ? new HttpResponse(mockMiniProgramCode(String(params.id)), {
+      ? new HttpResponse(mockMiniProgramCode(String(params.uuid)), {
           headers: {
             'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
             'Content-Type': 'image/svg+xml',

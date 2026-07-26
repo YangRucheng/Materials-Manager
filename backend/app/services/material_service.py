@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from uuid import UUID
 
 from sqlalchemy import String, cast, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -81,6 +82,17 @@ def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> S
 
 async def get_stock_material(session: AsyncSession, material_id: int) -> StockMaterial:
     item = await session.scalar(select(StockMaterial).where(StockMaterial.id == material_id))
+    if item is None:
+        raise not_found("二级库物资")
+    return item
+
+
+async def get_stock_material_by_uuid(
+    session: AsyncSession, material_uuid: UUID
+) -> StockMaterial:
+    item = await session.scalar(
+        select(StockMaterial).where(StockMaterial.uuid == str(material_uuid))
+    )
     if item is None:
         raise not_found("二级库物资")
     return item

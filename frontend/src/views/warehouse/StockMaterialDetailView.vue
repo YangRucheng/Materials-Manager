@@ -75,9 +75,9 @@ function replaceMiniProgramCodeUrl(nextUrl = '') {
   miniProgramCodeUrl.value = nextUrl
 }
 
-async function loadMiniProgramCode(materialId: number, env: MiniProgramCodeEnv) {
+async function loadMiniProgramCode(materialId: number) {
   try {
-    const code = await inventoryApi.materialMiniProgramCode(materialId, env)
+    const code = await inventoryApi.materialMiniProgramCode(materialId)
     replaceMiniProgramCodeUrl(URL.createObjectURL(code))
   } catch (error) {
     replaceMiniProgramCodeUrl()
@@ -98,7 +98,7 @@ async function load() {
     balance.value = nextBalance
     miniProgramCodeEnv.value = codeSettings.mini_program_code_env
     syncForm(nextMaterial)
-    await loadMiniProgramCode(materialId, codeSettings.mini_program_code_env)
+    await loadMiniProgramCode(materialId)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '物资档案加载失败')
   } finally {
