@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag, useDialog, useMessage } from 'naive-ui'
+import { NButton, NEllipsis, NTag, useDialog, useMessage } from 'naive-ui'
 import type { MiniProgramUser } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
+import { formatShanghaiTime } from '@/utils/time'
 import {
   getTableScrollX,
   preventTableColumnCompression,
@@ -23,13 +24,12 @@ const form = reactive({
   version: 0,
 })
 const columns = preventTableColumnCompression<MiniProgramUser>([
-  { title: '微信 OpenID', key: 'wechat_openid', width: tableColumnWidths.identifier * 2 },
-  { title: '姓名', key: 'display_name', width: tableColumnWidths.name },
-  { title: '部门单位', key: 'department_name', width: tableColumnWidths.name * 2 },
+  { title: '姓名', key: 'display_name', width: 136 },
+  { title: '部门单位', key: 'department_name', width: 240, ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'enabled',
-    width: tableColumnWidths.status,
+    width: 88,
     render: (row) =>
       h(
         NTag,
@@ -38,24 +38,30 @@ const columns = preventTableColumnCompression<MiniProgramUser>([
       ),
   },
   {
+    title: '注册时间',
+    key: 'created_at',
+    width: tableColumnWidths.datetime,
+    render: (row) => formatShanghaiTime(row.created_at),
+  },
+  {
+    title: '微信 OpenID',
+    key: 'wechat_openid',
+    width: 220,
+    render: (row) =>
+      h(NEllipsis, { tooltip: true, class: 'openid-text' }, { default: () => row.wechat_openid }),
+  },
+  {
     title: '操作',
     key: 'action',
-    width: tableColumnWidths.action * 2,
+    width: 84,
     render: (row) =>
-      h('div', { class: 'table-actions' }, [
-        h(NButton, { size: 'small', onClick: () => open(row) }, { default: () => '编辑' }),
-        h(
-          NButton,
-          {
-            size: 'small',
-            type: 'error',
-            secondary: true,
-            loading: deletingId.value === row.id,
-            onClick: () => confirmDelete(row),
-          },
-          { default: () => '删除' },
-        ),
-      ]),
+      h(
+        NButton,
+        { size: 'small', secondary: true, onClick: () => open(row) },
+        {
+          default: () => '编辑',
+        },
+      ),
   },
 ])
 const tableScrollX = getTableScrollX(columns)
@@ -100,7 +106,9 @@ async function save() {
   }
 }
 
-function confirmDelete(row: MiniProgramUser) {
+function confirmDelete() {
+  const row = editing.value
+  if (!row) return
   dialog.warning({
     title: '删除小程序用户',
     content: `确认删除“${row.display_name}”？删除后，该微信用户可重新填写姓名和部门单位完成绑定。`,
@@ -128,7 +136,13 @@ onMounted(load)
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">小程序用户</h1>
+      <div>
+        <div class="title-row">
+          <h1 class="page-title">小程序用户</h1>
+          <n-tag round size="small" type="info">{{ items.length }} 位</n-tag>
+        </div>
+        <p class="page-description">查看绑定资料、调整使用状态或解除微信绑定</p>
+      </div>
     </div>
     <n-card class="data-card" :bordered="false">
       <n-data-table
@@ -136,6 +150,7 @@ onMounted(load)
         :columns="columns"
         :data="items"
         :loading="loading"
+        size="small"
         :scroll-x="tableScrollX"
         :row-key="(row: MiniProgramUser) => row.id"
       />
@@ -154,18 +169,46 @@ onMounted(load)
         <n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item>
       </n-form>
       <template #footer>
-        <n-space justify="end">
-          <n-button @click="show = false">取消</n-button>
-          <n-button type="primary" @click="save">保存</n-button>
-        </n-space>
+        <div class="modal-footer">
+          <n-button
+            type="error"
+            secondary
+            :loading="deletingId === editing?.id"
+            @click="confirmDelete"
+            >删除用户</n-button
+          >
+          <n-space>
+            <n-button @click="show = false">取消</n-button>
+            <n-button type="primary" @click="save">保存</n-button>
+          </n-space>
+        </div>
       </template>
     </n-modal>
   </div>
 </template>
 
 <style scoped>
-:deep(.table-actions) {
+.title-row {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.page-description {
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:deep(.openid-text) {
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
 }
 </style>
