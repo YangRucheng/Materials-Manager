@@ -459,6 +459,51 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/system-settings/mini-program-code:
+    get:
+      tags:
+      - 系统设置
+      summary: Mini Program Code Settings
+      operationId: mini_program_code_settings_api_v1_system_settings_mini_program_code_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramCodeSettingsRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/stock-materials:
     get:
       tags:
@@ -757,6 +802,11 @@ paths:
         schema:
           type: integer
           title: Material Id
+      - name: env
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/MiniProgramCodeEnv'
       responses:
         '200':
           description: Successful Response
@@ -4300,6 +4350,8 @@ components:
         enabled:
           type: boolean
           title: Enabled
+        mini_program_code_env:
+          $ref: '#/components/schemas/MiniProgramCodeEnv'
         updated_at:
           anyOf:
           - type: string
@@ -4315,6 +4367,7 @@ components:
       - api_key
       - model
       - enabled
+      - mini_program_code_env
       - version
       title: AiSearchSettingsRead
     AiSearchSettingsUpdate:
@@ -4338,6 +4391,9 @@ components:
           type: boolean
           title: Enabled
           default: true
+        mini_program_code_env:
+          $ref: '#/components/schemas/MiniProgramCodeEnv'
+          default: release
         version:
           type: integer
           minimum: 0.0
@@ -4860,6 +4916,20 @@ components:
       required:
       - version
       title: MeasurementUnitUpdate
+    MiniProgramCodeEnv:
+      type: string
+      enum:
+      - trial
+      - release
+      title: MiniProgramCodeEnv
+    MiniProgramCodeSettingsRead:
+      properties:
+        mini_program_code_env:
+          $ref: '#/components/schemas/MiniProgramCodeEnv'
+      type: object
+      required:
+      - mini_program_code_env
+      title: MiniProgramCodeSettingsRead
     MiniProgramLoginResponse:
       properties:
         access_token:

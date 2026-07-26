@@ -3,9 +3,11 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage, type FormInst, type FormRules } from 'naive-ui'
 import { inventoryApi } from '@/api/inventory'
+import { systemSettingsApi } from '@/api/systemSettings'
 import type {
   FileObject,
   InventoryBalance,
+  MiniProgramCodeEnv,
   StockMaterial,
   StockMaterialWrite,
 } from '@/api/generated'
@@ -25,6 +27,7 @@ const material = ref<StockMaterial | null>(null)
 const balance = ref<InventoryBalance | null>(null)
 const images = ref<FileObject[]>([])
 const miniProgramCodeUrl = ref('')
+const miniProgramCodeEnv = ref<MiniProgramCodeEnv>('release')
 const formRef = ref<FormInst | null>(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -72,9 +75,9 @@ function replaceMiniProgramCodeUrl(nextUrl = '') {
   miniProgramCodeUrl.value = nextUrl
 }
 
-async function loadMiniProgramCode(materialId: number) {
+async function loadMiniProgramCode(materialId: number, env: MiniProgramCodeEnv) {
   try {
-    const code = await inventoryApi.materialMiniProgramCode(materialId)
+    const code = await inventoryApi.materialMiniProgramCode(materialId, env)
     replaceMiniProgramCodeUrl(URL.createObjectURL(code))
   } catch (error) {
     replaceMiniProgramCodeUrl()
@@ -86,14 +89,16 @@ async function load() {
   loading.value = true
   try {
     const materialId = Number(route.params.id)
-    const [nextMaterial, nextBalance] = await Promise.all([
+    const [nextMaterial, nextBalance, codeSettings] = await Promise.all([
       inventoryApi.material(materialId),
       inventoryApi.balance(materialId),
+      systemSettingsApi.miniProgramCode(),
     ])
     material.value = nextMaterial
     balance.value = nextBalance
+    miniProgramCodeEnv.value = codeSettings.mini_program_code_env
     syncForm(nextMaterial)
-    await loadMiniProgramCode(materialId)
+    await loadMiniProgramCode(materialId, codeSettings.mini_program_code_env)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '物资档案加载失败')
   } finally {
@@ -224,8 +229,11 @@ onBeforeUnmount(() => {
               />
               <div class="mini-program-code-details">
                 <strong>微信扫码直达出库</strong>
-                <span class="muted">扫码后自动进入小程序并载入当前物资，无需再次扫描</span>
-                <code>{{ material.uuid }}</code>
+                <span class="muted">扫一扫，领料出库快人一步</span>
+                <n-tag size="small" :type="miniProgramCodeEnv === 'trial' ? 'warning' : 'success'">
+                  {{ miniProgramCodeEnv === 'trial' ? '体验版' : '正式版' }}
+                </n-tag>
+                <code>{{ material.uuid.toUpperCase() }}</code>
                 <n-button
                   tag="a"
                   secondary

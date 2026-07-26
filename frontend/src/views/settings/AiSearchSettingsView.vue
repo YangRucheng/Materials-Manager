@@ -12,6 +12,7 @@ const form = reactive({
   api_key: '',
   model: '',
   enabled: true,
+  mini_program_code_env: 'release' as 'trial' | 'release',
   version: 0,
 })
 
@@ -24,6 +25,7 @@ async function load() {
       api_key: data.api_key,
       model: data.model,
       enabled: data.enabled,
+      mini_program_code_env: data.mini_program_code_env,
       version: data.version,
     })
   } finally {
@@ -43,11 +45,12 @@ async function save() {
       api_key: form.api_key.trim(),
       model: form.model.trim(),
       enabled: form.enabled,
+      mini_program_code_env: form.mini_program_code_env,
       version: form.version,
     })
     form.api_key = data.api_key
     form.version = data.version
-    message.success('大模型配置已保存')
+    message.success('高级设置已保存')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
@@ -74,39 +77,54 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <div>
-        <h1 class="page-title">大模型设置</h1>
+        <h1 class="page-title">高级设置</h1>
       </div>
     </div>
-    <n-card :loading="loading" title="模型连接">
-      <n-alert type="info" :bordered="false" style="margin-bottom: 20px">
-        端点可填写 API 基础地址（如 https://api.openai.com/v1）或完整的 /chat/completions 地址。API
-        Key 在数据库中加密保存，仅超级管理员可在此页面查看。
-      </n-alert>
-      <n-form label-placement="left" label-width="120" style="max-width: 760px">
-        <n-form-item label="启用服务">
-          <n-switch v-model:value="form.enabled" />
-        </n-form-item>
-        <n-form-item label="兼容端点" required>
-          <n-input v-model:value="form.endpoint" placeholder="https://api.openai.com/v1" />
-        </n-form-item>
-        <n-form-item label="模型" required>
-          <n-input v-model:value="form.model" placeholder="gpt-4.1-mini" />
-        </n-form-item>
-        <n-form-item label="API Key" required>
-          <n-input v-model:value="form.api_key" placeholder="请输入 API Key" autocomplete="off" />
-        </n-form-item>
-        <n-form-item :show-label="false">
-          <div class="settings-actions">
-            <n-space>
-              <n-button :loading="testing" :disabled="!form.api_key.trim()" @click="testConnection">
-                测试“电机”扩展
-              </n-button>
-              <n-button type="primary" :loading="saving" @click="save">保存配置</n-button>
-            </n-space>
-          </div>
-        </n-form-item>
-      </n-form>
-    </n-card>
+    <div class="settings-stack">
+      <n-card :loading="loading" title="模型连接">
+        <n-alert type="info" :bordered="false" style="margin-bottom: 20px">
+          端点可填写 API 基础地址（如 https://api.openai.com/v1）或完整的 /chat/completions
+          地址。API Key 在数据库中加密保存，仅超级管理员可在此页面查看。
+        </n-alert>
+        <n-form label-placement="left" label-width="120" style="max-width: 760px">
+          <n-form-item label="启用服务">
+            <n-switch v-model:value="form.enabled" />
+          </n-form-item>
+          <n-form-item label="兼容端点" required>
+            <n-input v-model:value="form.endpoint" placeholder="https://api.openai.com/v1" />
+          </n-form-item>
+          <n-form-item label="模型" required>
+            <n-input v-model:value="form.model" placeholder="gpt-4.1-mini" />
+          </n-form-item>
+          <n-form-item label="API Key" required>
+            <n-input v-model:value="form.api_key" placeholder="请输入 API Key" autocomplete="off" />
+          </n-form-item>
+        </n-form>
+      </n-card>
+
+      <n-card :loading="loading" title="小程序码">
+        <n-alert type="info" :bordered="false" style="margin-bottom: 20px">
+          物资详情页将按照这里选择的版本生成出库小程序码。
+        </n-alert>
+        <n-form label-placement="left" label-width="120">
+          <n-form-item label="环境版本">
+            <n-radio-group v-model:value="form.mini_program_code_env">
+              <n-radio-button value="trial">体验版</n-radio-button>
+              <n-radio-button value="release">正式版</n-radio-button>
+            </n-radio-group>
+          </n-form-item>
+        </n-form>
+      </n-card>
+
+      <div class="settings-actions">
+        <n-space>
+          <n-button :loading="testing" :disabled="!form.api_key.trim()" @click="testConnection">
+            测试“电机”扩展
+          </n-button>
+          <n-button type="primary" :loading="saving" @click="save">保存配置</n-button>
+        </n-space>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,5 +133,10 @@ onMounted(load)
   display: flex;
   justify-content: flex-end;
   width: 100%;
+}
+
+.settings-stack {
+  display: grid;
+  gap: 16px;
 }
 </style>

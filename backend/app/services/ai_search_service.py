@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import AppError, version_conflict
+from app.domain.enums import MiniProgramCodeEnv
 from app.models import BusinessEventLog
 from app.schemas import AiSearchSettingsRead, AiSearchSettingsUpdate
 from app.services.common import log_event, split_or_search_terms
@@ -43,6 +44,7 @@ class AiSearchConfig:
     api_key_encrypted: str
     model: str
     enabled: bool
+    mini_program_code_env: MiniProgramCodeEnv
     updated_at: datetime | None
     version: int
 
@@ -80,7 +82,17 @@ def _payload(config: AiSearchConfig) -> dict[str, object]:
         "api_key_encrypted": config.api_key_encrypted,
         "model": config.model,
         "enabled": config.enabled,
+        "mini_program_code_env": config.mini_program_code_env,
     }
+
+
+def _mini_program_code_env(value: object) -> MiniProgramCodeEnv:
+    if not isinstance(value, str):
+        return MiniProgramCodeEnv.RELEASE
+    try:
+        return MiniProgramCodeEnv(value)
+    except ValueError:
+        return MiniProgramCodeEnv.RELEASE
 
 
 async def close_client() -> None:
@@ -110,6 +122,7 @@ async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
         api_key_encrypted=api_key_encrypted if isinstance(api_key_encrypted, str) else "",
         model=model if isinstance(model, str) else "",
         enabled=enabled if isinstance(enabled, bool) else False,
+        mini_program_code_env=_mini_program_code_env(data.get("mini_program_code_env")),
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -122,6 +135,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
             api_key="",
             model="",
             enabled=False,
+            mini_program_code_env=MiniProgramCodeEnv.RELEASE,
             updated_at=None,
             version=0,
         )
@@ -130,6 +144,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
         api_key=_decrypt_api_key(setting.api_key_encrypted) if setting.api_key_encrypted else "",
         model=setting.model,
         enabled=setting.enabled,
+        mini_program_code_env=setting.mini_program_code_env,
         updated_at=setting.updated_at,
         version=setting.version,
     )
@@ -151,13 +166,14 @@ async def update_setting(
         action=_SETTING_ACTION,
         old_status="启用" if current and current.enabled else "停用",
         new_status="启用" if data.enabled else "停用",
-        remark="超级管理员更新大模型配置",
+        remark="超级管理员更新高级设置",
         before_data=_payload(current) if current else None,
         after_data={
             "endpoint": data.endpoint.rstrip("/"),
             "api_key_encrypted": api_key_encrypted,
             "model": data.model,
             "enabled": data.enabled,
+            "mini_program_code_env": data.mini_program_code_env,
         },
     )
     _cache.clear()
@@ -166,9 +182,15 @@ async def update_setting(
         api_key_encrypted=api_key_encrypted,
         model=data.model,
         enabled=data.enabled,
+        mini_program_code_env=data.mini_program_code_env,
         updated_at=event.occurred_at,
         version=event.id,
     )
+
+
+async def get_mini_program_code_env(session: AsyncSession) -> MiniProgramCodeEnv:
+    setting = await get_setting(session)
+    return setting.mini_program_code_env if setting else MiniProgramCodeEnv.RELEASE
 
 
 async def is_available(session: AsyncSession) -> bool:

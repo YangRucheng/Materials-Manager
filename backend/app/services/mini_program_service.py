@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import AppError, not_found
-from app.domain.enums import OperationType, SourceType
+from app.domain.enums import MiniProgramCodeEnv, OperationType, SourceType
 from app.models import MiniProgramUser, StockMaterial, StockOperation
 from app.schemas import (
     MiniProgramMaterialRead,
@@ -30,7 +30,7 @@ from app.services.common import utc_aware, validate_version
 _wechat_access_token: str | None = None
 _wechat_access_token_expires_at = 0.0
 _wechat_access_token_lock = asyncio.Lock()
-_material_code_cache: dict[str, bytes] = {}
+_material_code_cache: dict[tuple[str, MiniProgramCodeEnv], bytes] = {}
 _material_code_lock = asyncio.Lock()
 
 
@@ -164,8 +164,8 @@ async def _get_wechat_access_token() -> str:
         return token
 
 
-async def generate_unlimited_material_code(material_uuid: UUID) -> bytes:
-    cache_key = str(material_uuid)
+async def generate_unlimited_material_code(material_uuid: UUID, env: MiniProgramCodeEnv) -> bytes:
+    cache_key = (str(material_uuid), env)
     cached = _material_code_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -184,6 +184,7 @@ async def generate_unlimited_material_code(material_uuid: UUID) -> bytes:
                         "scene": material_uuid.hex,
                         "page": "pages/outbound/index",
                         "check_path": False,
+                        "env_version": env,
                         "width": 430,
                     },
                 )
