@@ -507,8 +507,8 @@ class MiniProgramOutboundCreate(RequestModel):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
     ]
     receiver_unit: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
-    ]
+        str, StringConstraints(strip_whitespace=True, max_length=128)
+    ] = ""
     subitem_no: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
     ]
@@ -535,6 +535,11 @@ class MiniProgramOutboundRead(ReadModel):
     receiver_name: str
     subitem_no: str | None = None
     executed_by: str
+
+
+class MiniProgramOutboundReasonOptions(ReadModel):
+    personal_reasons: list[str]
+    system_reasons: list[str]
 
 
 class PurchaseMaterialBase(RequestModel):

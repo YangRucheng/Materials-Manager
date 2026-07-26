@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage, type FormInst, type FormRules } from 'naive-ui'
-import QRCode from 'qrcode'
 import { inventoryApi } from '@/api/inventory'
 import type {
   FileObject,
@@ -25,12 +24,14 @@ const dictionaries = useDictionaryStore()
 const material = ref<StockMaterial | null>(null)
 const balance = ref<InventoryBalance | null>(null)
 const images = ref<FileObject[]>([])
-const qrCodeDataUrl = ref('')
+const miniProgramCodeUrl = ref('')
 const formRef = ref<FormInst | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const canWrite = computed(() => auth.can('warehouse:write'))
-const qrCodeFilename = computed(() => `物资-${material.value?.uuid ?? '出库'}-二维码.png`)
+const miniProgramCodeFilename = computed(
+  () => `物资-${material.value?.uuid ?? '出库'}-小程序码.png`,
+)
 const form = reactive<StockMaterialWrite>({
   name: '',
   model_spec: '',
@@ -66,16 +67,19 @@ function syncForm(value: StockMaterial) {
   images.value = [...value.images]
 }
 
-async function generateQrCode(uuid: string) {
-  qrCodeDataUrl.value = await QRCode.toDataURL(uuid, {
-    width: 320,
-    margin: 2,
-    errorCorrectionLevel: 'H',
-    color: {
-      dark: '#172033',
-      light: '#ffffff',
-    },
-  })
+function replaceMiniProgramCodeUrl(nextUrl = '') {
+  if (miniProgramCodeUrl.value) URL.revokeObjectURL(miniProgramCodeUrl.value)
+  miniProgramCodeUrl.value = nextUrl
+}
+
+async function loadMiniProgramCode(materialId: number) {
+  try {
+    const code = await inventoryApi.materialMiniProgramCode(materialId)
+    replaceMiniProgramCodeUrl(URL.createObjectURL(code))
+  } catch (error) {
+    replaceMiniProgramCodeUrl()
+    message.warning(error instanceof Error ? error.message : '出库小程序码加载失败')
+  }
 }
 
 async function load() {
@@ -89,7 +93,7 @@ async function load() {
     material.value = nextMaterial
     balance.value = nextBalance
     syncForm(nextMaterial)
-    await generateQrCode(nextMaterial.uuid)
+    await loadMiniProgramCode(materialId)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '物资档案加载失败')
   } finally {
@@ -134,6 +138,10 @@ async function save() {
 onMounted(() => {
   void dictionaries.load()
   void load()
+})
+
+onBeforeUnmount(() => {
+  replaceMiniProgramCodeUrl()
 })
 </script>
 
@@ -206,26 +214,26 @@ onMounted(() => {
           <n-form-item label="备注" class="wide-form-item">
             <n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count />
           </n-form-item>
-          <n-form-item label="出库二维码" class="wide-form-item qr-form-item">
-            <div class="qr-code-field">
+          <n-form-item label="出库小程序码" class="wide-form-item mini-program-code-form-item">
+            <div class="mini-program-code-field">
               <img
-                v-if="qrCodeDataUrl"
-                class="qr-code-image"
-                :src="qrCodeDataUrl"
-                :alt="`${material.name}出库二维码`"
+                v-if="miniProgramCodeUrl"
+                class="mini-program-code-image"
+                :src="miniProgramCodeUrl"
+                :alt="`${material.name}出库小程序码`"
               />
-              <div class="qr-code-details">
-                <strong>小程序扫码出库</strong>
-                <span class="muted">使用小程序“扫码出库”功能扫描此二维码</span>
+              <div class="mini-program-code-details">
+                <strong>微信扫码直达出库</strong>
+                <span class="muted">扫码后自动进入小程序并载入当前物资，无需再次扫描</span>
                 <code>{{ material.uuid }}</code>
                 <n-button
                   tag="a"
                   secondary
                   size="small"
-                  :href="qrCodeDataUrl"
-                  :download="qrCodeFilename"
+                  :href="miniProgramCodeUrl"
+                  :download="miniProgramCodeFilename"
                 >
-                  下载二维码
+                  下载小程序码
                 </n-button>
               </div>
             </div>
@@ -268,7 +276,7 @@ onMounted(() => {
   margin-bottom: 0;
 }
 
-.qr-code-field {
+.mini-program-code-field {
   display: flex;
   width: 100%;
   align-items: center;
@@ -280,7 +288,7 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.qr-code-image {
+.mini-program-code-image {
   width: 168px;
   height: 168px;
   flex: none;
@@ -291,7 +299,7 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.qr-code-details {
+.mini-program-code-details {
   display: flex;
   min-width: 0;
   align-items: flex-start;
@@ -299,12 +307,12 @@ onMounted(() => {
   gap: 10px;
 }
 
-.qr-code-details strong {
+.mini-program-code-details strong {
   color: #172033;
   font-size: 16px;
 }
 
-.qr-code-details code {
+.mini-program-code-details code {
   max-width: 100%;
   padding: 6px 10px;
   overflow: hidden;
@@ -317,7 +325,7 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .qr-code-field {
+  .mini-program-code-field {
     align-items: flex-start;
     flex-direction: column;
   }

@@ -1,5 +1,10 @@
 .outbound-page {
+  padding: 24rpx;
   padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.page-header {
+  margin: 4rpx 4rpx 20rpx;
 }
 
 .header-row {
@@ -14,9 +19,9 @@
   flex: none;
   align-items: center;
   gap: 10rpx;
-  max-width: 250rpx;
-  margin-top: 8rpx;
-  padding: 10rpx 16rpx;
+  max-width: 280rpx;
+  margin-top: 4rpx;
+  padding: 10rpx 18rpx;
   border: 2rpx solid #dce5ff;
   border-radius: 999rpx;
   background: #edf2ff;
@@ -34,7 +39,7 @@
 .operator-name {
   overflow: hidden;
   color: #3658c7;
-  font-size: 24rpx;
+  font-size: 28rpx;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -82,26 +87,111 @@
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
+  padding: 18rpx 22rpx 12rpx;
 }
 
-.status-badge {
+.material-heading .section-title {
+  font-size: 26rpx;
+}
+
+.rescan-action {
   flex: none;
-  padding: 8rpx 16rpx;
-  border-radius: 999rpx;
-  background: rgba(34, 155, 107, 0.1);
-  color: #198057;
-  font-size: 22rpx;
+}
+
+.material-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 0 22rpx 20rpx;
+}
+
+.material-main {
+  min-width: 0;
+}
+
+.material-name {
+  overflow: hidden;
+  color: #172033;
+  font-size: 27rpx;
   font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-spec {
+  overflow: hidden;
+  margin-top: 4rpx;
+  color: #7d8798;
+  font-size: 22rpx;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stock-summary {
+  flex: none;
+  min-width: 142rpx;
+  padding-left: 18rpx;
+  border-left: 2rpx solid #edf0f5;
+  text-align: right;
+}
+
+.stock-label {
+  color: #7d8798;
+  font-size: 20rpx;
+}
+
+.stock-value {
+  margin-top: 4rpx;
+  color: #3658c7;
+  font-size: 25rpx;
+  font-weight: 650;
 }
 
 .form-card {
   --td-input-bg-color: #ffffff;
+  --td-input-vertical-padding: 20rpx 24rpx;
+  --td-input-label-text-font: 28rpx / 42rpx -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  --td-input-placeholder-text-font: 28rpx / 42rpx -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
 }
 
-.submit-tip {
-  margin: 20rpx 28rpx 0;
+.form-card .section-heading {
+  padding: 20rpx 24rpx 14rpx;
+}
+
+.form-card .section-divider {
+  margin: 0 24rpx;
+}
+
+.reason-shortcuts {
+  padding: 12rpx 24rpx 14rpx;
+  border-bottom: 2rpx solid #edf0f5;
+}
+
+.reason-group + .reason-group {
+  margin-top: 12rpx;
+}
+
+.reason-label {
+  margin-bottom: 8rpx;
   color: #7d8798;
-  font-size: 22rpx;
-  line-height: 1.5;
-  text-align: center;
+  font-size: 21rpx;
+  line-height: 1.3;
+}
+
+.reason-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.reason-tags {
+  display: inline-flex;
+  gap: 10rpx;
+  padding-right: 24rpx;
+}
+
+.primary-action {
+  margin-top: 20rpx;
 }

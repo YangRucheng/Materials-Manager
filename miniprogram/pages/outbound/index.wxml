@@ -12,10 +12,10 @@
     </view>
   </view>
 
-  <view class="section-card scan-card">
+  <view wx:if="{{!material}}" class="section-card scan-card">
     <view class="scan-card-heading">
       <view class="scan-kicker">第一步</view>
-      <view class="scan-title">扫描物资二维码</view>
+      <view class="scan-title">扫描物资小程序码</view>
     </view>
     <t-button
       class="scan-action"
@@ -26,22 +26,33 @@
       disabled="{{scanning || submitting}}"
       icon="scan"
       bind:tap="scanMaterial"
-    >{{material ? '重新扫码' : '扫描物资二维码'}}</t-button>
+    >{{material ? '重新扫码' : '扫描物资小程序码'}}</t-button>
   </view>
 
   <view wx:if="{{material}}" class="section-card material-card">
     <view class="section-heading material-heading">
-      <view>
-        <view class="section-title">物资信息</view>
-      </view>
-      <view class="status-badge">已识别</view>
+      <view class="section-title">物资信息</view>
+      <t-button
+        class="rescan-action"
+        theme="primary"
+        variant="text"
+        size="small"
+        icon="scan"
+        loading="{{scanning}}"
+        disabled="{{scanning || submitting}}"
+        bind:tap="scanMaterial"
+      >重新扫码</t-button>
     </view>
-    <view class="section-divider"></view>
-    <t-cell-group>
-      <t-cell title="物资名称" note="{{material.name}}" />
-      <t-cell title="型号规格" note="{{material.model_spec}}" />
-      <t-cell title="当前库存" note="{{material.current_qty}} {{material.unit_name}}" />
-    </t-cell-group>
+    <view class="material-summary">
+      <view class="material-main">
+        <view class="material-name">{{material.name}}</view>
+        <view class="material-spec">{{material.model_spec}}</view>
+      </view>
+      <view class="stock-summary">
+        <view class="stock-label">当前库存</view>
+        <view class="stock-value">{{material.current_qty}} {{material.unit_name}}</view>
+      </view>
+    </view>
   </view>
 
   <view wx:if="{{material}}" class="section-card form-card">
@@ -67,20 +78,48 @@
         data-field="businessReason"
         bind:change="onFieldChange"
       />
+      <view wx:if="{{personalReasons.length || systemReasons.length}}" class="reason-shortcuts">
+        <view wx:if="{{personalReasons.length}}" class="reason-group">
+          <view class="reason-label">我的最近用途</view>
+          <scroll-view class="reason-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+            <view class="reason-tags">
+              <t-tag
+                wx:for="{{personalReasons}}"
+                wx:key="*this"
+                theme="primary"
+                variant="light"
+                size="small"
+                max-width="300rpx"
+                data-reason="{{item}}"
+                bind:click="selectReason"
+              >{{item}}</t-tag>
+            </view>
+          </scroll-view>
+        </view>
+        <view wx:if="{{systemReasons.length}}" class="reason-group">
+          <view class="reason-label">全员最近用途</view>
+          <scroll-view class="reason-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+            <view class="reason-tags">
+              <t-tag
+                wx:for="{{systemReasons}}"
+                wx:key="*this"
+                theme="default"
+                variant="light"
+                size="small"
+                max-width="300rpx"
+                data-reason="{{item}}"
+                bind:click="selectReason"
+              >{{item}}</t-tag>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
       <t-input
         label="子项号"
         placeholder="请输入"
         maxlength="64"
         value="{{form.subitemNo}}"
         data-field="subitemNo"
-        bind:change="onFieldChange"
-      />
-      <t-input
-        label="使用单位"
-        placeholder="请输入"
-        maxlength="128"
-        value="{{form.receiverUnit}}"
-        data-field="receiverUnit"
         bind:change="onFieldChange"
       />
     </t-cell-group>
@@ -96,7 +135,6 @@
     disabled="{{submitting || scanning}}"
     bind:tap="submitOutbound"
   >确认出库</t-button>
-  <view wx:if="{{material}}" class="submit-tip">提交前请再次核对物资名称与出库数量</view>
 
   <t-toast id="outbound-toast" />
 </view>
