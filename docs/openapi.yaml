@@ -502,51 +502,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/system-settings/mini-program-code:
-    get:
-      tags:
-      - 系统设置
-      summary: Mini Program Code Settings
-      operationId: mini_program_code_settings_api_v1_system_settings_mini_program_code_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MiniProgramCodeSettingsRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-      security:
-      - HTTPBearer: []
   /api/v1/stock-materials:
     get:
       tags:
@@ -5170,14 +5125,6 @@ components:
       required:
       - image_acceleration_server_url
       title: ImageAccelerationSettingsRead
-    MiniProgramCodeSettingsRead:
-      properties:
-        mini_program_code_env:
-          $ref: '#/components/schemas/MiniProgramCodeEnv'
-      type: object
-      required:
-      - mini_program_code_env
-      title: MiniProgramCodeSettingsRead
     MiniProgramInventoryItemRead:
       properties:
         uuid:

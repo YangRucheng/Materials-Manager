@@ -81,11 +81,6 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
 
     forbidden = await client.get("/api/v1/ai-search/settings", headers=purchase)
     assert forbidden.status_code == 403
-    default_code_settings = await client.get(
-        "/api/v1/system-settings/mini-program-code", headers=purchase
-    )
-    assert default_code_settings.status_code == 200
-    assert default_code_settings.json() == {"mini_program_code_env": "release"}
     default_image_settings = await client.get(
         "/api/v1/system-settings/image-acceleration"
     )
@@ -123,9 +118,6 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
     loaded = await client.get("/api/v1/ai-search/settings", headers=admin)
     assert loaded.status_code == 200, loaded.text
     assert loaded.json()["api_key"] == "secret-key"
-    code_settings = await client.get("/api/v1/system-settings/mini-program-code", headers=purchase)
-    assert code_settings.status_code == 200
-    assert code_settings.json() == {"mini_program_code_env": "trial"}
     image_settings = await client.get("/api/v1/system-settings/image-acceleration")
     assert image_settings.status_code == 200
     assert image_settings.json() == {

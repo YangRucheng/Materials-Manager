@@ -239,9 +239,6 @@ export const handlers = [
   http.get(`${api}/ai-search/status`, () =>
     HttpResponse.json({ available: aiSettings.enabled && Boolean(aiSettings.api_key) }),
   ),
-  http.get(`${api}/system-settings/mini-program-code`, () =>
-    HttpResponse.json({ mini_program_code_env: aiSettings.mini_program_code_env }),
-  ),
   http.get(`${api}/system-settings/image-acceleration`, () =>
     HttpResponse.json({
       image_acceleration_server_url: aiSettings.image_acceleration_server_url,
@@ -369,12 +366,16 @@ export const handlers = [
     )
     return HttpResponse.json(page(list, url))
   }),
-  http.get(`${api}/stock-materials/:id/mini-program-code`, ({ params, request }) => {
+  http.get(`${api}/stock-materials/:id/mini-program-code`, ({ params }) => {
     const item = stockMaterials.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '二级库物资不存在')
-    const target = new URL(`${api}/stock-materials/mini-program-codes/${item.uuid}`, request.url)
-    target.searchParams.set('env', aiSettings.mini_program_code_env)
-    return HttpResponse.redirect(target, 307)
+    return new HttpResponse(null, {
+      status: 307,
+      headers: {
+        'Cache-Control': 'no-store',
+        Location: `${api}/stock-materials/mini-program-codes/${item.uuid}?env=${aiSettings.mini_program_code_env}`,
+      },
+    })
   }),
   http.get(`${api}/stock-materials/mini-program-codes/:uuid`, ({ params, request }) => {
     const item = stockMaterials.find((x) => x.uuid === String(params.uuid))

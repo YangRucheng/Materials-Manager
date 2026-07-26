@@ -116,10 +116,9 @@ async def material_mini_program_code_redirect(
 ) -> RedirectResponse:
     item = await material_service.get_stock_material(session, material_id)
     env = await ai_search_service.get_mini_program_code_env(session)
-    target = request.url_for("material_mini_program_code", material_uuid=item.uuid)
-    target = target.include_query_params(env=env.value)
+    target_path = request.url_for("material_mini_program_code", material_uuid=item.uuid).path
     return RedirectResponse(
-        url=str(target),
+        url=f"{target_path}?env={env.value}",
         status_code=status.HTTP_307_TEMPORARY_REDIRECT,
         headers={"Cache-Control": "no-store"},
     )
