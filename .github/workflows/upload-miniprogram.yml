@@ -33,7 +33,6 @@ jobs:
         working-directory: miniprogram
     env:
       MINIPROGRAM_APPID: ${{ secrets.WECHAT_MINIPROGRAM_APPID }}
-      MINIPROGRAM_PRIVATE_KEY_PATH: ${{ runner.temp }}/miniprogram-private.key
 
     steps:
       - name: 检出代码
@@ -58,8 +57,10 @@ jobs:
             echo "缺少 GitHub Secret：WECHAT_MINIPROGRAM_PRIVATE_KEY"
             exit 1
           fi
-          printf '%s' "$MINIPROGRAM_PRIVATE_KEY" > "$MINIPROGRAM_PRIVATE_KEY_PATH"
-          chmod 600 "$MINIPROGRAM_PRIVATE_KEY_PATH"
+          PRIVATE_KEY_PATH="$RUNNER_TEMP/miniprogram-private.key"
+          printf '%s' "$MINIPROGRAM_PRIVATE_KEY" > "$PRIVATE_KEY_PATH"
+          chmod 600 "$PRIVATE_KEY_PATH"
+          echo "MINIPROGRAM_PRIVATE_KEY_PATH=$PRIVATE_KEY_PATH" >> "$GITHUB_ENV"
 
       - name: 安装依赖
         run: npm ci
