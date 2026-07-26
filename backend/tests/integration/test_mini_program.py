@@ -124,7 +124,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert redirect.status_code == 307
     assert redirect.headers["cache-control"] == "no-store"
-    assert redirect.headers["location"].endswith(
+    assert redirect.headers["location"] == (
         f"/api/v1/stock-materials/mini-program-codes/{material_data['uuid']}?env=trial"
     )
     assert missing_env.status_code == 422

@@ -253,10 +253,6 @@ class AiSearchStatusRead(BaseModel):
     available: bool
 
 
-class MiniProgramCodeSettingsRead(BaseModel):
-    mini_program_code_env: MiniProgramCodeEnv
-
-
 class ImageAccelerationSettingsRead(BaseModel):
     image_acceleration_server_url: str
 

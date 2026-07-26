@@ -76,9 +76,6 @@ export interface AiSearchSettingsWrite {
   image_acceleration_server_url: string
   version: number
 }
-export interface MiniProgramCodeSettings {
-  mini_program_code_env: MiniProgramCodeEnv
-}
 export interface ImageAccelerationSettings {
   image_acceleration_server_url: string
 }
