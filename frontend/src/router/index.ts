@@ -118,10 +118,14 @@ const router = createRouter({
           meta: { title: '计量单位', permission: 'settings:write' },
         },
         {
-          path: 'settings/ai-search',
-          name: 'ai-search-settings',
-          component: () => import('@/views/settings/AiSearchSettingsView.vue'),
+          path: 'settings/advanced',
+          name: 'advanced-settings',
+          component: () => import('@/views/settings/AdvancedSettingsView.vue'),
           meta: { title: '高级设置', permission: 'settings:write' },
+        },
+        {
+          path: 'settings/ai-search',
+          redirect: { name: 'advanced-settings' },
         },
         {
           path: 'settings/users',

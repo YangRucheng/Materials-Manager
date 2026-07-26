@@ -6,7 +6,10 @@ import { aiSearchApi } from '@/api/aiSearch'
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
-const testing = ref(false)
+const codeEnvOptions = [
+  { label: '体验版', value: 'trial' },
+  { label: '正式版', value: 'release' },
+]
 const form = reactive({
   endpoint: '',
   api_key: '',
@@ -50,23 +53,24 @@ async function save() {
     })
     form.api_key = data.api_key
     form.version = data.version
-    message.success('高级设置已保存')
+    if (!data.enabled) {
+      message.success('高级设置已保存，模型服务未启用')
+      return
+    }
+    try {
+      const testResult = await aiSearchApi.testSettings()
+      message.success(
+        `高级设置已保存，模型测试成功：${testResult.original} → ${testResult.expanded}`,
+      )
+    } catch (error) {
+      message.warning(
+        `高级设置已保存，但模型自动测试失败：${error instanceof Error ? error.message : '请检查模型配置'}`,
+      )
+    }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
     saving.value = false
-  }
-}
-
-async function testConnection() {
-  testing.value = true
-  try {
-    const data = await aiSearchApi.testSettings()
-    message.success(`测试成功：${data.original} → ${data.expanded}`)
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '测试失败')
-  } finally {
-    testing.value = false
   }
 }
 
@@ -108,21 +112,17 @@ onMounted(load)
         </n-alert>
         <n-form label-placement="left" label-width="120">
           <n-form-item label="环境版本">
-            <n-radio-group v-model:value="form.mini_program_code_env">
-              <n-radio-button value="trial">体验版</n-radio-button>
-              <n-radio-button value="release">正式版</n-radio-button>
-            </n-radio-group>
+            <n-select
+              v-model:value="form.mini_program_code_env"
+              :options="codeEnvOptions"
+              style="max-width: 240px"
+            />
           </n-form-item>
         </n-form>
       </n-card>
 
       <div class="settings-actions">
-        <n-space>
-          <n-button :loading="testing" :disabled="!form.api_key.trim()" @click="testConnection">
-            测试“电机”扩展
-          </n-button>
-          <n-button type="primary" :loading="saving" @click="save">保存配置</n-button>
-        </n-space>
+        <n-button type="primary" :loading="saving" @click="save">保存配置</n-button>
       </div>
     </div>
   </div>
