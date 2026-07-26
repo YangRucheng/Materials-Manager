@@ -632,7 +632,6 @@ export const handlers = [
         remark: [stock.remark, quantityNote].filter(Boolean).join('；'),
         stock_material_id: stock.id,
         stock_material_name: stock.name,
-        enabled: true,
         images: [...stock.images],
         created_at: now(),
         updated_at: now(),
@@ -756,7 +755,6 @@ export const handlers = [
         ?.name,
       status: body.status || '正常',
       moved_to_record: false,
-      enabled: true,
       images: [],
       created_at: now(),
       updated_at: now(),
@@ -944,7 +942,6 @@ export const handlers = [
       Object.assign(material, {
         moved_to_record: false,
         status: '正常',
-        enabled: true,
         updated_at: now(),
         version: material.version + 1,
       })

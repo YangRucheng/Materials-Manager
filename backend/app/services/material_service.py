@@ -224,7 +224,6 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         stock_material_name=item.stock_material.name if item.stock_material else None,
         status=item.status,
         moved_to_record=moved_to_record,
-        enabled=item.enabled,
         images=[file_read(link.file) for link in item.images],
         created_at=utc_aware(item.created_at),
         updated_at=utc_aware(item.updated_at),
@@ -290,7 +289,6 @@ async def create_purchase_material(
         stock_material_id=data.stock_material_id,
         identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
         status=data.status,
-        enabled=True,
         images=[
             PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
             for index, file in enumerate(files)
@@ -472,7 +470,6 @@ async def search_purchase_materials(
     empty_subitem_no: bool,
     category: str | None,
     status: list[PurchasePlanStatus] | None,
-    enabled: bool | None,
     coded: bool | None,
     moved: bool | None,
     page: int,
@@ -552,8 +549,6 @@ async def search_purchase_materials(
         query = query.where(func.trim(PurchaseMaterial.category) == category.strip())
     if status:
         query = query.where(PurchaseMaterial.status.in_(status))
-    if enabled is not None:
-        query = query.where(PurchaseMaterial.enabled == enabled)
     if coded is True:
         query = query.where(PurchaseMaterial.material_code.is_not(None))
     elif coded is False:

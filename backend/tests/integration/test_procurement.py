@@ -738,7 +738,6 @@ async def test_purchase_record_can_restore_to_purchase_plan(client: AsyncClient)
     assert restored_plan["id"] == plan["id"]
     assert restored_plan["category"] == "工具"
     assert restored_plan["status"] == "正常"
-    assert restored_plan["enabled"] is True
     assert restored_plan["moved_to_record"] is False
     assert "contract_no" not in restored_plan
     assert "purchase_date" not in restored_plan

@@ -247,7 +247,6 @@ async def restore_purchase_record_to_plan(
 
     material = line.purchase_material
     material.status = PurchasePlanStatus.NORMAL
-    material.enabled = True
     material.version += 1
 
     other_line_id = await session.scalar(

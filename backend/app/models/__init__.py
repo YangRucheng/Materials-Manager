@@ -239,8 +239,6 @@ class PurchaseMaterial(AuditMixin, Base):
         server_default=PurchasePlanStatus.NORMAL.name,
         index=True,
     )
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
-
     unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
     stock_material: Mapped[StockMaterial | None] = relationship(lazy="selectin")
     images: Mapped[list[PurchaseMaterialImage]] = relationship(

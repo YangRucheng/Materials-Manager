@@ -2545,14 +2545,6 @@ paths:
               $ref: '#/components/schemas/PurchasePlanStatus'
           - type: 'null'
           title: Status
-      - name: enabled
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Enabled
       - name: coded
         in: query
         required: false
@@ -6220,9 +6212,6 @@ components:
         moved_to_record:
           type: boolean
           title: Moved To Record
-        enabled:
-          type: boolean
-          title: Enabled
         images:
           items:
             $ref: '#/components/schemas/FileObjectRead'
@@ -6256,7 +6245,6 @@ components:
       - usage
       - status
       - moved_to_record
-      - enabled
       - images
       - created_at
       - updated_at
