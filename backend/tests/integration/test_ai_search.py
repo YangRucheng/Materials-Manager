@@ -96,6 +96,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
             "model": "fast-model",
             "enabled": True,
             "mini_program_code_env": "trial",
+            "mini_program_registration_enabled": False,
             "version": 0,
         },
     )
@@ -106,6 +107,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         "model": "fast-model",
         "enabled": True,
         "mini_program_code_env": "trial",
+        "mini_program_registration_enabled": False,
         "updated_at": saved.json()["updated_at"],
         "version": 1,
     }
@@ -134,6 +136,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         assert encrypted != "secret-key"
         assert "secret-key" not in str(encrypted)
         assert event.after_data["mini_program_code_env"] == "trial"
+        assert event.after_data["mini_program_registration_enabled"] is False
 
 
 @pytest.mark.asyncio

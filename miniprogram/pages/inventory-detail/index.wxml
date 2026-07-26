@@ -1,0 +1,82 @@
+<view class="page-shell detail-page">
+  <view wx:if="{{loading}}" class="detail-state">
+    <t-loading theme="circular" size="48rpx" text="正在加载物资详情" />
+  </view>
+
+  <view wx:elif="{{failed}}" class="detail-state failed-state">
+    <t-empty icon="error-circle" description="物资详情加载失败" />
+    <t-button theme="primary" variant="outline" size="small" bind:tap="retry">重新加载</t-button>
+  </view>
+
+  <block wx:elif="{{material}}">
+    <view class="detail-hero">
+      <view class="hero-heading">
+        <view class="hero-name">{{material.name}}</view>
+        <t-tag theme="{{material.stock_status_theme}}" variant="light">
+          {{material.stock_status_label}}
+        </t-tag>
+      </view>
+      <view class="hero-spec">{{material.model_spec}}</view>
+      <view class="stock-block">
+        <view>
+          <view class="stock-label">当前库存</view>
+          <view class="stock-number">{{material.current_qty}}</view>
+        </view>
+        <view class="stock-unit">{{material.unit_name}}</view>
+      </view>
+      <view wx:if="{{material.minimum_qty !== null}}" class="minimum-tip">
+        最低库存 {{material.minimum_qty}} {{material.unit_name}}
+      </view>
+    </view>
+
+    <view class="section-card detail-card">
+      <view class="section-heading"><view class="section-title">物资信息</view></view>
+      <view class="section-divider"></view>
+      <view class="detail-row">
+        <view class="detail-label">物资名称</view>
+        <view class="detail-value">{{material.name}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">型号规格</view>
+        <view class="detail-value">{{material.model_spec}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">计量单位</view>
+        <view class="detail-value">{{material.unit_name}}</view>
+      </view>
+      <view class="detail-row remark-row">
+        <view class="detail-label">备注</view>
+        <view class="detail-value">{{material.remark || '暂无备注'}}</view>
+      </view>
+    </view>
+
+    <view class="section-card image-card">
+      <view class="section-heading">
+        <view class="section-title">图片附件</view>
+        <view class="image-count">{{material.images.length}} 张</view>
+      </view>
+      <view class="section-divider"></view>
+      <view wx:if="{{material.images.length}}" class="image-grid">
+        <view
+          wx:for="{{material.images}}"
+          wx:key="id"
+          class="image-item"
+          data-index="{{index}}"
+          bind:tap="previewImage"
+        >
+          <t-image
+            src="{{item.preview_url}}"
+            mode="aspectFill"
+            shape="round"
+            lazy
+            width="100%"
+            height="100%"
+          />
+        </view>
+      </view>
+      <view wx:else class="no-image">暂无图片附件</view>
+    </view>
+  </block>
+
+  <t-toast id="detail-toast" />
+</view>

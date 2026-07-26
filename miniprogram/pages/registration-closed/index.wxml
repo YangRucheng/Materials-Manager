@@ -1,0 +1,9 @@
+<view class="page-shell closed-page">
+  <view class="closed-card">
+    <t-result
+      theme="warning"
+      title="暂未开放新用户绑定"
+      description="请联系管理员开放后，再重新进入小程序"
+    />
+  </view>
+</view>

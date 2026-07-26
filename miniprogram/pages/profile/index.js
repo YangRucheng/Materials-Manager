@@ -6,6 +6,7 @@ const Toast = toastModule.default || toastModule;
 Page({
   data: {
     displayName: '',
+    departmentName: '华星检修维护部电气车间',
     loading: false,
   },
 
@@ -14,6 +15,10 @@ Page({
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
         wx.reLaunch({ url: '/pages/disabled/index' });
+        return;
+      }
+      if (session.registration_disabled) {
+        wx.reLaunch({ url: '/pages/registration-closed/index' });
         return;
       }
       if (!session.requires_profile) {
@@ -28,10 +33,19 @@ Page({
     this.setData({ displayName: event.detail.value });
   },
 
+  onDepartmentChange(event) {
+    this.setData({ departmentName: event.detail.value });
+  },
+
   async submitProfile() {
     const displayName = this.data.displayName.trim();
+    const departmentName = this.data.departmentName.trim();
     if (!displayName) {
       this.showError(new Error('请输入姓名'));
+      return;
+    }
+    if (!departmentName) {
+      this.showError(new Error('请输入部门单位'));
       return;
     }
     this.setData({ loading: true });
@@ -39,7 +53,10 @@ Page({
       const session = await request({
         url: '/mini-program/profile',
         method: 'POST',
-        data: { display_name: displayName },
+        data: {
+          display_name: displayName,
+          department_name: departmentName,
+        },
         token: wx.getStorageSync('miniProgramRegistrationToken'),
       });
       storeSession(session);

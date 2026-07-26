@@ -18,12 +18,14 @@ const show = ref(false)
 const editing = ref<MiniProgramUser | null>(null)
 const form = reactive({
   display_name: '',
+  department_name: '',
   enabled: true,
   version: 0,
 })
 const columns = preventTableColumnCompression<MiniProgramUser>([
   { title: '微信 OpenID', key: 'wechat_openid', width: tableColumnWidths.identifier * 2 },
   { title: '姓名', key: 'display_name', width: tableColumnWidths.name },
+  { title: '部门单位', key: 'department_name', width: tableColumnWidths.name * 2 },
   {
     title: '状态',
     key: 'enabled',
@@ -71,6 +73,7 @@ function open(row: MiniProgramUser) {
   editing.value = row
   Object.assign(form, {
     display_name: row.display_name,
+    department_name: row.department_name,
     enabled: row.enabled,
     version: row.version,
   })
@@ -78,13 +81,14 @@ function open(row: MiniProgramUser) {
 }
 
 async function save() {
-  if (!editing.value || !form.display_name.trim()) {
-    message.error('请输入姓名')
+  if (!editing.value || !form.display_name.trim() || !form.department_name.trim()) {
+    message.error('请填写姓名和部门单位')
     return
   }
   try {
     await dictionaryApi.updateMiniProgramUser(editing.value.id, {
       display_name: form.display_name,
+      department_name: form.department_name,
       enabled: form.enabled,
       version: form.version,
     })
@@ -99,14 +103,14 @@ async function save() {
 function confirmDelete(row: MiniProgramUser) {
   dialog.warning({
     title: '删除小程序用户',
-    content: `确认删除“${row.display_name}”？删除后，该微信用户可重新填写姓名并完成绑定。`,
+    content: `确认删除“${row.display_name}”？删除后，该微信用户可重新填写姓名和部门单位完成绑定。`,
     positiveText: '确认删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       deletingId.value = row.id
       try {
         await dictionaryApi.deleteMiniProgramUser(row.id, row.version)
-        message.success('已删除，该用户可以重新绑定姓名')
+        message.success('已删除，该用户可以重新绑定资料')
         if (editing.value?.id === row.id) show.value = false
         await load()
       } catch (error) {
@@ -143,6 +147,9 @@ onMounted(load)
         </n-form-item>
         <n-form-item label="姓名" required>
           <n-input v-model:value="form.display_name" />
+        </n-form-item>
+        <n-form-item label="部门单位" required>
+          <n-input v-model:value="form.department_name" />
         </n-form-item>
         <n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item>
       </n-form>

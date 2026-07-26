@@ -1,7 +1,10 @@
 {
   "pages": [
     "pages/outbound/index",
+    "pages/inventory/index",
+    "pages/inventory-detail/index",
     "pages/profile/index",
+    "pages/registration-closed/index",
     "pages/disabled/index"
   ],
   "window": {

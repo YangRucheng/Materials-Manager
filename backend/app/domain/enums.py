@@ -25,6 +25,12 @@ class MiniProgramCodeEnv(StrEnum):
     RELEASE = "release"
 
 
+class MiniProgramStockStatus(StrEnum):
+    NORMAL = "normal"
+    OUT_OF_STOCK = "out_of_stock"
+    LOW_STOCK = "low_stock"
+
+
 class PurchasePlanStatus(StrEnum):
     NORMAL = "正常"
     DEFERRED = "暂不申购"

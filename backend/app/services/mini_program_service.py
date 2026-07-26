@@ -14,9 +14,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import AppError, not_found
-from app.domain.enums import MiniProgramCodeEnv, OperationType, SourceType
-from app.models import MiniProgramUser, StockMaterial, StockOperation
+from app.domain.enums import (
+    MiniProgramCodeEnv,
+    MiniProgramStockStatus,
+    OperationType,
+    SourceType,
+)
+from app.models import (
+    MiniProgramUser,
+    StockBalance,
+    StockMaterial,
+    StockOperation,
+    StockReplenishmentPolicy,
+)
 from app.schemas import (
+    MiniProgramInventoryItemRead,
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
@@ -24,8 +36,8 @@ from app.schemas import (
     OperationCreate,
     OperationLineWrite,
 )
-from app.services import inventory_service
-from app.services.common import utc_aware, validate_version
+from app.services import ai_search_service, inventory_service
+from app.services.common import contains_any, file_read, utc_aware, validate_version
 
 _wechat_access_token: str | None = None
 _wechat_access_token_expires_at = 0.0
@@ -67,6 +79,8 @@ async def update_user(
     validate_version(data.version, item.version)
     if data.display_name is not None:
         item.display_name = data.display_name
+    if data.department_name is not None:
+        item.department_name = data.department_name
     if data.enabled is not None:
         item.enabled = data.enabled
     item.version += 1
@@ -237,11 +251,17 @@ async def login_with_wechat(
     )
     if user is not None and not user.enabled:
         raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
+    if user is None and not await ai_search_service.is_mini_program_registration_enabled(session):
+        raise AppError(
+            "MINI_PROGRAM_REGISTRATION_DISABLED",
+            "当前暂未开放新用户绑定，请联系管理员",
+            status_code=403,
+        )
     return user, openid
 
 
 async def register_user(
-    session: AsyncSession, openid: str, display_name: str
+    session: AsyncSession, openid: str, display_name: str, department_name: str
 ) -> MiniProgramUser:
     existing = await session.scalar(
         select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
@@ -250,9 +270,16 @@ async def register_user(
         if not existing.enabled:
             raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
         return existing
+    if not await ai_search_service.is_mini_program_registration_enabled(session):
+        raise AppError(
+            "MINI_PROGRAM_REGISTRATION_DISABLED",
+            "当前暂未开放新用户绑定，请联系管理员",
+            status_code=403,
+        )
     user = MiniProgramUser(
         wechat_openid=openid,
         display_name=display_name,
+        department_name=department_name,
         enabled=True,
     )
     session.add(user)
@@ -281,13 +308,83 @@ async def get_material(
     return item
 
 
+def _stock_status(item: StockMaterial) -> MiniProgramStockStatus:
+    current_qty = item.balance.quantity if item.balance else Decimal("0")
+    if current_qty <= 0:
+        return MiniProgramStockStatus.OUT_OF_STOCK
+    policy = item.replenishment_policy
+    if policy is not None and policy.enabled and current_qty <= policy.minimum_qty:
+        return MiniProgramStockStatus.LOW_STOCK
+    return MiniProgramStockStatus.NORMAL
+
+
+async def list_inventory(
+    session: AsyncSession,
+    *,
+    keyword: str | None,
+    stock_status: MiniProgramStockStatus | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[StockMaterial], int]:
+    current_qty = func.coalesce(StockBalance.quantity, Decimal("0"))
+    query = (
+        select(StockMaterial)
+        .outerjoin(StockBalance, StockBalance.stock_material_id == StockMaterial.id)
+        .outerjoin(
+            StockReplenishmentPolicy,
+            StockReplenishmentPolicy.stock_material_id == StockMaterial.id,
+        )
+        .where(StockMaterial.enabled.is_(True))
+    )
+    keyword_condition = contains_any((StockMaterial.name, StockMaterial.model_spec), keyword)
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
+    if stock_status == MiniProgramStockStatus.OUT_OF_STOCK:
+        query = query.where(current_qty <= 0)
+    elif stock_status == MiniProgramStockStatus.LOW_STOCK:
+        query = query.where(
+            current_qty > 0,
+            StockReplenishmentPolicy.enabled.is_(True),
+            current_qty <= StockReplenishmentPolicy.minimum_qty,
+        )
+    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
+    items = list(
+        (
+            await session.scalars(
+                query.order_by(StockMaterial.id.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        )
+        .unique()
+        .all()
+    )
+    return items, total
+
+
+def inventory_item_read(item: StockMaterial) -> MiniProgramInventoryItemRead:
+    return MiniProgramInventoryItemRead(
+        uuid=UUID(item.uuid),
+        name=item.name,
+        model_spec=item.model_spec,
+        unit_name=item.unit.name,
+        current_qty=item.balance.quantity if item.balance else Decimal("0"),
+        stock_status=_stock_status(item),
+    )
+
+
 def material_read(item: StockMaterial) -> MiniProgramMaterialRead:
+    policy = item.replenishment_policy
     return MiniProgramMaterialRead(
         uuid=UUID(item.uuid),
         name=item.name,
         model_spec=item.model_spec,
         unit_name=item.unit.name,
         current_qty=item.balance.quantity if item.balance else Decimal("0"),
+        stock_status=_stock_status(item),
+        minimum_qty=policy.minimum_qty if policy is not None and policy.enabled else None,
+        remark=item.remark,
+        images=[file_read(link.file) for link in item.images],
     )
 
 

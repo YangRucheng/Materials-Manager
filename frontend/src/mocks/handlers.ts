@@ -34,6 +34,7 @@ let aiSettings: AiSearchSettings = {
   model: 'fast-model',
   enabled: true,
   mini_program_code_env: 'release',
+  mini_program_registration_enabled: true,
   updated_at: new Date().toISOString(),
   version: 1,
 }
@@ -255,6 +256,7 @@ export const handlers = [
       model: body.model,
       enabled: body.enabled,
       mini_program_code_env: body.mini_program_code_env,
+      mini_program_registration_enabled: body.mini_program_registration_enabled,
       updated_at: now(),
       version: aiSettings.version + 1,
     }
