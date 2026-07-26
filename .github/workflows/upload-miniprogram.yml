@@ -7,15 +7,6 @@ on:
       - "miniprogram/**"
       - ".github/workflows/upload-miniprogram.yml"
   workflow_dispatch:
-    inputs:
-      version:
-        description: 上传版本号（留空则自动生成）
-        required: false
-        type: string
-      description:
-        description: 上传说明（留空则使用提交编号）
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -69,13 +60,10 @@ jobs:
         run: npm run check
 
       - name: 生成上传信息
-        env:
-          MANUAL_VERSION: ${{ inputs.version }}
-          MANUAL_DESCRIPTION: ${{ inputs.description }}
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          echo "MINIPROGRAM_VERSION=${MANUAL_VERSION:-1.0.${GITHUB_RUN_NUMBER}}" >> "$GITHUB_ENV"
-          echo "MINIPROGRAM_DESC=${MANUAL_DESCRIPTION:-自动上传 ${SHORT_SHA}}" >> "$GITHUB_ENV"
+          UPLOAD_INFO="$(date -u --date='+8 hours' '+v%Y.%m.%d|CI 自动上传于 %Y/%m/%d %H:%M:%S')"
+          echo "MINIPROGRAM_VERSION=${UPLOAD_INFO%%|*}" >> "$GITHUB_ENV"
+          echo "MINIPROGRAM_DESC=${UPLOAD_INFO#*|}" >> "$GITHUB_ENV"
 
       - name: 上传微信小程序代码
         run: npm run upload

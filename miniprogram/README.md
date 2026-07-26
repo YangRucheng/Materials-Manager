@@ -21,7 +21,7 @@ AppSecret 仅配置在后端，不得写入小程序代码。
 
 ## GitHub Actions 自动上传
 
-推送 `miniprogram/` 下的改动到 `main` 分支后，工作流“自动上传微信小程序代码”会检查并上传开发版本。也可以在 GitHub Actions 页面手动运行，并填写版本号和上传说明。
+推送 `miniprogram/` 下的改动到 `main` 分支后，工作流“自动上传微信小程序代码”会检查并上传开发版本，也可以在 GitHub Actions 页面手动运行。版本号统一使用北京时间日期，例如 `v2026.07.26`；上传备注统一使用 `CI 自动上传于 2026/07/26 09:37:12` 格式。
 
 请在仓库的 `Settings → Secrets and variables → Actions` 中添加：
 
