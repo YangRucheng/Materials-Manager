@@ -91,7 +91,16 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
         params={"keyword": "Y001"},
     )
     assert by_code.status_code == 200, by_code.text
-    assert by_code.json()["total"] == 0
+    assert by_code.json()["items"] == [
+        {
+            "id": 1,
+            "material_code": "Y001",
+            "name": "交流接触器",
+            "model_spec": "CJX2-2510",
+            "unit_name": "个",
+            "unit_id": 1,
+        }
+    ]
 
     replacement = await client.post(
         "/api/v1/material-code-library/import",
