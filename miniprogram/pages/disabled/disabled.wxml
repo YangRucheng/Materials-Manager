@@ -1,7 +1,7 @@
 <view class="page-shell disabled-page">
   <view class="disabled-card">
     <t-result
-      theme="error"
+      theme="warning"
       title="{{i18n.accountDisabled}}"
       description="{{i18n.accountDisabledDescription}}"
     />

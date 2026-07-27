@@ -33,8 +33,8 @@ const columns = preventTableColumnCompression<MiniProgramUser>([
     render: (row) =>
       h(
         NTag,
-        { type: row.enabled ? 'success' : 'default' },
-        { default: () => (row.enabled ? '启用' : '停用') },
+        { type: row.enabled ? 'success' : 'warning' },
+        { default: () => (row.enabled ? '启用' : '待审核') },
       ),
   },
   {
@@ -166,7 +166,12 @@ onMounted(load)
         <n-form-item label="部门单位" required>
           <n-input v-model:value="form.department_name" />
         </n-form-item>
-        <n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item>
+        <n-form-item label="用户状态">
+          <div class="status-control">
+            <n-switch v-model:value="form.enabled" />
+            <span>{{ form.enabled ? '已启用' : '待审核' }}</span>
+          </div>
+        </n-form-item>
       </n-form>
       <template #footer>
         <div class="modal-footer">
@@ -204,6 +209,13 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.status-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-muted);
 }
 
 :deep(.openid-text) {

@@ -107,7 +107,7 @@ async def create_mini_program_profile(
         session, openid, data.display_name, data.department_name
     )
     return MiniProgramLoginResponse(
-        access_token=create_mini_program_access_token(user.id),
+        access_token=create_mini_program_access_token(user.id) if user.enabled else None,
         user=MiniProgramUserRead.model_validate(user),
         requires_profile=False,
     )

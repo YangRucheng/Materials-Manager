@@ -5,4 +5,9 @@ Page({
   onLoad() {
     setNavigationBarTitle('disabledTitle');
   },
+  onShow() {
+    if (typeof wx.hideHomeButton === 'function') {
+      wx.hideHomeButton();
+    }
+  },
 });
