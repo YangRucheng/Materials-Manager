@@ -80,6 +80,7 @@ const isTableFullscreen = ref(false)
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
+const createAdvancedSections = ref<string[]>([])
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const ALL_SUBITEM_FILTER = '__all_subitem_no__'
 const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
@@ -191,7 +192,7 @@ const exportLoading = computed(() => resultExporting.value || batchExporting.val
 const form = reactive<PurchaseMaterialWrite>({
   status: defaultPurchasePlanStatus,
   material_code: '',
-  category: '备品备件',
+  category: '',
   urgency: defaultPurchaseUrgency,
   demand_department: defaultDemandDepartment,
   name: '',
@@ -558,7 +559,7 @@ function openCreate() {
   Object.assign(form, {
     status: defaultPurchasePlanStatus,
     material_code: '',
-    category: '备品备件',
+    category: '',
     urgency: defaultPurchaseUrgency,
     demand_department: defaultDemandDepartment,
     name: '',
@@ -575,6 +576,7 @@ function openCreate() {
   })
   images.value = []
   createPlanDate.value = Date.now()
+  createAdvancedSections.value = []
   show.value = true
 }
 async function save() {
@@ -1142,9 +1144,6 @@ onBeforeUnmount(() => {
           <n-form-item label="需求日期" required>
             <n-date-picker v-model:value="createPlanDate" type="date" class="full-width" />
           </n-form-item>
-          <n-form-item label="状态" required>
-            <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
-          </n-form-item>
           <n-form-item label="类别">
             <n-select
               v-model:value="form.category"
@@ -1153,12 +1152,6 @@ onBeforeUnmount(() => {
               clearable
               placeholder="选择类别"
             />
-          </n-form-item>
-          <n-form-item label="紧急程度">
-            <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
-          </n-form-item>
-          <n-form-item label="需求部门">
-            <n-input v-model:value="form.demand_department" maxlength="128" />
           </n-form-item>
           <n-form-item label="名称" path="name">
             <n-input v-model:value="form.name" maxlength="128" />
@@ -1189,11 +1182,27 @@ onBeforeUnmount(() => {
             <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
         </div>
-        <n-form-item label="关联二级库物资"
-          ><MaterialSelector
-            :value="form.stock_material_id ?? null"
-            @update:value="form.stock_material_id = $event ?? undefined"
-        /></n-form-item>
+        <n-collapse v-model:expanded-names="createAdvancedSections" class="create-advanced-fields">
+          <n-collapse-item title="更多设置" name="advanced">
+            <div class="form-grid">
+              <n-form-item label="状态" required>
+                <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
+              </n-form-item>
+              <n-form-item label="紧急程度">
+                <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
+              </n-form-item>
+              <n-form-item label="需求部门">
+                <n-input v-model:value="form.demand_department" maxlength="128" />
+              </n-form-item>
+              <n-form-item label="关联二级库物资">
+                <MaterialSelector
+                  :value="form.stock_material_id ?? null"
+                  @update:value="form.stock_material_id = $event ?? undefined"
+                />
+              </n-form-item>
+            </div>
+          </n-collapse-item>
+        </n-collapse>
         <n-form-item label="备注"
           ><n-input
             v-model:value="form.remark"
@@ -1264,6 +1273,16 @@ onBeforeUnmount(() => {
 
 .status-filter-select :deep(.n-base-selection-placeholder) {
   padding: 0 30px 0 10px;
+}
+
+.create-advanced-fields {
+  margin-bottom: 18px;
+  border-top: 1px solid #edf1f6;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.create-advanced-fields :deep(.n-collapse-item__content-inner) {
+  padding-top: 6px;
 }
 
 .filter-actions {
