@@ -4543,6 +4543,9 @@ components:
         mini_program_registration_enabled:
           type: boolean
           title: Mini Program Registration Enabled
+        mini_program_new_user_enabled:
+          type: boolean
+          title: Mini Program New User Enabled
         image_acceleration_server_url:
           type: string
           title: Image Acceleration Server Url
@@ -4563,6 +4566,7 @@ components:
       - enabled
       - mini_program_code_env
       - mini_program_registration_enabled
+      - mini_program_new_user_enabled
       - image_acceleration_server_url
       - version
       title: AiSearchSettingsRead
@@ -4593,6 +4597,10 @@ components:
         mini_program_registration_enabled:
           type: boolean
           title: Mini Program Registration Enabled
+          default: true
+        mini_program_new_user_enabled:
+          type: boolean
+          title: Mini Program New User Enabled
           default: true
         image_acceleration_server_url:
           type: string

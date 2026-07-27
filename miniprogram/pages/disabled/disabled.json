@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "账号已禁用",
+  "navigationBarTitleText": "账号待审核",
   "usingComponents": {
     "t-result": "tdesign-miniprogram/result/result"
   }

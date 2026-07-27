@@ -59,7 +59,7 @@ async def get_current_mini_program_user(
     if user is None:
         raise AppError("INVALID_TOKEN", "登录凭证无效或已过期", status_code=401)
     if not user.enabled:
-        raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
+        raise AppError("ACCOUNT_DISABLED", "您的账号待审核，请联系管理员", status_code=403)
     request.state.mini_program_user_id = user.id
     request.state.username = f"mini:{user.id}"
     return user
