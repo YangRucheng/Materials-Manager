@@ -11,6 +11,7 @@ import {
 import { useRoute, useRouter } from 'vue-router'
 import type {
   FileObject,
+  MaterialCodeLibrary,
   PurchaseFilterOptions,
   PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
@@ -22,6 +23,7 @@ import { aiSearchApi } from '@/api/aiSearch'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
+import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
@@ -579,6 +581,16 @@ function openCreate() {
   createAdvancedSections.value = []
   show.value = true
 }
+function applyMaterialCode(item: MaterialCodeLibrary) {
+  form.material_code = item.material_code
+  if (item.name?.trim()) form.name = item.name
+  if (item.model_spec?.trim()) form.model_spec = item.model_spec
+  if (item.unit_id) {
+    form.unit_id = item.unit_id
+  } else {
+    message.warning(`计量单位“${item.unit_name}”尚未在系统配置，请手动选择计量单位`)
+  }
+}
 async function save() {
   if (!createPlanDate.value) {
     message.error('请选择需求日期')
@@ -1135,10 +1147,10 @@ onBeforeUnmount(() => {
       <n-form ref="formRef" :model="form" :rules="rules" label-placement="top">
         <div class="form-grid">
           <n-form-item label="物料编码（已有时填写）">
-            <n-input
-              v-model:value="form.material_code"
-              maxlength="64"
-              placeholder="没有编码可留空"
+            <MaterialCodeSelector
+              :model-value="form.material_code || ''"
+              @update:model-value="form.material_code = $event"
+              @select="applyMaterialCode"
             />
           </n-form-item>
           <n-form-item label="需求日期" required>

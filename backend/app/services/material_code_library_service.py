@@ -158,6 +158,7 @@ async def search_material_codes(
     )
     condition = contains_any(
         (
+            MaterialCodeLibrary.material_code,
             MaterialCodeLibrary.name,
             MaterialCodeLibrary.model_spec,
         ),
