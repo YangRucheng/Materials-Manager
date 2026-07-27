@@ -63,6 +63,11 @@ Page({
         token: wx.getStorageSync('miniProgramRegistrationToken'),
       });
       storeSession(session);
+      if (session.user && !session.user.enabled) {
+        getApp().globalData.accountDisabled = true;
+        wx.reLaunch({ url: '/pages/disabled/disabled' });
+        return;
+      }
       const materialUuid = getApp().globalData.pendingMaterialUuid;
       wx.reLaunch({
         url: materialUuid

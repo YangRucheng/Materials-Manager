@@ -199,6 +199,7 @@ class AiSearchSettingsRead(ReadModel):
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
     mini_program_registration_enabled: bool
+    mini_program_new_user_enabled: bool
     image_acceleration_server_url: str
     updated_at: datetime | None = None
     version: int
@@ -211,6 +212,7 @@ class AiSearchSettingsUpdate(RequestModel):
     enabled: bool = True
     mini_program_code_env: MiniProgramCodeEnv = MiniProgramCodeEnv.RELEASE
     mini_program_registration_enabled: bool = True
+    mini_program_new_user_enabled: bool = True
     image_acceleration_server_url: str = Field(default="", max_length=500)
     version: int = Field(ge=0)
 

@@ -17,6 +17,7 @@ const form = reactive({
   enabled: true,
   mini_program_code_env: 'release' as 'trial' | 'release',
   mini_program_registration_enabled: true,
+  mini_program_new_user_enabled: true,
   image_acceleration_server_url: '',
   version: 0,
 })
@@ -47,6 +48,7 @@ async function save() {
       enabled: form.enabled,
       mini_program_code_env: form.mini_program_code_env,
       mini_program_registration_enabled: form.mini_program_registration_enabled,
+      mini_program_new_user_enabled: form.mini_program_new_user_enabled,
       image_acceleration_server_url: form.image_acceleration_server_url.trim(),
       version: form.version,
     })
@@ -129,6 +131,12 @@ onMounted(load)
             <div class="switch-control">
               <n-switch v-model:value="form.mini_program_registration_enabled" />
               <span>{{ form.mini_program_registration_enabled ? '允许' : '关闭' }}</span>
+            </div>
+          </n-form-item>
+          <n-form-item label="新用户默认状态">
+            <div class="switch-control">
+              <n-switch v-model:value="form.mini_program_new_user_enabled" />
+              <span>{{ form.mini_program_new_user_enabled ? '启用' : '待审核' }}</span>
             </div>
           </n-form-item>
         </n-form>

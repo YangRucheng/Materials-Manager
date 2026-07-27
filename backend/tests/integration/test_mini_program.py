@@ -300,7 +300,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert disabled_login.status_code == 403
     assert disabled_login.json()["code"] == "ACCOUNT_DISABLED"
-    assert disabled_login.json()["message"] == "您的账号已被禁用"
+    assert disabled_login.json()["message"] == "您的账号待审核，请联系管理员"
     disabled_request = await client.get(
         "/api/v1/mini-program/outbound-reasons", headers=mini_headers
     )
@@ -609,6 +609,102 @@ async def test_advanced_setting_can_close_new_mini_program_bindings(
     )
     assert stale_registration.status_code == 403
     assert stale_registration.json()["code"] == "MINI_PROGRAM_REGISTRATION_DISABLED"
+
+
+@pytest.mark.asyncio
+async def test_advanced_setting_controls_new_mini_program_user_status(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(code: str) -> str:
+        return f"status-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    admin = await auth_headers(client, "admin")
+
+    pending_settings = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "",
+            "api_key": "",
+            "model": "",
+            "enabled": False,
+            "mini_program_code_env": "release",
+            "mini_program_registration_enabled": True,
+            "mini_program_new_user_enabled": False,
+            "version": 0,
+        },
+    )
+    assert pending_settings.status_code == 200, pending_settings.text
+
+    pending_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "pending"}
+    )
+    assert pending_login.status_code == 200, pending_login.text
+    pending_profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={
+            "Authorization": f"Bearer {pending_login.json()['registration_token']}"
+        },
+        json={
+            "display_name": "待审核用户",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    assert pending_profile.status_code == 200, pending_profile.text
+    assert pending_profile.json()["access_token"] is None
+    assert pending_profile.json()["requires_profile"] is False
+    assert pending_profile.json()["user"]["enabled"] is False
+
+    users = await client.get("/api/v1/mini-program-users", headers=admin)
+    assert users.status_code == 200, users.text
+    assert users.json()["total"] == 1
+    assert users.json()["items"][0]["display_name"] == "待审核用户"
+    assert users.json()["items"][0]["enabled"] is False
+
+    pending_again = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "pending"}
+    )
+    assert pending_again.status_code == 403
+    assert pending_again.json()["code"] == "ACCOUNT_DISABLED"
+    assert pending_again.json()["message"] == "您的账号待审核，请联系管理员"
+
+    enabled_settings = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "",
+            "api_key": "",
+            "model": "",
+            "enabled": False,
+            "mini_program_code_env": "release",
+            "mini_program_registration_enabled": True,
+            "mini_program_new_user_enabled": True,
+            "version": pending_settings.json()["version"],
+        },
+    )
+    assert enabled_settings.status_code == 200, enabled_settings.text
+
+    enabled_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login", json={"code": "enabled"}
+    )
+    enabled_profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={
+            "Authorization": f"Bearer {enabled_login.json()['registration_token']}"
+        },
+        json={
+            "display_name": "默认启用用户",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    assert enabled_profile.status_code == 200, enabled_profile.text
+    assert enabled_profile.json()["access_token"]
+    assert enabled_profile.json()["user"]["enabled"] is True
 
 
 @pytest.mark.asyncio

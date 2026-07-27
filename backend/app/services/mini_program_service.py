@@ -250,7 +250,7 @@ async def login_with_wechat(
         select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
     )
     if user is not None and not user.enabled:
-        raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
+        raise AppError("ACCOUNT_DISABLED", "您的账号待审核，请联系管理员", status_code=403)
     if user is None and not await ai_search_service.is_mini_program_registration_enabled(session):
         raise AppError(
             "MINI_PROGRAM_REGISTRATION_DISABLED",
@@ -268,7 +268,7 @@ async def register_user(
     )
     if existing is not None:
         if not existing.enabled:
-            raise AppError("ACCOUNT_DISABLED", "您的账号已被禁用", status_code=403)
+            raise AppError("ACCOUNT_DISABLED", "您的账号待审核，请联系管理员", status_code=403)
         return existing
     if not await ai_search_service.is_mini_program_registration_enabled(session):
         raise AppError(
@@ -280,7 +280,7 @@ async def register_user(
         wechat_openid=openid,
         display_name=display_name,
         department_name=department_name,
-        enabled=True,
+        enabled=await ai_search_service.is_mini_program_new_user_enabled(session),
     )
     session.add(user)
     try:
