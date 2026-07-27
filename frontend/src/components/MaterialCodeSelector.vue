@@ -123,7 +123,7 @@ watch(page, () => void load())
         <n-input
           v-model:value="keyword"
           clearable
-          placeholder="搜索名称或型号，多个条件用 | 分隔"
+          placeholder="搜索编码、名称或型号，多个条件用 | 分隔"
           @keyup.enter="search"
         />
         <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
