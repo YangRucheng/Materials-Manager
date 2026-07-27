@@ -212,10 +212,16 @@ const form = reactive<PurchaseMaterialWrite>({
 const rules: FormRules = {
   name: { required: true, message: '请输入名称' },
   model_spec: { required: true, message: '请输入型号规格' },
-  unit_id: { type: 'number', required: true, message: '请选择计量单位' },
   actual_demand_person: { required: true, message: '请输入实际需求人' },
   purchase_responsible: { required: true, message: '请输入申购负责人' },
-  planned_qty: { required: true, message: '请输入计划数量' },
+  planned_qty: [
+    { required: true, message: '请输入计划数量' },
+    {
+      validator: () => typeof form.unit_id === 'number',
+      message: '请选择计量单位',
+      trigger: ['blur', 'change'],
+    },
+  ],
   usage: { required: true, message: '请输入用途' },
 }
 type PlanColumnKey =
@@ -1171,11 +1177,19 @@ onBeforeUnmount(() => {
           <n-form-item label="型号规格" path="model_spec">
             <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
-          <n-form-item label="计划数量" path="planned_qty">
-            <QuantityInput v-model:value="form.planned_qty" :decimal-places="1" />
-          </n-form-item>
-          <n-form-item label="计量单位" path="unit_id">
-            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+          <n-form-item label="计划数量 / 计量单位" path="planned_qty">
+            <n-input-group>
+              <QuantityInput
+                v-model:value="form.planned_qty"
+                :decimal-places="1"
+                class="quantity-input"
+              />
+              <n-select
+                v-model:value="form.unit_id"
+                :options="dictionaries.unitOptions"
+                class="quantity-unit-select"
+              />
+            </n-input-group>
           </n-form-item>
           <n-form-item label="实际需求人" path="actual_demand_person">
             <n-input
@@ -1234,6 +1248,14 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.quantity-input {
+  flex: 1;
+}
+
+.quantity-unit-select {
+  width: 160px;
+}
+
 .filter-heading,
 .filter-actions {
   display: flex;
