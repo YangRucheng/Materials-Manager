@@ -84,14 +84,12 @@ def test_init_sql_matches_current_model_schema() -> None:
         assert sql_foreign_keys == model_foreign_keys, f"{table_name} 的外键与 ORM 不一致"
 
 
-def test_init_sql_seeds_required_accounts_and_units() -> None:
+def test_init_sql_seeds_required_accounts() -> None:
     sql = INIT_SQL.read_text(encoding="utf-8")
 
     for username in ("admin", "warehouse", "purchase", "readonly"):
         assert f"('{username}', '$argon2id$" in sql
-    for code, decimal_places in (("PCS", 0), ("SET", 0), ("M", 1), ("KG", 1)):
-        assert re.search(rf"\('{code}', '[^']+', {decimal_places}, 1\)", sql)
-    assert "('PCS', '个', 0, 1)" in sql
+    assert "measurement_unit" not in sql
 
 
 def test_file_identifiers_are_uuid_strings() -> None:

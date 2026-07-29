@@ -112,12 +112,6 @@ const router = createRouter({
           meta: { title: '申购记录详情' },
         },
         {
-          path: 'settings/units',
-          name: 'units',
-          component: () => import('@/views/settings/UnitsView.vue'),
-          meta: { title: '计量单位', permission: 'settings:write' },
-        },
-        {
           path: 'settings/advanced',
           name: 'advanced-settings',
           component: () => import('@/views/settings/AdvancedSettingsView.vue'),

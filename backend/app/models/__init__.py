@@ -89,19 +89,6 @@ class MiniProgramUser(AuditMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
 
-class MeasurementUnit(AuditMixin, Base):
-    __tablename__ = "measurement_unit"
-    __table_args__ = (
-        CheckConstraint("decimal_places >= 0 AND decimal_places <= 1", name="decimal_places_range"),
-    )
-
-    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
-    code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
-    decimal_places: Mapped[int] = mapped_column(UTINYINT, default=0, server_default="0")
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
-
-
 class MaterialCodeLibrary(Base):
     __tablename__ = "material_code_library"
 
@@ -138,12 +125,9 @@ class StockMaterial(AuditMixin, Base):
     name_id: Mapped[str | None] = mapped_column(String(128), index=True)
     alias: Mapped[str | None] = mapped_column(String(128), index=True)
     model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    unit_id: Mapped[int] = mapped_column(
-        BIGINT_ID, ForeignKey("measurement_unit.id"), nullable=False
-    )
+    unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
     remark: Mapped[str | None] = mapped_column(String(1000))
     identity_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
     balance: Mapped[StockBalance | None] = relationship(
         back_populates="material", uselist=False, lazy="selectin", cascade="all, delete-orphan"
     )
@@ -219,9 +203,7 @@ class PurchaseMaterial(AuditMixin, Base):
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    unit_id: Mapped[int] = mapped_column(
-        BIGINT_ID, ForeignKey("measurement_unit.id"), nullable=False
-    )
+    unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
     actual_demand_person: Mapped[str] = mapped_column(String(128), nullable=False)
     purchase_responsible: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     planned_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
@@ -239,7 +221,6 @@ class PurchaseMaterial(AuditMixin, Base):
         server_default=PurchasePlanStatus.NORMAL.name,
         index=True,
     )
-    unit: Mapped[MeasurementUnit] = relationship(lazy="selectin")
     stock_material: Mapped[StockMaterial | None] = relationship(lazy="selectin")
     images: Mapped[list[PurchaseMaterialImage]] = relationship(
         back_populates="material",
@@ -392,7 +373,6 @@ __all__ = [
     "Base",
     "BusinessEventLog",
     "FileObject",
-    "MeasurementUnit",
     "MiniProgramUser",
     "PurchaseMaterial",
     "PurchaseMaterialImage",

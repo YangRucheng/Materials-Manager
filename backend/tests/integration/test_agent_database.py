@@ -63,11 +63,16 @@ async def test_agent_database_writes_all_application_tables(client: AsyncClient)
         headers=agent_headers(),
         json={
             "sql": (
-                "INSERT INTO measurement_unit "
-                "(code, name, decimal_places, enabled, created_at, updated_at, version) "
-                "VALUES (:code, :name, 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)"
+                "INSERT INTO material_code_library "
+                "(material_code, name, model_spec, unit_name, created_at) "
+                "VALUES (:code, :name, :model_spec, :unit_name, CURRENT_TIMESTAMP)"
             ),
-            "parameters": {"code": "BOX", "name": "箱"},
+            "parameters": {
+                "code": "AGENT-BOX",
+                "name": "测试箱",
+                "model_spec": "TEST",
+                "unit_name": "箱",
+            },
         },
     )
     assert inserted.status_code == 200, inserted.text
@@ -78,8 +83,8 @@ async def test_agent_database_writes_all_application_tables(client: AsyncClient)
         "/api/v1/agent/database/execute",
         headers=agent_headers(),
         json={
-            "sql": "UPDATE measurement_unit SET name = :name WHERE code = :code",
-            "parameters": {"code": "BOX", "name": "  整箱  "},
+            "sql": "UPDATE material_code_library SET unit_name = :unit WHERE material_code = :code",
+            "parameters": {"code": "AGENT-BOX", "unit": "  整箱  "},
         },
     )
     assert updated.status_code == 200, updated.text
@@ -89,18 +94,18 @@ async def test_agent_database_writes_all_application_tables(client: AsyncClient)
         "/api/v1/agent/database/execute",
         headers=agent_headers(),
         json={
-            "sql": "SELECT name FROM measurement_unit WHERE code = :code",
-            "parameters": {"code": "BOX"},
+            "sql": "SELECT unit_name FROM material_code_library WHERE material_code = :code",
+            "parameters": {"code": "AGENT-BOX"},
         },
     )
-    assert selected.json()["rows"] == [{"name": "  整箱  "}]
+    assert selected.json()["rows"] == [{"unit_name": "  整箱  "}]
 
     deleted = await client.post(
         "/api/v1/agent/database/execute",
         headers=agent_headers(),
         json={
-            "sql": "DELETE FROM measurement_unit WHERE code = :code",
-            "parameters": {"code": "BOX"},
+            "sql": "DELETE FROM material_code_library WHERE material_code = :code",
+            "parameters": {"code": "AGENT-BOX"},
         },
     )
     assert deleted.status_code == 200, deleted.text

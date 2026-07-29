@@ -192,9 +192,7 @@ async def _lock_and_validate_materials(
     if missing:
         raise AppError("NOT_FOUND", "二级库物资不存在", details={"ids": missing})
     for line in lines:
-        validate_quantity_precision(
-            line.quantity, by_id[line.stock_material_id].unit.decimal_places
-        )
+        validate_quantity_precision(line.quantity)
     return by_id
 
 
@@ -316,7 +314,7 @@ async def create_operation(
             after_qty=ZERO,
             material_name_snapshot=materials[line.stock_material_id].name,
             model_spec_snapshot=materials[line.stock_material_id].model_spec,
-            unit_name_snapshot=materials[line.stock_material_id].unit.name,
+            unit_name_snapshot=materials[line.stock_material_id].unit_name,
         )
         for line in data.lines
     ]
@@ -378,7 +376,7 @@ async def update_operation(
         stored.quantity = line.quantity
         stored.material_name_snapshot = material.name
         stored.model_spec_snapshot = material.model_spec
-        stored.unit_name_snapshot = material.unit.name
+        stored.unit_name_snapshot = material.unit_name
         stored.version = stored.version + 1 if stored.id is not None else 1
         updated_lines.append(stored)
     item.lines = updated_lines
@@ -542,8 +540,7 @@ async def inventory_balances(
                 name=item.name,
                 alias=item.alias,
                 model_spec=item.model_spec,
-                unit_name=item.unit.name,
-                decimal_places=item.unit.decimal_places,
+                unit_name=item.unit_name,
                 current_qty=current,
                 minimum_qty=policy.minimum_qty if policy else None,
                 is_low_stock=low,

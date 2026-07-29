@@ -7,7 +7,7 @@ describe('Decimal 字符串', () => {
     expect(compareDecimal('0.10', '0.1')).toBe(0)
   })
 
-  it('按单位小数位校验正数量', () => {
+  it('按指定小数位校验正数量', () => {
     expect(isDecimalString('12', 0)).toBe(true)
     expect(isDecimalString('12.1', 0)).toBe(false)
     expect(isDecimalString('0.1', 1)).toBe(true)

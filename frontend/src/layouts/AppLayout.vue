@@ -42,7 +42,6 @@ const menuOptions = computed<MenuOption[]>(() => {
       label: '系统设置',
       key: 'settings-group',
       children: [
-        link('计量单位', 'units'),
         link('管理端用户', 'users'),
         link('小程序用户', 'mini-program-users'),
         link('高级设置', 'advanced-settings'),

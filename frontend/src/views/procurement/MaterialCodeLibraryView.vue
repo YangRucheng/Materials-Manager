@@ -93,9 +93,6 @@ function showImportSummary(result: MaterialCodeLibraryImportResult) {
       ? `${result.blank_model_spec_count.toLocaleString()} 条型号为空。`
       : '',
   ].filter(Boolean)
-  if (result.unmatched_unit_names.length) {
-    notes.push(`以下计量单位尚未在系统配置：${result.unmatched_unit_names.join('、')}`)
-  }
   dialog.success({
     draggable: true,
     title: '导入完成',

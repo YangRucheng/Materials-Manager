@@ -12,7 +12,6 @@ import type {
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useDictionaryStore } from '@/stores/dictionaries'
 import { isDecimalString } from '@/utils/decimal'
 import { formatShanghaiTime } from '@/utils/time'
 
@@ -20,7 +19,6 @@ const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
-const dictionaries = useDictionaryStore()
 const material = ref<StockMaterial | null>(null)
 const balance = ref<InventoryBalance | null>(null)
 const images = ref<FileObject[]>([])
@@ -37,7 +35,7 @@ const form = reactive<StockMaterialWrite>({
   name_id: '',
   alias: '',
   model_spec: '',
-  unit_id: null,
+  unit_name: '',
   remark: '',
   image_ids: [],
 })
@@ -49,7 +47,7 @@ const policy = reactive({
 const rules: FormRules = {
   name: { required: true, message: '请输入物资名称' },
   model_spec: { required: true, message: '请输入型号规格；无型号时填写“无”' },
-  unit_id: { type: 'number', required: true, message: '请选择计量单位' },
+  unit_name: { required: true, message: '请输入计量单位' },
 }
 
 function syncForm(value: StockMaterial) {
@@ -58,7 +56,7 @@ function syncForm(value: StockMaterial) {
     name_id: value.name_id || '',
     alias: value.alias || '',
     model_spec: value.model_spec,
-    unit_id: value.unit_id,
+    unit_name: value.unit_name,
     remark: value.remark || '',
     image_ids: value.images.map((image) => image.id),
     version: value.version,
@@ -141,10 +139,7 @@ async function save() {
   }
 }
 
-onMounted(() => {
-  void dictionaries.load()
-  void load()
-})
+onMounted(() => void load())
 
 onBeforeUnmount(() => {
   replaceMiniProgramCodeUrl()
@@ -202,8 +197,8 @@ onBeforeUnmount(() => {
               placeholder="无型号时填写“无”"
             />
           </n-form-item>
-          <n-form-item label="计量单位" path="unit_id" required>
-            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+          <n-form-item label="计量单位" path="unit_name" required>
+            <n-input v-model:value="form.unit_name" maxlength="32" placeholder="可任意填写" />
           </n-form-item>
           <n-form-item label="当前库存">
             <n-input :value="material.current_qty" disabled>
