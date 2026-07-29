@@ -411,14 +411,15 @@ async def move_to_record(
     client: AsyncClient,
     headers: dict[str, str],
     plan_id: int,
-    trace_no: str = "ZS-2026-001",
+    trace_no: str | None = "ZS-2026-001",
     salesperson: str = "赵经理",
+    purchase_order_no: str | None = "SG-2026-001",
 ) -> dict[str, object]:
     response = await client.post(
         f"/api/v1/purchase-materials/{plan_id}/move-to-record",
         headers=headers,
         json={
-            "purchase_order_no": "SG-2026-001",
+            "purchase_order_no": purchase_order_no,
             "trace_no": trace_no,
             "contract_no": "HT-2026-001",
             "vessel_no": "VESSEL-01",
@@ -433,6 +434,48 @@ async def move_to_record(
     )
     assert response.status_code == 200, response.text
     return response.json()
+
+
+@pytest.mark.asyncio
+async def test_purchase_records_default_to_purchase_and_trace_number_order(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    order_numbers = (
+        ("ORDER-B", "TRACE-A"),
+        ("ORDER-A", "TRACE-C"),
+        ("ORDER-A", None),
+        ("ORDER-A", "TRACE-A"),
+        (None, "TRACE-Z"),
+    )
+    for index, (purchase_order_no, trace_no) in enumerate(order_numbers, start=1):
+        plan = await create_purchase_plan(
+            client,
+            headers,
+            f"追溯号排序物料-{index}",
+            code=f"TRACE-SORT-{index}",
+        )
+        await move_to_record(
+            client,
+            headers,
+            int(plan["id"]),
+            trace_no=trace_no,
+            purchase_order_no=purchase_order_no,
+        )
+
+    response = await client.get("/api/v1/purchase-records", headers=headers)
+
+    assert response.status_code == 200, response.text
+    assert [
+        (item["purchase_order_no"], item["trace_no"])
+        for item in response.json()["items"]
+    ] == [
+        ("ORDER-A", "TRACE-A"),
+        ("ORDER-A", "TRACE-C"),
+        ("ORDER-A", None),
+        ("ORDER-B", "TRACE-A"),
+        (None, "TRACE-Z"),
+    ]
 
 
 @pytest.mark.asyncio

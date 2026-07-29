@@ -61,7 +61,6 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
             "name": "交流接触器",
             "model_spec": "CJX2-2510",
             "unit_name": "个",
-            "unit_name": "个",
         }
     ]
 
@@ -97,7 +96,6 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
             "name": "交流接触器",
             "model_spec": "CJX2-2510",
             "unit_name": "个",
-            "unit_name": "个",
         }
     ]
 
@@ -108,6 +106,18 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
     )
     assert combined.status_code == 200, combined.text
     assert [item["material_code"] for item in combined.json()["items"]] == ["Y001"]
+
+    combined_or = await client.get(
+        "/api/v1/material-code-library",
+        headers=purchase_headers,
+        params={
+            "name": "接触器|控制电缆",
+            "model_spec": "2510｜4×1.5",
+            "material_code": "Y001|Y002",
+        },
+    )
+    assert combined_or.status_code == 200, combined_or.text
+    assert [item["material_code"] for item in combined_or.json()["items"]] == ["Y001", "Y002"]
 
     no_combined_match = await client.get(
         "/api/v1/material-code-library",

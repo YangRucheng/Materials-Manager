@@ -68,6 +68,13 @@ const matchesOrSearch = (value: string | number | null | undefined, search: stri
   const normalizedValue = String(value ?? '').toLowerCase()
   return terms.some((term) => normalizedValue.includes(term))
 }
+const compareNullableText = (left: string | null | undefined, right: string | null | undefined) => {
+  const normalizedLeft = left?.trim() || null
+  const normalizedRight = right?.trim() || null
+  if (normalizedLeft === null) return normalizedRight === null ? 0 : 1
+  if (normalizedRight === null) return -1
+  return normalizedLeft.localeCompare(normalizedRight, 'zh-CN')
+}
 const error = (status: number, code: string, message: string, details?: Record<string, unknown>) =>
   HttpResponse.json({ code, message, details, request_id: crypto.randomUUID() }, { status })
 const actor = (request: Request) => {
@@ -846,42 +853,49 @@ export const handlers = [
     )
     return HttpResponse.json(
       page(
-        records.filter((record) => {
-          const searchValues: Record<string, string | number | null | undefined> = {
-            plan_no: record.plan_no,
-            plan_date: record.plan_date,
-            purchase_order_no: record.purchase_order_no,
-            trace_no: record.trace_no,
-            material_code: record.material_code,
-            material_name: record.material_name,
-            model_spec: record.model_spec,
-            unit_name: record.unit_name,
-            purchase_qty: record.purchase_qty,
-            salesperson: record.salesperson,
-            status: record.status,
-            purchase_date: record.purchase_date,
-            usage: record.usage,
-            subitem_no: record.subitem_no,
-            plan_remark: record.plan_remark,
-            record_remark: record.record_remark,
-          }
-          return (
-            matchesOrSearch(
-              `${record.plan_no}${record.plan_date}${record.trace_no || ''}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.model_spec}${record.unit_name}${record.purchase_qty}${record.actual_demand_person || ''}${record.purchase_responsible || ''}${record.salesperson || ''}${record.status}${record.purchase_date}${record.usage || ''}${record.subitem_no || ''}${record.plan_remark || ''}${record.record_remark || ''}`,
-              keyword,
-            ) &&
-            (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
-            matchesOrSearch(record.purchase_order_no, purchaseOrderNo) &&
-            matchesOrSearch(record.trace_no, traceNo) &&
-            matchesOrSearch(record.material_name, name) &&
-            matchesOrSearch(record.model_spec, modelSpec) &&
-            matchesOrSearch(record.actual_demand_person, actualDemandPerson) &&
-            matchesOrSearch(record.purchase_responsible, purchaseResponsible) &&
-            matchesOrSearch(record.salesperson, salesperson) &&
-            (!status || record.status === status) &&
-            (!emptyStatus || !record.status?.trim())
-          )
-        }),
+        records
+          .filter((record) => {
+            const searchValues: Record<string, string | number | null | undefined> = {
+              plan_no: record.plan_no,
+              plan_date: record.plan_date,
+              purchase_order_no: record.purchase_order_no,
+              trace_no: record.trace_no,
+              material_code: record.material_code,
+              material_name: record.material_name,
+              model_spec: record.model_spec,
+              unit_name: record.unit_name,
+              purchase_qty: record.purchase_qty,
+              salesperson: record.salesperson,
+              status: record.status,
+              purchase_date: record.purchase_date,
+              usage: record.usage,
+              subitem_no: record.subitem_no,
+              plan_remark: record.plan_remark,
+              record_remark: record.record_remark,
+            }
+            return (
+              matchesOrSearch(
+                `${record.plan_no}${record.plan_date}${record.trace_no || ''}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.model_spec}${record.unit_name}${record.purchase_qty}${record.actual_demand_person || ''}${record.purchase_responsible || ''}${record.salesperson || ''}${record.status}${record.purchase_date}${record.usage || ''}${record.subitem_no || ''}${record.plan_remark || ''}${record.record_remark || ''}`,
+                keyword,
+              ) &&
+              (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
+              matchesOrSearch(record.purchase_order_no, purchaseOrderNo) &&
+              matchesOrSearch(record.trace_no, traceNo) &&
+              matchesOrSearch(record.material_name, name) &&
+              matchesOrSearch(record.model_spec, modelSpec) &&
+              matchesOrSearch(record.actual_demand_person, actualDemandPerson) &&
+              matchesOrSearch(record.purchase_responsible, purchaseResponsible) &&
+              matchesOrSearch(record.salesperson, salesperson) &&
+              (!status || record.status === status) &&
+              (!emptyStatus || !record.status?.trim())
+            )
+          })
+          .sort(
+            (left, right) =>
+              compareNullableText(left.purchase_order_no, right.purchase_order_no) ||
+              compareNullableText(left.trace_no, right.trace_no) ||
+              right.line_id - left.line_id,
+          ),
         url,
       ),
     )
