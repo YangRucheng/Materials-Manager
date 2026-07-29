@@ -125,6 +125,7 @@ watch(page, () => void load())
   <n-modal
     v-model:show="show"
     preset="card"
+    draggable
     title="选择物料编码"
     class="material-code-selector-modal"
     style="width: min(960px, 92vw)"
