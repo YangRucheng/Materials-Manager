@@ -14,7 +14,9 @@ const items = ref<MaterialCodeLibrary[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
-const keyword = ref('')
+const materialCode = ref('')
+const name = ref('')
+const modelSpec = ref('')
 const loading = ref(false)
 const importing = ref(false)
 
@@ -46,7 +48,9 @@ async function load() {
   loading.value = true
   try {
     const result = await procurementApi.materialCodes({
-      keyword: keyword.value.trim() || undefined,
+      material_code: materialCode.value.trim() || undefined,
+      name: name.value.trim() || undefined,
+      model_spec: modelSpec.value.trim() || undefined,
       page: page.value,
       page_size: pageSize.value,
     })
@@ -65,7 +69,9 @@ function search() {
 }
 
 function resetSearch() {
-  keyword.value = ''
+  materialCode.value = ''
+  name.value = ''
+  modelSpec.value = ''
   search()
 }
 
@@ -98,7 +104,9 @@ async function importFile(file: File) {
   try {
     const result = await procurementApi.importMaterialCodes(file)
     showImportSummary(result)
-    keyword.value = ''
+    materialCode.value = ''
+    name.value = ''
+    modelSpec.value = ''
     page.value = 1
     await load()
   } catch (error) {
@@ -148,14 +156,22 @@ onMounted(() => void load())
     </div>
 
     <n-card class="filter-card">
-      <div class="filter-bar">
+      <div class="material-code-filter-grid">
         <n-input
-          v-model:value="keyword"
+          v-model:value="modelSpec"
           clearable
-          style="width: min(460px, 100%)"
-          placeholder="按名称、型号或物料编码搜索"
+          placeholder="按型号搜索"
           @keyup.enter="search"
         />
+        <n-input v-model:value="name" clearable placeholder="按名称搜索" @keyup.enter="search" />
+        <n-input
+          v-model:value="materialCode"
+          clearable
+          placeholder="按编码搜索"
+          @keyup.enter="search"
+        />
+      </div>
+      <div class="filter-bar material-code-filter-actions">
         <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
         <n-button @click="resetSearch">重置</n-button>
         <span class="muted">共 {{ total.toLocaleString() }} 条</span>
@@ -188,5 +204,21 @@ onMounted(() => void load())
 <style scoped>
 .hidden-file-input {
   display: none;
+}
+
+.material-code-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.material-code-filter-actions {
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .material-code-filter-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
