@@ -301,6 +301,28 @@ class AiSearchTestRead(BaseModel):
     expanded: str
 
 
+class AiSearchTestRequest(RequestModel):
+    endpoint: str = Field(max_length=500)
+    api_key: str = Field(max_length=1000)
+    model: str = Field(max_length=128)
+
+    @field_validator("endpoint")
+    @classmethod
+    def validate_endpoint(cls, value: str) -> str:
+        value = value.strip().rstrip("/")
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("端点必须使用 http:// 或 https://")
+        return value
+
+    @field_validator("api_key", "model")
+    @classmethod
+    def require_value(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("不能为空")
+        return value
+
+
 class FileObjectRead(ReadModel):
     id: FileId
     original_name: str
@@ -514,7 +536,6 @@ class StockOperationRead(ReadModel):
     source_type: SourceType
     reversal_of_id: int | None = None
     client_request_id: str
-    mini_program_user_id: int | None = None
     mini_program_user_name: str | None = None
     lines: list[StockOperationLineRead]
     created_at: datetime

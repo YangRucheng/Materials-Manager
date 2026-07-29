@@ -240,7 +240,6 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert operation.status_code == 200, operation.text
     assert operation.json()["source_type"] == "MINI_PROGRAM"
-    assert operation.json()["mini_program_user_id"] == created_user["id"]
     assert operation.json()["mini_program_user_name"] == "扫码出库员"
     assert operation.json()["receiver_unit"] is None
 
@@ -299,6 +298,13 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert rename.json()["display_name"] == "管理员修改"
     assert rename.json()["department_name"] == "设备保障部"
 
+    replayed_after_rename = await client.post(
+        "/api/v1/mini-program/outbound", headers=mini_headers, json=payload
+    )
+    assert replayed_after_rename.status_code == 201, replayed_after_rename.text
+    assert replayed_after_rename.json()["operation_id"] == outbound.json()["operation_id"]
+    assert replayed_after_rename.json()["executed_by"] == "扫码出库员"
+
     repeated_login = await client.post(
         "/api/v1/mini-program/auth/wx-login",
         json={"code": "temporary-login-code"},
@@ -339,7 +345,6 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert historical_operation.status_code == 200
     assert historical_operation.json()["source_type"] == "MINI_PROGRAM"
-    assert historical_operation.json()["mini_program_user_id"] is None
     assert historical_operation.json()["mini_program_user_name"] == "扫码出库员"
 
     login_after_delete = await client.post(
@@ -400,11 +405,36 @@ async def test_admin_can_merge_accounts_from_different_mini_programs(
         return profile.json()
 
     primary = await register("wx-test-primary", "same-person-1", "同一人员")
-    secondary = await register("wx-test-secondary", "same-person-2", "同一人员重复账号")
+    secondary = await register("wx-test-secondary", "same-person-2", "同一人员")
     target_user = primary["user"]
     source_user = secondary["user"]
     assert isinstance(target_user, dict)
     assert isinstance(source_user, dict)
+
+    mismatched = await client.patch(
+        f"/api/v1/mini-program-users/{source_user['id']}",
+        headers=admin,
+        json={"display_name": "另一人员", "version": source_user["version"]},
+    )
+    assert mismatched.status_code == 200, mismatched.text
+    rejected_merge = await client.post(
+        f"/api/v1/mini-program-users/{target_user['id']}/merge",
+        headers=admin,
+        json={
+            "source_user_id": source_user["id"],
+            "source_version": mismatched.json()["version"],
+            "target_version": target_user["version"],
+        },
+    )
+    assert rejected_merge.status_code == 409
+    assert rejected_merge.json()["code"] == "MINI_PROGRAM_USER_PROFILE_MISMATCH"
+    restored = await client.patch(
+        f"/api/v1/mini-program-users/{source_user['id']}",
+        headers=admin,
+        json={"display_name": "同一人员", "version": mismatched.json()["version"]},
+    )
+    assert restored.status_code == 200, restored.text
+    source_user = restored.json()
 
     material = await client.post(
         "/api/v1/stock-materials",
@@ -473,8 +503,7 @@ async def test_admin_can_merge_accounts_from_different_mini_programs(
         headers=warehouse,
     )
     assert operation.status_code == 200
-    assert operation.json()["mini_program_user_id"] == target_user["id"]
-    assert operation.json()["mini_program_user_name"] == "同一人员重复账号"
+    assert operation.json()["mini_program_user_name"] == "同一人员"
 
     secondary_login = await client.post(
         "/api/v1/mini-program/auth/wx-login",

@@ -149,7 +149,6 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `source_type` ENUM('MANUAL', 'MINI_PROGRAM', 'REVERSAL', 'INITIALIZATION') NOT NULL,
   `reversal_of_id` BIGINT UNSIGNED NULL,
   `client_request_id` VARCHAR(64) NOT NULL,
-  `mini_program_user_id` BIGINT UNSIGNED NULL,
   `mini_program_user_name_snapshot` VARCHAR(128) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -159,10 +158,7 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   CONSTRAINT `uq_stock_operation_reversal_of_id` UNIQUE (`reversal_of_id`),
   CONSTRAINT `fk_stock_operation_reversal_of_id_stock_operation`
     FOREIGN KEY (`reversal_of_id`) REFERENCES `stock_operation` (`id`),
-  CONSTRAINT `fk_stock_operation_mini_program_user_id_mini_program_user`
-    FOREIGN KEY (`mini_program_user_id`) REFERENCES `mini_program_user` (`id`),
   CONSTRAINT `uq_stock_operation_client_request_id` UNIQUE (`client_request_id`),
-  INDEX `ix_stock_operation_mini_program_user_id` (`mini_program_user_id`),
   INDEX `ix_stock_operation_occurred_at` (`occurred_at`),
   INDEX `ix_stock_operation_source_occurred` (`source_type`, `occurred_at`),
   INDEX `ix_stock_operation_type_occurred` (`operation_type`, `occurred_at`)

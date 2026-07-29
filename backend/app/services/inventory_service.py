@@ -108,7 +108,6 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
         source_type=_operation_source_type(item),
         reversal_of_id=item.reversal_of_id,
         client_request_id=item.client_request_id,
-        mini_program_user_id=item.mini_program_user_id,
         mini_program_user_name=item.mini_program_user_name_snapshot,
         lines=[
             StockOperationLineRead(
@@ -137,7 +136,6 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
         "receiver_unit": item.receiver_unit,
         "receiver_name": item.receiver_name,
         "subitem_no": item.subitem_no,
-        "mini_program_user_id": item.mini_program_user_id,
         "mini_program_user_name": item.mini_program_user_name_snapshot,
         "lines": [
             {
@@ -296,7 +294,6 @@ async def create_operation(
         ),
         reversal_of_id=reversal_of_id,
         client_request_id=data.client_request_id,
-        mini_program_user_id=mini_program_user.id if mini_program_user else None,
         mini_program_user_name_snapshot=(
             mini_program_user.display_name if mini_program_user else None
         ),

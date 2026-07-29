@@ -93,7 +93,12 @@ const columns = preventTableColumnCompression<MiniProgramUser>([
 const tableScrollX = getTableScrollX(columns)
 const mergeOptions = computed(() =>
   items.value
-    .filter((item) => item.id !== editing.value?.id)
+    .filter(
+      (item) =>
+        item.id !== editing.value?.id &&
+        item.display_name === editing.value?.display_name &&
+        item.department_name === editing.value?.department_name,
+    )
     .map((item) => ({
       label: `${item.display_name}（${item.identities.map((identity) => identity.app_id).join('、')}）`,
       value: item.id,
@@ -283,7 +288,7 @@ onMounted(load)
       <n-alert type="warning" :bordered="false">
         当前账号“{{
           editing?.display_name
-        }}”将被删除，其小程序身份和历史出库归属会迁移到目标账号；目标账号的姓名、部门和状态保持不变。
+        }}”将被删除，其小程序身份会迁移到目标账号。仅姓名和部门单位完全一致的账号可以合并，历史出库记录不受影响。
       </n-alert>
       <n-form label-placement="top" class="merge-form">
         <n-form-item label="保留的目标账号" required>
