@@ -107,6 +107,7 @@ function rowProps(row: PurchaseMaterial) {
     onClick: (event: MouseEvent) => {
       if (rowClickGuard.shouldIgnore(event)) return
       dialog.warning({
+        draggable: true,
         title: '打开申购计划详情',
         content: `确认打开“${row.name}”对应的申购计划详情吗？`,
         positiveText: '打开',

@@ -955,6 +955,7 @@ onBeforeUnmount(() => {
     <n-modal
       v-model:show="showBatchEdit"
       preset="card"
+      draggable
       title="批量修改申购计划"
       style="width: 620px"
       :mask-closable="false"
@@ -1069,6 +1070,7 @@ onBeforeUnmount(() => {
     <n-modal
       v-model:show="showBatch"
       preset="card"
+      draggable
       title="批量转为申购记录"
       style="width: 620px"
       :mask-closable="false"
@@ -1146,6 +1148,7 @@ onBeforeUnmount(() => {
     <n-modal
       v-model:show="show"
       preset="card"
+      draggable
       title="新建申购计划"
       style="width: 680px"
       :mask-closable="false"

@@ -125,6 +125,7 @@ function confirmSave() {
     return
   }
   dialog.warning({
+    draggable: true,
     title: '确认修改流水',
     content: '修改流水将重新计算受影响物资的库存和后续流水快照。',
     positiveText: '确认修改',

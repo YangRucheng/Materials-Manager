@@ -119,6 +119,7 @@ async function save() {
 }
 function remove(row: User) {
   dialog.warning({
+    draggable: true,
     title: '删除用户',
     content: `确认删除用户“${row.username}”吗？已有操作记录或业务数据关联的用户不能删除。`,
     positiveText: '删除',
@@ -157,6 +158,7 @@ onMounted(load)
     ><n-modal
       v-model:show="show"
       preset="card"
+      draggable
       :title="editing ? '编辑管理端用户' : '新建管理端用户'"
       style="width: 520px"
       ><n-form label-placement="top"
