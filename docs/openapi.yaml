@@ -1731,6 +1731,33 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Keyword
+      - name: material_code
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Material Code
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name
+      - name: model_spec
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Model Spec
       responses:
         '200':
           description: Successful Response

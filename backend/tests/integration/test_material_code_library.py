@@ -102,6 +102,22 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
         }
     ]
 
+    combined = await client.get(
+        "/api/v1/material-code-library",
+        headers=purchase_headers,
+        params={"material_code": "Y00", "name": "接触器", "model_spec": "2510"},
+    )
+    assert combined.status_code == 200, combined.text
+    assert [item["material_code"] for item in combined.json()["items"]] == ["Y001"]
+
+    no_combined_match = await client.get(
+        "/api/v1/material-code-library",
+        headers=purchase_headers,
+        params={"name": "接触器", "model_spec": "4×1.5"},
+    )
+    assert no_combined_match.status_code == 200, no_combined_match.text
+    assert no_combined_match.json()["items"] == []
+
     replacement = await client.post(
         "/api/v1/material-code-library/import",
         headers=purchase_headers,
