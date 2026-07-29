@@ -8,7 +8,7 @@ from typing import cast
 from uuid import UUID
 
 import httpx
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -101,11 +101,6 @@ async def delete_user(session: AsyncSession, item_id: int, version: int) -> None
     if item is None:
         raise not_found("小程序用户")
     validate_version(version, item.version)
-    await session.execute(
-        update(StockOperation)
-        .where(StockOperation.mini_program_user_id == item.id)
-        .values(mini_program_user_id=None)
-    )
     await session.delete(item)
     await session.flush()
 
@@ -139,6 +134,16 @@ async def merge_users(
     validate_version(data.target_version, target.version)
     validate_version(data.source_version, source.version)
 
+    if (
+        target.display_name != source.display_name
+        or target.department_name != source.department_name
+    ):
+        raise AppError(
+            "MINI_PROGRAM_USER_PROFILE_MISMATCH",
+            "姓名和部门单位必须一致才能合并账号",
+            status_code=409,
+        )
+
     target_app_ids = {identity.app_id for identity in target.identities}
     duplicate_app_ids = sorted(
         target_app_ids.intersection(identity.app_id for identity in source.identities)
@@ -154,11 +159,6 @@ async def merge_users(
     for identity in list(source.identities):
         source.identities.remove(identity)
         target.identities.append(identity)
-    await session.execute(
-        update(StockOperation)
-        .where(StockOperation.mini_program_user_id == source.id)
-        .values(mini_program_user_id=target.id)
-    )
     target.version += 1
     await session.delete(source)
     await session.flush()
@@ -477,7 +477,6 @@ def _outbound_read(
 ) -> MiniProgramOutboundRead:
     if (
         item.operation_type != OperationType.OUTBOUND
-        or item.mini_program_user_id != user.id
         or len(item.lines) != 1
         or item.lines[0].stock_material_id != material.id
     ):
@@ -509,7 +508,7 @@ def _outbound_read(
 async def recent_outbound_reasons(
     session: AsyncSession, user: MiniProgramUser
 ) -> tuple[list[str], list[str]]:
-    async def list_reasons(user_id: int | None = None) -> list[str]:
+    async def list_reasons(user_name: str | None = None) -> list[str]:
         last_used_at = func.max(StockOperation.occurred_at)
         last_operation_id = func.max(StockOperation.id)
         query = (
@@ -522,11 +521,11 @@ async def recent_outbound_reasons(
             .order_by(last_used_at.desc(), last_operation_id.desc())
             .limit(3)
         )
-        if user_id is not None:
-            query = query.where(StockOperation.mini_program_user_id == user_id)
+        if user_name is not None:
+            query = query.where(StockOperation.mini_program_user_name_snapshot == user_name)
         return list((await session.scalars(query)).all())
 
-    personal_reasons = await list_reasons(user.id)
+    personal_reasons = await list_reasons(user.display_name)
     system_reasons = await list_reasons()
     return personal_reasons, system_reasons
 

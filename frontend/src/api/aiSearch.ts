@@ -5,6 +5,7 @@ import type {
   AiSearchSettingsWrite,
   AiSearchStatus,
   AiSearchTestResult,
+  AiSearchTestRequest,
 } from './generated'
 
 export const aiSearchApi = {
@@ -20,8 +21,8 @@ export const aiSearchApi = {
     apiClient
       .put<AiSearchSettings>('/ai-search/settings', payload)
       .then((response) => response.data),
-  testSettings: () =>
+  testSettings: (payload: AiSearchTestRequest) =>
     apiClient
-      .post<AiSearchTestResult>('/ai-search/settings/test', undefined, { timeout: 35_000 })
+      .post<AiSearchTestResult>('/ai-search/settings/test', payload, { timeout: 35_000 })
       .then((response) => response.data),
 }

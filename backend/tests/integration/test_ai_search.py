@@ -220,21 +220,15 @@ async def test_ai_response_timeout_returns_specific_bad_request(
     admin = await auth_headers(client, "admin")
     monkeypatch.setattr(ai_search_service, "_client", TimeoutAiClient())
 
-    configured = await client.put(
-        "/api/v1/ai-search/settings",
+    response = await client.post(
+        "/api/v1/ai-search/settings/test",
         headers=admin,
         json={
             "endpoint": "https://example.test/v1",
             "api_key": "secret-key",
             "model": "slow-model",
-            "enabled": True,
-            "mini_program_code_env": "release",
-            "version": 0,
         },
     )
-    assert configured.status_code == 200, configured.text
-
-    response = await client.post("/api/v1/ai-search/settings/test", headers=admin)
     assert response.status_code == 400, response.text
     assert response.json()["code"] == "AI_RESPONSE_TIMEOUT"
     assert "等待上游响应数据阶段" in response.json()["message"]
@@ -252,21 +246,15 @@ async def test_glm_models_disable_thinking_and_request_json_output(
     glm_client = GlmAiClient()
     monkeypatch.setattr(ai_search_service, "_client", glm_client)
 
-    configured = await client.put(
-        "/api/v1/ai-search/settings",
+    response = await client.post(
+        "/api/v1/ai-search/settings/test",
         headers=admin,
         json={
             "endpoint": "https://open.bigmodel.cn/api/paas/v4",
             "api_key": "secret-key",
             "model": "glm-4.7-flash",
-            "enabled": True,
-            "mini_program_code_env": "release",
-            "version": 0,
         },
     )
-    assert configured.status_code == 200, configured.text
-
-    response = await client.post("/api/v1/ai-search/settings/test", headers=admin)
     assert response.status_code == 200, response.text
     assert response.json()["expanded"] == "电机|电动机"
     assert glm_client.request_json is not None
@@ -279,3 +267,6 @@ async def test_glm_models_disable_thinking_and_request_json_output(
         "role": "user",
         "content": '{"input_terms": ["电机"]}',
     }
+    settings = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert settings.status_code == 200
+    assert settings.json()["version"] == 0

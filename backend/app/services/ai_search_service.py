@@ -20,7 +20,7 @@ from app.core.errors import AppError, version_conflict
 from app.core.wechat import configured_wechat_app_ids, get_wechat_credentials
 from app.domain.enums import MiniProgramCodeEnv
 from app.models import BusinessEventLog
-from app.schemas import AiSearchSettingsRead, AiSearchSettingsUpdate
+from app.schemas import AiSearchSettingsRead, AiSearchSettingsUpdate, AiSearchTestRequest
 from app.services.common import log_event, split_or_search_terms
 
 logger = logging.getLogger(__name__)
@@ -460,9 +460,10 @@ async def _request_expansions(
     terms: tuple[str, ...],
     *,
     response_timeout_seconds: float,
+    use_cache: bool = True,
 ) -> tuple[str, ...]:
     cache_key = (setting.version, terms)
-    cached = _cache.get(cache_key)
+    cached = _cache.get(cache_key) if use_cache else None
     now = time.monotonic()
     if cached and now - cached[0] < _CACHE_TTL_SECONDS:
         return cached[1]
@@ -567,7 +568,8 @@ async def _request_expansions(
                 expanded.append(candidate)
                 seen.add(candidate)
     result = tuple(expanded)
-    _cache[cache_key] = (now, result)
+    if use_cache:
+        _cache[cache_key] = (now, result)
     return result
 
 
@@ -600,10 +602,25 @@ async def expand_search_value(
     return "|".join(expanded)
 
 
-async def test_search_value(session: AsyncSession, value: str) -> str | None:
-    return await expand_search_value(
-        session,
-        value,
-        strict=True,
-        response_timeout_seconds=_TEST_RESPONSE_TIMEOUT_SECONDS,
+async def test_search_value(data: AiSearchTestRequest, value: str) -> str | None:
+    terms = _search_terms(value)
+    setting = AiSearchConfig(
+        endpoint=data.endpoint,
+        api_key_encrypted=_encrypt_api_key(data.api_key),
+        model=data.model,
+        enabled=True,
+        mini_program_code_env=MiniProgramCodeEnv.RELEASE,
+        mini_program_code_app_id="",
+        mini_program_registration_enabled=True,
+        mini_program_new_user_enabled=True,
+        image_acceleration_server_url="",
+        updated_at=None,
+        version=0,
     )
+    expanded = await _request_expansions(
+        setting,
+        terms,
+        response_timeout_seconds=_TEST_RESPONSE_TIMEOUT_SECONDS,
+        use_cache=False,
+    )
+    return "|".join(expanded)

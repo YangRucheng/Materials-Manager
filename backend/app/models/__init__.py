@@ -335,9 +335,6 @@ class StockOperation(AuditMixin, Base):
         BIGINT_ID, ForeignKey("stock_operation.id"), unique=True
     )
     client_request_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    mini_program_user_id: Mapped[int | None] = mapped_column(
-        BIGINT_ID, ForeignKey("mini_program_user.id"), index=True
-    )
     mini_program_user_name_snapshot: Mapped[str | None] = mapped_column(String(128))
 
     lines: Mapped[list[StockOperationLine]] = relationship(

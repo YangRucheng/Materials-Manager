@@ -8,6 +8,7 @@ from app.schemas import (
     AiSearchSettingsUpdate,
     AiSearchStatusRead,
     AiSearchTestRead,
+    AiSearchTestRequest,
 )
 from app.services import ai_search_service
 
@@ -41,7 +42,7 @@ async def update_settings(
 
 
 @router.post("/settings/test", response_model=AiSearchTestRead)
-async def test_settings(session: DbSession, user: SuperAdmin) -> AiSearchTestRead:
+async def test_settings(data: AiSearchTestRequest, user: SuperAdmin) -> AiSearchTestRead:
     original = "电机"
-    expanded = await ai_search_service.test_search_value(session, original)
+    expanded = await ai_search_service.test_search_value(data, original)
     return AiSearchTestRead(original=original, expanded=expanded or original)

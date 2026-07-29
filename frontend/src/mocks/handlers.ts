@@ -279,9 +279,12 @@ export const handlers = [
     }
     return HttpResponse.json(aiSettings)
   }),
-  http.post(`${api}/ai-search/settings/test`, () =>
-    HttpResponse.json({ original: '电机', expanded: '电机|电动机' }),
-  ),
+  http.post(`${api}/ai-search/settings/test`, async ({ request }) => {
+    const body = (await request.json()) as { endpoint: string; api_key: string; model: string }
+    if (!body.endpoint || !body.api_key || !body.model)
+      return error(422, 'VALIDATION_ERROR', '请填写端点、模型和 API Key')
+    return HttpResponse.json({ original: '电机', expanded: '电机|电动机' })
+  }),
   http.post(`${api}/auth/login`, async ({ request }) => {
     const body = (await request.json()) as { username: string; password: string }
     const user = users.find((x) => x.username === body.username && x.enabled)
@@ -353,6 +356,11 @@ export const handlers = [
     if (!target || !source) return error(400, 'NOT_FOUND', '小程序用户不存在')
     if (target.id === source.id)
       return error(400, 'MINI_PROGRAM_USER_MERGE_SAME_ACCOUNT', '不能合并到自身')
+    if (
+      target.display_name !== source.display_name ||
+      target.department_name !== source.department_name
+    )
+      return error(409, 'MINI_PROGRAM_USER_PROFILE_MISMATCH', '姓名和部门单位必须一致才能合并账号')
     if (
       target.identities.some((identity) =>
         source.identities.some((candidate) => candidate.app_id === identity.app_id),
