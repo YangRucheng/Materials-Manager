@@ -102,9 +102,10 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert material.status_code == 201, material.text
     material_data = material.json()
 
-    async def fake_generate_unlimited_material_code(material_uuid, env):
+    async def fake_generate_unlimited_material_code(material_uuid, env, app_id):
         assert str(material_uuid) == material_data["uuid"]
         assert env == MiniProgramCodeEnv.TRIAL
+        assert app_id == "wx-test-secondary"
         return b"mini-program-code"
 
     monkeypatch.setattr(
@@ -115,10 +116,18 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     async def fake_mini_program_code_env(_session):
         return MiniProgramCodeEnv.TRIAL
 
+    async def fake_mini_program_code_app_id(_session):
+        return "wx-test-secondary"
+
     monkeypatch.setattr(
         ai_search_service,
         "get_mini_program_code_env",
         fake_mini_program_code_env,
+    )
+    monkeypatch.setattr(
+        ai_search_service,
+        "get_mini_program_code_app_id",
+        fake_mini_program_code_app_id,
     )
     mini_program_code_entry_url = (
         f"/api/v1/stock-materials/{material_data['id']}/mini-program-code"
@@ -129,12 +138,15 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     redirect = await client.get(mini_program_code_entry_url, headers=warehouse)
     missing_env = await client.get(mini_program_code_url, headers=warehouse)
     invalid_env = await client.get(
-        mini_program_code_url, headers=warehouse, params={"env": "develop"}
+        mini_program_code_url,
+        headers=warehouse,
+        params={"env": "develop", "appid": "wx-test-secondary"},
     )
     assert redirect.status_code == 307
     assert redirect.headers["cache-control"] == "no-store"
     assert redirect.headers["location"] == (
-        f"/api/v1/stock-materials/mini-program-codes/{material_data['uuid']}?env=trial"
+        f"/api/v1/stock-materials/mini-program-codes/{material_data['uuid']}"
+        "?env=trial&appid=wx-test-secondary"
     )
     assert missing_env.status_code == 422
     assert invalid_env.status_code == 422

@@ -1,4 +1,5 @@
 from typing import Annotated
+from urllib.parse import urlencode
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request, Response, status
@@ -86,11 +87,14 @@ async def material_detail(
 async def material_mini_program_code(
     material_uuid: UUID,
     env: MiniProgramCodeEnv,
+    appid: Annotated[str, Query(min_length=1, max_length=64)],
     session: DbSession,
     user: CurrentUser,
 ) -> Response:
     item = await material_service.get_stock_material_by_uuid(session, material_uuid)
-    code = await mini_program_service.generate_unlimited_material_code(material_uuid, env)
+    code = await mini_program_service.generate_unlimited_material_code(
+        material_uuid, env, appid
+    )
     return Response(
         content=code,
         media_type="image/png",
@@ -116,9 +120,10 @@ async def material_mini_program_code_redirect(
 ) -> RedirectResponse:
     item = await material_service.get_stock_material(session, material_id)
     env = await ai_search_service.get_mini_program_code_env(session)
+    app_id = await ai_search_service.get_mini_program_code_app_id(session)
     target_path = request.url_for("material_mini_program_code", material_uuid=item.uuid).path
     return RedirectResponse(
-        url=f"{target_path}?env={env.value}",
+        url=f"{target_path}?{urlencode({'env': env.value, 'appid': app_id})}",
         status_code=status.HTTP_307_TEMPORARY_REDIRECT,
         headers={"Cache-Control": "no-store"},
     )

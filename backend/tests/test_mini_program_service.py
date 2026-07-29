@@ -2,6 +2,7 @@ from uuid import UUID
 
 import pytest
 
+from app.core import wechat as wechat_config
 from app.core.errors import AppError
 from app.domain.enums import MiniProgramCodeEnv
 from app.services import mini_program_service
@@ -14,8 +15,8 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
     material_uuid = UUID("10000000-0000-4000-8000-000000000001")
     captured: list[dict[str, object]] = []
 
-    async def fake_access_token() -> str:
-        return "wechat-access-token"
+    async def fake_access_token(app_id: str) -> str:
+        return f"token-{app_id}"
 
     class FakeResponse:
         headers = {"content-type": "image/png"}
@@ -35,7 +36,9 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
 
         async def post(self, url, *, params, json):
             captured.append({"url": url, "params": params, "json": json})
-            return FakeResponse(f"png-{json['env_version']}".encode())
+            return FakeResponse(
+                f"{params['access_token']}-{json['env_version']}".encode()
+            )
 
     monkeypatch.setattr(mini_program_service, "_get_wechat_access_token", fake_access_token)
     monkeypatch.setattr(
@@ -46,21 +49,25 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
     mini_program_service._material_code_cache.clear()
 
     trial = await mini_program_service.generate_unlimited_material_code(
-        material_uuid, MiniProgramCodeEnv.TRIAL
+        material_uuid, MiniProgramCodeEnv.TRIAL, "wx-test-primary"
     )
     repeated_trial = await mini_program_service.generate_unlimited_material_code(
-        material_uuid, MiniProgramCodeEnv.TRIAL
+        material_uuid, MiniProgramCodeEnv.TRIAL, "wx-test-primary"
     )
     release = await mini_program_service.generate_unlimited_material_code(
-        material_uuid, MiniProgramCodeEnv.RELEASE
+        material_uuid, MiniProgramCodeEnv.RELEASE, "wx-test-primary"
+    )
+    secondary_trial = await mini_program_service.generate_unlimited_material_code(
+        material_uuid, MiniProgramCodeEnv.TRIAL, "wx-test-secondary"
     )
 
-    assert trial == repeated_trial == b"png-trial"
-    assert release == b"png-release"
+    assert trial == repeated_trial == b"token-wx-test-primary-trial"
+    assert release == b"token-wx-test-primary-release"
+    assert secondary_trial == b"token-wx-test-secondary-trial"
     assert captured == [
         {
             "url": "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
-            "params": {"access_token": "wechat-access-token"},
+            "params": {"access_token": "token-wx-test-primary"},
             "json": {
                 "scene": "10000000000040008000000000000001",
                 "page": "pages/outbound/outbound",
@@ -71,7 +78,7 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
         },
         {
             "url": "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
-            "params": {"access_token": "wechat-access-token"},
+            "params": {"access_token": "token-wx-test-primary"},
             "json": {
                 "scene": "10000000000040008000000000000001",
                 "page": "pages/outbound/outbound",
@@ -80,7 +87,64 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
                 "width": 430,
             },
         },
+        {
+            "url": "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+            "params": {"access_token": "token-wx-test-secondary"},
+            "json": {
+                "scene": "10000000000040008000000000000001",
+                "page": "pages/outbound/outbound",
+                "check_path": False,
+                "env_version": "trial",
+                "width": 430,
+            },
+        },
     ]
+
+
+@pytest.mark.asyncio
+async def test_access_token_cache_is_isolated_by_app_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_app_ids: list[str] = []
+
+    class FakeResponse:
+        def __init__(self, app_id: str) -> None:
+            self.app_id = app_id
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"access_token": f"token-{self.app_id}", "expires_in": 7200}
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return None
+
+        async def get(self, _url, *, params):
+            app_id = params["appid"]
+            requested_app_ids.append(app_id)
+            return FakeResponse(app_id)
+
+    monkeypatch.setattr(
+        mini_program_service.httpx,
+        "AsyncClient",
+        lambda **_kwargs: FakeClient(),
+    )
+    mini_program_service._wechat_access_tokens.clear()
+
+    primary = await mini_program_service._get_wechat_access_token("wx-test-primary")
+    secondary = await mini_program_service._get_wechat_access_token("wx-test-secondary")
+    repeated_primary = await mini_program_service._get_wechat_access_token(
+        "wx-test-primary"
+    )
+
+    assert primary == repeated_primary == "token-wx-test-primary"
+    assert secondary == "token-wx-test-secondary"
+    assert requested_app_ids == ["wx-test-primary", "wx-test-secondary"]
 
 
 @pytest.mark.asyncio
@@ -128,12 +192,12 @@ async def test_exchange_wechat_code_selects_credentials_by_app_id(
         await mini_program_service.exchange_wechat_code("temporary-code", "wx-unknown")
 
     monkeypatch.setattr(
-        mini_program_service.settings,
+        wechat_config.settings,
         "wechat_mini_program_app_id",
         "wx-test-primary, wx-test-secondary, wx-test-third",
     )
     monkeypatch.setattr(
-        mini_program_service.settings,
+        wechat_config.settings,
         "wechat_mini_program_app_secret",
         "test-primary-secret, test-secondary-secret, test-third-secret",
     )
@@ -144,7 +208,7 @@ async def test_exchange_wechat_code_selects_credentials_by_app_id(
     assert captured["params"]["secret"] == "test-third-secret"
 
     monkeypatch.setattr(
-        mini_program_service.settings,
+        wechat_config.settings,
         "wechat_mini_program_app_secret",
         "test-primary-secret,test-secondary-secret",
     )

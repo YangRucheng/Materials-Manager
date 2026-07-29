@@ -96,6 +96,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
             "model": "fast-model",
             "enabled": True,
             "mini_program_code_env": "trial",
+            "mini_program_code_app_id": "wx-test-secondary",
             "mini_program_registration_enabled": False,
             "mini_program_new_user_enabled": False,
             "image_acceleration_server_url": "http://192.168.1.10/",
@@ -109,6 +110,8 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         "model": "fast-model",
         "enabled": True,
         "mini_program_code_env": "trial",
+        "mini_program_code_app_id": "wx-test-secondary",
+        "mini_program_app_ids": ["wx-test-primary", "wx-test-secondary"],
         "mini_program_registration_enabled": False,
         "mini_program_new_user_enabled": False,
         "image_acceleration_server_url": "http://192.168.1.10",
@@ -142,6 +145,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         assert encrypted != "secret-key"
         assert "secret-key" not in str(encrypted)
         assert event.after_data["mini_program_code_env"] == "trial"
+        assert event.after_data["mini_program_code_app_id"] == "wx-test-secondary"
         assert event.after_data["mini_program_registration_enabled"] is False
         assert event.after_data["mini_program_new_user_enabled"] is False
         assert event.after_data["image_acceleration_server_url"] == "http://192.168.1.10"
