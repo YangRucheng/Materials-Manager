@@ -337,6 +337,7 @@ export type PurchaseRecordResultColumn =
   | 'demand_department'
   | 'material_name'
   | 'actual_demand_person'
+  | 'usage'
   | 'purchase_responsible'
   | 'salesperson'
   | 'status'
