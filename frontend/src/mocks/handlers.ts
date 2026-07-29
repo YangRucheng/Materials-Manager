@@ -68,12 +68,15 @@ const matchesOrSearch = (value: string | number | null | undefined, search: stri
   const normalizedValue = String(value ?? '').toLowerCase()
   return terms.some((term) => normalizedValue.includes(term))
 }
-const compareNullableText = (left: string | null | undefined, right: string | null | undefined) => {
+const compareNullableTextDesc = (
+  left: string | null | undefined,
+  right: string | null | undefined,
+) => {
   const normalizedLeft = left?.trim() || null
   const normalizedRight = right?.trim() || null
   if (normalizedLeft === null) return normalizedRight === null ? 0 : 1
   if (normalizedRight === null) return -1
-  return normalizedLeft.localeCompare(normalizedRight, 'zh-CN')
+  return normalizedRight.localeCompare(normalizedLeft, 'zh-CN')
 }
 const error = (status: number, code: string, message: string, details?: Record<string, unknown>) =>
   HttpResponse.json({ code, message, details, request_id: crypto.randomUUID() }, { status })
@@ -892,8 +895,8 @@ export const handlers = [
           })
           .sort(
             (left, right) =>
-              compareNullableText(left.purchase_order_no, right.purchase_order_no) ||
-              compareNullableText(left.trace_no, right.trace_no) ||
+              compareNullableTextDesc(left.purchase_order_no, right.purchase_order_no) ||
+              compareNullableTextDesc(left.trace_no, right.trace_no) ||
               right.line_id - left.line_id,
           ),
         url,

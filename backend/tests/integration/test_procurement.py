@@ -470,11 +470,25 @@ async def test_purchase_records_default_to_purchase_and_trace_number_order(
         (item["purchase_order_no"], item["trace_no"])
         for item in response.json()["items"]
     ] == [
-        ("ORDER-A", "TRACE-A"),
-        ("ORDER-A", "TRACE-C"),
-        ("ORDER-A", None),
         ("ORDER-B", "TRACE-A"),
+        ("ORDER-A", "TRACE-C"),
+        ("ORDER-A", "TRACE-A"),
+        ("ORDER-A", None),
         (None, "TRACE-Z"),
+    ]
+
+    first_page = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"page": 1, "page_size": 2},
+    )
+    assert first_page.status_code == 200, first_page.text
+    assert [
+        (item["purchase_order_no"], item["trace_no"])
+        for item in first_page.json()["items"]
+    ] == [
+        ("ORDER-B", "TRACE-A"),
+        ("ORDER-A", "TRACE-C"),
     ]
 
 
