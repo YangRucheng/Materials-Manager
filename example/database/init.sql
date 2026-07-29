@@ -22,15 +22,29 @@ CREATE TABLE IF NOT EXISTS `user` (
 
 CREATE TABLE IF NOT EXISTS `mini_program_user` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `wechat_openid` VARCHAR(128) NOT NULL,
   `display_name` VARCHAR(128) NOT NULL,
   `department_name` VARCHAR(128) NOT NULL DEFAULT '华星检修维护部电气车间',
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
-  CONSTRAINT `pk_mini_program_user` PRIMARY KEY (`id`),
-  CONSTRAINT `uq_mini_program_user_wechat_openid` UNIQUE (`wechat_openid`)
+  CONSTRAINT `pk_mini_program_user` PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `mini_program_identity` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `mini_program_user_id` BIGINT UNSIGNED NOT NULL,
+  `app_id` VARCHAR(64) NOT NULL,
+  `wechat_openid` VARCHAR(128) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `version` INT UNSIGNED NOT NULL DEFAULT 1,
+  CONSTRAINT `pk_mini_program_identity` PRIMARY KEY (`id`),
+  CONSTRAINT `uq_mini_program_identity_app_id` UNIQUE (`app_id`, `wechat_openid`),
+  CONSTRAINT `uq_mini_program_identity_mini_program_user_id`
+    UNIQUE (`mini_program_user_id`, `app_id`),
+  CONSTRAINT `fk_mini_program_identity_mini_program_user_id_mini_program_user`
+    FOREIGN KEY (`mini_program_user_id`) REFERENCES `mini_program_user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `business_event_log` (

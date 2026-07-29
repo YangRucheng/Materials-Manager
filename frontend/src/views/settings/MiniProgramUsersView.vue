@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NButton, NEllipsis, NTag, useDialog, useMessage } from 'naive-ui'
 import type { MiniProgramUser } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
@@ -15,8 +15,11 @@ const dialog = useDialog()
 const items = ref<MiniProgramUser[]>([])
 const loading = ref(false)
 const deletingId = ref<number | null>(null)
+const merging = ref(false)
 const show = ref(false)
+const showMerge = ref(false)
 const editing = ref<MiniProgramUser | null>(null)
+const mergeTargetId = ref<number | null>(null)
 const form = reactive({
   display_name: '',
   department_name: '',
@@ -44,11 +47,34 @@ const columns = preventTableColumnCompression<MiniProgramUser>([
     render: (row) => formatShanghaiTime(row.created_at),
   },
   {
+    title: '小程序 AppID',
+    key: 'app_id',
+    width: 190,
+    render: (row) =>
+      h(
+        'div',
+        { class: 'identity-list' },
+        row.identities.map((identity) =>
+          h(NTag, { size: 'small', round: true }, { default: () => identity.app_id }),
+        ),
+      ),
+  },
+  {
     title: '微信 OpenID',
     key: 'wechat_openid',
-    width: 220,
+    width: 240,
     render: (row) =>
-      h(NEllipsis, { tooltip: true, class: 'openid-text' }, { default: () => row.wechat_openid }),
+      h(
+        'div',
+        { class: 'identity-list' },
+        row.identities.map((identity) =>
+          h(
+            NEllipsis,
+            { tooltip: true, class: 'openid-text' },
+            { default: () => identity.wechat_openid },
+          ),
+        ),
+      ),
   },
   {
     title: '操作',
@@ -65,6 +91,14 @@ const columns = preventTableColumnCompression<MiniProgramUser>([
   },
 ])
 const tableScrollX = getTableScrollX(columns)
+const mergeOptions = computed(() =>
+  items.value
+    .filter((item) => item.id !== editing.value?.id)
+    .map((item) => ({
+      label: `${item.display_name}（${item.identities.map((identity) => identity.app_id).join('、')}）`,
+      value: item.id,
+    })),
+)
 
 async function load() {
   loading.value = true
@@ -84,6 +118,37 @@ function open(row: MiniProgramUser) {
     version: row.version,
   })
   show.value = true
+}
+
+function openMerge() {
+  mergeTargetId.value = null
+  showMerge.value = true
+}
+
+async function mergeAccount() {
+  const source = editing.value
+  const target = items.value.find((item) => item.id === mergeTargetId.value)
+  if (!source || !target) {
+    message.error('请选择要保留的目标账号')
+    return
+  }
+  merging.value = true
+  try {
+    await dictionaryApi.mergeMiniProgramUsers(target.id, {
+      source_user_id: source.id,
+      source_version: source.version,
+      target_version: target.version,
+    })
+    message.success(`已将“${source.display_name}”合并到“${target.display_name}”`)
+    showMerge.value = false
+    show.value = false
+    editing.value = null
+    await load()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '账号合并失败')
+  } finally {
+    merging.value = false
+  }
 }
 
 async function save() {
@@ -142,7 +207,7 @@ onMounted(load)
           <h1 class="page-title">小程序用户</h1>
           <n-tag round size="small" type="info">{{ items.length }} 位</n-tag>
         </div>
-        <p class="page-description">查看绑定资料、调整使用状态或解除微信绑定</p>
+        <p class="page-description">按人员管理多个小程序身份，并支持人工合并重复账号</p>
       </div>
     </div>
     <n-card class="data-card" :bordered="false">
@@ -164,8 +229,15 @@ onMounted(load)
       style="width: 520px"
     >
       <n-form label-placement="top">
-        <n-form-item label="微信 OpenID">
-          <n-input :value="editing?.wechat_openid" disabled />
+        <n-form-item label="已绑定小程序身份">
+          <div class="identity-cards">
+            <div v-for="identity in editing?.identities" :key="identity.id" class="identity-card">
+              <n-tag size="small" round>{{ identity.app_id }}</n-tag>
+              <n-ellipsis class="openid-text" :tooltip="true">
+                {{ identity.wechat_openid }}
+              </n-ellipsis>
+            </div>
+          </div>
         </n-form-item>
         <n-form-item label="姓名" required>
           <n-input v-model:value="form.display_name" />
@@ -182,17 +254,51 @@ onMounted(load)
       </n-form>
       <template #footer>
         <div class="modal-footer">
-          <n-button
-            type="error"
-            secondary
-            :loading="deletingId === editing?.id"
-            @click="confirmDelete"
-            >删除用户</n-button
-          >
+          <n-space>
+            <n-button
+              type="error"
+              secondary
+              :loading="deletingId === editing?.id"
+              @click="confirmDelete"
+              >删除用户</n-button
+            >
+            <n-button secondary :disabled="items.length < 2" @click="openMerge">
+              合并账号
+            </n-button>
+          </n-space>
           <n-space>
             <n-button @click="show = false">取消</n-button>
             <n-button type="primary" @click="save">保存</n-button>
           </n-space>
+        </div>
+      </template>
+    </n-modal>
+    <n-modal
+      v-model:show="showMerge"
+      preset="card"
+      draggable
+      title="合并小程序账号"
+      style="width: 520px"
+    >
+      <n-alert type="warning" :bordered="false">
+        当前账号“{{
+          editing?.display_name
+        }}”将被删除，其小程序身份和历史出库归属会迁移到目标账号；目标账号的姓名、部门和状态保持不变。
+      </n-alert>
+      <n-form label-placement="top" class="merge-form">
+        <n-form-item label="保留的目标账号" required>
+          <n-select
+            v-model:value="mergeTargetId"
+            :options="mergeOptions"
+            filterable
+            placeholder="请选择确认属于同一人员的账号"
+          />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <div class="merge-footer">
+          <n-button @click="showMerge = false">取消</n-button>
+          <n-button type="warning" :loading="merging" @click="mergeAccount">确认合并</n-button>
         </div>
       </template>
     </n-modal>
@@ -223,6 +329,32 @@ onMounted(load)
   align-items: center;
   gap: 10px;
   color: var(--color-text-muted);
+}
+
+.identity-list,
+.identity-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.identity-card {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.merge-form {
+  margin-top: 18px;
+}
+
+.merge-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 :deep(.openid-text) {

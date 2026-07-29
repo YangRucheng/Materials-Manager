@@ -21,13 +21,19 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def _create_access_token(subject: int | str, token_type: str, expires_minutes: int) -> str:
+def _create_access_token(
+    subject: int | str,
+    token_type: str,
+    expires_minutes: int,
+    **claims: str,
+) -> str:
     now = datetime.now(UTC)
     payload = {
         "sub": str(subject),
         "token_type": token_type,
         "iat": now,
         "exp": now + timedelta(minutes=expires_minutes),
+        **claims,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -40,8 +46,8 @@ def create_mini_program_access_token(user_id: int) -> str:
     return _create_access_token(user_id, "mini_program", settings.access_token_minutes)
 
 
-def create_mini_program_registration_token(openid: str) -> str:
-    return _create_access_token(openid, "mini_program_registration", 10)
+def create_mini_program_registration_token(app_id: str, openid: str) -> str:
+    return _create_access_token(openid, "mini_program_registration", 10, app_id=app_id)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:

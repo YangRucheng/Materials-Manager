@@ -29,15 +29,26 @@ export interface User {
   enabled: boolean
   version: number
 }
+export interface MiniProgramIdentity {
+  id: number
+  app_id: string
+  wechat_openid: string
+  created_at: string
+}
 export interface MiniProgramUser {
   id: number
-  wechat_openid: string
   display_name: string
   department_name: string
   enabled: boolean
+  identities: MiniProgramIdentity[]
   created_at: string
   updated_at: string
   version: number
+}
+export interface MiniProgramUserMergeInput {
+  source_user_id: number
+  source_version: number
+  target_version: number
 }
 export interface LoginRequest {
   username: string

@@ -20,10 +20,16 @@ function wxLogin() {
 
 async function loginSilently() {
   const code = await wxLogin();
+  let appId = '';
+  try {
+    appId = wx.getAccountInfoSync().miniProgram.appId;
+  } catch (error) {
+    appId = '';
+  }
   const session = await request({
     url: '/mini-program/auth/wx-login',
     method: 'POST',
-    data: { code },
+    data: appId && appId !== 'touristappid' ? { code, app_id: appId } : { code },
     auth: false,
   });
   storeSession(session);

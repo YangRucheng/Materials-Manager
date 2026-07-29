@@ -11,6 +11,7 @@ import httpx
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.errors import AppError, not_found
@@ -21,6 +22,7 @@ from app.domain.enums import (
     SourceType,
 )
 from app.models import (
+    MiniProgramIdentity,
     MiniProgramUser,
     StockBalance,
     StockMaterial,
@@ -32,6 +34,7 @@ from app.schemas import (
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
+    MiniProgramUserMergeRequest,
     MiniProgramUserUpdate,
     OperationCreate,
     OperationLineWrite,
@@ -49,12 +52,18 @@ _material_code_lock = asyncio.Lock()
 async def list_users(
     session: AsyncSession, keyword: str | None, page: int, page_size: int
 ) -> tuple[list[MiniProgramUser], int]:
-    query = select(MiniProgramUser)
+    query = select(MiniProgramUser).options(selectinload(MiniProgramUser.identities))
     if keyword:
         query = query.where(
             or_(
-                MiniProgramUser.wechat_openid.contains(keyword, autoescape=True),
                 MiniProgramUser.display_name.contains(keyword, autoescape=True),
+                MiniProgramUser.department_name.contains(keyword, autoescape=True),
+                MiniProgramUser.identities.any(
+                    or_(
+                        MiniProgramIdentity.app_id.contains(keyword, autoescape=True),
+                        MiniProgramIdentity.wechat_openid.contains(keyword, autoescape=True),
+                    )
+                ),
             )
         )
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
@@ -102,20 +111,103 @@ async def delete_user(session: AsyncSession, item_id: int, version: int) -> None
     await session.flush()
 
 
-async def exchange_wechat_code(code: str) -> str:
-    if not settings.wechat_mini_program_app_id or not settings.wechat_mini_program_app_secret:
+async def merge_users(
+    session: AsyncSession,
+    target_user_id: int,
+    data: MiniProgramUserMergeRequest,
+) -> MiniProgramUser:
+    if target_user_id == data.source_user_id:
+        raise AppError(
+            "MINI_PROGRAM_USER_MERGE_SAME_ACCOUNT",
+            "不能将小程序账号合并到自身",
+            status_code=400,
+        )
+    users = list(
+        (
+            await session.scalars(
+                select(MiniProgramUser)
+                .where(MiniProgramUser.id.in_([target_user_id, data.source_user_id]))
+                .options(selectinload(MiniProgramUser.identities))
+                .with_for_update()
+            )
+        ).all()
+    )
+    by_id = {item.id: item for item in users}
+    target = by_id.get(target_user_id)
+    source = by_id.get(data.source_user_id)
+    if target is None or source is None:
+        raise not_found("小程序用户")
+    validate_version(data.target_version, target.version)
+    validate_version(data.source_version, source.version)
+
+    target_app_ids = {identity.app_id for identity in target.identities}
+    duplicate_app_ids = sorted(
+        target_app_ids.intersection(identity.app_id for identity in source.identities)
+    )
+    if duplicate_app_ids:
+        raise AppError(
+            "MINI_PROGRAM_IDENTITY_CONFLICT",
+            "两个账号包含相同小程序的身份，无法直接合并",
+            status_code=409,
+            details={"app_ids": duplicate_app_ids},
+        )
+
+    for identity in list(source.identities):
+        source.identities.remove(identity)
+        target.identities.append(identity)
+    await session.execute(
+        update(StockOperation)
+        .where(StockOperation.mini_program_user_id == source.id)
+        .values(mini_program_user_id=target.id)
+    )
+    target.version += 1
+    await session.delete(source)
+    await session.flush()
+    return target
+
+
+def _wechat_credentials(app_id: str | None) -> tuple[str, str]:
+    app_ids = [
+        item.strip()
+        for item in settings.wechat_mini_program_app_id.split(",")
+        if item.strip()
+    ]
+    app_secrets = [
+        item.strip() for item in settings.wechat_mini_program_app_secret.split(",") if item.strip()
+    ]
+    if not app_ids or len(app_ids) != len(app_secrets) or len(app_ids) != len(set(app_ids)):
+        raise AppError(
+            "WECHAT_CONFIGURATION_INVALID",
+            "微信小程序 AppID 与 AppSecret 配置无效",
+            status_code=503,
+            details={
+                "app_id_count": len(app_ids),
+                "app_secret_count": len(app_secrets),
+            },
+        )
+
+    effective_app_id = app_id or app_ids[0]
+    try:
+        app_secret = app_secrets[app_ids.index(effective_app_id)]
+    except ValueError as exc:
         raise AppError(
             "WECHAT_NOT_CONFIGURED",
-            "微信小程序登录尚未配置",
+            "当前微信小程序登录尚未配置",
             status_code=503,
-        )
+            details={"app_id": effective_app_id or None},
+        ) from exc
+    return effective_app_id, app_secret
+
+
+async def exchange_wechat_code(code: str, app_id: str | None = None) -> tuple[str, str]:
+    effective_app_id, app_secret = _wechat_credentials(app_id)
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             response = await client.get(
                 "https://api.weixin.qq.com/sns/jscode2session",
                 params={
-                    "appid": settings.wechat_mini_program_app_id,
-                    "secret": settings.wechat_mini_program_app_secret,
+                    "appid": effective_app_id,
+                    "secret": app_secret,
                     "js_code": code,
                     "grant_type": "authorization_code",
                 },
@@ -142,18 +234,13 @@ async def exchange_wechat_code(code: str) -> str:
             "微信登录服务返回异常",
             status_code=502,
         )
-    return openid
+    return effective_app_id, openid
 
 
 async def _get_wechat_access_token() -> str:
     global _wechat_access_token, _wechat_access_token_expires_at
 
-    if not settings.wechat_mini_program_app_id or not settings.wechat_mini_program_app_secret:
-        raise AppError(
-            "WECHAT_NOT_CONFIGURED",
-            "微信小程序登录尚未配置",
-            status_code=503,
-        )
+    app_id, app_secret = _wechat_credentials(None)
     if _wechat_access_token and monotonic() < _wechat_access_token_expires_at:
         return _wechat_access_token
 
@@ -166,8 +253,8 @@ async def _get_wechat_access_token() -> str:
                     "https://api.weixin.qq.com/cgi-bin/token",
                     params={
                         "grant_type": "client_credential",
-                        "appid": settings.wechat_mini_program_app_id,
-                        "secret": settings.wechat_mini_program_app_secret,
+                        "appid": app_id,
+                        "secret": app_secret,
                     },
                 )
                 response.raise_for_status()
@@ -243,11 +330,17 @@ async def generate_unlimited_material_code(material_uuid: UUID, env: MiniProgram
 
 
 async def login_with_wechat(
-    session: AsyncSession, code: str
-) -> tuple[MiniProgramUser | None, str]:
-    openid = await exchange_wechat_code(code)
+    session: AsyncSession, code: str, app_id: str | None = None
+) -> tuple[MiniProgramUser | None, str, str]:
+    effective_app_id, openid = await exchange_wechat_code(code, app_id)
     user = await session.scalar(
-        select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
+        select(MiniProgramUser)
+        .join(MiniProgramIdentity)
+        .where(
+            MiniProgramIdentity.app_id == effective_app_id,
+            MiniProgramIdentity.wechat_openid == openid,
+        )
+        .options(selectinload(MiniProgramUser.identities))
     )
     if user is not None and not user.enabled:
         raise AppError("ACCOUNT_DISABLED", "您的账号待审核，请联系管理员", status_code=403)
@@ -257,14 +350,24 @@ async def login_with_wechat(
             "当前暂未开放新用户绑定，请联系管理员",
             status_code=403,
         )
-    return user, openid
+    return user, effective_app_id, openid
 
 
 async def register_user(
-    session: AsyncSession, openid: str, display_name: str, department_name: str
+    session: AsyncSession,
+    app_id: str,
+    openid: str,
+    display_name: str,
+    department_name: str,
 ) -> MiniProgramUser:
     existing = await session.scalar(
-        select(MiniProgramUser).where(MiniProgramUser.wechat_openid == openid)
+        select(MiniProgramUser)
+        .join(MiniProgramIdentity)
+        .where(
+            MiniProgramIdentity.app_id == app_id,
+            MiniProgramIdentity.wechat_openid == openid,
+        )
+        .options(selectinload(MiniProgramUser.identities))
     )
     if existing is not None:
         if not existing.enabled:
@@ -277,10 +380,10 @@ async def register_user(
             status_code=403,
         )
     user = MiniProgramUser(
-        wechat_openid=openid,
         display_name=display_name,
         department_name=department_name,
         enabled=await ai_search_service.is_mini_program_new_user_enabled(session),
+        identities=[MiniProgramIdentity(app_id=app_id, wechat_openid=openid)],
     )
     session.add(user)
     try:
