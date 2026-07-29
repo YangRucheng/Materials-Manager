@@ -6,6 +6,7 @@ import { aiSearchApi } from '@/api/aiSearch'
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
+const testing = ref(false)
 const codeEnvOptions = [
   { label: '体验版', value: 'trial' },
   { label: '正式版', value: 'release' },
@@ -59,22 +60,31 @@ async function save() {
       version: form.version,
     })
     Object.assign(form, data)
-    if (!data.enabled) {
-      message.success('高级设置已保存')
-      return
-    }
-    try {
-      const testResult = await aiSearchApi.testSettings()
-      message.success(`配置已保存，模型连接正常：${testResult.original} → ${testResult.expanded}`)
-    } catch (error) {
-      message.warning(
-        `配置已保存，模型连接失败：${error instanceof Error ? error.message : '请检查模型配置'}`,
-      )
-    }
+    message.success('高级设置已保存')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
     saving.value = false
+  }
+}
+
+async function testModel() {
+  if (!form.endpoint.trim() || !form.model.trim() || !form.api_key.trim()) {
+    message.error('请填写端点、模型和 API Key')
+    return
+  }
+  testing.value = true
+  try {
+    const result = await aiSearchApi.testSettings({
+      endpoint: form.endpoint.trim(),
+      api_key: form.api_key.trim(),
+      model: form.model.trim(),
+    })
+    message.success(`模型连接正常：${result.original} → ${result.expanded}`)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '模型连接失败')
+  } finally {
+    testing.value = false
   }
 }
 
@@ -124,6 +134,11 @@ onMounted(load)
                 :disabled="!form.enabled"
               />
             </n-form-item>
+          </div>
+          <div class="model-actions">
+            <n-button secondary :loading="testing" :disabled="loading" @click="testModel">
+              测试模型
+            </n-button>
           </div>
         </n-form>
       </n-card>
@@ -209,6 +224,12 @@ onMounted(load)
 
 .api-key-field {
   grid-column: 1 / -1;
+}
+
+.model-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .switch-control {

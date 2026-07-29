@@ -420,6 +420,12 @@ paths:
       - AI 搜索
       summary: Test Settings
       operationId: test_settings_api_v1_ai_search_settings_test_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiSearchTestRequest'
+        required: true
       responses:
         '200':
           description: Successful Response
@@ -1739,15 +1745,6 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Keyword
-      - name: material_code
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            maxLength: 64
-          - type: 'null'
-          title: Material Code
       - name: name
         in: query
         required: false
@@ -1766,6 +1763,15 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Model Spec
+      - name: material_code
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Material Code
       responses:
         '200':
           description: Successful Response
@@ -4559,6 +4565,27 @@ components:
       - original
       - expanded
       title: AiSearchTestRead
+    AiSearchTestRequest:
+      properties:
+        endpoint:
+          type: string
+          maxLength: 500
+          title: Endpoint
+        api_key:
+          type: string
+          maxLength: 1000
+          title: Api Key
+        model:
+          type: string
+          maxLength: 128
+          title: Model
+      additionalProperties: false
+      type: object
+      required:
+      - endpoint
+      - api_key
+      - model
+      title: AiSearchTestRequest
     ApiError:
       properties:
         code:
@@ -7172,11 +7199,6 @@ components:
         client_request_id:
           type: string
           title: Client Request Id
-        mini_program_user_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Mini Program User Id
         mini_program_user_name:
           anyOf:
           - type: string

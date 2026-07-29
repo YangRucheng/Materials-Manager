@@ -109,6 +109,11 @@ export interface AiSearchTestResult {
   original: string
   expanded: string
 }
+export interface AiSearchTestRequest {
+  endpoint: string
+  api_key: string
+  model: string
+}
 export interface MaterialCodeLibrary {
   id: number
   material_code: string
@@ -205,7 +210,6 @@ export interface StockOperation {
   source_type: SourceType
   reversal_of_id?: number
   client_request_id: string
-  mini_program_user_id?: number
   mini_program_user_name?: string
   lines: StockOperationLine[]
   created_at: string
