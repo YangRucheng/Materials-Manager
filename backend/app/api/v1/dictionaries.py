@@ -4,9 +4,6 @@ from fastapi import APIRouter, Query, status
 
 from app.core.permissions import CurrentUser, DbSession, SuperAdmin
 from app.schemas import (
-    MeasurementUnitCreate,
-    MeasurementUnitRead,
-    MeasurementUnitUpdate,
     Page,
     UserCreate,
     UserRead,
@@ -17,42 +14,6 @@ from app.services import dictionary_service
 router = APIRouter(tags=["基础数据"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
-
-
-@router.get("/measurement-units", response_model=Page[MeasurementUnitRead])
-async def units(
-    session: DbSession,
-    user: CurrentUser,
-    page: PageNo = 1,
-    page_size: PageSize = 20,
-    keyword: str | None = None,
-    enabled: bool | None = None,
-) -> Page[MeasurementUnitRead]:
-    items, total = await dictionary_service.list_units(session, keyword, enabled, page, page_size)
-    return Page(
-        items=[MeasurementUnitRead.model_validate(x) for x in items],
-        page=page,
-        page_size=page_size,
-        total=total,
-    )
-
-
-@router.post(
-    "/measurement-units", response_model=MeasurementUnitRead, status_code=status.HTTP_201_CREATED
-)
-async def add_unit(
-    data: MeasurementUnitCreate, session: DbSession, user: SuperAdmin
-) -> MeasurementUnitRead:
-    return MeasurementUnitRead.model_validate(await dictionary_service.create_unit(session, data))
-
-
-@router.patch("/measurement-units/{item_id}", response_model=MeasurementUnitRead)
-async def edit_unit(
-    item_id: int, data: MeasurementUnitUpdate, session: DbSession, user: SuperAdmin
-) -> MeasurementUnitRead:
-    return MeasurementUnitRead.model_validate(
-        await dictionary_service.update_unit(session, item_id, data)
-    )
 
 
 @router.get("/users", response_model=Page[UserRead])

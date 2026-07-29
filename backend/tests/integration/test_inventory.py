@@ -89,7 +89,7 @@ async def test_idempotency_negative_stock_and_permissions(client: AsyncClient) -
         json={
             "name": "无权限物资",
             "model_spec": "无",
-            "unit_id": 1,
+            "unit_name": "个",
             "image_ids": [],
         },
     )
@@ -237,7 +237,7 @@ async def test_low_stock_replenishment_uses_recent_consumption_and_defaults(
             "plan_date": "2026-07-20",
             "name": "负责人默认值样本",
             "model_spec": "无",
-            "unit_id": 1,
+            "unit_name": "个",
             "actual_demand_person": "检修班",
             "purchase_responsible": "最近负责人王工",
             "planned_qty": "1",
@@ -339,7 +339,7 @@ async def test_stock_material_search_supports_or_terms(client: AsyncClient) -> N
             "name": "温度传感器",
             "alias": "温感",
             "model_spec": "PT100",
-            "unit_id": 1,
+            "unit_name": "个",
             "remark": "测试 OR 查询",
             "image_ids": [],
         },

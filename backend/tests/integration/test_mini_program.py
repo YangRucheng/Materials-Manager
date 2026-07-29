@@ -86,7 +86,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         json={
             "name": "扫码测试物资",
             "model_spec": "SCAN-001",
-            "unit_id": 1,
+            "unit_name": "个",
             "image_ids": [],
         },
     )
@@ -395,7 +395,7 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
                 "name_id": name_id,
                 "alias": alias,
                 "model_spec": model_spec,
-                "unit_id": 1,
+                "unit_name": "个",
                 "remark": f"{name}只读详情",
                 "image_ids": image_ids or [],
             },

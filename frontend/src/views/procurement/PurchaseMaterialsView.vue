@@ -21,7 +21,6 @@ import type {
 import { procurementApi } from '@/api/procurement'
 import { aiSearchApi } from '@/api/aiSearch'
 import { useAuthStore } from '@/stores/auth'
-import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
@@ -58,7 +57,6 @@ import { renderTwoLineText } from '@/utils/tableText'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const dictionaries = useDictionaryStore()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseMaterial[]>([])
@@ -199,7 +197,7 @@ const form = reactive<PurchaseMaterialWrite>({
   demand_department: defaultDemandDepartment,
   name: '',
   model_spec: '',
-  unit_id: null,
+  unit_name: '',
   actual_demand_person: '',
   purchase_responsible: '',
   planned_qty: '',
@@ -217,8 +215,8 @@ const rules: FormRules = {
   planned_qty: [
     { required: true, message: '请输入计划数量' },
     {
-      validator: () => typeof form.unit_id === 'number',
-      message: '请选择计量单位',
+      validator: () => Boolean(form.unit_name.trim()),
+      message: '请输入计量单位',
       trigger: ['blur', 'change'],
     },
   ],
@@ -572,7 +570,7 @@ function openCreate() {
     demand_department: defaultDemandDepartment,
     name: '',
     model_spec: '',
-    unit_id: null,
+    unit_name: '',
     actual_demand_person: '',
     purchase_responsible: getLastPurchaseResponsible(),
     planned_qty: '',
@@ -591,11 +589,7 @@ function applyMaterialCode(item: MaterialCodeLibrary) {
   form.material_code = item.material_code
   if (item.name?.trim()) form.name = item.name
   if (item.model_spec?.trim()) form.model_spec = item.model_spec
-  if (item.unit_id) {
-    form.unit_id = item.unit_id
-  } else {
-    message.warning(`计量单位“${item.unit_name}”尚未在系统配置，请手动选择计量单位`)
-  }
+  form.unit_name = item.unit_name
 }
 async function save() {
   if (!createPlanDate.value) {
@@ -794,7 +788,6 @@ function handleExport(key: string) {
 }
 onMounted(() => {
   document.addEventListener('fullscreenchange', syncTableFullscreen)
-  void dictionaries.load()
   void loadFilterOptions()
   void loadAiStatus()
   void load()
@@ -1187,9 +1180,10 @@ onBeforeUnmount(() => {
                 :decimal-places="1"
                 class="quantity-input"
               />
-              <n-select
-                v-model:value="form.unit_id"
-                :options="dictionaries.unitOptions"
+              <n-input
+                v-model:value="form.unit_name"
+                maxlength="32"
+                placeholder="计量单位"
                 class="quantity-unit-select"
               />
             </n-input-group>

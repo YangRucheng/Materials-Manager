@@ -95,27 +95,17 @@ export interface AiSearchTestResult {
   original: string
   expanded: string
 }
-export interface MeasurementUnit {
-  id: number
-  code: string
-  name: string
-  decimal_places: 0 | 1
-  enabled: boolean
-  version: number
-}
 export interface MaterialCodeLibrary {
   id: number
   material_code: string
   name?: string | null
   model_spec?: string | null
   unit_name: string
-  unit_id?: number | null
 }
 export interface MaterialCodeLibraryImportResult {
   imported_count: number
   blank_name_count: number
   blank_model_spec_count: number
-  unmatched_unit_names: string[]
 }
 export interface FileObject {
   id: string
@@ -137,7 +127,6 @@ export interface StockMaterial {
   name_id?: string | null
   alias?: string | null
   model_spec: string
-  unit_id: number
   unit_name: string
   remark?: string
   current_qty: string
@@ -153,7 +142,7 @@ export interface StockMaterialWrite {
   name_id?: string
   alias?: string
   model_spec: string
-  unit_id: number | null
+  unit_name: string
   remark?: string
   image_ids: string[]
   version?: number
@@ -164,7 +153,6 @@ export interface InventoryBalance {
   alias?: string | null
   model_spec: string
   unit_name: string
-  decimal_places: number
   current_qty: string
   minimum_qty?: string
   is_low_stock: boolean
@@ -357,7 +345,6 @@ export interface PurchaseMaterial {
   demand_department: string
   name: string
   model_spec: string
-  unit_id: number
   unit_name: string
   actual_demand_person: string
   purchase_responsible: string
@@ -382,7 +369,7 @@ export interface PurchaseMaterialWrite {
   demand_department?: string
   name: string
   model_spec: string
-  unit_id: number | null
+  unit_name: string
   actual_demand_person?: string
   purchase_responsible?: string
   planned_qty: string
@@ -452,7 +439,6 @@ export interface PurchaseRecord {
   demand_department: string
   material_name: string
   model_spec: string
-  unit_id: number
   unit_name: string
   purchase_qty: string
   actual_demand_person: string
@@ -476,7 +462,7 @@ export interface PurchaseRecordWrite {
   demand_department: string
   material_name: string
   model_spec: string
-  unit_id: number | null
+  unit_name: string
   actual_demand_person: string
   purchase_responsible: string
   purchase_qty: string

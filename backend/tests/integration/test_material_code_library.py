@@ -46,7 +46,6 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
         "imported_count": 3,
         "blank_name_count": 1,
         "blank_model_spec_count": 1,
-        "unmatched_unit_names": ["箱"],
     }
 
     by_name = await client.get(
@@ -62,7 +61,7 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
             "name": "交流接触器",
             "model_spec": "CJX2-2510",
             "unit_name": "个",
-            "unit_id": 1,
+            "unit_name": "个",
         }
     ]
 
@@ -98,7 +97,7 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
             "name": "交流接触器",
             "model_spec": "CJX2-2510",
             "unit_name": "个",
-            "unit_id": 1,
+            "unit_name": "个",
         }
     ]
 

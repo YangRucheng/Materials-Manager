@@ -29,7 +29,7 @@
 - 未编码计划查询与编码补录
 - 申购记录、业务员、备注和到货进度跟踪
 - 请购到货关联入库
-- 用户、简单角色、计量单位等基础数据
+- 用户和简单角色等基础数据；计量单位由业务表单直接填写自由文本
 
 ### 2.2 明确不做
 
@@ -141,15 +141,6 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 
 `username`、`password_hash`、`display_name`、`role`、`enabled`。`role` 取值为 `SUPER_ADMIN`、`WAREHOUSE_ADMIN`、`PURCHASE_ADMIN`、`READ_ONLY`，一个用户只配置一个角色。生产环境可以以后替换为企业 SSO。
 
-#### `measurement_unit`
-
-| 字段 | 类型 | 约束 |
-| --- | --- | --- |
-| `code` | VARCHAR(32) | 唯一、必填 |
-| `name` | VARCHAR(32) | 唯一、必填 |
-| `decimal_places` | TINYINT UNSIGNED | 0~3，默认 0 |
-| `enabled` | BOOLEAN | 默认 true |
-
 ### 6.2 图片附件
 
 #### `file_object`
@@ -170,7 +161,7 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 | --- | --- | --- |
 | `name` | VARCHAR(128) | 必填，去除首尾空格 |
 | `model_spec` | VARCHAR(255) | 必填；无型号时明确填写“无” |
-| `unit_id` | BIGINT UNSIGNED | 必填，外键 |
+| `unit_name` | VARCHAR(32) | 必填，自由填写 |
 | `remark` | VARCHAR(1000) | 可空 |
 | `identity_hash` | CHAR(64) | 名称、规格、单位规范化后生成，唯一 |
 | `enabled` | BOOLEAN | 兼容字段，业务固定为 true，不提供停用功能 |
@@ -242,7 +233,7 @@ DRAFT -> SUBMITTED -> PROCESSING -> PARTIALLY_RECEIVED -> COMPLETED
 | `material_code` | VARCHAR(64) | 可空；同一编码可出现在多次申购计划中 |
 | `name` | VARCHAR(128) | 必填 |
 | `model_spec` | VARCHAR(255) | 必填 |
-| `unit_id` | BIGINT UNSIGNED | 必填，外键 |
+| `unit_name` | VARCHAR(32) | 必填，自由填写 |
 | `subitem_no` | VARCHAR(64) | 可空、直接填写 |
 | `remark` | VARCHAR(1000) | 可空 |
 | `stock_material_id` | BIGINT UNSIGNED | 可空，关联二级库物资；允许多个计划关联同一物资 |
@@ -474,7 +465,7 @@ Excel 布局模板位于 `backend/app/templates/*.json`，随后端代码统一�
   "material_code": "DQ-000123",
   "name": "交流接触器",
   "model_spec": "CJX2-2510 220V",
-  "unit_id": 1,
+  "unit_name": "个",
   "image_ids": [],
   "version": 2
 }
@@ -524,7 +515,6 @@ Excel 布局模板位于 `backend/app/templates/*.json`，随后端代码统一�
 | DELETE | `/files/images/orphans` | 超级管理员清理超过保护期的未引用记录和无记录磁盘文件 |
 | GET | `/files/images/{id}` | 公开读取图片；可传 `size=16..2048` 获取等比例 WebP 预览 |
 | DELETE | `/files/images/{id}` | 删除尚未被业务引用的图片 |
-| GET | `/measurement-units` | 计量单位下拉选项 |
 | GET | `/dashboard/summary` | 库存总项数、低库存、待编码、待处理请购统计 |
 
 ## 9. 前端方案
@@ -560,7 +550,6 @@ Excel 布局模板位于 `backend/app/templates/*.json`，随后端代码统一�
 /procurement/requests
 /procurement/requests/new
 /procurement/requests/:id
-/settings/units
 /settings/users
 ```
 
@@ -582,7 +571,7 @@ Excel 布局模板位于 `backend/app/templates/*.json`，随后端代码统一�
 #### 入库/出库
 
 - 支持一张单多行物资。
-- 数量输入根据计量单位限制小数位数。
+- 数量输入统一限制为最多一位小数。
 - 出库即时显示当前库存和出库后库存，允许显示负数并正常提交。
 - 从请购进入入库时预填物资、剩余未到数量、来源单号。
 - 首次到货若未关联二级库物资，弹窗提供“关联已有物资”和“新建二级库物资”两条路径。

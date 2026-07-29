@@ -63,22 +63,6 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   INDEX `ix_file_object_sha256` (`sha256`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `measurement_unit` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `code` VARCHAR(32) NOT NULL,
-  `name` VARCHAR(32) NOT NULL,
-  `decimal_places` TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `version` INT UNSIGNED NOT NULL DEFAULT 1,
-  CONSTRAINT `pk_measurement_unit` PRIMARY KEY (`id`),
-  CONSTRAINT `ck_measurement_unit_decimal_places_range`
-    CHECK (`decimal_places` >= 0 AND `decimal_places` <= 1),
-  CONSTRAINT `uq_measurement_unit_code` UNIQUE (`code`),
-  CONSTRAINT `uq_measurement_unit_name` UNIQUE (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE IF NOT EXISTS `material_code_library` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `material_code` VARCHAR(64) NOT NULL,
@@ -124,15 +108,13 @@ CREATE TABLE IF NOT EXISTS `stock_material` (
   `name_id` VARCHAR(128) NULL,
   `alias` VARCHAR(128) NULL,
   `model_spec` VARCHAR(255) NOT NULL,
-  `unit_id` BIGINT UNSIGNED NOT NULL,
+  `unit_name` VARCHAR(32) NOT NULL,
   `remark` VARCHAR(1000) NULL,
   `identity_hash` VARCHAR(64) NOT NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_material` PRIMARY KEY (`id`),
-  CONSTRAINT `fk_stock_material_unit_id_measurement_unit`
-    FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
   CONSTRAINT `uq_stock_material_uuid` UNIQUE (`uuid`),
   CONSTRAINT `uq_stock_material_identity_hash` UNIQUE (`identity_hash`),
   INDEX `ix_stock_material_model_spec` (`model_spec`),
@@ -182,7 +164,7 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `demand_department` VARCHAR(128) NOT NULL DEFAULT 'HXNI 检修维护部',
   `name` VARCHAR(128) NOT NULL,
   `model_spec` VARCHAR(255) NOT NULL,
-  `unit_id` BIGINT UNSIGNED NOT NULL,
+  `unit_name` VARCHAR(32) NOT NULL,
   `actual_demand_person` VARCHAR(128) NOT NULL,
   `purchase_responsible` VARCHAR(128) NOT NULL,
   `planned_qty` DECIMAL(18, 1) NOT NULL,
@@ -197,8 +179,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_material` PRIMARY KEY (`id`),
   CONSTRAINT `uq_purchase_material_plan_no` UNIQUE (`plan_no`),
-  CONSTRAINT `fk_purchase_material_unit_id_measurement_unit`
-    FOREIGN KEY (`unit_id`) REFERENCES `measurement_unit` (`id`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
   INDEX `ix_purchase_material_identity_hash` (`identity_hash`),
@@ -316,22 +296,6 @@ VALUES
 ON DUPLICATE KEY UPDATE
   `display_name` = VALUES(`display_name`),
   `role` = VALUES(`role`),
-  `enabled` = VALUES(`enabled`);
-
-INSERT INTO `measurement_unit` (
-  `code`,
-  `name`,
-  `decimal_places`,
-  `enabled`
-)
-VALUES
-  ('PCS', '个', 0, 1),
-  ('SET', '套', 0, 1),
-  ('M', '米', 1, 1),
-  ('KG', '千克', 1, 1)
-ON DUPLICATE KEY UPDATE
-  `name` = VALUES(`name`),
-  `decimal_places` = VALUES(`decimal_places`),
   `enabled` = VALUES(`enabled`);
 
 SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;

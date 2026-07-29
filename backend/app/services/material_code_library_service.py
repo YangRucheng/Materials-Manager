@@ -5,11 +5,11 @@ from zipfile import BadZipFile
 
 from openpyxl import load_workbook  # type: ignore[import-untyped]
 from openpyxl.utils.exceptions import InvalidFileException  # type: ignore[import-untyped]
-from sqlalchemy import and_, delete, func, insert, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.models import MaterialCodeLibrary, MeasurementUnit
+from app.models import MaterialCodeLibrary
 from app.schemas import MaterialCodeLibraryImportRead, MaterialCodeLibraryRead
 from app.services.common import contains_any
 
@@ -125,10 +125,6 @@ async def replace_material_codes(
     session: AsyncSession, content: bytes
 ) -> MaterialCodeLibraryImportRead:
     rows = parse_material_code_workbook(content)
-    configured_units = set(
-        await session.scalars(select(MeasurementUnit.name).where(MeasurementUnit.enabled.is_(True)))
-    )
-    imported_units = {str(row["unit_name"]) for row in rows}
     await session.execute(delete(MaterialCodeLibrary))
     for offset in range(0, len(rows), INSERT_BATCH_SIZE):
         batch = rows[offset : offset + INSERT_BATCH_SIZE]
@@ -138,7 +134,6 @@ async def replace_material_codes(
         imported_count=len(rows),
         blank_name_count=sum(row["name"] is None for row in rows),
         blank_model_spec_count=sum(row["model_spec"] is None for row in rows),
-        unmatched_unit_names=sorted(imported_units - configured_units),
     )
 
 
@@ -152,13 +147,7 @@ async def search_material_codes(
     page: int,
     page_size: int,
 ) -> tuple[list[MaterialCodeLibraryRead], int]:
-    query = select(MaterialCodeLibrary, MeasurementUnit.id.label("unit_id")).outerjoin(
-        MeasurementUnit,
-        and_(
-            MeasurementUnit.name == MaterialCodeLibrary.unit_name,
-            MeasurementUnit.enabled.is_(True),
-        ),
-    )
+    query = select(MaterialCodeLibrary)
     condition = contains_any(
         (
             MaterialCodeLibrary.material_code,
@@ -179,7 +168,7 @@ async def search_material_codes(
         if field_condition is not None:
             query = query.where(field_condition)
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
-    result = await session.execute(
+    result = await session.scalars(
         query.order_by(MaterialCodeLibrary.material_code)
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -191,8 +180,7 @@ async def search_material_codes(
             name=item.name,
             model_spec=item.model_spec,
             unit_name=item.unit_name,
-            unit_id=unit_id,
         )
-        for item, unit_id in result.all()
+        for item in result.all()
     ]
     return items, total

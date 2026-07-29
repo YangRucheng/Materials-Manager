@@ -21,7 +21,6 @@ import {
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
-import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
@@ -31,7 +30,6 @@ const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
 const dialog = useDialog()
-const dictionaries = useDictionaryStore()
 const material = ref<PurchaseMaterial | null>(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -61,7 +59,7 @@ const form = reactive<PurchaseMaterialWrite>({
   demand_department: defaultDemandDepartment,
   name: '',
   model_spec: '',
-  unit_id: null,
+  unit_name: '',
   actual_demand_person: '',
   purchase_responsible: '',
   planned_qty: '',
@@ -84,11 +82,7 @@ function applyMaterialCode(item: MaterialCodeLibrary) {
   form.material_code = item.material_code
   if (item.name?.trim()) form.name = item.name
   if (item.model_spec?.trim()) form.model_spec = item.model_spec
-  if (item.unit_id) {
-    form.unit_id = item.unit_id
-  } else {
-    message.warning(`计量单位“${item.unit_name}”尚未在系统配置，请手动选择计量单位`)
-  }
+  form.unit_name = item.unit_name
 }
 function syncForm(value: PurchaseMaterial) {
   Object.assign(form, {
@@ -99,7 +93,7 @@ function syncForm(value: PurchaseMaterial) {
     demand_department: value.demand_department,
     name: value.name,
     model_spec: value.model_spec,
-    unit_id: value.unit_id,
+    unit_name: value.unit_name,
     actual_demand_person: value.actual_demand_person,
     purchase_responsible: value.purchase_responsible,
     planned_qty: value.planned_qty,
@@ -118,7 +112,7 @@ async function save() {
     !material.value ||
     !form.name.trim() ||
     !form.model_spec.trim() ||
-    !form.unit_id ||
+    !form.unit_name.trim() ||
     !form.actual_demand_person?.trim() ||
     !form.purchase_responsible?.trim() ||
     !form.planned_qty ||
@@ -219,10 +213,7 @@ async function moveToRecord() {
     moving.value = false
   }
 }
-onMounted(() => {
-  void dictionaries.load()
-  void load()
-})
+onMounted(() => void load())
 </script>
 
 <template>
@@ -287,7 +278,7 @@ onMounted(() => {
             <QuantityInput v-model:value="form.planned_qty" :decimal-places="1" />
           </n-form-item>
           <n-form-item label="计量单位" required>
-            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+            <n-input v-model:value="form.unit_name" maxlength="32" placeholder="可任意填写" />
           </n-form-item>
           <n-form-item label="实际需求人" required>
             <n-input v-model:value="form.actual_demand_person" maxlength="128" />

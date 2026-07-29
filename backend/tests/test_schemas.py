@@ -17,7 +17,7 @@ def purchase_material_payload() -> dict[str, object]:
         "category": "",
         "name": "接触器",
         "model_spec": "CJX2-1810",
-        "unit_id": 1,
+        "unit_name": "个",
         "planned_qty": "2",
         "usage": "设备检修",
         "image_ids": [IMAGE_ID],
@@ -30,7 +30,7 @@ def purchase_record_payload() -> dict[str, object]:
         "material_code": "",
         "material_name": "接触器",
         "model_spec": "CJX2-1810",
-        "unit_id": 1,
+        "unit_name": "个",
         "actual_demand_person": "张三",
         "purchase_responsible": "李四",
         "purchase_qty": "2",
@@ -56,7 +56,7 @@ def test_request_models_accept_valid_validator_values() -> None:
         {
             "name": "接触器",
             "model_spec": "CJX2-1810",
-            "unit_id": 1,
+            "unit_name": "个",
             "image_ids": [IMAGE_ID],
         }
     )
@@ -82,7 +82,7 @@ def test_request_models_accept_valid_validator_values() -> None:
             {
                 "name": "接触器",
                 "model_spec": "CJX2-1810",
-                "unit_id": 1,
+                "unit_name": "个",
                 "image_ids": [IMAGE_ID, IMAGE_ID],
             },
         ),

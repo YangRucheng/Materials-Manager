@@ -11,7 +11,6 @@ from app.core.errors import AppError, not_found
 from app.domain.enums import PurchasePlanStatus
 from app.models import (
     FileObject,
-    MeasurementUnit,
     PurchaseMaterial,
     PurchaseMaterialImage,
     PurchaseRequestLine,
@@ -41,13 +40,6 @@ from app.services.common import (
 SHANGHAI = timezone(timedelta(hours=8))
 
 
-async def _unit(session: AsyncSession, unit_id: int) -> MeasurementUnit:
-    unit = await session.get(MeasurementUnit, unit_id)
-    if unit is None or not unit.enabled:
-        raise AppError("INVALID_UNIT", "计量单位不存在或已停用")
-    return unit
-
-
 async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject]:
     if not image_ids:
         return []
@@ -69,8 +61,7 @@ def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> S
         name_id=item.name_id,
         alias=item.alias,
         model_spec=item.model_spec,
-        unit_id=item.unit_id,
-        unit_name=item.unit.name,
+        unit_name=item.unit_name,
         remark=item.remark,
         current_qty=item.balance.quantity if item.balance else 0,
         images=[file_read(link.file) for link in item.images],
@@ -131,18 +122,16 @@ async def delete_stock_material(session: AsyncSession, item: StockMaterial, vers
 
 
 async def create_stock_material(session: AsyncSession, data: StockMaterialCreate) -> StockMaterial:
-    unit = await _unit(session, data.unit_id)
     files = await _files(session, data.image_ids)
     item = StockMaterial(
         name=data.name,
         name_id=data.name_id or None,
         alias=data.alias or None,
         model_spec=data.model_spec,
-        unit_id=data.unit_id,
+        unit_name=data.unit_name,
         remark=data.remark,
-        identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
+        identity_hash=identity_hash(data.name, data.model_spec, data.unit_name),
     )
-    item.unit = unit
     item.balance = StockBalance(quantity=0)
     item.replenishment_policy = None
     item.images = [
@@ -163,16 +152,14 @@ async def update_stock_material(
     session: AsyncSession, item: StockMaterial, data: StockMaterialUpdate
 ) -> StockMaterial:
     validate_version(data.version, item.version)
-    unit = await _unit(session, data.unit_id)
     files = await _files(session, data.image_ids)
     item.name = data.name
     item.name_id = data.name_id or None
     item.alias = data.alias or None
     item.model_spec = data.model_spec
-    item.unit_id = data.unit_id
-    item.unit = unit
+    item.unit_name = data.unit_name
     item.remark = data.remark
-    item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_id)
+    item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_name)
     item.images = [
         StockMaterialImage(file_id=file.id, file=file, sort_order=index)
         for index, file in enumerate(files)
@@ -212,8 +199,7 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         demand_department=item.demand_department,
         name=item.name,
         model_spec=item.model_spec,
-        unit_id=item.unit_id,
-        unit_name=item.unit.name,
+        unit_name=item.unit_name,
         actual_demand_person=item.actual_demand_person,
         purchase_responsible=item.purchase_responsible,
         planned_qty=item.planned_qty,
@@ -264,9 +250,8 @@ async def _next_plan_no(session: AsyncSession, plan_date: date) -> str:
 async def create_purchase_material(
     session: AsyncSession, data: PurchaseMaterialCreate
 ) -> PurchaseMaterial:
-    unit = await _unit(session, data.unit_id)
     responsible = data.purchase_responsible or "\\"
-    validate_quantity_precision(data.planned_qty, unit.decimal_places)
+    validate_quantity_precision(data.planned_qty)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
     plan_date = data.plan_date or datetime.now(SHANGHAI).date()
@@ -279,7 +264,7 @@ async def create_purchase_material(
         demand_department=data.demand_department,
         name=data.name,
         model_spec=data.model_spec,
-        unit_id=data.unit_id,
+        unit_name=data.unit_name,
         actual_demand_person=data.actual_demand_person or responsible,
         purchase_responsible=responsible,
         planned_qty=data.planned_qty,
@@ -287,14 +272,13 @@ async def create_purchase_material(
         subitem_no=data.subitem_no,
         remark=data.remark,
         stock_material_id=data.stock_material_id,
-        identity_hash=identity_hash(data.name, data.model_spec, data.unit_id),
+        identity_hash=identity_hash(data.name, data.model_spec, data.unit_name),
         status=data.status,
         images=[
             PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
             for index, file in enumerate(files)
         ],
     )
-    item.unit = unit
     item.stock_material = stock
     session.add(item)
     await session.flush()
@@ -305,9 +289,8 @@ async def update_purchase_material(
     session: AsyncSession, item: PurchaseMaterial, data: PurchaseMaterialUpdate
 ) -> PurchaseMaterial:
     validate_version(data.version, item.version)
-    unit = await _unit(session, data.unit_id)
     responsible = data.purchase_responsible or item.purchase_responsible
-    validate_quantity_precision(data.planned_qty, unit.decimal_places)
+    validate_quantity_precision(data.planned_qty)
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
     for key in (
@@ -317,7 +300,7 @@ async def update_purchase_material(
         "demand_department",
         "name",
         "model_spec",
-        "unit_id",
+        "unit_name",
         "planned_qty",
         "usage",
         "subitem_no",
@@ -333,8 +316,7 @@ async def update_purchase_material(
     if "status" in data.model_fields_set:
         item.status = data.status
     item.purchase_responsible = responsible
-    item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_id)
-    item.unit = unit
+    item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_name)
     item.stock_material = stock
     item.images = [
         PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
@@ -475,9 +457,7 @@ async def search_purchase_materials(
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseMaterial], int]:
-    query = select(PurchaseMaterial).join(
-        MeasurementUnit, MeasurementUnit.id == PurchaseMaterial.unit_id
-    )
+    query = select(PurchaseMaterial)
     keyword_condition = contains_any(
         (
             PurchaseMaterial.plan_no,
@@ -486,7 +466,7 @@ async def search_purchase_materials(
             PurchaseMaterial.model_spec,
             PurchaseMaterial.material_code,
             PurchaseMaterial.category,
-            MeasurementUnit.name,
+            PurchaseMaterial.unit_name,
             cast(PurchaseMaterial.planned_qty, String),
             PurchaseMaterial.actual_demand_person,
             PurchaseMaterial.purchase_responsible,
@@ -506,7 +486,7 @@ async def search_purchase_materials(
             "category": PurchaseMaterial.category,
             "name": PurchaseMaterial.name,
             "model_spec": PurchaseMaterial.model_spec,
-            "unit_name": MeasurementUnit.name,
+            "unit_name": PurchaseMaterial.unit_name,
             "planned_qty": cast(PurchaseMaterial.planned_qty, String),
             "usage": PurchaseMaterial.usage,
             "subitem_no": PurchaseMaterial.subitem_no,

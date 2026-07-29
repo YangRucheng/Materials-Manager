@@ -5,7 +5,6 @@ import { NInputGroup, useDialog, useMessage } from 'naive-ui'
 import type { FileObject, PurchaseRecord, PurchaseRecordWrite } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
-import { useDictionaryStore } from '@/stores/dictionaries'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
@@ -15,7 +14,6 @@ import { purchaseCategoryOptions } from '@/constants/purchase'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const dictionaries = useDictionaryStore()
 const dialog = useDialog()
 const message = useMessage()
 const record = ref<PurchaseRecord | null>(null)
@@ -34,7 +32,7 @@ const form = reactive<PurchaseRecordWrite>({
   demand_department: '',
   material_name: '',
   model_spec: '',
-  unit_id: null,
+  unit_name: '',
   actual_demand_person: '',
   purchase_responsible: '',
   purchase_qty: '',
@@ -65,7 +63,7 @@ function syncForm(value: PurchaseRecord) {
     demand_department: value.demand_department,
     material_name: value.material_name,
     model_spec: value.model_spec,
-    unit_id: value.unit_id,
+    unit_name: value.unit_name,
     actual_demand_person: value.actual_demand_person,
     purchase_responsible: value.purchase_responsible,
     purchase_qty: value.purchase_qty,
@@ -111,7 +109,7 @@ async function save() {
     !purchaseDate.value ||
     !form.material_name.trim() ||
     !form.model_spec.trim() ||
-    !form.unit_id ||
+    !form.unit_name.trim() ||
     !form.actual_demand_person.trim() ||
     !form.purchase_responsible.trim() ||
     !form.purchase_qty ||
@@ -183,10 +181,7 @@ function confirmRestore() {
   })
 }
 
-onMounted(() => {
-  void dictionaries.load()
-  void load()
-})
+onMounted(() => void load())
 </script>
 
 <template>
@@ -267,9 +262,10 @@ onMounted(() => {
                 :decimal-places="1"
                 class="quantity-input"
               />
-              <n-select
-                v-model:value="form.unit_id"
-                :options="dictionaries.unitOptions"
+              <n-input
+                v-model:value="form.unit_name"
+                maxlength="32"
+                placeholder="计量单位"
                 class="quantity-unit-select"
               />
             </NInputGroup>

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
 from app.domain.enums import PurchasePlanStatus
-from app.models import MeasurementUnit, PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
+from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
 from app.schemas import (
     BatchMovePurchasePlansRequest,
     MovePurchasePlanRequest,
@@ -48,8 +48,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         demand_department=material.demand_department,
         material_name=material.name,
         model_spec=material.model_spec,
-        unit_id=material.unit_id,
-        unit_name=material.unit.name,
+        unit_name=material.unit_name,
         purchase_qty=line.purchase_qty,
         actual_demand_person=material.actual_demand_person,
         purchase_responsible=material.purchase_responsible,
@@ -150,7 +149,7 @@ async def move_plans_to_record(
             material_code_snapshot=material.material_code,
             material_name_snapshot=material.name,
             model_spec_snapshot=material.model_spec,
-            unit_name_snapshot=material.unit.name,
+            unit_name_snapshot=material.unit_name,
             purchase_qty=material.planned_qty,
             status=data.status,
             usage=material.usage,
@@ -194,7 +193,7 @@ async def update_purchase_record(
             demand_department=data.demand_department,
             name=data.material_name,
             model_spec=data.model_spec,
-            unit_id=data.unit_id,
+            unit_name=data.unit_name,
             actual_demand_person=data.actual_demand_person,
             purchase_responsible=data.purchase_responsible,
             planned_qty=data.purchase_qty,
@@ -221,7 +220,7 @@ async def update_purchase_record(
     line.material_code_snapshot = material.material_code
     line.material_name_snapshot = material.name
     line.model_spec_snapshot = material.model_spec
-    line.unit_name_snapshot = material.unit.name
+    line.unit_name_snapshot = material.unit_name
     line.purchase_qty = data.purchase_qty
     line.status = data.status
     line.usage = data.usage
@@ -289,7 +288,6 @@ async def search_purchase_records(
         select(PurchaseRequestLine)
         .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
         .join(PurchaseMaterial, PurchaseMaterial.id == PurchaseRequestLine.purchase_material_id)
-        .join(MeasurementUnit, MeasurementUnit.id == PurchaseMaterial.unit_id)
     )
     if empty_status:
         query = query.where(
@@ -315,7 +313,7 @@ async def search_purchase_records(
             PurchaseMaterial.category,
             PurchaseMaterial.name,
             PurchaseMaterial.model_spec,
-            MeasurementUnit.name,
+            PurchaseMaterial.unit_name,
             cast(PurchaseRequestLine.purchase_qty, String),
             PurchaseRequestLine.usage,
             PurchaseRequestLine.subitem_no,
@@ -343,7 +341,7 @@ async def search_purchase_records(
             "material_code": PurchaseMaterial.material_code,
             "material_name": PurchaseMaterial.name,
             "model_spec": PurchaseMaterial.model_spec,
-            "unit_name": MeasurementUnit.name,
+            "unit_name": PurchaseMaterial.unit_name,
             "purchase_qty": cast(PurchaseRequestLine.purchase_qty, String),
             "salesperson": PurchaseRequest.salesperson,
             "status": PurchaseRequestLine.status,
