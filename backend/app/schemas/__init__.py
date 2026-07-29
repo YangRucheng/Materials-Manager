@@ -281,34 +281,6 @@ class AiSearchTestRead(BaseModel):
     expanded: str
 
 
-class MeasurementUnitRead(ReadModel):
-    id: int
-    code: str
-    name: str
-    decimal_places: int
-    enabled: bool
-    version: int
-
-
-class MeasurementUnitCreate(RequestModel):
-    code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
-    decimal_places: int = Field(default=0, ge=0, le=1)
-    enabled: bool = True
-
-
-class MeasurementUnitUpdate(RequestModel):
-    code: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)] | None
-    ) = None
-    name: (
-        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)] | None
-    ) = None
-    decimal_places: int | None = Field(default=None, ge=0, le=1)
-    enabled: bool | None = None
-    version: int
-
-
 class FileObjectRead(ReadModel):
     id: FileId
     original_name: str
@@ -362,7 +334,9 @@ class StockMaterialBase(RequestModel):
     model_spec: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
     ]
-    unit_id: int
+    unit_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)
+    ]
     remark: str | None = Field(default=None, max_length=1000)
     image_ids: list[FileId] = Field(default_factory=list, max_length=9)
 
@@ -387,7 +361,6 @@ class StockMaterialRead(ReadModel):
     name_id: str | None = None
     alias: str | None = None
     model_spec: str
-    unit_id: int
     unit_name: str
     remark: str | None = None
     current_qty: Decimal
@@ -405,7 +378,6 @@ class InventoryBalanceRead(ReadModel):
     alias: str | None = None
     model_spec: str
     unit_name: str
-    decimal_places: int
     current_qty: Decimal
     minimum_qty: Decimal | None = None
     is_low_stock: bool
@@ -614,7 +586,9 @@ class PurchaseMaterialBase(RequestModel):
     model_spec: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
     ]
-    unit_id: int
+    unit_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)
+    ]
     actual_demand_person: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
@@ -658,14 +632,12 @@ class MaterialCodeLibraryRead(ReadModel):
     name: str | None
     model_spec: str | None
     unit_name: str
-    unit_id: int | None = None
 
 
 class MaterialCodeLibraryImportRead(ReadModel):
     imported_count: int
     blank_name_count: int
     blank_model_spec_count: int
-    unmatched_unit_names: list[str]
 
 
 class PurchasePlanVersion(RequestModel):
@@ -738,7 +710,6 @@ class PurchaseMaterialRead(ReadModel):
     demand_department: str
     name: str
     model_spec: str
-    unit_id: int
     unit_name: str
     actual_demand_person: str
     purchase_responsible: str
@@ -870,7 +841,9 @@ class PurchaseRecordUpdate(RequestModel):
     model_spec: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
     ]
-    unit_id: int
+    unit_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)
+    ]
     actual_demand_person: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
     ]
@@ -939,7 +912,6 @@ class PurchaseRecordRead(ReadModel):
     demand_department: str
     material_name: str
     model_spec: str
-    unit_id: int
     unit_name: str
     purchase_qty: Decimal
     actual_demand_person: str

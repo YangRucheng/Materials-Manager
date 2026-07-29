@@ -15,7 +15,7 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.domain.enums import Role
 from app.main import app
-from app.models import MeasurementUnit, User
+from app.models import User
 
 settings.template_dir = Path(__file__).parents[1] / "app" / "templates"
 
@@ -58,18 +58,6 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
                 ),
             ]
         )
-        await session.flush()
-        session.add_all(
-            [
-                MeasurementUnit(
-                    code="PCS",
-                    name="个",
-                    decimal_places=0,
-                    enabled=True,
-                ),
-                MeasurementUnit(code="M", name="米", decimal_places=1, enabled=True),
-            ]
-        )
         await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
@@ -96,7 +84,7 @@ async def create_stock(
         json={
             "name": name,
             "model_spec": "CJX2-2510 220V",
-            "unit_id": 1,
+            "unit_name": "个",
             "remark": "测试",
             "image_ids": [],
         },

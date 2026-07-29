@@ -53,8 +53,10 @@ def contains_any(
     return or_(*(column.contains(term, autoescape=True) for term in terms for column in columns))
 
 
-def identity_hash(name: str, model_spec: str, unit_id: int) -> str:
-    raw = f"{normalized_text(name)}\0{normalized_text(model_spec)}\0{unit_id}"
+def identity_hash(name: str, model_spec: str, unit_name: str) -> str:
+    raw = (
+        f"{normalized_text(name)}\0{normalized_text(model_spec)}\0{normalized_text(unit_name)}"
+    )
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
@@ -63,15 +65,14 @@ def validate_version(expected: int | None, actual: int) -> None:
         raise version_conflict(expected, actual)
 
 
-def validate_quantity_precision(quantity: Decimal, decimal_places: int) -> None:
-    decimal_places = min(decimal_places, 1)
+def validate_quantity_precision(quantity: Decimal) -> None:
     raw_exponent = quantity.normalize().as_tuple().exponent
     exponent = -raw_exponent if isinstance(raw_exponent, int) else 0
-    if exponent > decimal_places:
+    if exponent > 1:
         raise AppError(
             "INVALID_QUANTITY_PRECISION",
-            "数量最多保留 1 位小数，且不能超过计量单位允许范围",
-            details={"quantity": str(quantity), "decimal_places": decimal_places},
+            "数量最多保留 1 位小数",
+            details={"quantity": str(quantity), "decimal_places": 1},
         )
 
 

@@ -71,7 +71,7 @@ async def test_uploaded_image_is_reencoded_as_png(client: AsyncClient) -> None:
         json={
             "name": "带图物资",
             "model_spec": "IMG-1",
-            "unit_id": 1,
+            "unit_name": "个",
             "remark": None,
             "image_ids": [body["id"]],
         },

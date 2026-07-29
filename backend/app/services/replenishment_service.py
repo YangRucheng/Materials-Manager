@@ -47,7 +47,7 @@ async def set_policy(
     material: StockMaterial,
     data: ReplenishmentPolicyWrite,
 ) -> StockMaterial:
-    validate_quantity_precision(data.minimum_qty, material.unit.decimal_places)
+    validate_quantity_precision(data.minimum_qty)
     policy = material.replenishment_policy
     if policy is None:
         policy = StockReplenishmentPolicy(
@@ -79,7 +79,7 @@ async def create_replenishment_draft(
         raise AppError("NOT_LOW_STOCK", "该物资当前不在低库存范围", status_code=409)
 
     suggested = (await recent_outbound_consumption(session, [stock.id])).get(stock.id, ZERO)
-    validate_quantity_precision(data.planned_qty, stock.unit.decimal_places)
+    validate_quantity_precision(data.planned_qty)
 
     previous_code = await session.scalar(
         select(PurchaseMaterial.material_code)
@@ -90,9 +90,9 @@ async def create_replenishment_draft(
         .order_by(PurchaseMaterial.id.desc())
         .limit(1)
     )
-    quantity_note = f"补库计划：建议申购 {suggested} {stock.unit.name}"
+    quantity_note = f"补库计划：建议申购 {suggested} {stock.unit_name}"
     if data.planned_qty != suggested:
-        quantity_note += f"，确认计划 {data.planned_qty} {stock.unit.name}"
+        quantity_note += f"，确认计划 {data.planned_qty} {stock.unit_name}"
     note_parts = [part for part in [stock.remark, quantity_note] if part]
     purchase = await create_purchase_material(
         session,
@@ -101,7 +101,7 @@ async def create_replenishment_draft(
             material_code=previous_code,
             name=stock.name,
             model_spec=stock.model_spec,
-            unit_id=stock.unit_id,
+            unit_name=stock.unit_name,
             actual_demand_person=data.actual_demand_person,
             purchase_responsible=data.purchase_responsible,
             planned_qty=data.planned_qty,

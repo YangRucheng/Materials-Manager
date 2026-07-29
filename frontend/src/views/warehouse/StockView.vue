@@ -198,7 +198,7 @@ async function confirmReplenishment() {
   const row = replenishmentRow.value
   if (!row) return
   if (
-    !isDecimalString(replenishmentForm.planned_qty, row.decimal_places) ||
+    !isDecimalString(replenishmentForm.planned_qty, 1) ||
     !replenishmentForm.demand_date ||
     !replenishmentForm.actual_demand_person.trim() ||
     !replenishmentForm.purchase_responsible.trim()
@@ -332,10 +332,7 @@ onMounted(load)
             />
           </n-form-item>
           <n-form-item label="计划数量" required>
-            <QuantityInput
-              v-model:value="replenishmentForm.planned_qty"
-              :decimal-places="replenishmentRow?.decimal_places ?? 1"
-            />
+            <QuantityInput v-model:value="replenishmentForm.planned_qty" :decimal-places="1" />
           </n-form-item>
         </div>
         <div class="form-grid">

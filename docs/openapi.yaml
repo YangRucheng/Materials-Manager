@@ -3764,193 +3764,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/measurement-units:
-    get:
-      tags:
-      - 基础数据
-      summary: Units
-      operationId: units_api_v1_measurement_units_get
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          default: 1
-          title: Page
-      - name: page_size
-        in: query
-        required: false
-        schema:
-          type: integer
-          maximum: 200
-          minimum: 1
-          default: 20
-          title: Page Size
-      - name: keyword
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Keyword
-      - name: enabled
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Enabled
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Page_MeasurementUnitRead_'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-    post:
-      tags:
-      - 基础数据
-      summary: Add Unit
-      operationId: add_unit_api_v1_measurement_units_post
-      security:
-      - HTTPBearer: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MeasurementUnitCreate'
-      responses:
-        '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MeasurementUnitRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /api/v1/measurement-units/{item_id}:
-    patch:
-      tags:
-      - 基础数据
-      summary: Edit Unit
-      operationId: edit_unit_api_v1_measurement_units__item_id__patch
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: item_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Item Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MeasurementUnitUpdate'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MeasurementUnitRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
   /api/v1/users:
     get:
       tags:
@@ -4932,9 +4745,6 @@ components:
         unit_name:
           type: string
           title: Unit Name
-        decimal_places:
-          type: integer
-          title: Decimal Places
         current_qty:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
@@ -4962,7 +4772,6 @@ components:
       - name
       - model_spec
       - unit_name
-      - decimal_places
       - current_qty
       - is_low_stock
       - suggested_purchase_qty
@@ -5028,17 +4837,11 @@ components:
         blank_model_spec_count:
           type: integer
           title: Blank Model Spec Count
-        unmatched_unit_names:
-          items:
-            type: string
-          type: array
-          title: Unmatched Unit Names
       type: object
       required:
       - imported_count
       - blank_name_count
       - blank_model_spec_count
-      - unmatched_unit_names
       title: MaterialCodeLibraryImportRead
     MaterialCodeLibraryRead:
       properties:
@@ -5061,11 +4864,6 @@ components:
         unit_name:
           type: string
           title: Unit Name
-        unit_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Unit Id
       type: object
       required:
       - id
@@ -5074,99 +4872,6 @@ components:
       - model_spec
       - unit_name
       title: MaterialCodeLibraryRead
-    MeasurementUnitCreate:
-      properties:
-        code:
-          type: string
-          maxLength: 32
-          minLength: 1
-          title: Code
-        name:
-          type: string
-          maxLength: 32
-          minLength: 1
-          title: Name
-        decimal_places:
-          type: integer
-          maximum: 1.0
-          minimum: 0.0
-          title: Decimal Places
-          default: 0
-        enabled:
-          type: boolean
-          title: Enabled
-          default: true
-      additionalProperties: false
-      type: object
-      required:
-      - code
-      - name
-      title: MeasurementUnitCreate
-    MeasurementUnitRead:
-      properties:
-        id:
-          type: integer
-          title: Id
-        code:
-          type: string
-          title: Code
-        name:
-          type: string
-          title: Name
-        decimal_places:
-          type: integer
-          title: Decimal Places
-        enabled:
-          type: boolean
-          title: Enabled
-        version:
-          type: integer
-          title: Version
-      type: object
-      required:
-      - id
-      - code
-      - name
-      - decimal_places
-      - enabled
-      - version
-      title: MeasurementUnitRead
-    MeasurementUnitUpdate:
-      properties:
-        code:
-          anyOf:
-          - type: string
-            maxLength: 32
-            minLength: 1
-          - type: 'null'
-          title: Code
-        name:
-          anyOf:
-          - type: string
-            maxLength: 32
-            minLength: 1
-          - type: 'null'
-          title: Name
-        decimal_places:
-          anyOf:
-          - type: integer
-            maximum: 1.0
-            minimum: 0.0
-          - type: 'null'
-          title: Decimal Places
-        enabled:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Enabled
-        version:
-          type: integer
-          title: Version
-      additionalProperties: false
-      type: object
-      required:
-      - version
-      title: MeasurementUnitUpdate
     MiniProgramCodeEnv:
       type: string
       enum:
@@ -5846,29 +5551,6 @@ components:
       - page_size
       - total
       title: Page[MaterialCodeLibraryRead]
-    Page_MeasurementUnitRead_:
-      properties:
-        items:
-          items:
-            $ref: '#/components/schemas/MeasurementUnitRead'
-          type: array
-          title: Items
-        page:
-          type: integer
-          title: Page
-        page_size:
-          type: integer
-          title: Page Size
-        total:
-          type: integer
-          title: Total
-      type: object
-      required:
-      - items
-      - page
-      - page_size
-      - total
-      title: Page[MeasurementUnitRead]
     Page_MiniProgramInventoryItemRead_:
       properties:
         items:
@@ -6103,9 +5785,11 @@ components:
           maxLength: 255
           minLength: 1
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
+        unit_name:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Unit Name
         actual_demand_person:
           anyOf:
           - type: string
@@ -6165,7 +5849,7 @@ components:
       required:
       - name
       - model_spec
-      - unit_id
+      - unit_name
       - planned_qty
       - usage
       title: PurchaseMaterialCreate
@@ -6203,9 +5887,6 @@ components:
         model_spec:
           type: string
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
         unit_name:
           type: string
           title: Unit Name
@@ -6272,7 +5953,6 @@ components:
       - demand_department
       - name
       - model_spec
-      - unit_id
       - unit_name
       - actual_demand_person
       - purchase_responsible
@@ -6329,9 +6009,11 @@ components:
           maxLength: 255
           minLength: 1
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
+        unit_name:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Unit Name
         actual_demand_person:
           anyOf:
           - type: string
@@ -6394,7 +6076,7 @@ components:
       required:
       - name
       - model_spec
-      - unit_id
+      - unit_name
       - planned_qty
       - usage
       - version
@@ -6627,9 +6309,6 @@ components:
         model_spec:
           type: string
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
         unit_name:
           type: string
           title: Unit Name
@@ -6704,7 +6383,6 @@ components:
       - demand_department
       - material_name
       - model_spec
-      - unit_id
       - unit_name
       - purchase_qty
       - actual_demand_person
@@ -6835,9 +6513,11 @@ components:
           maxLength: 255
           minLength: 1
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
+        unit_name:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Unit Name
         actual_demand_person:
           type: string
           maxLength: 128
@@ -6960,7 +6640,7 @@ components:
       - plan_date
       - material_name
       - model_spec
-      - unit_id
+      - unit_name
       - actual_demand_person
       - purchase_responsible
       - purchase_qty
@@ -7127,9 +6807,11 @@ components:
           maxLength: 255
           minLength: 1
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
+        unit_name:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Unit Name
         remark:
           anyOf:
           - type: string
@@ -7148,7 +6830,7 @@ components:
       required:
       - name
       - model_spec
-      - unit_id
+      - unit_name
       title: StockMaterialCreate
     StockMaterialRead:
       properties:
@@ -7175,9 +6857,6 @@ components:
         model_spec:
           type: string
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
         unit_name:
           type: string
           title: Unit Name
@@ -7220,7 +6899,6 @@ components:
       - uuid
       - name
       - model_spec
-      - unit_id
       - unit_name
       - current_qty
       - images
@@ -7252,9 +6930,11 @@ components:
           maxLength: 255
           minLength: 1
           title: Model Spec
-        unit_id:
-          type: integer
-          title: Unit Id
+        unit_name:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Unit Name
         remark:
           anyOf:
           - type: string
@@ -7276,7 +6956,7 @@ components:
       required:
       - name
       - model_spec
-      - unit_id
+      - unit_name
       - version
       title: StockMaterialUpdate
     StockOperationLineRead:

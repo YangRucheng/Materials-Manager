@@ -4,7 +4,6 @@ import { NButton, NTag, useDialog, useMessage, type FormInst, type FormRules } f
 import { useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
 import type { FileObject, StockMaterial, StockMaterialWrite } from '@/api/generated'
-import { useDictionaryStore } from '@/stores/dictionaries'
 import { useAuthStore } from '@/stores/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
@@ -20,7 +19,6 @@ const router = useRouter()
 const message = useMessage()
 const dialog = useDialog()
 const auth = useAuthStore()
-const dictionaries = useDictionaryStore()
 const rowClickGuard = createTableRowClickGuard()
 const loading = ref(false)
 const items = ref<StockMaterial[]>([])
@@ -39,7 +37,7 @@ const form = reactive<StockMaterialWrite>({
   name_id: '',
   alias: '',
   model_spec: '',
-  unit_id: null,
+  unit_name: '',
   remark: '',
   image_ids: [],
 })
@@ -51,7 +49,7 @@ const policy = reactive({
 const rules: FormRules = {
   name: { required: true, message: '请输入物资名称' },
   model_spec: { required: true, message: '请输入型号规格；无型号时填写“无”' },
-  unit_id: { type: 'number', required: true, message: '请选择计量单位' },
+  unit_name: { required: true, message: '请输入计量单位' },
 }
 
 const columns = preventTableColumnCompression<StockMaterial>([
@@ -156,7 +154,7 @@ function resetForm() {
     name_id: '',
     alias: '',
     model_spec: '',
-    unit_id: null,
+    unit_name: '',
     remark: '',
     image_ids: [],
   })
@@ -177,7 +175,7 @@ function openEdit(row: StockMaterial) {
     name_id: row.name_id || '',
     alias: row.alias || '',
     model_spec: row.model_spec,
-    unit_id: row.unit_id,
+    unit_name: row.unit_name,
     remark: row.remark || '',
     image_ids: row.images.map((image) => image.id),
     version: row.version,
@@ -206,6 +204,7 @@ async function save() {
       name_id: form.name_id?.trim() || undefined,
       alias: form.alias?.trim() || undefined,
       model_spec: form.model_spec.trim(),
+      unit_name: form.unit_name.trim(),
       remark: form.remark?.trim() || undefined,
     }
     const saved = editing.value
@@ -263,10 +262,7 @@ function rowProps(row: StockMaterial) {
   }
 }
 
-onMounted(() => {
-  void dictionaries.load()
-  void load()
-})
+onMounted(() => void load())
 </script>
 
 <template>
@@ -346,8 +342,8 @@ onMounted(() => {
               placeholder="无型号时填写“无”"
             />
           </n-form-item>
-          <n-form-item label="计量单位" path="unit_id">
-            <n-select v-model:value="form.unit_id" :options="dictionaries.unitOptions" />
+          <n-form-item label="计量单位" path="unit_name">
+            <n-input v-model:value="form.unit_name" maxlength="32" placeholder="可任意填写" />
           </n-form-item>
         </div>
         <n-divider title-placement="left">低库存预警</n-divider>

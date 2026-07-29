@@ -378,7 +378,7 @@ def inventory_item_read(
         uuid=UUID(item.uuid),
         name=localized_material_name(item, language),
         model_spec=item.model_spec,
-        unit_name=item.unit.name,
+        unit_name=item.unit_name,
         current_qty=item.balance.quantity if item.balance else Decimal("0"),
         stock_status=_stock_status(item),
     )
@@ -390,7 +390,7 @@ def material_read(item: StockMaterial, language: str | None = None) -> MiniProgr
         uuid=UUID(item.uuid),
         name=localized_material_name(item, language),
         model_spec=item.model_spec,
-        unit_name=item.unit.name,
+        unit_name=item.unit_name,
         current_qty=item.balance.quantity if item.balance else Decimal("0"),
         stock_status=_stock_status(item),
         minimum_qty=policy.minimum_qty if policy is not None and policy.enabled else None,

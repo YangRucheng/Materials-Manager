@@ -23,7 +23,6 @@ import {
   purchaseMaterials,
   purchaseRequests,
   stockMaterials,
-  units,
   users,
 } from './data'
 
@@ -75,7 +74,6 @@ const actor = (request: Request) => {
   const token = request.headers.get('Authorization')?.replace('Bearer mock-', '')
   return users.find((x) => x.username === token) || users[0]
 }
-const unit = (id: number | null) => units.find((x) => x.id === id)
 const purchaseRecord = (
   request: (typeof purchaseRequests)[number],
   line: (typeof purchaseRequests)[number]['lines'][number],
@@ -95,7 +93,6 @@ const purchaseRecord = (
     demand_department: material.demand_department,
     material_name: line.material_name_snapshot,
     model_spec: line.model_spec_snapshot,
-    unit_id: material.unit_id,
     unit_name: line.unit_name_snapshot,
     purchase_qty: line.purchase_qty,
     actual_demand_person: material.actual_demand_person,
@@ -176,7 +173,6 @@ const inventoryBalance = (material: (typeof stockMaterials)[number]) => {
     alias: material.alias,
     model_spec: material.model_spec,
     unit_name: material.unit_name,
-    decimal_places: unit(material.unit_id)?.decimal_places || 0,
     current_qty: material.current_qty,
     minimum_qty: minimum,
     is_low_stock: low,
@@ -289,28 +285,6 @@ export const handlers = [
       purchase_record_count: purchaseRequests.flatMap((item) => item.lines).length,
     })
   }),
-  http.get(`${api}/measurement-units`, ({ request }) =>
-    HttpResponse.json(page(units, new URL(request.url))),
-  ),
-  http.post(`${api}/measurement-units`, async ({ request }) => {
-    const body = (await request.json()) as Partial<(typeof units)[number]>
-    const item = {
-      id: nextIds.unit++,
-      code: body.code!,
-      name: body.name!,
-      decimal_places: body.decimal_places || 0,
-      enabled: body.enabled ?? true,
-      version: 1,
-    } as (typeof units)[number]
-    units.push(item)
-    return HttpResponse.json(item, { status: 201 })
-  }),
-  http.patch(`${api}/measurement-units/:id`, async ({ params, request }) => {
-    const item = units.find((x) => x.id === Number(params.id))
-    if (!item) return error(400, 'NOT_FOUND', '计量单位不存在')
-    Object.assign(item, await request.json(), { version: item.version + 1 })
-    return HttpResponse.json(item)
-  }),
   http.get(`${api}/users`, ({ request }) => HttpResponse.json(page(users, new URL(request.url)))),
   http.post(`${api}/users`, async ({ request }) => {
     const body = (await request.json()) as Partial<(typeof users)[number]>
@@ -399,14 +373,12 @@ export const handlers = [
   }),
   http.post(`${api}/stock-materials`, async ({ request }) => {
     const body = (await request.json()) as StockMaterialWrite
-    const u = unit(body.unit_id)
-    if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
     if (
       stockMaterials.some(
         (x) =>
           x.name.trim() === body.name.trim() &&
           x.model_spec.trim() === body.model_spec.trim() &&
-          x.unit_id === body.unit_id,
+          x.unit_name.trim() === body.unit_name.trim(),
       )
     )
       return error(409, 'DUPLICATE_MATERIAL', '名称、规格和计量单位相同的物资已存在')
@@ -415,8 +387,7 @@ export const handlers = [
       uuid: crypto.randomUUID(),
       name: body.name.trim(),
       model_spec: body.model_spec.trim(),
-      unit_id: u.id,
-      unit_name: u.name,
+      unit_name: body.unit_name.trim(),
       remark: body.remark,
       current_qty: '0',
       images: [],
@@ -432,9 +403,8 @@ export const handlers = [
     const item = stockMaterials.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '物资不存在')
     const body = (await request.json()) as StockMaterialWrite
-    const u = unit(body.unit_id)
     Object.assign(item, body, {
-      unit_name: u?.name || item.unit_name,
+      unit_name: body.unit_name.trim(),
       updated_at: now(),
       version: item.version + 1,
     })
@@ -623,7 +593,6 @@ export const handlers = [
         demand_department: 'HXNI 检修维护部',
         name: stock.name,
         model_spec: stock.model_spec,
-        unit_id: stock.unit_id,
         unit_name: stock.unit_name,
         actual_demand_person: body.actual_demand_person,
         purchase_responsible: body.purchase_responsible,
@@ -729,8 +698,6 @@ export const handlers = [
   }),
   http.post(`${api}/purchase-materials`, async ({ request }) => {
     const body = (await request.json()) as PurchaseMaterialWrite
-    const u = unit(body.unit_id)
-    if (!u) return error(422, 'VALIDATION_ERROR', '计量单位无效')
     const responsible = body.purchase_responsible || '\\'
     const planDate = body.plan_date || new Date().toISOString().slice(0, 10)
     const planIndex = purchaseMaterials.filter((item) => item.plan_date === planDate).length + 1
@@ -744,8 +711,7 @@ export const handlers = [
       demand_department: body.demand_department || 'HXNI 检修维护部',
       name: body.name,
       model_spec: body.model_spec,
-      unit_id: u.id,
-      unit_name: u.name,
+      unit_name: body.unit_name.trim(),
       actual_demand_person: body.actual_demand_person || responsible,
       purchase_responsible: responsible,
       planned_qty: body.planned_qty,
@@ -791,9 +757,8 @@ export const handlers = [
     const item = purchaseMaterials.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '申购物资不存在')
     const body = (await request.json()) as PurchaseMaterialWrite
-    const selectedUnit = unit(body.unit_id)
     Object.assign(item, body, {
-      unit_name: selectedUnit?.name || item.unit_name,
+      unit_name: body.unit_name.trim(),
       stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)
         ?.name,
       version: item.version + 1,
@@ -957,15 +922,12 @@ export const handlers = [
       if (!line) continue
       const body = (await request.json()) as PurchaseRecordWrite
       const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
-      const selectedUnit = unit(body.unit_id)
-      if (!selectedUnit) return error(422, 'VALIDATION_ERROR', '计量单位无效')
       Object.assign(material, {
         plan_date: body.plan_date,
         material_code: body.material_code,
         name: body.material_name,
         model_spec: body.model_spec,
-        unit_id: selectedUnit.id,
-        unit_name: selectedUnit.name,
+        unit_name: body.unit_name.trim(),
         actual_demand_person: body.actual_demand_person,
         purchase_responsible: body.purchase_responsible,
         planned_qty: body.purchase_qty,
