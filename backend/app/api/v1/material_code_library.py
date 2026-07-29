@@ -21,16 +21,16 @@ async def list_material_codes(
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: Annotated[str | None, Query(max_length=255)] = None,
-    material_code: Annotated[str | None, Query(max_length=64)] = None,
     name: Annotated[str | None, Query(max_length=128)] = None,
     model_spec: Annotated[str | None, Query(max_length=255)] = None,
+    material_code: Annotated[str | None, Query(max_length=64)] = None,
 ) -> Page[MaterialCodeLibraryRead]:
     items, total = await material_code_library_service.search_material_codes(
         session,
         keyword=keyword,
-        material_code=material_code,
         name=name,
         model_spec=model_spec,
+        material_code=material_code,
         page=page,
         page_size=page_size,
     )

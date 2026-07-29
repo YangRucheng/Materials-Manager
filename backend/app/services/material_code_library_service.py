@@ -141,9 +141,9 @@ async def search_material_codes(
     session: AsyncSession,
     *,
     keyword: str | None,
-    material_code: str | None = None,
     name: str | None = None,
     model_spec: str | None = None,
+    material_code: str | None = None,
     page: int,
     page_size: int,
 ) -> tuple[list[MaterialCodeLibraryRead], int]:
@@ -159,9 +159,9 @@ async def search_material_codes(
     if condition is not None:
         query = query.where(condition)
     field_filters = (
-        (MaterialCodeLibrary.material_code, material_code),
         (MaterialCodeLibrary.name, name),
         (MaterialCodeLibrary.model_spec, model_spec),
+        (MaterialCodeLibrary.material_code, material_code),
     )
     for column, value in field_filters:
         field_condition = contains_any((column,), value)

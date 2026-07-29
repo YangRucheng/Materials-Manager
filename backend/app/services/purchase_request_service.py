@@ -373,7 +373,19 @@ async def search_purchase_records(
     items = list(
         (
             await session.scalars(
-                query.order_by(PurchaseMaterial.plan_date.desc(), PurchaseRequestLine.id.desc())
+                query.order_by(
+                    or_(
+                        PurchaseRequest.purchase_order_no.is_(None),
+                        func.trim(PurchaseRequest.purchase_order_no) == "",
+                    ),
+                    PurchaseRequest.purchase_order_no.asc(),
+                    or_(
+                        PurchaseRequest.trace_no.is_(None),
+                        func.trim(PurchaseRequest.trace_no) == "",
+                    ),
+                    PurchaseRequest.trace_no.asc(),
+                    PurchaseRequestLine.id.desc(),
+                )
                 .offset((page - 1) * page_size)
                 .limit(page_size)
             )
