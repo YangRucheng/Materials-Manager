@@ -378,12 +378,12 @@ async def search_purchase_records(
                         PurchaseRequest.purchase_order_no.is_(None),
                         func.trim(PurchaseRequest.purchase_order_no) == "",
                     ),
-                    PurchaseRequest.purchase_order_no.asc(),
+                    PurchaseRequest.purchase_order_no.desc(),
                     or_(
                         PurchaseRequest.trace_no.is_(None),
                         func.trim(PurchaseRequest.trace_no) == "",
                     ),
-                    PurchaseRequest.trace_no.asc(),
+                    PurchaseRequest.trace_no.desc(),
                     PurchaseRequestLine.id.desc(),
                 )
                 .offset((page - 1) * page_size)
