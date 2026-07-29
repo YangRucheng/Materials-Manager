@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, ref, watch } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { useDialog, useMessage } from 'naive-ui'
 import type { MaterialCodeLibrary, MaterialCodeLibraryImportResult } from '@/api/generated'
@@ -19,6 +19,10 @@ const name = ref('')
 const modelSpec = ref('')
 const loading = ref(false)
 const importing = ref(false)
+const activeFilterCount = computed(
+  () =>
+    [name.value.trim(), modelSpec.value.trim(), materialCode.value.trim()].filter(Boolean).length,
+)
 
 const columns: DataTableColumns<MaterialCodeLibrary> = [
   {
@@ -158,26 +162,48 @@ onMounted(() => void load())
       />
     </div>
 
-    <n-card class="filter-card">
-      <div class="material-code-filter-grid">
-        <n-input
-          v-model:value="modelSpec"
-          clearable
-          placeholder="按型号搜索"
-          @keyup.enter="search"
-        />
-        <n-input v-model:value="name" clearable placeholder="按名称搜索" @keyup.enter="search" />
-        <n-input
-          v-model:value="materialCode"
-          clearable
-          placeholder="按编码搜索"
-          @keyup.enter="search"
-        />
+    <n-card class="filter-card" :bordered="false">
+      <div class="filter-heading">
+        <div class="filter-title">筛选条件</div>
+        <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
+          已启用 {{ activeFilterCount }} 项
+        </n-tag>
       </div>
-      <div class="filter-bar material-code-filter-actions">
-        <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
-        <n-button @click="resetSearch">重置</n-button>
+      <div class="material-code-filter-grid">
+        <label class="filter-field">
+          <span>物资名称</span>
+          <n-input
+            v-model:value="name"
+            clearable
+            placeholder="输入物资名称"
+            @keyup.enter="search"
+          />
+        </label>
+        <label class="filter-field">
+          <span>型号规格</span>
+          <n-input
+            v-model:value="modelSpec"
+            clearable
+            placeholder="输入型号规格"
+            @keyup.enter="search"
+          />
+        </label>
+        <label class="filter-field">
+          <span>物料编码</span>
+          <n-input
+            v-model:value="materialCode"
+            clearable
+            placeholder="输入物料编码"
+            @keyup.enter="search"
+          />
+        </label>
+      </div>
+      <div class="filter-actions">
         <span class="muted">共 {{ total.toLocaleString() }} 条</span>
+        <div class="filter-action-buttons">
+          <n-button @click="resetSearch">重置</n-button>
+          <n-button type="primary" :loading="loading" @click="search">查询</n-button>
+        </div>
       </div>
     </n-card>
 
@@ -209,19 +235,70 @@ onMounted(() => void load())
   display: none;
 }
 
-.material-code-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
-  gap: 12px;
+.filter-heading,
+.filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.material-code-filter-actions {
-  margin-top: 12px;
+.filter-heading {
+  margin-bottom: 18px;
+}
+
+.material-code-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-field > span {
+  color: #4b5565;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-field :deep(.n-input) {
+  width: 100%;
+  background-color: rgb(255 255 255 / 88%);
+}
+
+.filter-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.filter-action-buttons {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+
+.filter-action-buttons :deep(.n-button) {
+  min-width: 88px;
 }
 
 @media (max-width: 760px) {
   .material-code-filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-action-buttons {
+    justify-content: flex-end;
   }
 }
 </style>

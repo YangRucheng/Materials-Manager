@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, ref, watch } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { NButton, type DataTableColumns, useMessage } from 'naive-ui'
 import type { MaterialCodeLibrary } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -24,6 +24,10 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 const loading = ref(false)
+const activeFilterCount = computed(
+  () =>
+    [name.value.trim(), modelSpec.value.trim(), materialCode.value.trim()].filter(Boolean).length,
+)
 
 const columns: DataTableColumns<MaterialCodeLibrary> = [
   { title: '物料编码', key: 'material_code', width: 150 },
@@ -133,24 +137,44 @@ watch(page, () => void load())
     :bordered="false"
   >
     <div class="selector-search">
+      <div class="filter-heading">
+        <div class="filter-title">筛选条件</div>
+        <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
+          已启用 {{ activeFilterCount }} 项
+        </n-tag>
+      </div>
       <div class="selector-search-fields">
-        <n-input
-          v-model:value="modelSpec"
-          clearable
-          placeholder="按型号搜索"
-          @keyup.enter="search"
-        />
-        <n-input v-model:value="name" clearable placeholder="按名称搜索" @keyup.enter="search" />
-        <n-input
-          v-model:value="materialCode"
-          clearable
-          placeholder="按编码搜索"
-          @keyup.enter="search"
-        />
+        <label class="filter-field">
+          <span>物资名称</span>
+          <n-input
+            v-model:value="name"
+            clearable
+            placeholder="输入物资名称"
+            @keyup.enter="search"
+          />
+        </label>
+        <label class="filter-field">
+          <span>型号规格</span>
+          <n-input
+            v-model:value="modelSpec"
+            clearable
+            placeholder="输入型号规格"
+            @keyup.enter="search"
+          />
+        </label>
+        <label class="filter-field">
+          <span>物料编码</span>
+          <n-input
+            v-model:value="materialCode"
+            clearable
+            placeholder="输入物料编码"
+            @keyup.enter="search"
+          />
+        </label>
       </div>
       <div class="selector-search-actions">
-        <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
         <n-button @click="resetSearch">重置</n-button>
+        <n-button type="primary" :loading="loading" @click="search">查询</n-button>
       </div>
     </div>
     <n-data-table
@@ -179,11 +203,15 @@ watch(page, () => void load())
 
 <style scoped>
 .selector-search {
-  padding: 14px;
   margin-bottom: 16px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-control);
-  background: linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
+}
+
+.filter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
 .selector-search-fields {
@@ -192,11 +220,35 @@ watch(page, () => void load())
   gap: 12px;
 }
 
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-field > span {
+  color: #4b5565;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-field :deep(.n-input) {
+  width: 100%;
+  background-color: rgb(255 255 255 / 88%);
+}
+
 .selector-search-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.selector-search-actions :deep(.n-button) {
+  min-width: 88px;
 }
 
 @media (max-width: 680px) {
