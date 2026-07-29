@@ -89,6 +89,7 @@ type RecordColumnKey =
   | 'demand_department'
   | 'material_name'
   | 'purchase_qty'
+  | 'usage'
   | 'actual_demand_person'
   | 'purchase_responsible'
   | 'salesperson'
@@ -100,16 +101,6 @@ const availableColumns: Array<{
   label: string
   column: DataTableBaseColumn<PurchaseRecord>
 }> = [
-  {
-    key: 'purchase_qty',
-    label: '申购数量',
-    column: {
-      title: '申购数量',
-      key: 'purchase_qty',
-      width: tableColumnWidths.quantity,
-      render: (row) => renderTwoLineText(`${row.purchase_qty} ${row.unit_name}`),
-    },
-  },
   {
     key: 'plan_date',
     label: '需求日期',
@@ -233,6 +224,26 @@ const availableColumns: Array<{
             ),
           ],
         ),
+    },
+  },
+  {
+    key: 'purchase_qty',
+    label: '申购数量',
+    column: {
+      title: '申购数量',
+      key: 'purchase_qty',
+      width: tableColumnWidths.quantity,
+      render: (row) => renderTwoLineText(`${row.purchase_qty} ${row.unit_name}`),
+    },
+  },
+  {
+    key: 'usage',
+    label: '用途',
+    column: {
+      title: '用途',
+      key: 'usage',
+      width: tableColumnWidths.text,
+      render: (row) => renderTwoLineText(row.usage),
     },
   },
   {
