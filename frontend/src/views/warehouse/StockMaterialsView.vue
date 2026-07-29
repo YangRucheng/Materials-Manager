@@ -228,6 +228,7 @@ async function save() {
 
 function confirmDelete(row: StockMaterial) {
   dialog.warning({
+    draggable: true,
     title: '确认删除物资档案',
     content: `确定删除“${row.name}（${row.model_spec}）”吗？删除后无法恢复。`,
     positiveText: '确认删除',
@@ -328,6 +329,7 @@ onMounted(() => {
     <n-modal
       v-model:show="showModal"
       preset="card"
+      draggable
       :title="editing ? '编辑二级库物资' : '新建二级库物资'"
       style="width: 720px"
       :mask-closable="false"

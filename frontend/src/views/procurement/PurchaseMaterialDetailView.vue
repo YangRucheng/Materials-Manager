@@ -164,6 +164,7 @@ function confirmDelete() {
     return
   }
   dialog.warning({
+    draggable: true,
     title: '删除申购计划',
     content: `确认删除“${material.value.name}”的这条申购计划吗？删除后不可恢复。`,
     positiveText: '确认删除',
@@ -324,6 +325,7 @@ onMounted(() => {
     <n-modal
       v-model:show="showMove"
       preset="card"
+      draggable
       title="转入申购记录"
       style="width: 560px"
       :mask-closable="false"

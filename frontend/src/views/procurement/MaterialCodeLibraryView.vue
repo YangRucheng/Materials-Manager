@@ -96,7 +96,12 @@ function showImportSummary(result: MaterialCodeLibraryImportResult) {
   if (result.unmatched_unit_names.length) {
     notes.push(`以下计量单位尚未在系统配置：${result.unmatched_unit_names.join('、')}`)
   }
-  dialog.success({ title: '导入完成', content: notes.join('\n'), positiveText: '知道了' })
+  dialog.success({
+    draggable: true,
+    title: '导入完成',
+    content: notes.join('\n'),
+    positiveText: '知道了',
+  })
 }
 
 async function importFile(file: File) {
@@ -122,6 +127,7 @@ function onFileChange(event: Event) {
   input.value = ''
   if (!file) return
   dialog.warning({
+    draggable: true,
     title: '全量更新物料编码库',
     content: `确认导入“${file.name}”吗？现有编码库将被全部删除，并由该文件完整替换。`,
     positiveText: '确认全量更新',

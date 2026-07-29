@@ -108,6 +108,7 @@ onMounted(load)
     ><n-modal
       v-model:show="show"
       preset="card"
+      draggable
       :title="editing ? '编辑计量单位' : '新建计量单位'"
       style="width: 500px"
       ><n-form label-placement="top"

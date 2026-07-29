@@ -173,6 +173,7 @@ async function restoreToPlan() {
 function confirmRestore() {
   if (!record.value) return
   dialog.warning({
+    draggable: true,
     title: '恢复为申购计划',
     content:
       '恢复后，申购单号、追溯号、合同号、船期、申购日期、业务员、申购状态和申购记录备注等记录专属字段将被删除，当前未保存的修改不会保留。',

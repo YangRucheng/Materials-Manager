@@ -74,6 +74,7 @@ function confirmSubmit() {
   }
   submitting.value = true
   dialog.warning({
+    draggable: true,
     title: `确认${props.operationType === 'INBOUND' ? '入库' : '出库'}`,
     content: `将为 ${model.lines.length} 项物资生成库存流水，确认继续？`,
     positiveText: '确认提交',

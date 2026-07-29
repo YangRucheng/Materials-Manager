@@ -110,6 +110,7 @@ function confirmDelete() {
   const row = editing.value
   if (!row) return
   dialog.warning({
+    draggable: true,
     title: '删除小程序用户',
     content: `确认删除“${row.display_name}”？删除后，该微信用户可重新填写姓名和部门单位完成绑定。`,
     positiveText: '确认删除',
@@ -155,7 +156,13 @@ onMounted(load)
         :row-key="(row: MiniProgramUser) => row.id"
       />
     </n-card>
-    <n-modal v-model:show="show" preset="card" title="编辑小程序用户" style="width: 520px">
+    <n-modal
+      v-model:show="show"
+      preset="card"
+      draggable
+      title="编辑小程序用户"
+      style="width: 520px"
+    >
       <n-form label-placement="top">
         <n-form-item label="微信 OpenID">
           <n-input :value="editing?.wechat_openid" disabled />

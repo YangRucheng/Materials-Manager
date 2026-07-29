@@ -298,6 +298,7 @@ onMounted(load)
     <n-modal
       v-model:show="showReplenishment"
       preset="card"
+      draggable
       title="确认发起补库"
       style="width: 560px"
       :mask-closable="false"
