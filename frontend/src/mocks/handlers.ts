@@ -338,6 +338,29 @@ export const handlers = [
     })
     return HttpResponse.json(item)
   }),
+  http.post(`${api}/mini-program-users/:id/merge`, async ({ params, request }) => {
+    const target = miniProgramUsers.find((x) => x.id === Number(params.id))
+    const body = (await request.json()) as {
+      source_user_id: number
+      source_version: number
+      target_version: number
+    }
+    const source = miniProgramUsers.find((x) => x.id === body.source_user_id)
+    if (!target || !source) return error(400, 'NOT_FOUND', '小程序用户不存在')
+    if (target.id === source.id)
+      return error(400, 'MINI_PROGRAM_USER_MERGE_SAME_ACCOUNT', '不能合并到自身')
+    if (
+      target.identities.some((identity) =>
+        source.identities.some((candidate) => candidate.app_id === identity.app_id),
+      )
+    )
+      return error(409, 'MINI_PROGRAM_IDENTITY_CONFLICT', '两个账号包含相同小程序的身份')
+    target.identities.push(...source.identities)
+    target.updated_at = new Date().toISOString()
+    target.version += 1
+    miniProgramUsers.splice(miniProgramUsers.indexOf(source), 1)
+    return HttpResponse.json(target)
+  }),
   http.delete(`${api}/mini-program-users/:id`, ({ params }) => {
     const item = miniProgramUsers.find((x) => x.id === Number(params.id))
     if (!item) return error(400, 'NOT_FOUND', '小程序用户不存在')

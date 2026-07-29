@@ -65,7 +65,11 @@ python scripts/export_openapi.py
 ```
 
 生产部署前必须修改 `APP_JWT_SECRET`。扫码出库小程序还需要配置
-`APP_WECHAT_MINI_PROGRAM_APP_ID` 和 `APP_WECHAT_MINI_PROGRAM_APP_SECRET`，AppSecret 只能保存在后端。
+`APP_WECHAT_MINI_PROGRAM_APP_ID` 和 `APP_WECHAT_MINI_PROGRAM_APP_SECRET`。多个小程序分别按
+相同顺序用英文逗号分隔，例如 `wx-app-1,wx-app-2` 和 `secret-1,secret-2`，两边数量必须一致，
+并可继续追加。AppSecret 只能保存在后端。已有单小程序数据库升级时先备份并执行
+`../example/database/upgrade-multi-miniprogram.sql`，执行前必须把脚本中的 `NULL` 替换为
+原小程序的真实 AppID。
 图片位于 `backend/data/uploads/`，应与 MySQL 使用相同备份周期。
 
 运行日志默认写入 `backend/data/logs/spare-parts-api.log`。日志每天轮转，历史文件按

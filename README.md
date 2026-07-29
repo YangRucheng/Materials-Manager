@@ -33,6 +33,9 @@ docker compose up -d
 ```
 
 至少设置 `APP_DATABASE_URL` 和 `APP_JWT_SECRET`；启用扫码出库小程序时还需设置
-`APP_WECHAT_MINI_PROGRAM_APP_ID` 和 `APP_WECHAT_MINI_PROGRAM_APP_SECRET`。
+`APP_WECHAT_MINI_PROGRAM_APP_ID` 和 `APP_WECHAT_MINI_PROGRAM_APP_SECRET`。多个小程序分别在
+这两个变量中按相同顺序用英文逗号分隔，可追加任意数量；管理后台会按 AppID 分开记录微信
+身份，并可人工合并属于同一人员的账号。
 `example/database/init.sql` 仅用于初始化
-新数据库；已有数据库的结构调整通过 Agent 超级管理员数据库接口执行，并应提前备份。
+新数据库；已有数据库升级前先备份，再执行
+`example/database/upgrade-multi-miniprogram.sql`，并将脚本中的原小程序 AppID 替换为真实值。

@@ -147,12 +147,19 @@ class UserUpdate(RequestModel):
     version: int
 
 
+class MiniProgramIdentityRead(ReadModel):
+    id: int
+    app_id: str
+    wechat_openid: str
+    created_at: datetime
+
+
 class MiniProgramUserRead(ReadModel):
     id: int
-    wechat_openid: str
     display_name: str
     department_name: str
     enabled: bool
+    identities: list[MiniProgramIdentityRead]
     created_at: datetime
     updated_at: datetime
     version: int
@@ -171,6 +178,12 @@ class MiniProgramUserUpdate(RequestModel):
     version: int
 
 
+class MiniProgramUserMergeRequest(RequestModel):
+    source_user_id: int = Field(gt=0)
+    source_version: int
+    target_version: int
+
+
 class MiniProgramLoginResponse(ReadModel):
     access_token: str | None = None
     registration_token: str | None = None
@@ -181,6 +194,10 @@ class MiniProgramLoginResponse(ReadModel):
 
 class MiniProgramWechatLoginRequest(RequestModel):
     code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]
+    app_id: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+        | None
+    ) = None
 
 
 class MiniProgramProfileUpdate(RequestModel):

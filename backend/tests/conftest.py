@@ -6,6 +6,10 @@ from pathlib import Path
 
 os.environ["APP_DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ["APP_JWT_SECRET"] = "test-secret-that-is-long-enough-123456"
+os.environ["APP_WECHAT_MINI_PROGRAM_APP_ID"] = "wx-test-primary,wx-test-secondary"
+os.environ["APP_WECHAT_MINI_PROGRAM_APP_SECRET"] = (
+    "test-primary-secret,test-secondary-secret"
+)
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

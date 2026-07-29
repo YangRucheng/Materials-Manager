@@ -13,11 +13,12 @@
 后端需要配置：
 
 ```env
-APP_WECHAT_MINI_PROGRAM_APP_ID=正式小程序AppID
-APP_WECHAT_MINI_PROGRAM_APP_SECRET=正式小程序AppSecret
+APP_WECHAT_MINI_PROGRAM_APP_ID=第一个小程序AppID,第二个小程序AppID
+APP_WECHAT_MINI_PROGRAM_APP_SECRET=第一个小程序AppSecret,第二个小程序AppSecret
 ```
 
-AppSecret 仅配置在后端，不得写入小程序代码。
+AppID 和 AppSecret 按相同顺序使用英文逗号分隔，可继续追加任意数量。AppSecret 仅配置在
+后端，不得写入小程序代码。
 
 ## GitHub Actions 自动上传
 
@@ -27,6 +28,12 @@ AppSecret 仅配置在后端，不得写入小程序代码。
 
 - `WECHAT_MINIPROGRAM_APPID`：正式小程序 AppID。
 - `WECHAT_MINIPROGRAM_PRIVATE_KEY`：微信公众平台“小程序代码上传”中生成的上传私钥完整内容。
+- `WECHAT_MINIPROGRAM_APPID_2`：第二个小程序 AppID。
+- `WECHAT_MINIPROGRAM_PRIVATE_KEY_2`：第二个小程序的上传私钥完整内容。
+
+工作流会先完成一次依赖安装和代码检查，再将同一版本依次上传到两个小程序。运行时，小程序
+会通过 `wx.getAccountInfoSync()` 上报自身 AppID，后端据此选择对应 AppSecret；不要把 AppSecret
+或上传私钥写入小程序代码。
 
 如果微信公众平台启用了上传 IP 白名单，GitHub 托管运行器的动态出口 IP 可能导致上传失败。此时需要关闭上传 IP 白名单，或改用具有固定出口 IP 的自托管运行器。
 

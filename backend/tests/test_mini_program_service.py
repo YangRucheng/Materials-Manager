@@ -2,6 +2,7 @@ from uuid import UUID
 
 import pytest
 
+from app.core.errors import AppError
 from app.domain.enums import MiniProgramCodeEnv
 from app.services import mini_program_service
 
@@ -80,3 +81,72 @@ async def test_generate_unlimited_material_code_uses_compact_uuid_scene(
             },
         },
     ]
+
+
+@pytest.mark.asyncio
+async def test_exchange_wechat_code_selects_credentials_by_app_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            return {"openid": "secondary-openid"}
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return None
+
+        async def get(self, url, *, params):
+            captured.update({"url": url, "params": params})
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        mini_program_service.httpx,
+        "AsyncClient",
+        lambda **_kwargs: FakeClient(),
+    )
+
+    app_id, openid = await mini_program_service.exchange_wechat_code(
+        "temporary-code", "wx-test-secondary"
+    )
+
+    assert (app_id, openid) == ("wx-test-secondary", "secondary-openid")
+    assert captured["params"] == {
+        "appid": "wx-test-secondary",
+        "secret": "test-secondary-secret",
+        "js_code": "temporary-code",
+        "grant_type": "authorization_code",
+    }
+    with pytest.raises(AppError, match="当前微信小程序登录尚未配置"):
+        await mini_program_service.exchange_wechat_code("temporary-code", "wx-unknown")
+
+    monkeypatch.setattr(
+        mini_program_service.settings,
+        "wechat_mini_program_app_id",
+        "wx-test-primary, wx-test-secondary, wx-test-third",
+    )
+    monkeypatch.setattr(
+        mini_program_service.settings,
+        "wechat_mini_program_app_secret",
+        "test-primary-secret, test-secondary-secret, test-third-secret",
+    )
+    third_app_id, _ = await mini_program_service.exchange_wechat_code(
+        "third-code", "wx-test-third"
+    )
+    assert third_app_id == "wx-test-third"
+    assert captured["params"]["secret"] == "test-third-secret"
+
+    monkeypatch.setattr(
+        mini_program_service.settings,
+        "wechat_mini_program_app_secret",
+        "test-primary-secret,test-secondary-secret",
+    )
+    with pytest.raises(AppError, match="AppID 与 AppSecret 配置无效"):
+        await mini_program_service.exchange_wechat_code("temporary-code", "wx-test-primary")

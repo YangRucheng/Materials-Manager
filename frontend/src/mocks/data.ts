@@ -46,10 +46,34 @@ export const users: User[] = [
 export const miniProgramUsers: MiniProgramUser[] = [
   {
     id: 1,
-    wechat_openid: 'openid_mock_scanner',
     display_name: '扫码出库员',
     department_name: '华星检修维护部电气车间',
     enabled: true,
+    identities: [
+      {
+        id: 1,
+        app_id: 'wx-primary-mock-app',
+        wechat_openid: 'openid_mock_scanner',
+        created_at: now,
+      },
+    ],
+    created_at: now,
+    updated_at: now,
+    version: 1,
+  },
+  {
+    id: 2,
+    display_name: '扫码出库员（第二小程序）',
+    department_name: '华星检修维护部电气车间',
+    enabled: true,
+    identities: [
+      {
+        id: 2,
+        app_id: 'wx-secondary-mock-app',
+        wechat_openid: 'openid_mock_scanner_2',
+        created_at: now,
+      },
+    ],
     created_at: now,
     updated_at: now,
     version: 1,
