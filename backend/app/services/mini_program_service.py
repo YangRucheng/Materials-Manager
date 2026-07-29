@@ -13,8 +13,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.config import settings
 from app.core.errors import AppError, not_found
+from app.core.wechat import get_wechat_credentials
 from app.domain.enums import (
     MiniProgramCodeEnv,
     MiniProgramStockStatus,
@@ -42,10 +42,9 @@ from app.schemas import (
 from app.services import ai_search_service, inventory_service
 from app.services.common import contains_any, file_read, utc_aware, validate_version
 
-_wechat_access_token: str | None = None
-_wechat_access_token_expires_at = 0.0
+_wechat_access_tokens: dict[str, tuple[str, float]] = {}
 _wechat_access_token_lock = asyncio.Lock()
-_material_code_cache: dict[tuple[str, MiniProgramCodeEnv], bytes] = {}
+_material_code_cache: dict[tuple[str, MiniProgramCodeEnv, str], bytes] = {}
 _material_code_lock = asyncio.Lock()
 
 
@@ -166,41 +165,8 @@ async def merge_users(
     return target
 
 
-def _wechat_credentials(app_id: str | None) -> tuple[str, str]:
-    app_ids = [
-        item.strip()
-        for item in settings.wechat_mini_program_app_id.split(",")
-        if item.strip()
-    ]
-    app_secrets = [
-        item.strip() for item in settings.wechat_mini_program_app_secret.split(",") if item.strip()
-    ]
-    if not app_ids or len(app_ids) != len(app_secrets) or len(app_ids) != len(set(app_ids)):
-        raise AppError(
-            "WECHAT_CONFIGURATION_INVALID",
-            "微信小程序 AppID 与 AppSecret 配置无效",
-            status_code=503,
-            details={
-                "app_id_count": len(app_ids),
-                "app_secret_count": len(app_secrets),
-            },
-        )
-
-    effective_app_id = app_id or app_ids[0]
-    try:
-        app_secret = app_secrets[app_ids.index(effective_app_id)]
-    except ValueError as exc:
-        raise AppError(
-            "WECHAT_NOT_CONFIGURED",
-            "当前微信小程序登录尚未配置",
-            status_code=503,
-            details={"app_id": effective_app_id or None},
-        ) from exc
-    return effective_app_id, app_secret
-
-
 async def exchange_wechat_code(code: str, app_id: str | None = None) -> tuple[str, str]:
-    effective_app_id, app_secret = _wechat_credentials(app_id)
+    effective_app_id, app_secret = get_wechat_credentials(app_id)
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             response = await client.get(
@@ -237,16 +203,16 @@ async def exchange_wechat_code(code: str, app_id: str | None = None) -> tuple[st
     return effective_app_id, openid
 
 
-async def _get_wechat_access_token() -> str:
-    global _wechat_access_token, _wechat_access_token_expires_at
-
-    app_id, app_secret = _wechat_credentials(None)
-    if _wechat_access_token and monotonic() < _wechat_access_token_expires_at:
-        return _wechat_access_token
+async def _get_wechat_access_token(app_id: str) -> str:
+    app_id, app_secret = get_wechat_credentials(app_id)
+    cached = _wechat_access_tokens.get(app_id)
+    if cached and monotonic() < cached[1]:
+        return cached[0]
 
     async with _wechat_access_token_lock:
-        if _wechat_access_token and monotonic() < _wechat_access_token_expires_at:
-            return _wechat_access_token
+        cached = _wechat_access_tokens.get(app_id)
+        if cached and monotonic() < cached[1]:
+            return cached[0]
         try:
             async with httpx.AsyncClient(timeout=5) as client:
                 response = await client.get(
@@ -274,13 +240,17 @@ async def _get_wechat_access_token() -> str:
                 details={"wechat_errcode": payload.get("errcode")},
             )
         expires_in = payload.get("expires_in", 7200)
-        _wechat_access_token = token
-        _wechat_access_token_expires_at = monotonic() + max(int(expires_in) - 300, 60)
+        _wechat_access_tokens[app_id] = (
+            token,
+            monotonic() + max(int(expires_in) - 300, 60),
+        )
         return token
 
 
-async def generate_unlimited_material_code(material_uuid: UUID, env: MiniProgramCodeEnv) -> bytes:
-    cache_key = (str(material_uuid), env)
+async def generate_unlimited_material_code(
+    material_uuid: UUID, env: MiniProgramCodeEnv, app_id: str
+) -> bytes:
+    cache_key = (str(material_uuid), env, app_id)
     cached = _material_code_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -289,7 +259,7 @@ async def generate_unlimited_material_code(material_uuid: UUID, env: MiniProgram
         cached = _material_code_cache.get(cache_key)
         if cached is not None:
             return cached
-        access_token = await _get_wechat_access_token()
+        access_token = await _get_wechat_access_token(app_id)
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.post(

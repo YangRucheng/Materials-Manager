@@ -215,6 +215,8 @@ class AiSearchSettingsRead(ReadModel):
     model: str
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
+    mini_program_code_app_id: str
+    mini_program_app_ids: list[str]
     mini_program_registration_enabled: bool
     mini_program_new_user_enabled: bool
     image_acceleration_server_url: str
@@ -228,6 +230,7 @@ class AiSearchSettingsUpdate(RequestModel):
     model: str = Field(default="", max_length=128)
     enabled: bool = True
     mini_program_code_env: MiniProgramCodeEnv = MiniProgramCodeEnv.RELEASE
+    mini_program_code_app_id: str = Field(default="", max_length=64)
     mini_program_registration_enabled: bool = True
     mini_program_new_user_enabled: bool = True
     image_acceleration_server_url: str = Field(default="", max_length=500)

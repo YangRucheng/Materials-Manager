@@ -806,6 +806,14 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/MiniProgramCodeEnv'
+      - name: appid
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+          title: Appid
       responses:
         '200':
           description: Successful Response
@@ -4438,6 +4446,14 @@ components:
           title: Enabled
         mini_program_code_env:
           $ref: '#/components/schemas/MiniProgramCodeEnv'
+        mini_program_code_app_id:
+          type: string
+          title: Mini Program Code App Id
+        mini_program_app_ids:
+          items:
+            type: string
+          type: array
+          title: Mini Program App Ids
         mini_program_registration_enabled:
           type: boolean
           title: Mini Program Registration Enabled
@@ -4463,6 +4479,8 @@ components:
       - model
       - enabled
       - mini_program_code_env
+      - mini_program_code_app_id
+      - mini_program_app_ids
       - mini_program_registration_enabled
       - mini_program_new_user_enabled
       - image_acceleration_server_url
@@ -4492,6 +4510,11 @@ components:
         mini_program_code_env:
           $ref: '#/components/schemas/MiniProgramCodeEnv'
           default: release
+        mini_program_code_app_id:
+          type: string
+          maxLength: 64
+          title: Mini Program Code App Id
+          default: ''
         mini_program_registration_enabled:
           type: boolean
           title: Mini Program Registration Enabled

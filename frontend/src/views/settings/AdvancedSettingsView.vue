@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { aiSearchApi } from '@/api/aiSearch'
 
@@ -16,11 +16,16 @@ const form = reactive({
   model: '',
   enabled: true,
   mini_program_code_env: 'release' as 'trial' | 'release',
+  mini_program_code_app_id: '',
+  mini_program_app_ids: [] as string[],
   mini_program_registration_enabled: true,
   mini_program_new_user_enabled: true,
   image_acceleration_server_url: '',
   version: 0,
 })
+const miniProgramAppOptions = computed(() =>
+  form.mini_program_app_ids.map((appId) => ({ label: appId, value: appId })),
+)
 
 async function load() {
   loading.value = true
@@ -47,6 +52,7 @@ async function save() {
       model: form.model.trim(),
       enabled: form.enabled,
       mini_program_code_env: form.mini_program_code_env,
+      mini_program_code_app_id: form.mini_program_code_app_id,
       mini_program_registration_enabled: form.mini_program_registration_enabled,
       mini_program_new_user_enabled: form.mini_program_new_user_enabled,
       image_acceleration_server_url: form.image_acceleration_server_url.trim(),
@@ -124,6 +130,16 @@ onMounted(load)
 
       <n-card class="settings-card" title="小程序" :bordered="false">
         <n-form label-placement="left" label-width="132">
+          <n-form-item label="小程序码应用">
+            <n-select
+              v-model:value="form.mini_program_code_app_id"
+              :options="miniProgramAppOptions"
+              :disabled="miniProgramAppOptions.length === 0"
+              :placeholder="
+                miniProgramAppOptions.length === 0 ? '未配置小程序 AppID' : '请选择小程序'
+              "
+            />
+          </n-form-item>
           <n-form-item label="小程序码版本">
             <n-select v-model:value="form.mini_program_code_env" :options="codeEnvOptions" />
           </n-form-item>
