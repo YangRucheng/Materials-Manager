@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { MiniProgramUser, Page, User } from './generated'
+import type { MiniProgramUser, MiniProgramUserMergeInput, Page, User } from './generated'
 
 export const dictionaryApi = {
   users: (params?: Record<string, unknown>) =>
@@ -15,4 +15,8 @@ export const dictionaryApi = {
     apiClient.patch<MiniProgramUser>(`/mini-program-users/${id}`, payload).then((r) => r.data),
   deleteMiniProgramUser: (id: number, version: number) =>
     apiClient.delete(`/mini-program-users/${id}`, { params: { version } }),
+  mergeMiniProgramUsers: (targetId: number, payload: MiniProgramUserMergeInput) =>
+    apiClient
+      .post<MiniProgramUser>(`/mini-program-users/${targetId}/merge`, payload)
+      .then((r) => r.data),
 }

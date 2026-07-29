@@ -78,7 +78,6 @@ class MiniProgramUser(AuditMixin, Base):
     __tablename__ = "mini_program_user"
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
-    wechat_openid: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     department_name: Mapped[str] = mapped_column(
         String(128),
@@ -87,6 +86,30 @@ class MiniProgramUser(AuditMixin, Base):
         server_default="华星检修维护部电气车间",
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    identities: Mapped[list[MiniProgramIdentity]] = relationship(
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        order_by="MiniProgramIdentity.app_id",
+    )
+
+
+class MiniProgramIdentity(AuditMixin, Base):
+    __tablename__ = "mini_program_identity"
+    __table_args__ = (
+        UniqueConstraint("app_id", "wechat_openid"),
+        UniqueConstraint("mini_program_user_id", "app_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    mini_program_user_id: Mapped[int] = mapped_column(
+        BIGINT_ID,
+        ForeignKey("mini_program_user.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    app_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    wechat_openid: Mapped[str] = mapped_column(String(128), nullable=False)
+    user: Mapped[MiniProgramUser] = relationship(back_populates="identities")
 
 
 class MaterialCodeLibrary(Base):

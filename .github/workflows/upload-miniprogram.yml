@@ -39,6 +39,8 @@ jobs:
       - name: 检查私密配置
         env:
           MINIPROGRAM_PRIVATE_KEY: ${{ secrets.WECHAT_MINIPROGRAM_PRIVATE_KEY }}
+          MINIPROGRAM_APPID_2: ${{ secrets.WECHAT_MINIPROGRAM_APPID_2 }}
+          MINIPROGRAM_PRIVATE_KEY_2: ${{ secrets.WECHAT_MINIPROGRAM_PRIVATE_KEY_2 }}
         run: |
           if [ -z "$MINIPROGRAM_APPID" ]; then
             echo "缺少 GitHub Secret：WECHAT_MINIPROGRAM_APPID"
@@ -48,10 +50,22 @@ jobs:
             echo "缺少 GitHub Secret：WECHAT_MINIPROGRAM_PRIVATE_KEY"
             exit 1
           fi
+          if [ -z "$MINIPROGRAM_APPID_2" ]; then
+            echo "缺少 GitHub Secret：WECHAT_MINIPROGRAM_APPID_2"
+            exit 1
+          fi
+          if [ -z "$MINIPROGRAM_PRIVATE_KEY_2" ]; then
+            echo "缺少 GitHub Secret：WECHAT_MINIPROGRAM_PRIVATE_KEY_2"
+            exit 1
+          fi
           PRIVATE_KEY_PATH="$RUNNER_TEMP/miniprogram-private.key"
+          PRIVATE_KEY_PATH_2="$RUNNER_TEMP/miniprogram-private-2.key"
           printf '%s' "$MINIPROGRAM_PRIVATE_KEY" > "$PRIVATE_KEY_PATH"
+          printf '%s' "$MINIPROGRAM_PRIVATE_KEY_2" > "$PRIVATE_KEY_PATH_2"
           chmod 600 "$PRIVATE_KEY_PATH"
+          chmod 600 "$PRIVATE_KEY_PATH_2"
           echo "MINIPROGRAM_PRIVATE_KEY_PATH=$PRIVATE_KEY_PATH" >> "$GITHUB_ENV"
+          echo "MINIPROGRAM_PRIVATE_KEY_PATH_2=$PRIVATE_KEY_PATH_2" >> "$GITHUB_ENV"
 
       - name: 安装依赖
         run: npm ci
@@ -65,9 +79,15 @@ jobs:
           echo "MINIPROGRAM_VERSION=${UPLOAD_INFO%%|*}" >> "$GITHUB_ENV"
           echo "MINIPROGRAM_DESC=${UPLOAD_INFO#*|}" >> "$GITHUB_ENV"
 
-      - name: 上传微信小程序代码
+      - name: 上传第一个微信小程序代码
+        run: npm run upload
+
+      - name: 上传第二个微信小程序代码
+        env:
+          MINIPROGRAM_APPID: ${{ secrets.WECHAT_MINIPROGRAM_APPID_2 }}
+          MINIPROGRAM_PRIVATE_KEY_PATH: ${{ runner.temp }}/miniprogram-private-2.key
         run: npm run upload
 
       - name: 清理上传私钥
         if: always()
-        run: rm -f "$MINIPROGRAM_PRIVATE_KEY_PATH"
+        run: rm -f "$MINIPROGRAM_PRIVATE_KEY_PATH" "$MINIPROGRAM_PRIVATE_KEY_PATH_2"

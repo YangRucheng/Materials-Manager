@@ -70,7 +70,7 @@ CurrentMiniProgramUser = Annotated[MiniProgramUser, Depends(get_current_mini_pro
 
 async def get_mini_program_registration_openid(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
-) -> str:
+) -> tuple[str, str]:
     if credentials is None:
         raise AppError("UNAUTHORIZED", "请先完成微信登录", status_code=401)
     try:
@@ -78,15 +78,16 @@ async def get_mini_program_registration_openid(
         if payload.get("token_type") != "mini_program_registration":
             raise ValueError("wrong token type")
         openid = str(payload["sub"])
-        if not openid:
-            raise ValueError("missing openid")
+        app_id = str(payload["app_id"])
+        if not app_id or not openid:
+            raise ValueError("missing mini program identity")
     except (jwt.PyJWTError, KeyError, TypeError, ValueError) as exc:
         raise AppError("INVALID_TOKEN", "注册凭证无效或已过期", status_code=401) from exc
-    return openid
+    return app_id, openid
 
 
 MiniProgramRegistrationOpenId = Annotated[
-    str, Depends(get_mini_program_registration_openid)
+    tuple[str, str], Depends(get_mini_program_registration_openid)
 ]
 
 

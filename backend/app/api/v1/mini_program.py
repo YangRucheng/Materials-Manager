@@ -22,6 +22,7 @@ from app.schemas import (
     MiniProgramOutboundRead,
     MiniProgramOutboundReasonOptions,
     MiniProgramProfileUpdate,
+    MiniProgramUserMergeRequest,
     MiniProgramUserRead,
     MiniProgramUserUpdate,
     MiniProgramWechatLoginRequest,
@@ -75,14 +76,28 @@ async def delete_mini_program_user(
     await mini_program_service.delete_user(session, user_id, version)
 
 
+@management_router.post("/{target_user_id}/merge", response_model=MiniProgramUserRead)
+async def merge_mini_program_users(
+    target_user_id: int,
+    data: MiniProgramUserMergeRequest,
+    session: DbSession,
+    user: SuperAdmin,
+) -> MiniProgramUserRead:
+    return MiniProgramUserRead.model_validate(
+        await mini_program_service.merge_users(session, target_user_id, data)
+    )
+
+
 @mini_router.post("/auth/wx-login", response_model=MiniProgramLoginResponse)
 async def mini_program_wechat_login(
     data: MiniProgramWechatLoginRequest, session: DbSession
 ) -> MiniProgramLoginResponse:
-    user, openid = await mini_program_service.login_with_wechat(session, data.code)
+    user, app_id, openid = await mini_program_service.login_with_wechat(
+        session, data.code, data.app_id
+    )
     if user is None:
         return MiniProgramLoginResponse(
-            registration_token=create_mini_program_registration_token(openid),
+            registration_token=create_mini_program_registration_token(app_id, openid),
             requires_profile=True,
         )
     return MiniProgramLoginResponse(
@@ -101,10 +116,11 @@ async def mini_program_me(user: CurrentMiniProgramUser) -> MiniProgramUserRead:
 async def create_mini_program_profile(
     data: MiniProgramProfileUpdate,
     session: DbSession,
-    openid: MiniProgramRegistrationOpenId,
+    identity: MiniProgramRegistrationOpenId,
 ) -> MiniProgramLoginResponse:
+    app_id, openid = identity
     user = await mini_program_service.register_user(
-        session, openid, data.display_name, data.department_name
+        session, app_id, openid, data.display_name, data.department_name
     )
     return MiniProgramLoginResponse(
         access_token=create_mini_program_access_token(user.id) if user.enabled else None,

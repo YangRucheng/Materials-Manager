@@ -2029,6 +2029,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program-users/{target_user_id}/merge:
+    post:
+      tags:
+      - 小程序用户管理
+      summary: Merge Mini Program Users
+      operationId: merge_mini_program_users_api_v1_mini_program_users__target_user_id__merge_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: target_user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Target User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniProgramUserMergeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramUserRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program/auth/wx-login:
     post:
       tags:
@@ -4878,6 +4936,28 @@ components:
       - trial
       - release
       title: MiniProgramCodeEnv
+    MiniProgramIdentityRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        app_id:
+          type: string
+          title: App Id
+        wechat_openid:
+          type: string
+          title: Wechat Openid
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - app_id
+      - wechat_openid
+      - created_at
+      title: MiniProgramIdentityRead
     MiniProgramInventoryItemRead:
       properties:
         uuid:
@@ -5143,14 +5223,30 @@ components:
       - out_of_stock
       - low_stock
       title: MiniProgramStockStatus
+    MiniProgramUserMergeRequest:
+      properties:
+        source_user_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Source User Id
+        source_version:
+          type: integer
+          title: Source Version
+        target_version:
+          type: integer
+          title: Target Version
+      additionalProperties: false
+      type: object
+      required:
+      - source_user_id
+      - source_version
+      - target_version
+      title: MiniProgramUserMergeRequest
     MiniProgramUserRead:
       properties:
         id:
           type: integer
           title: Id
-        wechat_openid:
-          type: string
-          title: Wechat Openid
         display_name:
           type: string
           title: Display Name
@@ -5160,6 +5256,11 @@ components:
         enabled:
           type: boolean
           title: Enabled
+        identities:
+          items:
+            $ref: '#/components/schemas/MiniProgramIdentityRead'
+          type: array
+          title: Identities
         created_at:
           type: string
           format: date-time
@@ -5174,10 +5275,10 @@ components:
       type: object
       required:
       - id
-      - wechat_openid
       - display_name
       - department_name
       - enabled
+      - identities
       - created_at
       - updated_at
       - version
@@ -5218,6 +5319,13 @@ components:
           maxLength: 256
           minLength: 1
           title: Code
+        app_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: App Id
       additionalProperties: false
       type: object
       required:

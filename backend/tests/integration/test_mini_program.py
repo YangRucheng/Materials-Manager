@@ -15,9 +15,11 @@ from tests.conftest import auth_headers
 async def test_wechat_profile_registration_scan_and_outbound_flow(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def fake_exchange_wechat_code(code: str) -> str:
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
         assert code == "temporary-login-code"
-        return "openid-for-scan-user"
+        return app_id or "wx-test-primary", "openid-for-scan-user"
 
     monkeypatch.setattr(
         mini_program_service,
@@ -63,7 +65,14 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     assert profile.json()["requires_profile"] is False
     assert profile.json()["registration_token"] is None
     created_user = profile.json()["user"]
-    assert created_user["wechat_openid"] == "openid-for-scan-user"
+    assert created_user["identities"] == [
+        {
+            "id": created_user["identities"][0]["id"],
+            "app_id": "wx-test-primary",
+            "wechat_openid": "openid-for-scan-user",
+            "created_at": created_user["identities"][0]["created_at"],
+        }
+    ]
     assert created_user["display_name"] == "扫码出库员"
     assert created_user["department_name"] == "华星检修维护部电气车间"
     mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
@@ -339,15 +348,138 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert rebound.status_code == 200, rebound.text
     assert rebound.json()["user"]["display_name"] == "重新绑定姓名"
-    assert rebound.json()["user"]["wechat_openid"] == "openid-for-scan-user"
+    assert rebound.json()["user"]["identities"][0]["wechat_openid"] == (
+        "openid-for-scan-user"
+    )
+
+
+@pytest.mark.asyncio
+async def test_admin_can_merge_accounts_from_different_mini_programs(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"openid-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    admin = await auth_headers(client, "admin")
+    warehouse = await auth_headers(client, "warehouse")
+
+    async def register(app_id: str, code: str, display_name: str) -> dict[str, object]:
+        login = await client.post(
+            "/api/v1/mini-program/auth/wx-login",
+            json={"code": code, "app_id": app_id},
+        )
+        assert login.status_code == 200, login.text
+        profile = await client.post(
+            "/api/v1/mini-program/profile",
+            headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+            json={
+                "display_name": display_name,
+                "department_name": "华星检修维护部电气车间",
+            },
+        )
+        assert profile.status_code == 200, profile.text
+        return profile.json()
+
+    primary = await register("wx-test-primary", "same-person-1", "同一人员")
+    secondary = await register("wx-test-secondary", "same-person-2", "同一人员重复账号")
+    target_user = primary["user"]
+    source_user = secondary["user"]
+    assert isinstance(target_user, dict)
+    assert isinstance(source_user, dict)
+
+    material = await client.post(
+        "/api/v1/stock-materials",
+        headers=warehouse,
+        json={
+            "name": "账号合并测试物资",
+            "model_spec": "MERGE-001",
+            "unit_name": "个",
+            "image_ids": [],
+        },
+    )
+    assert material.status_code == 201, material.text
+    inbound = await client.post(
+        "/api/v1/inventory/inbounds",
+        headers=warehouse,
+        json={
+            "client_request_id": "merge-account-seed",
+            "occurred_at": "2026-07-29T09:00:00+08:00",
+            "source_type": "MANUAL",
+            "business_reason": "账号合并测试入库",
+            "lines": [{"stock_material_id": material.json()["id"], "quantity": "2"}],
+        },
+    )
+    assert inbound.status_code == 201, inbound.text
+    outbound = await client.post(
+        "/api/v1/mini-program/outbound",
+        headers={"Authorization": f"Bearer {secondary['access_token']}"},
+        json={
+            "client_request_id": "merge-account-outbound",
+            "material_uuid": material.json()["uuid"],
+            "occurred_at": "2026-07-29T10:00:00+08:00",
+            "quantity": "1",
+            "business_reason": "账号合并前出库",
+            "receiver_unit": "",
+            "subitem_no": "合并测试",
+        },
+    )
+    assert outbound.status_code == 201, outbound.text
+
+    merged = await client.post(
+        f"/api/v1/mini-program-users/{target_user['id']}/merge",
+        headers=admin,
+        json={
+            "source_user_id": source_user["id"],
+            "source_version": source_user["version"],
+            "target_version": target_user["version"],
+        },
+    )
+    assert merged.status_code == 200, merged.text
+    assert merged.json()["id"] == target_user["id"]
+    assert {item["app_id"] for item in merged.json()["identities"]} == {
+        "wx-test-primary",
+        "wx-test-secondary",
+    }
+
+    users = await client.get(
+        "/api/v1/mini-program-users",
+        headers=admin,
+        params={"keyword": "wx-test-secondary"},
+    )
+    assert users.status_code == 200
+    assert users.json()["total"] == 1
+    assert users.json()["items"][0]["id"] == target_user["id"]
+    operation = await client.get(
+        f"/api/v1/inventory/operations/{outbound.json()['operation_id']}",
+        headers=warehouse,
+    )
+    assert operation.status_code == 200
+    assert operation.json()["mini_program_user_id"] == target_user["id"]
+    assert operation.json()["mini_program_user_name"] == "同一人员重复账号"
+
+    secondary_login = await client.post(
+        "/api/v1/mini-program/auth/wx-login",
+        json={"code": "same-person-2", "app_id": "wx-test-secondary"},
+    )
+    assert secondary_login.status_code == 200
+    assert secondary_login.json()["user"]["id"] == target_user["id"]
 
 
 @pytest.mark.asyncio
 async def test_mini_program_inventory_search_filters_pagination_and_detail(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def fake_exchange_wechat_code(code: str) -> str:
-        return f"inventory-{code}"
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"inventory-{code}"
 
     monkeypatch.setattr(
         mini_program_service,
@@ -542,8 +674,10 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
 async def test_advanced_setting_can_close_new_mini_program_bindings(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def fake_exchange_wechat_code(code: str) -> str:
-        return f"openid-{code}"
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"openid-{code}"
 
     monkeypatch.setattr(
         mini_program_service,
@@ -615,8 +749,10 @@ async def test_advanced_setting_can_close_new_mini_program_bindings(
 async def test_advanced_setting_controls_new_mini_program_user_status(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def fake_exchange_wechat_code(code: str) -> str:
-        return f"status-{code}"
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"status-{code}"
 
     monkeypatch.setattr(
         mini_program_service,
@@ -716,3 +852,9 @@ async def test_mini_program_users_require_super_admin(client: AsyncClient) -> No
         "/api/v1/mini-program-users/1", headers=warehouse, params={"version": 1}
     )
     assert deleted.status_code == 403
+    merged = await client.post(
+        "/api/v1/mini-program-users/1/merge",
+        headers=warehouse,
+        json={"source_user_id": 2, "source_version": 1, "target_version": 1},
+    )
+    assert merged.status_code == 403
