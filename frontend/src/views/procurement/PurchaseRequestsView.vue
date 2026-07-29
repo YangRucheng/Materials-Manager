@@ -112,6 +112,16 @@ const availableColumns: Array<{
     },
   },
   {
+    key: 'purchase_date',
+    label: '申购日期',
+    column: {
+      title: '申购日期',
+      key: 'purchase_date',
+      width: tableColumnWidths.date,
+      render: (row) => (row.purchase_date ? formatDate(row.purchase_date) : '\\'),
+    },
+  },
+  {
     key: 'purchase_order_no',
     label: '申购单号',
     column: {
@@ -284,16 +294,6 @@ const availableColumns: Array<{
       key: 'status',
       width: tableColumnWidths.status,
       render: (row) => h(NTag, null, { default: () => row.status || '\\' }),
-    },
-  },
-  {
-    key: 'purchase_date',
-    label: '申购日期',
-    column: {
-      title: '申购日期',
-      key: 'purchase_date',
-      width: tableColumnWidths.date,
-      render: (row) => (row.purchase_date ? formatDate(row.purchase_date) : '\\'),
     },
   },
 ]
