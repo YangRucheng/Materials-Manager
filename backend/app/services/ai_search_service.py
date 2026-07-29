@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import AppError, version_conflict
+from app.core.wechat import configured_wechat_app_ids, get_wechat_credentials
 from app.domain.enums import MiniProgramCodeEnv
 from app.models import BusinessEventLog
 from app.schemas import AiSearchSettingsRead, AiSearchSettingsUpdate
@@ -45,6 +46,7 @@ class AiSearchConfig:
     model: str
     enabled: bool
     mini_program_code_env: MiniProgramCodeEnv
+    mini_program_code_app_id: str
     mini_program_registration_enabled: bool
     mini_program_new_user_enabled: bool
     image_acceleration_server_url: str
@@ -86,6 +88,7 @@ def _payload(config: AiSearchConfig) -> dict[str, object]:
         "model": config.model,
         "enabled": config.enabled,
         "mini_program_code_env": config.mini_program_code_env,
+        "mini_program_code_app_id": config.mini_program_code_app_id,
         "mini_program_registration_enabled": config.mini_program_registration_enabled,
         "mini_program_new_user_enabled": config.mini_program_new_user_enabled,
         "image_acceleration_server_url": config.image_acceleration_server_url,
@@ -99,6 +102,13 @@ def _mini_program_code_env(value: object) -> MiniProgramCodeEnv:
         return MiniProgramCodeEnv(value)
     except ValueError:
         return MiniProgramCodeEnv.RELEASE
+
+
+def _mini_program_code_app_id(value: object) -> str:
+    app_ids = configured_wechat_app_ids()
+    if isinstance(value, str) and value in app_ids:
+        return value
+    return app_ids[0] if app_ids else ""
 
 
 async def close_client() -> None:
@@ -129,6 +139,9 @@ async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
         model=model if isinstance(model, str) else "",
         enabled=enabled if isinstance(enabled, bool) else False,
         mini_program_code_env=_mini_program_code_env(data.get("mini_program_code_env")),
+        mini_program_code_app_id=_mini_program_code_app_id(
+            data.get("mini_program_code_app_id")
+        ),
         mini_program_registration_enabled=(
             data.get("mini_program_registration_enabled")
             if isinstance(data.get("mini_program_registration_enabled"), bool)
@@ -157,6 +170,8 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
             model="",
             enabled=False,
             mini_program_code_env=MiniProgramCodeEnv.RELEASE,
+            mini_program_code_app_id=_mini_program_code_app_id(None),
+            mini_program_app_ids=configured_wechat_app_ids(),
             mini_program_registration_enabled=True,
             mini_program_new_user_enabled=True,
             image_acceleration_server_url="",
@@ -169,6 +184,10 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
         model=setting.model,
         enabled=setting.enabled,
         mini_program_code_env=setting.mini_program_code_env,
+        mini_program_code_app_id=_mini_program_code_app_id(
+            setting.mini_program_code_app_id
+        ),
+        mini_program_app_ids=configured_wechat_app_ids(),
         mini_program_registration_enabled=setting.mini_program_registration_enabled,
         mini_program_new_user_enabled=setting.mini_program_new_user_enabled,
         image_acceleration_server_url=setting.image_acceleration_server_url,
@@ -185,6 +204,19 @@ async def update_setting(
     if data.version != actual_version:
         raise version_conflict(data.version, actual_version)
     api_key_encrypted = _encrypt_api_key(data.api_key) if data.api_key else ""
+    mini_program_code_app_id = _mini_program_code_app_id(
+        data.mini_program_code_app_id.strip()
+    )
+    if (
+        data.mini_program_code_app_id
+        and mini_program_code_app_id != data.mini_program_code_app_id
+    ):
+        raise AppError(
+            "MINI_PROGRAM_APP_NOT_CONFIGURED",
+            "所选微信小程序 AppID 未配置",
+            status_code=400,
+            details={"app_id": data.mini_program_code_app_id},
+        )
 
     event = await log_event(
         session,
@@ -201,6 +233,7 @@ async def update_setting(
             "model": data.model,
             "enabled": data.enabled,
             "mini_program_code_env": data.mini_program_code_env,
+            "mini_program_code_app_id": mini_program_code_app_id,
             "mini_program_registration_enabled": data.mini_program_registration_enabled,
             "mini_program_new_user_enabled": data.mini_program_new_user_enabled,
             "image_acceleration_server_url": data.image_acceleration_server_url,
@@ -213,6 +246,7 @@ async def update_setting(
         model=data.model,
         enabled=data.enabled,
         mini_program_code_env=data.mini_program_code_env,
+        mini_program_code_app_id=mini_program_code_app_id,
         mini_program_registration_enabled=data.mini_program_registration_enabled,
         mini_program_new_user_enabled=data.mini_program_new_user_enabled,
         image_acceleration_server_url=data.image_acceleration_server_url,
@@ -224,6 +258,14 @@ async def update_setting(
 async def get_mini_program_code_env(session: AsyncSession) -> MiniProgramCodeEnv:
     setting = await get_setting(session)
     return setting.mini_program_code_env if setting else MiniProgramCodeEnv.RELEASE
+
+
+async def get_mini_program_code_app_id(session: AsyncSession) -> str:
+    setting = await get_setting(session)
+    selected = _mini_program_code_app_id(
+        setting.mini_program_code_app_id if setting else None
+    )
+    return get_wechat_credentials(selected or None)[0]
 
 
 async def is_mini_program_registration_enabled(session: AsyncSession) -> bool:

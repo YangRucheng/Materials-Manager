@@ -33,6 +33,8 @@ let aiSettings: AiSearchSettings = {
   model: 'fast-model',
   enabled: true,
   mini_program_code_env: 'release',
+  mini_program_code_app_id: 'wx-test-primary',
+  mini_program_app_ids: ['wx-test-primary', 'wx-test-secondary'],
   mini_program_registration_enabled: true,
   mini_program_new_user_enabled: true,
   image_acceleration_server_url: '',
@@ -267,6 +269,8 @@ export const handlers = [
       model: body.model,
       enabled: body.enabled,
       mini_program_code_env: body.mini_program_code_env,
+      mini_program_code_app_id: body.mini_program_code_app_id,
+      mini_program_app_ids: aiSettings.mini_program_app_ids,
       mini_program_registration_enabled: body.mini_program_registration_enabled,
       mini_program_new_user_enabled: body.mini_program_new_user_enabled,
       image_acceleration_server_url: body.image_acceleration_server_url,
@@ -383,14 +387,16 @@ export const handlers = [
       status: 307,
       headers: {
         'Cache-Control': 'no-store',
-        Location: `${api}/stock-materials/mini-program-codes/${item.uuid}?env=${aiSettings.mini_program_code_env}`,
+        Location: `${api}/stock-materials/mini-program-codes/${item.uuid}?env=${aiSettings.mini_program_code_env}&appid=${aiSettings.mini_program_code_app_id}`,
       },
     })
   }),
   http.get(`${api}/stock-materials/mini-program-codes/:uuid`, ({ params, request }) => {
     const item = stockMaterials.find((x) => x.uuid === String(params.uuid))
-    const env = new URL(request.url).searchParams.get('env')
-    if (!env) return error(422, 'VALIDATION_ERROR', '缺少小程序码环境版本')
+    const searchParams = new URL(request.url).searchParams
+    const env = searchParams.get('env')
+    const appId = searchParams.get('appid')
+    if (!env || !appId) return error(422, 'VALIDATION_ERROR', '缺少小程序码参数')
     return item
       ? new HttpResponse(mockMiniProgramCode(String(params.uuid)), {
           headers: {

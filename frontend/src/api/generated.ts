@@ -72,6 +72,8 @@ export interface AiSearchSettings {
   model: string
   enabled: boolean
   mini_program_code_env: MiniProgramCodeEnv
+  mini_program_code_app_id: string
+  mini_program_app_ids: string[]
   mini_program_registration_enabled: boolean
   mini_program_new_user_enabled: boolean
   image_acceleration_server_url: string
@@ -84,6 +86,7 @@ export interface AiSearchSettingsWrite {
   model: string
   enabled: boolean
   mini_program_code_env: MiniProgramCodeEnv
+  mini_program_code_app_id: string
   mini_program_registration_enabled: boolean
   mini_program_new_user_enabled: boolean
   image_acceleration_server_url: string
