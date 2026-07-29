@@ -16,7 +16,9 @@ const emit = defineEmits<{
 
 const message = useMessage()
 const show = ref(false)
-const keyword = ref('')
+const materialCode = ref('')
+const name = ref('')
+const modelSpec = ref('')
 const items = ref<MaterialCodeLibrary[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -55,7 +57,9 @@ async function load() {
   loading.value = true
   try {
     const result = await procurementApi.materialCodes({
-      keyword: keyword.value.trim() || undefined,
+      material_code: materialCode.value.trim() || undefined,
+      name: name.value.trim() || undefined,
+      model_spec: modelSpec.value.trim() || undefined,
       page: page.value,
       page_size: pageSize.value,
     })
@@ -69,7 +73,9 @@ async function load() {
 }
 
 function open() {
-  keyword.value = ''
+  materialCode.value = ''
+  name.value = ''
+  modelSpec.value = ''
   page.value = 1
   show.value = true
   void load()
@@ -78,6 +84,13 @@ function open() {
 function search() {
   page.value = 1
   void load()
+}
+
+function resetSearch() {
+  materialCode.value = ''
+  name.value = ''
+  modelSpec.value = ''
+  search()
 }
 
 function changePageSize(value: number) {
@@ -119,15 +132,25 @@ watch(page, () => void load())
     :bordered="false"
   >
     <div class="selector-search">
-      <n-input-group>
+      <div class="selector-search-fields">
         <n-input
-          v-model:value="keyword"
+          v-model:value="modelSpec"
           clearable
-          placeholder="搜索编码、名称或型号，多个条件用 | 分隔"
+          placeholder="按型号搜索"
           @keyup.enter="search"
         />
+        <n-input v-model:value="name" clearable placeholder="按名称搜索" @keyup.enter="search" />
+        <n-input
+          v-model:value="materialCode"
+          clearable
+          placeholder="按编码搜索"
+          @keyup.enter="search"
+        />
+      </div>
+      <div class="selector-search-actions">
         <n-button type="primary" :loading="loading" @click="search">搜索</n-button>
-      </n-input-group>
+        <n-button @click="resetSearch">重置</n-button>
+      </div>
     </div>
     <n-data-table
       remote
@@ -160,5 +183,24 @@ watch(page, () => void load())
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-control);
   background: linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
+}
+
+.selector-search-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.selector-search-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 680px) {
+  .selector-search-fields {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
