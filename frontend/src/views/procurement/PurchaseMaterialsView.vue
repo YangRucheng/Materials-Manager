@@ -1148,15 +1148,21 @@ onBeforeUnmount(() => {
     >
       <n-form ref="formRef" :model="form" :rules="rules" label-placement="top">
         <div class="form-grid">
-          <n-form-item label="物料编码（已有时填写）">
+          <n-form-item label="需求日期" required>
+            <n-date-picker v-model:value="createPlanDate" type="date" class="full-width" />
+          </n-form-item>
+          <n-form-item label="物料编码">
             <MaterialCodeSelector
               :model-value="form.material_code || ''"
               @update:model-value="form.material_code = $event"
               @select="applyMaterialCode"
             />
           </n-form-item>
-          <n-form-item label="需求日期" required>
-            <n-date-picker v-model:value="createPlanDate" type="date" class="full-width" />
+          <n-form-item label="名称" path="name">
+            <n-input v-model:value="form.name" maxlength="128" />
+          </n-form-item>
+          <n-form-item label="型号规格" path="model_spec">
+            <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
           <n-form-item label="类别">
             <n-select
@@ -1166,12 +1172,6 @@ onBeforeUnmount(() => {
               clearable
               placeholder="选择类别"
             />
-          </n-form-item>
-          <n-form-item label="名称" path="name">
-            <n-input v-model:value="form.name" maxlength="128" />
-          </n-form-item>
-          <n-form-item label="型号规格" path="model_spec">
-            <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
           <n-form-item label="计划数量 / 计量单位" path="planned_qty">
             <n-input-group>
@@ -1227,11 +1227,7 @@ onBeforeUnmount(() => {
           </n-collapse-item>
         </n-collapse>
         <n-form-item label="备注"
-          ><n-input
-            v-model:value="form.remark"
-            type="textarea"
-            maxlength="1000"
-            show-count /></n-form-item
+          ><n-input v-model:value="form.remark" maxlength="1000" /></n-form-item
         ><n-form-item label="图片附件"
           ><ImageUploader v-model:files="images" /></n-form-item></n-form
       ><template #footer
