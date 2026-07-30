@@ -25,7 +25,7 @@ async def get_current_user(
         raise AppError("UNAUTHORIZED", "请先登录", status_code=401)
     try:
         payload = decode_access_token(credentials.credentials)
-        if payload.get("token_type") not in (None, "management"):
+        if payload.get("token_type") not in (None, "management", "management_access"):
             raise ValueError("wrong token type")
         user_id = int(payload["sub"])
     except (jwt.PyJWTError, KeyError, TypeError, ValueError) as exc:

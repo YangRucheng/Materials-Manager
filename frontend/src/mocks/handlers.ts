@@ -290,7 +290,12 @@ export const handlers = [
     const user = users.find((x) => x.username === body.username && x.enabled)
     if (!user || body.password !== '123456')
       return error(401, 'INVALID_CREDENTIALS', '用户名或密码错误')
-    return HttpResponse.json({ access_token: `mock-${user.username}`, token_type: 'bearer', user })
+    return HttpResponse.json({
+      access_token: `mock-${user.username}`,
+      refresh_token: `mock-refresh-${user.username}`,
+      token_type: 'bearer',
+      user,
+    })
   }),
   http.get(`${api}/auth/me`, ({ request }) => HttpResponse.json(actor(request))),
   http.get(`${api}/dashboard/summary`, () => {

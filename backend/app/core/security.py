@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
 import jwt
 from argon2 import PasswordHasher
@@ -39,7 +40,19 @@ def _create_access_token(
 
 
 def create_access_token(user_id: int) -> str:
-    return _create_access_token(user_id, "management", settings.access_token_minutes)
+    return _create_access_token(
+        user_id, "management_access", settings.access_token_minutes, jti=str(uuid4())
+    )
+
+
+def create_refresh_token(user_id: int, user_version: int) -> str:
+    return _create_access_token(
+        user_id,
+        "management_refresh",
+        settings.refresh_token_days * 24 * 60,
+        version=str(user_version),
+        jti=str(uuid4()),
+    )
 
 
 def create_mini_program_access_token(user_id: int) -> str:
