@@ -52,6 +52,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - 认证
+      summary: Refresh
+      operationId: refresh_api_v1_auth_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/auth/me:
     get:
       tags:
@@ -4922,6 +4971,9 @@ components:
         access_token:
           type: string
           title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
         token_type:
           type: string
           const: bearer
@@ -4932,6 +4984,7 @@ components:
       type: object
       required:
       - access_token
+      - refresh_token
       - user
       title: LoginResponse
     MaterialCodeLibraryImportRead:
@@ -6807,6 +6860,18 @@ components:
       - status
       - version
       title: PurchaseRecordUpdate
+    RefreshTokenRequest:
+      properties:
+        refresh_token:
+          type: string
+          maxLength: 4096
+          minLength: 1
+          title: Refresh Token
+      additionalProperties: false
+      type: object
+      required:
+      - refresh_token
+      title: RefreshTokenRequest
     ReplenishmentDefaultsRead:
       properties:
         purchase_responsible:
@@ -7230,6 +7295,24 @@ components:
       - created_at
       - version
       title: StockOperationRead
+    TokenPairResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
+        token_type:
+          type: string
+          const: bearer
+          title: Token Type
+          default: bearer
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      title: TokenPairResponse
     UserCreate:
       properties:
         username:

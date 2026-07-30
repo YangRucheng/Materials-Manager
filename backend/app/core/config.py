@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     database_url: str = "mysql+asyncmy://spare:spare@mysql:3306/spare_parts?charset=utf8mb4"
     jwt_secret: str = Field(default="change-me-in-production", min_length=16)
     jwt_algorithm: str = "HS256"
-    access_token_minutes: int = 480
+    access_token_minutes: int = Field(default=30, ge=1)
+    refresh_token_days: int = Field(default=7, ge=1)
     wechat_mini_program_app_id: str = ""
     wechat_mini_program_app_secret: str = ""
     upload_dir: Path = BACKEND_DIR / "data" / "uploads"
