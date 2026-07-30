@@ -12,7 +12,17 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import (
+    DisconnectionError,
+    IntegrityError,
+    InterfaceError,
+    OperationalError,
+    ProgrammingError,
+    SQLAlchemyError,
+)
+from sqlalchemy.exc import (
+    TimeoutError as SQLAlchemyTimeoutError,
+)
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.v1 import router as api_router
@@ -117,7 +127,11 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
 
 @app.exception_handler(IntegrityError)
 async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
-    logger.warning("database integrity error request_id=%s", request.state.request_id)
+    logger.warning(
+        "database integrity error request_id=%s",
+        request.state.request_id,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
     return error_response(
         request,
         status_code=409,
@@ -126,18 +140,56 @@ async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONR
     )
 
 
-@app.exception_handler(SQLAlchemyError)
-async def handle_database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+@app.exception_handler(ProgrammingError)
+async def handle_database_programming_error(
+    request: Request, exc: ProgrammingError
+) -> JSONResponse:
+    logger.error(
+        "database query error request_id=%s error_type=%s",
+        request.state.request_id,
+        type(exc).__name__,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    return error_response(
+        request,
+        status_code=500,
+        code="DATABASE_QUERY_ERROR",
+        message="数据库查询执行失败，请联系管理员",
+    )
+
+
+@app.exception_handler(OperationalError)
+@app.exception_handler(InterfaceError)
+@app.exception_handler(DisconnectionError)
+@app.exception_handler(SQLAlchemyTimeoutError)
+async def handle_database_unavailable(request: Request, exc: SQLAlchemyError) -> JSONResponse:
     logger.error(
         "database unavailable request_id=%s error_type=%s",
         request.state.request_id,
         type(exc).__name__,
+        exc_info=(type(exc), exc, exc.__traceback__),
     )
     return error_response(
         request,
         status_code=503,
         code="DATABASE_UNAVAILABLE",
         message="数据库暂时不可用，请稍后重试",
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def handle_database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.error(
+        "database error request_id=%s error_type=%s",
+        request.state.request_id,
+        type(exc).__name__,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    return error_response(
+        request,
+        status_code=500,
+        code="DATABASE_ERROR",
+        message="数据库操作失败，请联系管理员",
     )
 
 
