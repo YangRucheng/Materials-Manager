@@ -3,21 +3,7 @@
     <t-loading theme="circular" size="48rpx" text="{{i18n.loadingMaterial}}" />
   </view>
 
-  <view wx:if="{{material}}" class="section-card material-card">
-    <view class="section-heading material-heading">
-      <view class="section-title">{{i18n.materialInfo}}</view>
-    </view>
-    <view class="material-summary">
-      <view class="material-main">
-        <view class="material-name">{{material.name}}</view>
-        <view class="material-spec">{{material.model_spec}}</view>
-      </view>
-      <view class="stock-summary">
-        <view class="stock-label">{{i18n.currentStock}}</view>
-        <view class="stock-value">{{material.current_qty}} {{material.unit_name}}</view>
-      </view>
-    </view>
-  </view>
+  <material-summary-card wx:if="{{material}}" material="{{material}}" />
 
   <view wx:if="{{material}}" class="section-card form-card">
     <view class="section-heading">
