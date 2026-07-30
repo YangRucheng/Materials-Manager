@@ -16,8 +16,8 @@
 }
 
 .detail-hero {
-  margin-bottom: 24rpx;
-  padding: 32rpx;
+  margin-bottom: 18rpx;
+  padding: 28rpx 30rpx;
   border-radius: 28rpx;
   background: linear-gradient(145deg, #2947a6, #5579e7);
   box-shadow: 0 18rpx 44rpx rgba(41, 71, 166, 0.2);
@@ -41,9 +41,9 @@
 
 .hero-spec {
   margin-top: 10rpx;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 24rpx;
-  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 26rpx;
+  line-height: 1.45;
   word-break: break-all;
 }
 
@@ -51,14 +51,14 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: 30rpx;
-  padding-top: 24rpx;
+  margin-top: 24rpx;
+  padding-top: 20rpx;
   border-top: 2rpx solid rgba(255, 255, 255, 0.16);
 }
 
 .stock-label {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 24rpx;
 }
 
 .stock-number {
@@ -76,9 +76,14 @@
 }
 
 .minimum-tip {
-  margin-top: 16rpx;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 22rpx;
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.detail-card {
+  margin-bottom: 18rpx;
 }
 
 .detail-card .section-heading,
@@ -86,18 +91,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
+  padding: 18rpx 22rpx;
 }
 
 .detail-card .section-divider,
 .image-card .section-divider {
-  margin: 0 24rpx;
+  margin: 0 22rpx;
 }
 
 .detail-row {
   display: flex;
-  gap: 24rpx;
-  padding: 22rpx 24rpx;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 15rpx 22rpx;
   border-bottom: 2rpx solid #edf0f5;
 }
 
@@ -107,35 +113,38 @@
 
 .detail-label {
   flex: none;
-  width: 128rpx;
-  color: #8a94a5;
-  font-size: 24rpx;
+  width: 132rpx;
+  color: #687386;
+  font-size: 28rpx;
+  font-weight: 550;
+  line-height: 1.45;
 }
 
 .detail-value {
   flex: 1;
   min-width: 0;
-  color: #30394a;
-  font-size: 25rpx;
-  line-height: 1.55;
+  color: #263044;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.45;
   text-align: right;
   word-break: break-all;
 }
 
 .remark-row .detail-value {
-  color: #687386;
+  color: #4b5565;
 }
 
 .image-count {
-  color: #8a94a5;
-  font-size: 22rpx;
+  color: #687386;
+  font-size: 24rpx;
 }
 
 .image-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14rpx;
-  padding: 24rpx;
+  padding: 20rpx 22rpx;
 }
 
 .image-item {
@@ -146,14 +155,14 @@
 }
 
 .no-image {
-  padding: 52rpx 24rpx;
-  color: #a1a9b7;
-  font-size: 24rpx;
+  padding: 32rpx 22rpx;
+  color: #7d8798;
+  font-size: 26rpx;
   text-align: center;
 }
 
 .outbound-entry {
-  margin-top: 28rpx;
+  margin-top: 20rpx;
   --td-button-primary-bg-color: #3f63d8;
   --td-button-primary-border-color: #3f63d8;
   --td-button-primary-active-bg-color: #3151bd;
