@@ -56,8 +56,14 @@ export interface LoginRequest {
 }
 export interface LoginResponse {
   access_token: string
+  refresh_token: string
   token_type: 'bearer'
   user: User
+}
+export interface TokenPairResponse {
+  access_token: string
+  refresh_token: string
+  token_type: 'bearer'
 }
 export interface MiniProgramLoginResponse {
   access_token?: string | null

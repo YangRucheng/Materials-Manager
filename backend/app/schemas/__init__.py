@@ -119,8 +119,19 @@ class LoginRequest(RequestModel):
 
 class LoginResponse(ReadModel):
     access_token: str
+    refresh_token: str
     token_type: Literal["bearer"] = "bearer"
     user: UserRead
+
+
+class RefreshTokenRequest(RequestModel):
+    refresh_token: str = Field(min_length=1, max_length=4096)
+
+
+class TokenPairResponse(ReadModel):
+    access_token: str
+    refresh_token: str
+    token_type: Literal["bearer"] = "bearer"
 
 
 class UserCreate(RequestModel):
