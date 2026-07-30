@@ -9,44 +9,14 @@
   </view>
 
   <block wx:elif="{{material}}">
-    <view class="detail-hero">
-      <view class="hero-heading">
-        <view class="hero-name">{{material.name}}</view>
-        <t-tag theme="{{material.stock_status_theme}}" variant="light">
-          {{material.stock_status_label}}
-        </t-tag>
-      </view>
-      <view class="hero-spec">{{material.model_spec}}</view>
-      <view class="stock-block">
-        <view>
-          <view class="stock-label">{{i18n.currentStock}}</view>
-          <view class="stock-number">{{material.current_qty}}</view>
-        </view>
-        <view class="stock-unit">{{material.unit_name}}</view>
-      </view>
-      <view wx:if="{{material.minimum_qty !== null}}" class="minimum-tip">
-        {{material.minimum_stock_label}}
-      </view>
-    </view>
+    <material-summary-card material="{{material}}" />
 
     <view class="section-card detail-card">
       <view class="section-heading"><view class="section-title">{{i18n.materialInfo}}</view></view>
       <view class="section-divider"></view>
-      <view class="detail-row">
-        <view class="detail-label">{{i18n.materialName}}</view>
-        <view class="detail-value">{{material.name}}</view>
-      </view>
-      <view class="detail-row">
-        <view class="detail-label">{{i18n.modelSpec}}</view>
-        <view class="detail-value">{{material.model_spec}}</view>
-      </view>
-      <view class="detail-row">
-        <view class="detail-label">{{i18n.unit}}</view>
-        <view class="detail-value">{{material.unit_name}}</view>
-      </view>
-      <view class="detail-row remark-row">
-        <view class="detail-label">{{i18n.remark}}</view>
-        <view class="detail-value">{{material.remark || i18n.noRemark}}</view>
+      <view class="remark-row">
+        <view class="remark-label">{{i18n.remark}}</view>
+        <view class="remark-value">{{material.remark || i18n.noRemark}}</view>
       </view>
     </view>
 

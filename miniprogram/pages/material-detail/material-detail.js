@@ -1,6 +1,6 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
-const { decorateStock, imageUrl } = require('../../utils/inventory');
+const { imageUrl } = require('../../utils/inventory');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -48,19 +48,15 @@ Page({
       const result = await request({
         url: `/mini-program/materials/${this.materialUuid}`,
       });
-      const material = decorateStock({
+      const material = {
         ...result,
-        minimum_stock_label:
-          result.minimum_qty === null
-            ? ''
-            : t('minimumStock', { quantity: result.minimum_qty, unit: result.unit_name }),
         image_count_label: t('imageCount', { count: (result.images || []).length }),
         images: (result.images || []).map((image) => ({
           ...image,
           preview_url: imageUrl(image.id, 720),
           original_url: imageUrl(image.id),
         })),
-      });
+      };
       this.setData({ material });
     } catch (error) {
       this.setData({ failed: true });
