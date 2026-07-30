@@ -12,9 +12,15 @@ const pages = [
   'registration-closed/registration-closed',
 ];
 const requiredFiles = ['app.js', 'app.json', 'app.wxss'];
+const sharedComponents = ['material-summary-card/material-summary-card'];
 for (const page of pages) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     requiredFiles.push(`pages/${page}.${extension}`);
+  }
+}
+for (const component of sharedComponents) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    requiredFiles.push(`components/${component}.${extension}`);
   }
 }
 
@@ -102,9 +108,19 @@ for (const pageConfig of pageConfigs) {
   const components = Object.values(pageConfig.usingComponents || {});
   if (
     !components.length ||
-    components.some((component) => !component.startsWith('tdesign-miniprogram/'))
+    components.some(
+      (component) =>
+        !component.startsWith('tdesign-miniprogram/') && !component.startsWith('/components/'),
+    )
   ) {
-    throw new Error('Mini Program pages must use TDesign components.');
+    throw new Error('Mini Program pages must use TDesign or shared local components.');
+  }
+}
+
+for (const page of ['material-detail/material-detail', 'outbound/outbound']) {
+  const markup = fs.readFileSync(path.join(root, `pages/${page}.wxml`), 'utf8');
+  if (!markup.includes('<material-summary-card')) {
+    throw new Error(`${page} must reuse the shared material summary card.`);
   }
 }
 

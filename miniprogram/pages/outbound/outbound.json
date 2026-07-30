@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "扫码出库",
   "usingComponents": {
+    "material-summary-card": "/components/material-summary-card/material-summary-card",
     "t-button": "tdesign-miniprogram/button/button",
     "t-cell-group": "tdesign-miniprogram/cell-group/cell-group",
     "t-input": "tdesign-miniprogram/input/input",
