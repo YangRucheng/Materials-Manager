@@ -9,6 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from uuid import uuid4
@@ -207,6 +208,15 @@ def _event_title(event_type: str) -> str:
     }.get(event_type, "通知")
 
 
+def _quantity_text(value: Any) -> str:
+    if value is None or value == "":
+        return "-"
+    try:
+        return format(Decimal(str(value)), "f").rstrip("0").rstrip(".") or "0"
+    except InvalidOperation:
+        return str(value)
+
+
 def _message_text(payload: dict[str, Any]) -> tuple[str, str]:
     event_type = str(payload.get("event_type", ""))
     title = _event_title(event_type)
@@ -217,21 +227,25 @@ def _message_text(payload: dict[str, Any]) -> tuple[str, str]:
     elif event_type == WebhookEventType.STOCK_OUTBOUND_CREATED.value:
         raw_materials = data.get("materials")
         materials: list[Any] = raw_materials if isinstance(raw_materials, list) else []
-        details = []
-        for index, item in enumerate(materials[:2], start=1):
-            if not isinstance(item, dict):
-                continue
-            details.append(
-                f"物资{index}：{item.get('name', '-')} / {item.get('model_spec', '-')}"
-            )
+        if len(materials) == 1 and isinstance(materials[0], dict):
+            material = materials[0]
+            name = str(material.get("name") or "-")
+            model_spec = str(material.get("model_spec") or "").strip()
+            material_text = " ".join(part for part in (name, model_spec) if part)
+            quantity = _quantity_text(material.get("quantity"))
+            unit_name = str(material.get("unit_name") or "").strip()
+            details = [f"物资：{material_text}", f"数量：{quantity}{unit_name}"]
+        else:
+            details = [f"物资：{len(materials)}项物资"]
+        subitem_no = str(data.get("subitem_no") or "").strip()
+        business_reason = str(data.get("business_reason") or "").strip()
+        purpose = " ".join(part for part in (subitem_no, business_reason) if part) or "-"
         details.extend(
             [
                 f"领用人：{data.get('receiver_name') or '-'}",
-                f"用途：{data.get('business_reason') or '-'}",
+                f"用途：{purpose}",
             ]
         )
-        if len(materials) > 1:
-            details.append(f"出库总数：{len(materials)} 项")
     elif event_type == WebhookEventType.STOCK_INBOUND_CREATED.value:
         raw_materials = data.get("materials")
         materials = raw_materials if isinstance(raw_materials, list) else []

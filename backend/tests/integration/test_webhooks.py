@@ -123,11 +123,33 @@ async def test_webhook_settings_permissions_and_validation(
 
 
 def test_notification_message_format() -> None:
-    outbound_payload = {
+    single_outbound_payload = {
         "event_type": "stock.outbound.created",
         "data": {
             "operation_no": "OUT-SHOULD-NOT-APPEAR",
             "receiver_name": "张三",
+            "subitem_no": "01-02",
+            "business_reason": "设备检修",
+            "materials": [
+                {
+                    "name": "接触器",
+                    "model_spec": "CJX2",
+                    "quantity": "2.0000",
+                    "unit_name": "个",
+                }
+            ],
+        },
+    }
+    title, text = webhook_service._message_text(single_outbound_payload)
+    assert title == "出库通知"
+    assert text == "物资：接触器 CJX2\n数量：2个\n领用人：张三\n用途：01-02 设备检修"
+    assert "流水号" not in text
+
+    multiple_outbound_payload = {
+        "event_type": "stock.outbound.created",
+        "data": {
+            "receiver_name": "张三",
+            "subitem_no": "01-02",
             "business_reason": "设备检修",
             "materials": [
                 {"name": "接触器", "model_spec": "CJX2"},
@@ -136,15 +158,11 @@ def test_notification_message_format() -> None:
             ],
         },
     }
-    title, text = webhook_service._message_text(outbound_payload)
-    assert title == "出库通知"
-    assert "物资1：接触器 / CJX2" in text
-    assert "物资2：断路器 / DZ47" in text
-    assert "继电器" not in text
-    assert "流水号" not in text
-    assert "领用人：张三" in text
-    assert "用途：设备检修" in text
-    assert "出库总数：3 项" in text
+    multiple_title, multiple_text = webhook_service._message_text(
+        multiple_outbound_payload
+    )
+    assert multiple_title == "出库通知"
+    assert multiple_text == "物资：3项物资\n领用人：张三\n用途：01-02 设备检修"
 
     inbound_title, inbound_text = webhook_service._message_text(
         {
