@@ -676,6 +676,12 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/WebhookPlatform'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookTestRequest'
       responses:
         '200':
           description: Successful Response
@@ -7580,6 +7586,12 @@ components:
             $ref: '#/components/schemas/WebhookEventType'
           type: array
           title: Subscribed Events
+        webhook_url:
+          type: string
+          title: Webhook Url
+        secret:
+          type: string
+          title: Secret
         webhook_configured:
           type: boolean
           title: Webhook Configured
@@ -7600,6 +7612,8 @@ components:
       - platform
       - enabled
       - subscribed_events
+      - webhook_url
+      - secret
       - webhook_configured
       - secret_configured
       - version
@@ -7664,6 +7678,22 @@ components:
       - success
       - message
       title: WebhookTestRead
+    WebhookTestRequest:
+      properties:
+        webhook_url:
+          type: string
+          maxLength: 2000
+          title: Webhook Url
+        secret:
+          type: string
+          maxLength: 1000
+          title: Secret
+          default: ''
+      additionalProperties: false
+      type: object
+      required:
+      - webhook_url
+      title: WebhookTestRequest
   securitySchemes:
     HTTPBearer:
       type: http

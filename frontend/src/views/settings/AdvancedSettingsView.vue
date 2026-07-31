@@ -82,7 +82,7 @@ async function load() {
     ])
     Object.assign(form, data)
     for (const channel of webhookChannels) {
-      Object.assign(webhookForms[channel.platform], channel, { webhook_url: '', secret: '' })
+      Object.assign(webhookForms[channel.platform], channel)
     }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '加载配置失败')
@@ -98,7 +98,7 @@ async function save() {
   }
   for (const platform of webhookPlatforms) {
     const channel = webhookForms[platform]
-    if (channel.enabled && !channel.webhook_configured && !channel.webhook_url.trim()) {
+    if (channel.enabled && !channel.webhook_url.trim()) {
       message.error(`请填写${platformName(platform)} Webhook 地址`)
       return
     }
@@ -135,7 +135,7 @@ async function save() {
       }),
     )
     for (const channel of webhookResults) {
-      Object.assign(webhookForms[channel.platform], channel, { webhook_url: '', secret: '' })
+      Object.assign(webhookForms[channel.platform], channel)
     }
     message.success('高级设置已保存')
   } catch (error) {
@@ -146,9 +146,17 @@ async function save() {
 }
 
 async function testWebhook(platform: WebhookPlatform) {
+  const channel = webhookForms[platform]
+  if (!channel.webhook_url.trim()) {
+    message.error(`请填写${platformName(platform)} Webhook 地址`)
+    return
+  }
   testingWebhook.value = platform
   try {
-    const result = await systemSettingsApi.testWebhook(platform)
+    const result = await systemSettingsApi.testWebhook(platform, {
+      webhook_url: channel.webhook_url.trim(),
+      secret: channel.secret.trim(),
+    })
     message.success(result.message)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '测试推送失败')
@@ -217,7 +225,7 @@ onMounted(load)
               <n-input
                 v-model:value="form.api_key"
                 type="password"
-                show-password-on="mousedown"
+                show-password-on="click"
                 placeholder="请输入 API Key"
                 autocomplete="off"
                 :disabled="!form.enabled"
@@ -289,12 +297,8 @@ onMounted(load)
                 <n-input
                   v-model:value="webhookForms[platform].webhook_url"
                   type="password"
-                  show-password-on="mousedown"
-                  :placeholder="
-                    webhookForms[platform].webhook_configured
-                      ? '已配置，留空则保持不变'
-                      : `请输入${platformName(platform)}机器人 Webhook 地址`
-                  "
+                  show-password-on="click"
+                  :placeholder="`请输入${platformName(platform)}机器人 Webhook 地址`"
                   autocomplete="off"
                 />
               </n-form-item>
@@ -302,12 +306,8 @@ onMounted(load)
                 <n-input
                   v-model:value="webhookForms[platform].secret"
                   type="password"
-                  show-password-on="mousedown"
-                  :placeholder="
-                    webhookForms[platform].secret_configured
-                      ? '已配置，留空则保持不变'
-                      : '可选，建议开启机器人签名校验'
-                  "
+                  show-password-on="click"
+                  placeholder="可选，建议开启机器人签名校验"
                   autocomplete="off"
                 />
               </n-form-item>
@@ -327,7 +327,7 @@ onMounted(load)
                 <n-button
                   secondary
                   :loading="testingWebhook === platform"
-                  :disabled="saving || !webhookForms[platform].webhook_configured"
+                  :disabled="saving || !webhookForms[platform].webhook_url.trim()"
                   @click="testWebhook(platform)"
                 >
                   测试推送
