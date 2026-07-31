@@ -4,6 +4,7 @@ import type {
   WebhookChannelSettings,
   WebhookChannelSettingsWrite,
   WebhookPlatform,
+  WebhookTestInput,
   WebhookTestResult,
 } from './generated'
 
@@ -20,8 +21,8 @@ export const systemSettingsApi = {
     apiClient
       .put<WebhookChannelSettings>(`/system-settings/webhooks/${platform}`, data)
       .then((response) => response.data),
-  testWebhook: (platform: WebhookPlatform) =>
+  testWebhook: (platform: WebhookPlatform, data: WebhookTestInput) =>
     apiClient
-      .post<WebhookTestResult>(`/system-settings/webhooks/${platform}/test`)
+      .post<WebhookTestResult>(`/system-settings/webhooks/${platform}/test`, data)
       .then((response) => response.data),
 }

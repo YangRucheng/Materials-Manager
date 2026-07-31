@@ -334,7 +334,6 @@ async def create_operation(
                 else WebhookEventType.STOCK_OUTBOUND_CREATED
             ),
             {
-                "operation_no": item.operation_no,
                 "occurred_at": item.occurred_at.isoformat(timespec="seconds") + "Z",
                 "source_type": _operation_source_type(item).value,
                 "business_reason": item.business_reason,

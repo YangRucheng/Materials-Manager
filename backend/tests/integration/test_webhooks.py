@@ -38,6 +38,8 @@ async def configure_channel(
         "platform": platform,
         "enabled": True,
         "subscribed_events": events,
+        "webhook_url": webhook_url,
+        "secret": f"{platform.lower()}-secret",
         "webhook_configured": True,
         "secret_configured": True,
         "updated_at": response.json()["updated_at"],
@@ -46,7 +48,9 @@ async def configure_channel(
 
 
 @pytest.mark.asyncio
-async def test_webhook_settings_permissions_and_validation(client: AsyncClient) -> None:
+async def test_webhook_settings_permissions_and_validation(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     unauthorized = await client.get("/api/v1/system-settings/webhooks")
     assert unauthorized.status_code == 401
 
@@ -62,6 +66,8 @@ async def test_webhook_settings_permissions_and_validation(client: AsyncClient) 
             "platform": "FEISHU",
             "enabled": False,
             "subscribed_events": [],
+            "webhook_url": "",
+            "secret": "",
             "webhook_configured": False,
             "secret_configured": False,
             "updated_at": None,
@@ -71,6 +77,8 @@ async def test_webhook_settings_permissions_and_validation(client: AsyncClient) 
             "platform": "DINGTALK",
             "enabled": False,
             "subscribed_events": [],
+            "webhook_url": "",
+            "secret": "",
             "webhook_configured": False,
             "secret_configured": False,
             "updated_at": None,
@@ -91,6 +99,66 @@ async def test_webhook_settings_permissions_and_validation(client: AsyncClient) 
     )
     assert invalid.status_code == 422
     assert invalid.json()["code"] == "INVALID_WEBHOOK_URL"
+
+    captured: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(200, json={"code": 0, "msg": "success"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as mock_client:
+        monkeypatch.setattr(webhook_service, "_client", mock_client)
+        tested = await client.post(
+            "/api/v1/system-settings/webhooks/FEISHU/test",
+            headers=admin,
+            json={
+                "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/unsaved-token",
+                "secret": "unsaved-secret",
+            },
+        )
+    assert tested.status_code == 200, tested.text
+    assert len(captured) == 1
+    test_body = __import__("json").loads(captured[0].content)
+    assert test_body["content"]["text"] == "测试通知\n这是一条 Webhook 测试通知。"
+
+
+def test_notification_message_format() -> None:
+    outbound_payload = {
+        "event_type": "stock.outbound.created",
+        "data": {
+            "operation_no": "OUT-SHOULD-NOT-APPEAR",
+            "receiver_name": "张三",
+            "business_reason": "设备检修",
+            "materials": [
+                {"name": "接触器", "model_spec": "CJX2"},
+                {"name": "断路器", "model_spec": "DZ47"},
+                {"name": "继电器", "model_spec": "RXM"},
+            ],
+        },
+    }
+    title, text = webhook_service._message_text(outbound_payload)
+    assert title == "出库通知"
+    assert "物资1：接触器 / CJX2" in text
+    assert "物资2：断路器 / DZ47" in text
+    assert "继电器" not in text
+    assert "流水号" not in text
+    assert "领用人：张三" in text
+    assert "用途：设备检修" in text
+    assert "出库总数：3 项" in text
+
+    inbound_title, inbound_text = webhook_service._message_text(
+        {
+            "event_type": "stock.inbound.created",
+            "data": {"materials": [{"name": "接触器"}, {"name": "断路器"}]},
+        }
+    )
+    assert inbound_title == "入库通知"
+    assert inbound_text == "入库数量：2 项"
+
+    user_title, _ = webhook_service._message_text(
+        {"event_type": "mini_program.user.bound", "data": {}}
+    )
+    assert user_title == "新用户绑定通知"
 
 
 @pytest.mark.asyncio
@@ -117,6 +185,15 @@ async def test_selected_events_are_enqueued_once_and_delivered_to_both_platforms
         "https://oapi.dingtalk.com/robot/send?access_token=dingtalk-token",
         ["stock.outbound.created", "mini_program.user.bound"],
     )
+    loaded = await client.get("/api/v1/system-settings/webhooks", headers=admin)
+    assert loaded.status_code == 200
+    loaded_by_platform = {item["platform"]: item for item in loaded.json()}
+    assert loaded_by_platform["FEISHU"]["webhook_url"].endswith("/feishu-token")
+    assert loaded_by_platform["FEISHU"]["secret"] == "feishu-secret"
+    assert loaded_by_platform["DINGTALK"]["webhook_url"].endswith(
+        "access_token=dingtalk-token"
+    )
+    assert loaded_by_platform["DINGTALK"]["secret"] == "dingtalk-secret"
 
     async with SessionLocal() as session:
         stored = list((await session.scalars(select(WebhookChannel))).all())
@@ -153,6 +230,21 @@ async def test_selected_events_are_enqueued_once_and_delivered_to_both_platforms
     )
     assert outbound.status_code == replayed.status_code == 201
     assert outbound.json()["id"] == replayed.json()["id"]
+
+    updated = await client.patch(
+        f"/api/v1/inventory/operations/{outbound.json()['id']}",
+        headers=warehouse,
+        json={
+            "version": outbound.json()["version"],
+            "operation_type": "OUTBOUND",
+            "occurred_at": outbound_payload["occurred_at"],
+            "source_type": "MANUAL",
+            "business_reason": "管理员修改用途",
+            "receiver_name": "测试领用人",
+            "lines": outbound_payload["lines"],
+        },
+    )
+    assert updated.status_code == 200, updated.text
 
     registration_token = create_mini_program_registration_token(
         "wx-test-primary", "webhook-new-user-openid"
@@ -207,6 +299,13 @@ async def test_selected_events_are_enqueued_once_and_delivered_to_both_platforms
     assert feishu_body["msg_type"] == "text"
     assert feishu_body["timestamp"]
     assert feishu_body["sign"]
+    sent_text = "\n".join(
+        __import__("json").loads(item.content)["content"]["text"]
+        for item in feishu_requests
+    )
+    assert "出库通知" in sent_text
+    assert "入库通知" in sent_text
+    assert "新用户绑定通知" in sent_text
     dingtalk_query = parse_qs(urlparse(str(dingtalk_requests[0].url)).query)
     assert dingtalk_query["timestamp"]
     assert dingtalk_query["sign"]

@@ -105,6 +105,8 @@ export interface WebhookChannelSettings {
   platform: WebhookPlatform
   enabled: boolean
   subscribed_events: WebhookEventType[]
+  webhook_url: string
+  secret: string
   webhook_configured: boolean
   secret_configured: boolean
   updated_at?: string | null
@@ -121,6 +123,10 @@ export interface WebhookTestResult {
   platform: WebhookPlatform
   success: boolean
   message: string
+}
+export interface WebhookTestInput {
+  webhook_url: string
+  secret: string
 }
 export interface ImageAccelerationSettings {
   image_acceleration_server_url: string

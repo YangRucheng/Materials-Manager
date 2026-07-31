@@ -288,6 +288,8 @@ class WebhookChannelRead(ReadModel):
     platform: WebhookPlatform
     enabled: bool
     subscribed_events: list[WebhookEventType]
+    webhook_url: str
+    secret: str
     webhook_configured: bool
     secret_configured: bool
     updated_at: datetime | None = None
@@ -313,6 +315,11 @@ class WebhookTestRead(ReadModel):
     platform: WebhookPlatform
     success: bool
     message: str
+
+
+class WebhookTestRequest(RequestModel):
+    webhook_url: str = Field(max_length=2000)
+    secret: str = Field(default="", max_length=1000)
 
 
 class AiSearchStatusRead(BaseModel):
