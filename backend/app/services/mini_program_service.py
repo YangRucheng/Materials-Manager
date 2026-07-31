@@ -20,6 +20,7 @@ from app.domain.enums import (
     MiniProgramStockStatus,
     OperationType,
     SourceType,
+    WebhookEventType,
 )
 from app.models import (
     MiniProgramIdentity,
@@ -39,7 +40,7 @@ from app.schemas import (
     OperationCreate,
     OperationLineWrite,
 )
-from app.services import ai_search_service, inventory_service
+from app.services import ai_search_service, inventory_service, webhook_service
 from app.services.common import contains_any, file_read, utc_aware, validate_version
 
 _wechat_access_tokens: dict[str, tuple[str, float]] = {}
@@ -364,6 +365,17 @@ async def register_user(
             "微信用户创建冲突，请重新登录",
             status_code=409,
         ) from exc
+    await webhook_service.enqueue_event(
+        session,
+        WebhookEventType.MINI_PROGRAM_USER_BOUND,
+        {
+            "display_name": user.display_name,
+            "department_name": user.department_name,
+            "app_id": app_id,
+            "enabled": user.enabled,
+            "bound_at": user.created_at.isoformat(timespec="seconds") + "Z",
+        },
+    )
     return user
 
 

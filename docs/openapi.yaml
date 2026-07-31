@@ -557,6 +557,162 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/system-settings/webhooks:
+    get:
+      tags:
+      - 系统设置
+      summary: Webhook Channels
+      operationId: webhook_channels_api_v1_system_settings_webhooks_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/WebhookChannelRead'
+                type: array
+                title: Response Webhook Channels Api V1 System Settings Webhooks Get
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+  /api/v1/system-settings/webhooks/{platform}:
+    put:
+      tags:
+      - 系统设置
+      summary: Update Webhook Channel
+      operationId: update_webhook_channel_api_v1_system_settings_webhooks__platform__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: platform
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/WebhookPlatform'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookChannelUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookChannelRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/system-settings/webhooks/{platform}/test:
+    post:
+      tags:
+      - 系统设置
+      summary: Test Webhook Channel
+      operationId: test_webhook_channel_api_v1_system_settings_webhooks__platform__test_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: platform
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/WebhookPlatform'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookTestRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/stock-materials:
     get:
       tags:
@@ -7412,6 +7568,102 @@ components:
       required:
       - version
       title: UserUpdate
+    WebhookChannelRead:
+      properties:
+        platform:
+          $ref: '#/components/schemas/WebhookPlatform'
+        enabled:
+          type: boolean
+          title: Enabled
+        subscribed_events:
+          items:
+            $ref: '#/components/schemas/WebhookEventType'
+          type: array
+          title: Subscribed Events
+        webhook_configured:
+          type: boolean
+          title: Webhook Configured
+        secret_configured:
+          type: boolean
+          title: Secret Configured
+        updated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Updated At
+        version:
+          type: integer
+          title: Version
+      type: object
+      required:
+      - platform
+      - enabled
+      - subscribed_events
+      - webhook_configured
+      - secret_configured
+      - version
+      title: WebhookChannelRead
+    WebhookChannelUpdate:
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        webhook_url:
+          type: string
+          maxLength: 2000
+          title: Webhook Url
+          default: ''
+        secret:
+          type: string
+          maxLength: 1000
+          title: Secret
+          default: ''
+        subscribed_events:
+          items:
+            $ref: '#/components/schemas/WebhookEventType'
+          type: array
+          maxItems: 3
+          title: Subscribed Events
+        version:
+          type: integer
+          minimum: 0.0
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - version
+      title: WebhookChannelUpdate
+    WebhookEventType:
+      type: string
+      enum:
+      - stock.outbound.created
+      - stock.inbound.created
+      - mini_program.user.bound
+      title: WebhookEventType
+    WebhookPlatform:
+      type: string
+      enum:
+      - FEISHU
+      - DINGTALK
+      title: WebhookPlatform
+    WebhookTestRead:
+      properties:
+        platform:
+          $ref: '#/components/schemas/WebhookPlatform'
+        success:
+          type: boolean
+          title: Success
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - platform
+      - success
+      - message
+      title: WebhookTestRead
   securitySchemes:
     HTTPBearer:
       type: http
