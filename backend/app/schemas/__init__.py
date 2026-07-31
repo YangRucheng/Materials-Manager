@@ -21,6 +21,8 @@ from app.domain.enums import (
     PurchasePlanStatus,
     Role,
     SourceType,
+    WebhookEventType,
+    WebhookPlatform,
 )
 
 PositiveQuantity = Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=1)]
@@ -280,6 +282,37 @@ class AiSearchSettingsUpdate(RequestModel):
         if self.enabled and not (self.endpoint and self.api_key and self.model):
             raise ValueError("启用模型服务时必须填写端点、模型和 API Key")
         return self
+
+
+class WebhookChannelRead(ReadModel):
+    platform: WebhookPlatform
+    enabled: bool
+    subscribed_events: list[WebhookEventType]
+    webhook_configured: bool
+    secret_configured: bool
+    updated_at: datetime | None = None
+    version: int
+
+
+class WebhookChannelUpdate(RequestModel):
+    enabled: bool = False
+    webhook_url: str = Field(default="", max_length=2000)
+    secret: str = Field(default="", max_length=1000)
+    subscribed_events: list[WebhookEventType] = Field(default_factory=list, max_length=3)
+    version: int = Field(ge=0)
+
+    @field_validator("subscribed_events")
+    @classmethod
+    def unique_subscribed_events(cls, value: list[WebhookEventType]) -> list[WebhookEventType]:
+        if len(value) != len(set(value)):
+            raise ValueError("subscribed_events contains duplicates")
+        return value
+
+
+class WebhookTestRead(ReadModel):
+    platform: WebhookPlatform
+    success: bool
+    message: str
 
 
 class AiSearchStatusRead(BaseModel):

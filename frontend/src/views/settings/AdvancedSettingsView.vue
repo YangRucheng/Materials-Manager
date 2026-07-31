@@ -2,11 +2,20 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { aiSearchApi } from '@/api/aiSearch'
+import { systemSettingsApi } from '@/api/systemSettings'
+import type { WebhookEventType, WebhookPlatform } from '@/api/generated'
 
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)
+const testingWebhook = ref<WebhookPlatform | null>(null)
+const webhookEventOptions: Array<{ label: string; value: WebhookEventType }> = [
+  { label: '出库事件', value: 'stock.outbound.created' },
+  { label: '入库事件', value: 'stock.inbound.created' },
+  { label: '新用户绑定事件', value: 'mini_program.user.bound' },
+]
+const webhookPlatforms: WebhookPlatform[] = ['FEISHU', 'DINGTALK']
 const codeEnvOptions = [
   { label: '体验版', value: 'trial' },
   { label: '正式版', value: 'release' },
@@ -27,12 +36,54 @@ const form = reactive({
 const miniProgramAppOptions = computed(() =>
   form.mini_program_app_ids.map((appId) => ({ label: appId, value: appId })),
 )
+interface WebhookChannelForm {
+  platform: WebhookPlatform
+  enabled: boolean
+  webhook_url: string
+  secret: string
+  subscribed_events: WebhookEventType[]
+  webhook_configured: boolean
+  secret_configured: boolean
+  version: number
+}
+const webhookForms = reactive<Record<WebhookPlatform, WebhookChannelForm>>({
+  FEISHU: {
+    platform: 'FEISHU',
+    enabled: false,
+    webhook_url: '',
+    secret: '',
+    subscribed_events: [],
+    webhook_configured: false,
+    secret_configured: false,
+    version: 0,
+  },
+  DINGTALK: {
+    platform: 'DINGTALK',
+    enabled: false,
+    webhook_url: '',
+    secret: '',
+    subscribed_events: [],
+    webhook_configured: false,
+    secret_configured: false,
+    version: 0,
+  },
+})
+
+function platformName(platform: WebhookPlatform) {
+  return platform === 'FEISHU' ? '飞书' : '钉钉'
+}
 
 async function load() {
   loading.value = true
   try {
-    const data = await aiSearchApi.settings()
+    const [data, webhookChannels] = await Promise.all([
+      aiSearchApi.settings(),
+      systemSettingsApi.webhooks(),
+    ])
     Object.assign(form, data)
+    for (const channel of webhookChannels) {
+      Object.assign(webhookForms[channel.platform], channel, { webhook_url: '', secret: '' })
+    }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '加载配置失败')
   } finally {
@@ -44,6 +95,17 @@ async function save() {
   if (form.enabled && (!form.endpoint.trim() || !form.model.trim() || !form.api_key.trim())) {
     message.error('请填写端点、模型和 API Key')
     return
+  }
+  for (const platform of webhookPlatforms) {
+    const channel = webhookForms[platform]
+    if (channel.enabled && !channel.webhook_configured && !channel.webhook_url.trim()) {
+      message.error(`请填写${platformName(platform)} Webhook 地址`)
+      return
+    }
+    if (channel.enabled && channel.subscribed_events.length === 0) {
+      message.error(`请至少选择一个${platformName(platform)}推送事件`)
+      return
+    }
   }
   saving.value = true
   try {
@@ -60,11 +122,38 @@ async function save() {
       version: form.version,
     })
     Object.assign(form, data)
+    const webhookResults = await Promise.all(
+      webhookPlatforms.map((platform) => {
+        const channel = webhookForms[platform]
+        return systemSettingsApi.updateWebhook(platform, {
+          enabled: channel.enabled,
+          webhook_url: channel.webhook_url.trim(),
+          secret: channel.secret.trim(),
+          subscribed_events: channel.subscribed_events,
+          version: channel.version,
+        })
+      }),
+    )
+    for (const channel of webhookResults) {
+      Object.assign(webhookForms[channel.platform], channel, { webhook_url: '', secret: '' })
+    }
     message.success('高级设置已保存')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
     saving.value = false
+  }
+}
+
+async function testWebhook(platform: WebhookPlatform) {
+  testingWebhook.value = platform
+  try {
+    const result = await systemSettingsApi.testWebhook(platform)
+    message.success(result.message)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '测试推送失败')
+  } finally {
+    testingWebhook.value = null
   }
 }
 
@@ -184,6 +273,70 @@ onMounted(load)
           </n-form-item>
         </n-form>
       </n-card>
+
+      <n-card class="settings-card webhook-card" title="Webhook 事件推送" :bordered="false">
+        <div class="webhook-platforms">
+          <section v-for="platform in webhookPlatforms" :key="platform" class="webhook-platform">
+            <div class="webhook-platform-header">
+              <h2>{{ platformName(platform) }}</h2>
+              <div class="switch-control">
+                <span>{{ webhookForms[platform].enabled ? '已启用' : '已停用' }}</span>
+                <n-switch v-model:value="webhookForms[platform].enabled" />
+              </div>
+            </div>
+            <n-form label-placement="top">
+              <n-form-item label="Webhook 地址" :required="webhookForms[platform].enabled">
+                <n-input
+                  v-model:value="webhookForms[platform].webhook_url"
+                  type="password"
+                  show-password-on="mousedown"
+                  :placeholder="
+                    webhookForms[platform].webhook_configured
+                      ? '已配置，留空则保持不变'
+                      : `请输入${platformName(platform)}机器人 Webhook 地址`
+                  "
+                  autocomplete="off"
+                />
+              </n-form-item>
+              <n-form-item label="签名密钥">
+                <n-input
+                  v-model:value="webhookForms[platform].secret"
+                  type="password"
+                  show-password-on="mousedown"
+                  :placeholder="
+                    webhookForms[platform].secret_configured
+                      ? '已配置，留空则保持不变'
+                      : '可选，建议开启机器人签名校验'
+                  "
+                  autocomplete="off"
+                />
+              </n-form-item>
+              <n-form-item label="推送事件" :required="webhookForms[platform].enabled">
+                <n-checkbox-group v-model:value="webhookForms[platform].subscribed_events">
+                  <n-space>
+                    <n-checkbox
+                      v-for="option in webhookEventOptions"
+                      :key="option.value"
+                      :value="option.value"
+                      :label="option.label"
+                    />
+                  </n-space>
+                </n-checkbox-group>
+              </n-form-item>
+              <div class="webhook-actions">
+                <n-button
+                  secondary
+                  :loading="testingWebhook === platform"
+                  :disabled="saving || !webhookForms[platform].webhook_configured"
+                  @click="testWebhook(platform)"
+                >
+                  测试推送
+                </n-button>
+              </div>
+            </n-form>
+          </section>
+        </div>
+      </n-card>
     </div>
   </div>
 </template>
@@ -214,6 +367,49 @@ onMounted(load)
 
 .model-card {
   grid-row: span 2;
+}
+
+.webhook-card {
+  grid-column: 1 / -1;
+}
+
+.webhook-platforms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid #e8edf5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.webhook-platform {
+  padding: 18px 20px;
+}
+
+.webhook-platform + .webhook-platform {
+  border-left: 1px solid #e8edf5;
+}
+
+.webhook-platform-header,
+.webhook-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.webhook-platform-header {
+  margin-bottom: 16px;
+}
+
+.webhook-platform-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.webhook-actions {
+  justify-content: flex-end;
 }
 
 .model-fields {
@@ -259,6 +455,15 @@ onMounted(load)
 
   .model-card {
     grid-row: auto;
+  }
+
+  .webhook-platforms {
+    grid-template-columns: 1fr;
+  }
+
+  .webhook-platform + .webhook-platform {
+    border-top: 1px solid #e8edf5;
+    border-left: 0;
   }
 }
 

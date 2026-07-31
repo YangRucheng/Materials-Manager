@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.core.errors import AppError, not_found
-from app.domain.enums import OperationType, SourceType
+from app.domain.enums import OperationType, SourceType, WebhookEventType
 from app.models import (
     MiniProgramUser,
     StockBalance,
@@ -30,6 +30,7 @@ from app.schemas import (
     StockOperationLineRead,
     StockOperationRead,
 )
+from app.services import webhook_service
 from app.services.common import (
     contains_any,
     log_event,
@@ -324,6 +325,35 @@ async def create_operation(
         action="CREATED" if reversal_of_id is None else "REVERSED",
         after_data=_operation_snapshot(item),
     )
+    if reversal_of_id is None:
+        await webhook_service.enqueue_event(
+            session,
+            (
+                WebhookEventType.STOCK_INBOUND_CREATED
+                if operation_type == OperationType.INBOUND
+                else WebhookEventType.STOCK_OUTBOUND_CREATED
+            ),
+            {
+                "operation_no": item.operation_no,
+                "occurred_at": item.occurred_at.isoformat(timespec="seconds") + "Z",
+                "source_type": _operation_source_type(item).value,
+                "business_reason": item.business_reason,
+                "receiver_unit": item.receiver_unit,
+                "receiver_name": item.receiver_name,
+                "subitem_no": item.subitem_no,
+                "materials": [
+                    {
+                        "name": line.material_name_snapshot,
+                        "model_spec": line.model_spec_snapshot,
+                        "quantity": str(line.quantity),
+                        "unit_name": line.unit_name_snapshot,
+                        "before_qty": str(line.before_qty),
+                        "after_qty": str(line.after_qty),
+                    }
+                    for line in item.lines
+                ],
+            },
+        )
     await session.flush()
     return item
 
