@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 import uuid
@@ -31,7 +32,7 @@ from app.core.database import engine
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware
-from app.services import ai_search_service
+from app.services import ai_search_service, webhook_service
 
 logger = logging.getLogger("spare_parts.api")
 
@@ -64,8 +65,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.environment,
         settings.log_dir,
     )
-    yield
-    await ai_search_service.close_client()
+    webhook_stop_event = asyncio.Event()
+    webhook_worker = asyncio.create_task(
+        webhook_service.run_delivery_worker(webhook_stop_event),
+        name="webhook-delivery-worker",
+    )
+    try:
+        yield
+    finally:
+        webhook_stop_event.set()
+        await webhook_worker
+        await webhook_service.close_client()
+        await ai_search_service.close_client()
 
 
 app = FastAPI(

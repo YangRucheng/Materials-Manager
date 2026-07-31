@@ -13,6 +13,9 @@ import type {
   ReplenishmentPolicy,
   StockMaterialWrite,
   StockOperation,
+  WebhookChannelSettings,
+  WebhookChannelSettingsWrite,
+  WebhookPlatform,
 } from '@/api/generated'
 import { apiBaseUrl, imageBaseUrl } from '@/config/env'
 import {
@@ -41,6 +44,26 @@ let aiSettings: AiSearchSettings = {
   updated_at: new Date().toISOString(),
   version: 1,
 }
+let webhookSettings: WebhookChannelSettings[] = [
+  {
+    platform: 'FEISHU',
+    enabled: false,
+    subscribed_events: [],
+    webhook_configured: false,
+    secret_configured: false,
+    updated_at: null,
+    version: 0,
+  },
+  {
+    platform: 'DINGTALK',
+    enabled: false,
+    subscribed_events: [],
+    webhook_configured: false,
+    secret_configured: false,
+    updated_at: null,
+    version: 0,
+  },
+]
 const now = () => new Date().toISOString()
 const mockImage = (id: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="100%" height="100%" fill="#e8f5ee"/><text x="160" y="125" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#456">备件图片 ${id}</text></svg>`
@@ -254,6 +277,39 @@ export const handlers = [
       image_acceleration_server_url: aiSettings.image_acceleration_server_url,
     }),
   ),
+  http.get(`${api}/system-settings/webhooks`, ({ request }) =>
+    actor(request).role === 'SUPER_ADMIN'
+      ? HttpResponse.json(webhookSettings)
+      : error(403, 'FORBIDDEN', '没有执行此操作的权限'),
+  ),
+  http.put(`${api}/system-settings/webhooks/:platform`, async ({ request, params }) => {
+    if (actor(request).role !== 'SUPER_ADMIN')
+      return error(403, 'FORBIDDEN', '没有执行此操作的权限')
+    const platform = params.platform as WebhookPlatform
+    const body = (await request.json()) as WebhookChannelSettingsWrite
+    const current = webhookSettings.find((item) => item.platform === platform)!
+    if (body.enabled && !body.webhook_url && !current.webhook_configured)
+      return error(422, 'WEBHOOK_URL_REQUIRED', '启用推送前请填写 Webhook 地址')
+    if (body.enabled && body.subscribed_events.length === 0)
+      return error(422, 'WEBHOOK_EVENTS_REQUIRED', '启用推送前请至少选择一个事件')
+    const updated: WebhookChannelSettings = {
+      platform,
+      enabled: body.enabled,
+      subscribed_events: body.subscribed_events,
+      webhook_configured: current.webhook_configured || Boolean(body.webhook_url),
+      secret_configured: current.secret_configured || Boolean(body.secret),
+      updated_at: now(),
+      version: current.version + 1,
+    }
+    webhookSettings = webhookSettings.map((item) => (item.platform === platform ? updated : item))
+    return HttpResponse.json(updated)
+  }),
+  http.post(`${api}/system-settings/webhooks/:platform/test`, ({ request, params }) => {
+    if (actor(request).role !== 'SUPER_ADMIN')
+      return error(403, 'FORBIDDEN', '没有执行此操作的权限')
+    const platform = params.platform as WebhookPlatform
+    return HttpResponse.json({ platform, success: true, message: '测试消息已发送' })
+  }),
   http.get(`${api}/ai-search/settings`, ({ request }) =>
     actor(request).role === 'SUPER_ADMIN'
       ? HttpResponse.json(aiSettings)

@@ -33,6 +33,9 @@ from app.domain.enums import (
     PurchasePlanStatus,
     Role,
     SourceType,
+    WebhookDeliveryStatus,
+    WebhookEventType,
+    WebhookPlatform,
 )
 
 BIGINT_ID = BIGINT(unsigned=True).with_variant(Integer, "sqlite")
@@ -389,6 +392,57 @@ class BusinessEventLog(Base):
     after_data: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
+class WebhookChannel(AuditMixin, Base):
+    __tablename__ = "webhook_channel"
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    platform: Mapped[WebhookPlatform] = mapped_column(
+        SAEnum(WebhookPlatform), unique=True, nullable=False
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    webhook_url_encrypted: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    secret_encrypted: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    subscribed_events: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+
+class WebhookDelivery(Base):
+    __tablename__ = "webhook_delivery"
+    __table_args__ = (
+        UniqueConstraint("event_id", "channel_id"),
+        Index("ix_webhook_delivery_pending", "status", "next_retry_at", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    event_type: Mapped[WebhookEventType] = mapped_column(SAEnum(WebhookEventType), nullable=False)
+    channel_id: Mapped[int] = mapped_column(
+        BIGINT_ID, ForeignKey("webhook_channel.id"), nullable=False
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    status: Mapped[WebhookDeliveryStatus] = mapped_column(
+        SAEnum(WebhookDeliveryStatus),
+        nullable=False,
+        default=WebhookDeliveryStatus.PENDING,
+        server_default=WebhookDeliveryStatus.PENDING.value,
+    )
+    attempts: Mapped[int] = mapped_column(UTINYINT, nullable=False, default=0, server_default="0")
+    next_retry_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+    response_status: Mapped[int | None] = mapped_column(Integer)
+    response_excerpt: Mapped[str | None] = mapped_column(String(1000))
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), onupdate=_utcnow, nullable=False
+    )
+    delivered_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+
+    channel: Mapped[WebhookChannel] = relationship(lazy="joined")
+
+
 __all__ = [
     "Base",
     "BusinessEventLog",
@@ -405,4 +459,6 @@ __all__ = [
     "StockOperationLine",
     "StockReplenishmentPolicy",
     "User",
+    "WebhookChannel",
+    "WebhookDelivery",
 ]

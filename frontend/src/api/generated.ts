@@ -8,6 +8,9 @@ export type SourceType = 'MANUAL' | 'MINI_PROGRAM' | 'REVERSAL' | 'INITIALIZATIO
 export type PurchasePlanStatus = '正常' | '暂不申购' | '已归档'
 export type MiniProgramCodeEnv = 'trial' | 'release'
 export type MiniProgramStockStatus = 'normal' | 'out_of_stock' | 'low_stock'
+export type WebhookPlatform = 'FEISHU' | 'DINGTALK'
+export type WebhookEventType =
+  'stock.outbound.created' | 'stock.inbound.created' | 'mini_program.user.bound'
 
 export interface ApiError {
   code: string
@@ -97,6 +100,27 @@ export interface AiSearchSettingsWrite {
   mini_program_new_user_enabled: boolean
   image_acceleration_server_url: string
   version: number
+}
+export interface WebhookChannelSettings {
+  platform: WebhookPlatform
+  enabled: boolean
+  subscribed_events: WebhookEventType[]
+  webhook_configured: boolean
+  secret_configured: boolean
+  updated_at?: string | null
+  version: number
+}
+export interface WebhookChannelSettingsWrite {
+  enabled: boolean
+  webhook_url: string
+  secret: string
+  subscribed_events: WebhookEventType[]
+  version: number
+}
+export interface WebhookTestResult {
+  platform: WebhookPlatform
+  success: boolean
+  message: string
 }
 export interface ImageAccelerationSettings {
   image_acceleration_server_url: string

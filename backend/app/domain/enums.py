@@ -35,3 +35,21 @@ class PurchasePlanStatus(StrEnum):
     NORMAL = "正常"
     DEFERRED = "暂不申购"
     ARCHIVED = "已归档"
+
+
+class WebhookPlatform(StrEnum):
+    FEISHU = "FEISHU"
+    DINGTALK = "DINGTALK"
+
+
+class WebhookEventType(StrEnum):
+    STOCK_OUTBOUND_CREATED = "stock.outbound.created"
+    STOCK_INBOUND_CREATED = "stock.inbound.created"
+    MINI_PROGRAM_USER_BOUND = "mini_program.user.bound"
+
+
+class WebhookDeliveryStatus(StrEnum):
+    PENDING = "PENDING"
+    SENDING = "SENDING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
