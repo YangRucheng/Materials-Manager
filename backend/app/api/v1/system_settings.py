@@ -7,6 +7,7 @@ from app.schemas import (
     WebhookChannelRead,
     WebhookChannelUpdate,
     WebhookTestRead,
+    WebhookTestRequest,
 )
 from app.services import ai_search_service, webhook_service
 
@@ -38,8 +39,8 @@ async def update_webhook_channel(
 @router.post("/webhooks/{platform}/test", response_model=WebhookTestRead)
 async def test_webhook_channel(
     platform: WebhookPlatform,
-    session: DbSession,
+    data: WebhookTestRequest,
     user: SuperAdmin,
 ) -> WebhookTestRead:
-    await webhook_service.test_channel(session, platform)
+    await webhook_service.test_channel(platform, data)
     return WebhookTestRead(platform=platform, success=True, message="测试消息已发送")

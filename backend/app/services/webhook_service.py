@@ -27,7 +27,7 @@ from app.domain.enums import (
     WebhookPlatform,
 )
 from app.models import WebhookChannel, WebhookDelivery
-from app.schemas import WebhookChannelRead, WebhookChannelUpdate
+from app.schemas import WebhookChannelRead, WebhookChannelUpdate, WebhookTestRequest
 from app.services.common import utc_aware, utcnow
 
 logger = logging.getLogger(__name__)
@@ -104,6 +104,8 @@ def channel_read(channel: WebhookChannel | None, platform: WebhookPlatform) -> W
             platform=platform,
             enabled=False,
             subscribed_events=[],
+            webhook_url="",
+            secret="",
             webhook_configured=False,
             secret_configured=False,
             updated_at=None,
@@ -113,6 +115,8 @@ def channel_read(channel: WebhookChannel | None, platform: WebhookPlatform) -> W
         platform=channel.platform,
         enabled=channel.enabled,
         subscribed_events=[WebhookEventType(value) for value in channel.subscribed_events],
+        webhook_url=_decrypt(channel.webhook_url_encrypted),
+        secret=_decrypt(channel.secret_encrypted),
         webhook_configured=bool(channel.webhook_url_encrypted),
         secret_configured=bool(channel.secret_encrypted),
         updated_at=utc_aware(channel.updated_at),
@@ -137,9 +141,8 @@ async def update_channel(
     if data.version != actual_version:
         raise version_conflict(data.version, actual_version)
 
-    webhook_url = _validate_webhook_url(platform, data.webhook_url) if data.webhook_url else ""
-    has_url = bool(webhook_url or (channel and channel.webhook_url_encrypted))
-    if data.enabled and not has_url:
+    webhook_url = _validate_webhook_url(platform, data.webhook_url)
+    if data.enabled and not webhook_url:
         raise AppError(
             "WEBHOOK_URL_REQUIRED",
             "启用推送前请填写 Webhook 地址",
@@ -157,10 +160,8 @@ async def update_channel(
         session.add(channel)
     channel.enabled = data.enabled
     channel.subscribed_events = [event.value for event in data.subscribed_events]
-    if webhook_url:
-        channel.webhook_url_encrypted = _encrypt(webhook_url)
-    if data.secret:
-        channel.secret_encrypted = _encrypt(data.secret)
+    channel.webhook_url_encrypted = _encrypt(webhook_url) if webhook_url else ""
+    channel.secret_encrypted = _encrypt(data.secret) if data.secret else ""
     channel.version = actual_version + 1
     await session.flush()
     return channel
@@ -199,10 +200,11 @@ async def enqueue_event(
 
 def _event_title(event_type: str) -> str:
     return {
-        WebhookEventType.STOCK_OUTBOUND_CREATED.value: "备件出库通知",
-        WebhookEventType.STOCK_INBOUND_CREATED.value: "备件入库通知",
+        WebhookEventType.STOCK_OUTBOUND_CREATED.value: "出库通知",
+        WebhookEventType.STOCK_INBOUND_CREATED.value: "入库通知",
         WebhookEventType.MINI_PROGRAM_USER_BOUND.value: "新用户绑定通知",
-    }.get(event_type, "备件管理系统通知")
+        "webhook.test": "测试通知",
+    }.get(event_type, "通知")
 
 
 def _message_text(payload: dict[str, Any]) -> tuple[str, str]:
@@ -210,26 +212,30 @@ def _message_text(payload: dict[str, Any]) -> tuple[str, str]:
     title = _event_title(event_type)
     raw_data = payload.get("data")
     data: dict[str, Any] = raw_data if isinstance(raw_data, dict) else {}
-    if event_type.startswith("stock."):
-        details = [
-            f"流水号：{data.get('operation_no', '-')}",
-            f"发生时间：{data.get('occurred_at', '-')}",
-            f"业务原因：{data.get('business_reason') or '-'}",
-        ]
-        if data.get("receiver_name"):
-            details.append(f"领用人：{data['receiver_name']}")
-        if data.get("receiver_unit"):
-            details.append(f"领用单位：{data['receiver_unit']}")
+    if event_type == "webhook.test":
+        details = ["这是一条 Webhook 测试通知。"]
+    elif event_type == WebhookEventType.STOCK_OUTBOUND_CREATED.value:
         raw_materials = data.get("materials")
         materials: list[Any] = raw_materials if isinstance(raw_materials, list) else []
-        for index, item in enumerate(materials, start=1):
+        details = []
+        for index, item in enumerate(materials[:2], start=1):
             if not isinstance(item, dict):
                 continue
             details.append(
-                f"{index}. {item.get('name', '-')} / {item.get('model_spec', '-')}："
-                f"{item.get('quantity', '-')} {item.get('unit_name', '')} "
-                f"（库存 {item.get('before_qty', '-')} → {item.get('after_qty', '-')}）"
+                f"物资{index}：{item.get('name', '-')} / {item.get('model_spec', '-')}"
             )
+        details.extend(
+            [
+                f"领用人：{data.get('receiver_name') or '-'}",
+                f"用途：{data.get('business_reason') or '-'}",
+            ]
+        )
+        if len(materials) > 1:
+            details.append(f"出库总数：{len(materials)} 项")
+    elif event_type == WebhookEventType.STOCK_INBOUND_CREATED.value:
+        raw_materials = data.get("materials")
+        materials = raw_materials if isinstance(raw_materials, list) else []
+        details = [f"入库数量：{len(materials)} 项"]
     else:
         details = [
             f"姓名：{data.get('display_name', '-')}",
@@ -311,29 +317,21 @@ async def _send(
 def _test_payload() -> dict[str, Any]:
     return {
         "event_id": str(uuid4()),
-        "event_type": WebhookEventType.STOCK_OUTBOUND_CREATED.value,
+        "event_type": "webhook.test",
         "occurred_at": utcnow().isoformat(timespec="seconds") + "Z",
-        "data": {
-            "operation_no": "TEST",
-            "occurred_at": utcnow().isoformat(timespec="seconds") + "Z",
-            "business_reason": "Webhook 配置测试",
-            "receiver_name": "系统管理员",
-            "materials": [],
-        },
+        "data": {},
     }
 
 
-async def test_channel(session: AsyncSession, platform: WebhookPlatform) -> None:
-    channel = await session.scalar(
-        select(WebhookChannel).where(WebhookChannel.platform == platform)
-    )
-    if channel is None or not channel.webhook_url_encrypted:
-        raise AppError("WEBHOOK_NOT_CONFIGURED", "请先保存 Webhook 地址", status_code=422)
+async def test_channel(platform: WebhookPlatform, data: WebhookTestRequest) -> None:
+    webhook_url = _validate_webhook_url(platform, data.webhook_url)
+    if not webhook_url:
+        raise AppError("WEBHOOK_URL_REQUIRED", "请填写 Webhook 地址", status_code=422)
     try:
         await _send(
             platform,
-            _decrypt(channel.webhook_url_encrypted),
-            _decrypt(channel.secret_encrypted),
+            webhook_url,
+            data.secret,
             _test_payload(),
         )
     except (httpx.HTTPError, RuntimeError) as exc:
