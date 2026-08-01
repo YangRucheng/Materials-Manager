@@ -82,6 +82,8 @@ const selectedRecords = computed(() => {
   return items.value.filter((item) => selected.has(item.line_id))
 })
 const batchEditForm = reactive({
+  update_plan_date: false,
+  plan_date: null as number | null,
   update_purchase_order_no: false,
   purchase_order_no: '',
   update_trace_no: false,
@@ -495,6 +497,8 @@ function openBatchEdit() {
     return
   }
   Object.assign(batchEditForm, {
+    update_plan_date: false,
+    plan_date: null,
     update_purchase_order_no: false,
     purchase_order_no: '',
     update_trace_no: false,
@@ -531,6 +535,13 @@ async function batchUpdate() {
       line_id: item.line_id,
       version: item.version,
     })),
+  }
+  if (batchEditForm.update_plan_date) {
+    if (!batchEditForm.plan_date) {
+      message.error('请选择需求日期')
+      return
+    }
+    payload.plan_date = toShanghaiDate(batchEditForm.plan_date)
   }
   if (batchEditForm.update_purchase_order_no) {
     payload.purchase_order_no = batchEditForm.purchase_order_no.trim() || null
@@ -814,6 +825,19 @@ onActivated(() => {
       <n-scrollbar style="max-height: 65vh" content-style="padding-right: 12px">
         <n-form label-placement="top">
           <div class="form-grid batch-edit-grid">
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_plan_date">
+                  修改需求日期
+                </n-checkbox>
+              </template>
+              <n-date-picker
+                v-model:value="batchEditForm.plan_date"
+                type="date"
+                class="full-width"
+                :disabled="!batchEditForm.update_plan_date"
+              />
+            </n-form-item>
             <n-form-item>
               <template #label>
                 <n-checkbox v-model:checked="batchEditForm.update_purchase_order_no">

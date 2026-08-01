@@ -17,7 +17,7 @@ from app.schemas import (
     PurchaseRecordUpdate,
 )
 from app.services.common import contains_any, file_read, utc_aware, validate_version
-from app.services.material_service import update_purchase_material
+from app.services.material_service import next_purchase_plan_no, update_purchase_material
 
 SHANGHAI = timezone(timedelta(hours=8))
 
@@ -319,6 +319,12 @@ async def batch_update_purchase_records(
         line = lines_by_id[reference.line_id]
         material = materials_by_id[line.purchase_material_id]
         material_changed = False
+        if "plan_date" in update_fields and data.plan_date != material.plan_date:
+            assert data.plan_date is not None
+            material.plan_no = await next_purchase_plan_no(session, data.plan_date)
+            material.plan_date = data.plan_date
+            await session.flush()
+            material_changed = True
         if "actual_demand_person" in update_fields:
             assert data.actual_demand_person is not None
             material.actual_demand_person = data.actual_demand_person

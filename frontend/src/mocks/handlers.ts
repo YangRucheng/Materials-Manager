@@ -1061,13 +1061,24 @@ export const handlers = [
       const material = purchaseMaterials.find(
         (candidate) => candidate.id === item.line!.purchase_material_id,
       )!
+      if (body.plan_date !== undefined && body.plan_date !== material.plan_date) {
+        material.plan_date = body.plan_date
+        const planIndex = purchaseMaterials.filter(
+          (candidate) => candidate.id !== material.id && candidate.plan_date === body.plan_date,
+        ).length
+        material.plan_no = `PLAN-${body.plan_date.replace(/-/g, '')}-${String(planIndex + 1).padStart(3, '0')}`
+      }
       if (body.actual_demand_person !== undefined) {
         material.actual_demand_person = body.actual_demand_person
       }
       if (body.purchase_responsible !== undefined) {
         material.purchase_responsible = body.purchase_responsible
       }
-      if (body.actual_demand_person !== undefined || body.purchase_responsible !== undefined) {
+      if (
+        body.plan_date !== undefined ||
+        body.actual_demand_person !== undefined ||
+        body.purchase_responsible !== undefined
+      ) {
         material.updated_at = now()
         material.version += 1
       }
