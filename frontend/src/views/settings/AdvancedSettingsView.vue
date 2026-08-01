@@ -1,15 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import { aiSearchApi } from '@/api/aiSearch'
 import { systemSettingsApi } from '@/api/systemSettings'
 import type { WebhookEventType, WebhookPlatform } from '@/api/generated'
+import {
+  DEFAULT_SITE_SCALE,
+  MAX_SITE_SCALE,
+  MIN_SITE_SCALE,
+  loadSiteScale,
+  saveSiteScale,
+} from '@/utils/siteScale'
 
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)
 const testingWebhook = ref<WebhookPlatform | null>(null)
+const siteScale = ref(loadSiteScale())
+const siteScaleMarks = {
+  [MIN_SITE_SCALE]: `${MIN_SITE_SCALE}%`,
+  [DEFAULT_SITE_SCALE]: '100%',
+  [MAX_SITE_SCALE]: `${MAX_SITE_SCALE}%`,
+}
 const webhookEventOptions: Array<{ label: string; value: WebhookEventType }> = [
   { label: '出库事件', value: 'stock.outbound.created' },
   { label: '入库事件', value: 'stock.inbound.created' },
@@ -71,6 +84,14 @@ const webhookForms = reactive<Record<WebhookPlatform, WebhookChannelForm>>({
 
 function platformName(platform: WebhookPlatform) {
   return platform === 'FEISHU' ? '飞书' : '钉钉'
+}
+
+watch(siteScale, (value) => {
+  siteScale.value = saveSiteScale(value)
+})
+
+function resetSiteScale() {
+  siteScale.value = DEFAULT_SITE_SCALE
 }
 
 async function load() {
@@ -282,6 +303,35 @@ onMounted(load)
         </n-form>
       </n-card>
 
+      <n-card class="settings-card personalization-card" title="个性化设置" :bordered="false">
+        <n-form label-placement="top">
+          <n-form-item label="网站缩放比例">
+            <div class="scale-setting">
+              <n-slider
+                v-model:value="siteScale"
+                :min="MIN_SITE_SCALE"
+                :max="MAX_SITE_SCALE"
+                :step="5"
+                :marks="siteScaleMarks"
+              />
+              <n-input-number
+                v-model:value="siteScale"
+                :min="MIN_SITE_SCALE"
+                :max="MAX_SITE_SCALE"
+                :step="5"
+                :show-button="false"
+              >
+                <template #suffix>%</template>
+              </n-input-number>
+            </div>
+          </n-form-item>
+          <div class="personalization-footer">
+            <span>设置即时生效，仅保存在当前浏览器，不会上传到服务器。</span>
+            <n-button quaternary size="small" @click="resetSiteScale">恢复默认</n-button>
+          </div>
+        </n-form>
+      </n-card>
+
       <n-card class="settings-card webhook-card" title="Webhook 事件推送" :bordered="false">
         <div class="webhook-platforms">
           <section v-for="platform in webhookPlatforms" :key="platform" class="webhook-platform">
@@ -426,6 +476,24 @@ onMounted(load)
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
+}
+
+.scale-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  padding: 0 4px 18px;
+}
+
+.personalization-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .switch-control {
