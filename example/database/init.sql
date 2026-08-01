@@ -296,6 +296,8 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   `status` VARCHAR(128) NOT NULL DEFAULT '已申购',
   `usage` VARCHAR(500) NOT NULL,
   `subitem_no` VARCHAR(64) NULL,
+  `trace_no` VARCHAR(128) NULL,
+  `salesperson` VARCHAR(128) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
@@ -306,7 +308,8 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   CONSTRAINT `fk_purchase_request_line_purchase_request_id_purchase_request`
     FOREIGN KEY (`purchase_request_id`) REFERENCES `purchase_request` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_purchase_request_line_purchase_material_id_purchase_material`
-    FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`)
+    FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`),
+  INDEX `ix_purchase_request_line_trace_no` (`trace_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_operation_line` (

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from pytest import LogCaptureFixture
-from sqlalchemy.exc import ProgrammingError, SQLAlchemyError, TimeoutError
+from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError, TimeoutError
 from starlette.requests import Request
 
 from app.main import (
@@ -35,6 +35,26 @@ async def test_programming_error_is_not_reported_as_database_unavailable(
 
 async def test_database_timeout_is_reported_as_unavailable() -> None:
     response = await handle_database_unavailable(request_with_id(), TimeoutError("pool timeout"))
+
+    assert response.status_code == 503
+    assert b'"code":"DATABASE_UNAVAILABLE"' in response.body
+
+
+async def test_mysql_unknown_column_operational_error_is_reported_as_query_error() -> None:
+    original = Exception(1054, "Unknown column 'material_code' in 'field list'")
+    error = OperationalError("SELECT material_code FROM purchase_request", {}, original)
+
+    response = await handle_database_unavailable(request_with_id(), error)
+
+    assert response.status_code == 500
+    assert b'"code":"DATABASE_QUERY_ERROR"' in response.body
+
+
+async def test_mysql_connection_operational_error_is_reported_as_unavailable() -> None:
+    original = Exception(2003, "Can't connect to MySQL server")
+    error = OperationalError("SELECT 1", {}, original)
+
+    response = await handle_database_unavailable(request_with_id(), error)
 
     assert response.status_code == 503
     assert b'"code":"DATABASE_UNAVAILABLE"' in response.body
