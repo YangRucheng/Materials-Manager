@@ -941,6 +941,7 @@ async def test_batch_update_purchase_records_is_atomic(client: AsyncClient) -> N
                 {"line_id": record["line_id"], "version": record["version"]}
                 for record in records
             ],
+            "plan_date": "2026-07-19",
             "purchase_order_no": "SG-REC-AFTER",
             "trace_no": "ZS-REC-AFTER",
             "contract_no": "HT-REC-BATCH",
@@ -955,6 +956,9 @@ async def test_batch_update_purchase_records_is_atomic(client: AsyncClient) -> N
     assert changed.status_code == 200, changed.text
     payload = changed.json()
     assert [item["line_id"] for item in payload] == [item["line_id"] for item in records]
+    assert {item["plan_date"] for item in payload} == {"2026-07-19"}
+    assert len({item["plan_no"] for item in payload}) == 2
+    assert all(item["plan_no"].startswith("PLAN-20260719-") for item in payload)
     assert {item["purchase_order_no"] for item in payload} == {"SG-REC-AFTER"}
     assert {item["trace_no"] for item in payload} == {"ZS-REC-AFTER"}
     assert {item["contract_no"] for item in payload} == {"HT-REC-BATCH"}
