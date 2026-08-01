@@ -1163,6 +1163,8 @@ onBeforeUnmount(() => {
           <n-form-item label="物料编码">
             <MaterialCodeSelector
               :model-value="form.material_code || ''"
+              :default-name="form.name"
+              :default-model-spec="form.model_spec"
               @update:model-value="form.material_code = $event"
               @select="applyMaterialCode"
             />
