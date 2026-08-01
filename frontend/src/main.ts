@@ -4,11 +4,9 @@ import App from './App.vue'
 import router from './router'
 import { systemSettingsApi } from './api/systemSettings'
 import { configureImageBaseUrl } from './utils/image'
-import { loadSiteScale } from './utils/siteScale'
 import './styles.css'
 
 async function bootstrap() {
-  loadSiteScale()
   if (
     import.meta.env.VITE_USE_MOCK === 'true' ||
     (import.meta.env.VITE_USE_MOCK !== 'false' && import.meta.env.DEV)
