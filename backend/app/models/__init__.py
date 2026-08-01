@@ -313,6 +313,8 @@ class PurchaseRequestLine(AuditMixin, Base):
     status: Mapped[str] = mapped_column(String(128), nullable=False, default="已申购")
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
     subitem_no: Mapped[str | None] = mapped_column(String(64))
+    trace_no: Mapped[str | None] = mapped_column(String(128), index=True)
+    salesperson: Mapped[str | None] = mapped_column(String(128))
 
     request: Mapped[PurchaseRequest] = relationship(back_populates="lines", lazy="selectin")
     purchase_material: Mapped[PurchaseMaterial] = relationship(lazy="selectin")
