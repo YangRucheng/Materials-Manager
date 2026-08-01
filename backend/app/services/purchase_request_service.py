@@ -10,6 +10,7 @@ from app.domain.enums import PurchasePlanStatus
 from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
 from app.schemas import (
     BatchMovePurchasePlansRequest,
+    BatchUpdatePurchaseRecordsRequest,
     MovePurchasePlanRequest,
     PurchaseMaterialUpdate,
     PurchaseRecordRead,
@@ -228,6 +229,114 @@ async def update_purchase_record(
     line.version += 1
     await session.flush()
     return line
+
+
+async def batch_update_purchase_records(
+    session: AsyncSession, data: BatchUpdatePurchaseRecordsRequest
+) -> list[PurchaseRequestLine]:
+    line_ids = [reference.line_id for reference in data.records]
+    lines = list(
+        (
+            await session.scalars(
+                select(PurchaseRequestLine)
+                .where(PurchaseRequestLine.id.in_(line_ids))
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
+    )
+    lines_by_id = {line.id: line for line in lines}
+    if len(lines_by_id) != len(line_ids):
+        raise not_found("申购记录")
+
+    request_ids = {line.purchase_request_id for line in lines}
+    requests = list(
+        (
+            await session.scalars(
+                select(PurchaseRequest)
+                .where(PurchaseRequest.id.in_(request_ids))
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
+    )
+    requests_by_id = {request.id: request for request in requests}
+
+    material_ids = {line.purchase_material_id for line in lines}
+    materials = list(
+        (
+            await session.scalars(
+                select(PurchaseMaterial)
+                .where(PurchaseMaterial.id.in_(material_ids))
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
+    )
+    materials_by_id = {material.id: material for material in materials}
+
+    for reference in data.records:
+        line = lines_by_id[reference.line_id]
+        validate_version(reference.version, requests_by_id[line.purchase_request_id].version)
+
+    update_fields = data.model_fields_set - {"records"}
+    request_field_map = {
+        "purchase_order_no": "purchase_order_no",
+        "trace_no": "trace_no",
+        "contract_no": "contract_no",
+        "vessel_no": "vessel_no",
+        "consolidation_date": "consolidation_date",
+        "consolidation_port": "consolidation_port",
+        "sailing_date": "sailing_date",
+        "purchase_date": "purchase_date",
+        "salesperson": "salesperson",
+        "record_remark": "remark",
+    }
+    request_update_fields = update_fields & request_field_map.keys()
+    selected_requests = {
+        requests_by_id[lines_by_id[item.line_id].purchase_request_id] for item in data.records
+    }
+    for request in selected_requests:
+        for source_field in request_update_fields:
+            value = getattr(data, source_field)
+            if source_field in {
+                "purchase_order_no",
+                "trace_no",
+                "contract_no",
+                "vessel_no",
+                "consolidation_port",
+                "salesperson",
+            }:
+                value = value or None
+            setattr(request, request_field_map[source_field], value)
+        request.version += 1
+
+    updated: list[PurchaseRequestLine] = []
+    for reference in data.records:
+        line = lines_by_id[reference.line_id]
+        material = materials_by_id[line.purchase_material_id]
+        material_changed = False
+        if "actual_demand_person" in update_fields:
+            assert data.actual_demand_person is not None
+            material.actual_demand_person = data.actual_demand_person
+            material_changed = True
+        if "purchase_responsible" in update_fields:
+            assert data.purchase_responsible is not None
+            material.purchase_responsible = data.purchase_responsible
+            material_changed = True
+        if material_changed:
+            material.version += 1
+        if "status" in update_fields:
+            assert data.status is not None
+            line.status = data.status
+            line.version += 1
+        updated.append(line)
+
+    await session.flush()
+    return updated
 
 
 async def restore_purchase_record_to_plan(

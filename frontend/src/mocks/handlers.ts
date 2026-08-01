@@ -8,6 +8,7 @@ import type {
   PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
+  PurchaseRecordBatchUpdate,
   PurchaseRecordWrite,
   ReplenishmentDraftWrite,
   ReplenishmentPolicy,
@@ -127,6 +128,11 @@ const purchaseRecord = (
     plan_date: material.plan_date,
     purchase_order_no: request.purchase_order_no,
     trace_no: request.trace_no,
+    contract_no: request.contract_no,
+    vessel_no: request.vessel_no,
+    consolidation_date: request.consolidation_date,
+    consolidation_port: request.consolidation_port,
+    sailing_date: request.sailing_date,
     status: line.status,
     material_code: line.material_code_snapshot,
     category: material.category,
@@ -1010,6 +1016,68 @@ export const handlers = [
       ),
     )
   }),
+  http.patch(`${api}/purchase-records/batch`, async ({ request }) => {
+    const body = (await request.json()) as PurchaseRecordBatchUpdate
+    const selected = body.records.map((reference) => {
+      const purchaseRequest = purchaseRequests.find((item) =>
+        item.lines.some((line) => line.id === reference.line_id),
+      )
+      const line = purchaseRequest?.lines.find((item) => item.id === reference.line_id)
+      return { reference, purchaseRequest, line }
+    })
+    if (selected.some((item) => !item.purchaseRequest || !item.line)) {
+      return error(400, 'NOT_FOUND', '申购记录不存在')
+    }
+    for (const item of selected) {
+      if (item.purchaseRequest!.version !== item.reference.version) {
+        return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改，请刷新后重试')
+      }
+    }
+
+    const selectedRequests = new Set(selected.map((item) => item.purchaseRequest!))
+    for (const purchaseRequest of selectedRequests) {
+      const assignIfPresent = <K extends keyof PurchaseRecordBatchUpdate>(
+        sourceField: K,
+        targetField: keyof typeof purchaseRequest,
+      ) => {
+        if (sourceField in body) {
+          Object.assign(purchaseRequest, { [targetField]: body[sourceField] ?? undefined })
+        }
+      }
+      assignIfPresent('purchase_order_no', 'purchase_order_no')
+      assignIfPresent('trace_no', 'trace_no')
+      assignIfPresent('contract_no', 'contract_no')
+      assignIfPresent('vessel_no', 'vessel_no')
+      assignIfPresent('consolidation_date', 'consolidation_date')
+      assignIfPresent('consolidation_port', 'consolidation_port')
+      assignIfPresent('sailing_date', 'sailing_date')
+      assignIfPresent('purchase_date', 'purchase_date')
+      assignIfPresent('salesperson', 'salesperson')
+      assignIfPresent('record_remark', 'record_remark')
+      purchaseRequest.version += 1
+    }
+
+    for (const item of selected) {
+      const material = purchaseMaterials.find(
+        (candidate) => candidate.id === item.line!.purchase_material_id,
+      )!
+      if (body.actual_demand_person !== undefined) {
+        material.actual_demand_person = body.actual_demand_person
+      }
+      if (body.purchase_responsible !== undefined) {
+        material.purchase_responsible = body.purchase_responsible
+      }
+      if (body.actual_demand_person !== undefined || body.purchase_responsible !== undefined) {
+        material.updated_at = now()
+        material.version += 1
+      }
+      if (body.status !== undefined) item.line!.status = body.status
+    }
+
+    return HttpResponse.json(
+      selected.map((item) => purchaseRecord(item.purchaseRequest!, item.line!)),
+    )
+  }),
   http.get(`${api}/purchase-records/:id`, ({ params }) => {
     for (const purchaseRequest of purchaseRequests) {
       const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
@@ -1086,6 +1154,11 @@ export const handlers = [
       Object.assign(purchaseRequest, {
         purchase_order_no: body.purchase_order_no,
         trace_no: body.trace_no,
+        contract_no: body.contract_no,
+        vessel_no: body.vessel_no,
+        consolidation_date: body.consolidation_date,
+        consolidation_port: body.consolidation_port,
+        sailing_date: body.sailing_date,
         purchase_date: body.purchase_date,
         salesperson: body.salesperson,
         record_remark: body.record_remark,

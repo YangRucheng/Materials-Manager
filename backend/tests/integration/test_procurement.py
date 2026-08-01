@@ -11,7 +11,7 @@ from PIL import Image
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.models import PurchaseRequest, PurchaseRequestLine
+from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
 from tests.conftest import auth_headers, create_stock
 
 
@@ -915,6 +915,78 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_batch_update_purchase_records_is_atomic(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "批量修改记录一", code="DQ-REC-BATCH-1")
+    second = await create_purchase_plan(client, headers, "批量修改记录二", code="DQ-REC-BATCH-2")
+    moved = await client.post(
+        "/api/v1/purchase-materials/batch-move-to-record",
+        headers=headers,
+        json={
+            "material_ids": [first["id"], second["id"]],
+            "purchase_order_no": "SG-REC-BEFORE",
+            "trace_no": "ZS-REC-BEFORE",
+            "purchase_date": "2026-07-18",
+            "status": "已申购",
+        },
+    )
+    assert moved.status_code == 200, moved.text
+    records = moved.json()
+
+    changed = await client.patch(
+        "/api/v1/purchase-records/batch",
+        headers=headers,
+        json={
+            "records": [
+                {"line_id": record["line_id"], "version": record["version"]}
+                for record in records
+            ],
+            "purchase_order_no": "SG-REC-AFTER",
+            "trace_no": "ZS-REC-AFTER",
+            "contract_no": "HT-REC-BATCH",
+            "purchase_date": "2026-07-20",
+            "actual_demand_person": "统一实际需求人",
+            "purchase_responsible": "统一申购负责人",
+            "salesperson": "统一业务员",
+            "status": "批量处理中",
+            "record_remark": "批量修改记录备注",
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    payload = changed.json()
+    assert [item["line_id"] for item in payload] == [item["line_id"] for item in records]
+    assert {item["purchase_order_no"] for item in payload} == {"SG-REC-AFTER"}
+    assert {item["trace_no"] for item in payload} == {"ZS-REC-AFTER"}
+    assert {item["contract_no"] for item in payload} == {"HT-REC-BATCH"}
+    assert {item["purchase_date"] for item in payload} == {"2026-07-20"}
+    assert {item["actual_demand_person"] for item in payload} == {"统一实际需求人"}
+    assert {item["purchase_responsible"] for item in payload} == {"统一申购负责人"}
+    assert {item["salesperson"] for item in payload} == {"统一业务员"}
+    assert {item["status"] for item in payload} == {"批量处理中"}
+    assert {item["record_remark"] for item in payload} == {"批量修改记录备注"}
+    assert {item["version"] for item in payload} == {records[0]["version"] + 1}
+
+    conflict = await client.patch(
+        "/api/v1/purchase-records/batch",
+        headers=headers,
+        json={
+            "records": [
+                {"line_id": payload[0]["line_id"], "version": payload[0]["version"]},
+                {"line_id": payload[1]["line_id"], "version": records[1]["version"]},
+            ],
+            "status": "不应部分生效",
+        },
+    )
+    assert conflict.status_code == 409, conflict.text
+
+    unchanged = await client.get(
+        f"/api/v1/purchase-records/{payload[0]['line_id']}", headers=headers
+    )
+    assert unchanged.status_code == 200, unchanged.text
+    assert unchanged.json()["status"] == "批量处理中"
+
+
+@pytest.mark.asyncio
 async def test_purchase_record_supports_full_edit_and_free_text_status(
     client: AsyncClient,
 ) -> None:
@@ -1117,6 +1189,9 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
         json={"material_ids": [coded["id"]]},
     )
     assert purchase_export.status_code == 200, purchase_export.text
+    assert f"采购申请表_{date.today():%Y%m%d}.xlsx" in unquote(
+        purchase_export.headers["content-disposition"]
+    )
     purchase_sheet = load_workbook(BytesIO(purchase_export.content)).active
     assert purchase_sheet["A1"].value == "物料编码（必填）"
     assert purchase_sheet["A2"].value == coded["material_code"]
@@ -1125,6 +1200,54 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert purchase_sheet["E2"].value == "HXNI 检修维护部"
     assert purchase_sheet["G2"].value.date() == date.today() + timedelta(days=90)
     assert purchase_sheet["H2"].value == "正常"
+
+
+@pytest.mark.asyncio
+async def test_purchase_application_export_requires_code_subitem_and_usage(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    missing_code = await create_purchase_plan(client, headers, "缺编码计划")
+    missing_subitem = await create_purchase_plan(
+        client,
+        headers,
+        "缺子项号计划",
+        code="DQ-XLSX-2",
+        subitem_no=None,
+    )
+    missing_usage = await create_purchase_plan(
+        client,
+        headers,
+        "缺用途计划",
+        code="DQ-XLSX-3",
+    )
+    async with SessionLocal() as session:
+        material = await session.get(PurchaseMaterial, int(missing_usage["id"]))
+        assert material is not None
+        material.usage = " "
+        await session.commit()
+
+    response = await client.post(
+        "/api/v1/purchase-materials/export-purchase-application",
+        headers=headers,
+        json={
+            "material_ids": [
+                missing_code["id"],
+                missing_subitem["id"],
+                missing_usage["id"],
+            ]
+        },
+    )
+
+    assert response.status_code == 409, response.text
+    payload = response.json()
+    assert payload["code"] == "PURCHASE_APPLICATION_EXPORT_FIELDS_REQUIRED"
+    assert payload["message"] == "导出采购申请表前请补全：编码、子项号、用途"
+    assert payload["details"]["missing_fields"] == {
+        "material_code": [missing_code["id"]],
+        "subitem_no": [missing_subitem["id"]],
+        "usage": [missing_usage["id"]],
+    }
 
 
 @pytest.mark.asyncio
@@ -1160,12 +1283,21 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
     assert plan_sheet["C2"].alignment.wrap_text is True
 
     record = await move_to_record(client, headers, int(motor["id"]))
+    other_motor = await create_purchase_plan(
+        client,
+        headers,
+        "导出电机",
+        code="DQ-RESULT-3",
+        actual_demand_person="其他需求人",
+    )
+    await move_to_record(client, headers, int(other_motor["id"]))
     record_export = await client.post(
         "/api/v1/purchase-records/export-results",
         headers=headers,
         json={
             "columns": ["material_name", "purchase_qty", "usage", "status"],
             "name": "导出电机",
+            "actual_demand_person": record["actual_demand_person"],
             "status": "已申购",
         },
     )

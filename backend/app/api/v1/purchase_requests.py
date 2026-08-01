@@ -8,6 +8,7 @@ from fastapi.responses import Response
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
 from app.schemas import (
+    BatchUpdatePurchaseRecordsRequest,
     Page,
     PurchaseMaterialRead,
     PurchaseRecordFilterOptions,
@@ -175,7 +176,7 @@ async def export_purchase_record_results(
         category=data.category,
         name=data.name,
         model_spec=data.model_spec,
-        actual_demand_person=None,
+        actual_demand_person=data.actual_demand_person,
         purchase_responsible=data.purchase_responsible,
         salesperson=data.salesperson,
         page=1,
@@ -220,6 +221,16 @@ async def export_purchase_record_results(
         )
     columns = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
     return _excel_response(*excel_export_service.render_result_excel("申购记录导出", columns, rows))
+
+
+@router.patch("/purchase-records/batch", response_model=list[PurchaseRecordRead])
+async def batch_edit_purchase_records(
+    data: BatchUpdatePurchaseRecordsRequest,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> list[PurchaseRecordRead]:
+    lines = await service.batch_update_purchase_records(session, data)
+    return [service.purchase_record_read(line) for line in lines]
 
 
 @router.get("/purchase-records/{line_id}", response_model=PurchaseRecordRead)

@@ -2,7 +2,11 @@
 import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
 import { NTag, useMessage, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
-import type { PurchaseRecord, PurchaseRecordFilterOptions } from '@/api/generated'
+import type {
+  PurchaseRecord,
+  PurchaseRecordBatchUpdate,
+  PurchaseRecordFilterOptions,
+} from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
@@ -19,11 +23,12 @@ import { downloadBlob } from '@/utils/download'
 import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
-import { purchaseCategoryOptions } from '@/constants/purchase'
 import { renderTwoLineText } from '@/utils/tableText'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
 const items = ref<PurchaseRecord[]>([])
@@ -31,6 +36,9 @@ const loading = ref(false)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
 const resultExporting = ref(false)
+const batchUpdating = ref(false)
+const showBatchEdit = ref(false)
+const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
 const total = ref(0)
@@ -38,11 +46,11 @@ const page = ref(routeQueryPositiveInteger(route.query.page, 1))
 const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
 const EMPTY_STATUS_FILTER = '__empty_status__'
 const filters = reactive({
-  purchase_order_no: routeQueryString(route.query.purchase_order_no),
-  trace_no: routeQueryString(route.query.trace_no),
-  category: routeQueryString(route.query.category) || null,
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
+  trace_no: routeQueryString(route.query.trace_no),
+  purchase_order_no: routeQueryString(route.query.purchase_order_no),
+  actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
   purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
   salesperson: routeQueryString(route.query.salesperson) || null,
   status: routeQueryString(route.query.status) || null,
@@ -56,13 +64,9 @@ const filterOptions = ref<PurchaseRecordFilterOptions>({
   salespersons: [],
   statuses: [],
 })
-const categoryOptions = computed(() => {
-  const values = new Set([
-    ...purchaseCategoryOptions.map((option) => option.value),
-    ...filterOptions.value.categories,
-  ])
-  return [...values].map((value) => ({ label: value, value }))
-})
+const actualDemandPersonOptions = computed(() =>
+  filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
+)
 const purchaseResponsibleOptions = computed(() =>
   filterOptions.value.purchase_responsibles.map((value) => ({ label: value, value })),
 )
@@ -73,6 +77,38 @@ const statusOptions = computed(() => [
   { label: '空状态', value: EMPTY_STATUS_FILTER },
   ...filterOptions.value.statuses.map((value) => ({ label: value, value })),
 ])
+const selectedRecords = computed(() => {
+  const selected = new Set(checkedRowKeys.value.map(Number))
+  return items.value.filter((item) => selected.has(item.line_id))
+})
+const batchEditForm = reactive({
+  update_purchase_order_no: false,
+  purchase_order_no: '',
+  update_trace_no: false,
+  trace_no: '',
+  update_contract_no: false,
+  contract_no: '',
+  update_vessel_no: false,
+  vessel_no: '',
+  update_consolidation_date: false,
+  consolidation_date: null as number | null,
+  update_consolidation_port: false,
+  consolidation_port: '',
+  update_sailing_date: false,
+  sailing_date: null as number | null,
+  update_purchase_date: false,
+  purchase_date: null as number | null,
+  update_actual_demand_person: false,
+  actual_demand_person: '',
+  update_purchase_responsible: false,
+  purchase_responsible: '',
+  update_salesperson: false,
+  salesperson: '',
+  update_status: false,
+  status: '',
+  update_record_remark: false,
+  record_remark: '',
+})
 const activeFilterCount = computed(
   () => Object.values(filters).filter((value) => value?.trim()).length,
 )
@@ -311,11 +347,15 @@ const visibleColumnKeys = ref<RecordColumnKey[]>(
 )
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
 const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
-  preventTableColumnCompression(
-    availableColumns
+  preventTableColumnCompression([
+    {
+      type: 'selection',
+      disabled: () => !auth.can('purchase:write'),
+    },
+    ...availableColumns
       .filter((item) => visibleColumnKeys.value.includes(item.key))
       .map((item) => item.column),
-  ),
+  ]),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
 useShiftWheelHorizontalScroll(tableAreaRef)
@@ -339,11 +379,11 @@ async function load() {
     const data = await procurementApi.records({
       page: page.value,
       page_size: pageSize.value,
-      purchase_order_no: filters.purchase_order_no.trim() || undefined,
-      trace_no: filters.trace_no.trim() || undefined,
-      category: filters.category || undefined,
       name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
+      trace_no: filters.trace_no.trim() || undefined,
+      purchase_order_no: filters.purchase_order_no.trim() || undefined,
+      actual_demand_person: filters.actual_demand_person?.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
       salesperson: filters.salesperson?.trim() || undefined,
       status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
@@ -374,11 +414,11 @@ async function syncRoute() {
     query: compactRouteQuery({
       page: page.value === 1 ? undefined : page.value,
       page_size: pageSize.value === 20 ? undefined : pageSize.value,
-      purchase_order_no: filters.purchase_order_no,
-      trace_no: filters.trace_no,
-      category: filters.category,
       name: filters.name,
       model_spec: filters.model_spec,
+      trace_no: filters.trace_no,
+      purchase_order_no: filters.purchase_order_no,
+      actual_demand_person: filters.actual_demand_person,
       purchase_responsible: filters.purchase_responsible,
       salesperson: filters.salesperson,
       status: filters.status,
@@ -425,11 +465,11 @@ async function exportResults() {
   try {
     const content = await procurementApi.exportRecordResults({
       columns: exportColumns,
-      purchase_order_no: filters.purchase_order_no.trim() || undefined,
-      trace_no: filters.trace_no.trim() || undefined,
-      category: filters.category || undefined,
       name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
+      trace_no: filters.trace_no.trim() || undefined,
+      purchase_order_no: filters.purchase_order_no.trim() || undefined,
+      actual_demand_person: filters.actual_demand_person?.trim() || undefined,
       purchase_responsible: filters.purchase_responsible?.trim() || undefined,
       salesperson: filters.salesperson?.trim() || undefined,
       status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
@@ -449,12 +489,135 @@ function handleExport(key: string) {
   if (key === 'results') void exportResults()
 }
 
+function openBatchEdit() {
+  if (!selectedRecords.value.length) {
+    message.warning('请先选择至少一条申购记录')
+    return
+  }
+  Object.assign(batchEditForm, {
+    update_purchase_order_no: false,
+    purchase_order_no: '',
+    update_trace_no: false,
+    trace_no: '',
+    update_contract_no: false,
+    contract_no: '',
+    update_vessel_no: false,
+    vessel_no: '',
+    update_consolidation_date: false,
+    consolidation_date: null,
+    update_consolidation_port: false,
+    consolidation_port: '',
+    update_sailing_date: false,
+    sailing_date: null,
+    update_purchase_date: false,
+    purchase_date: null,
+    update_actual_demand_person: false,
+    actual_demand_person: '',
+    update_purchase_responsible: false,
+    purchase_responsible: '',
+    update_salesperson: false,
+    salesperson: '',
+    update_status: false,
+    status: '',
+    update_record_remark: false,
+    record_remark: '',
+  })
+  showBatchEdit.value = true
+}
+
+async function batchUpdate() {
+  const payload: PurchaseRecordBatchUpdate = {
+    records: selectedRecords.value.map((item) => ({
+      line_id: item.line_id,
+      version: item.version,
+    })),
+  }
+  if (batchEditForm.update_purchase_order_no) {
+    payload.purchase_order_no = batchEditForm.purchase_order_no.trim() || null
+  }
+  if (batchEditForm.update_trace_no) {
+    payload.trace_no = batchEditForm.trace_no.trim() || null
+  }
+  if (batchEditForm.update_contract_no) {
+    payload.contract_no = batchEditForm.contract_no.trim() || null
+  }
+  if (batchEditForm.update_vessel_no) {
+    payload.vessel_no = batchEditForm.vessel_no.trim() || null
+  }
+  if (batchEditForm.update_consolidation_date) {
+    payload.consolidation_date = batchEditForm.consolidation_date
+      ? toShanghaiDate(batchEditForm.consolidation_date)
+      : null
+  }
+  if (batchEditForm.update_consolidation_port) {
+    payload.consolidation_port = batchEditForm.consolidation_port.trim() || null
+  }
+  if (batchEditForm.update_sailing_date) {
+    payload.sailing_date = batchEditForm.sailing_date
+      ? toShanghaiDate(batchEditForm.sailing_date)
+      : null
+  }
+  if (batchEditForm.update_purchase_date) {
+    payload.purchase_date = batchEditForm.purchase_date
+      ? toShanghaiDate(batchEditForm.purchase_date)
+      : null
+  }
+  if (batchEditForm.update_actual_demand_person) {
+    const value = batchEditForm.actual_demand_person.trim()
+    if (!value) {
+      message.error('请选择或输入实际需求人')
+      return
+    }
+    payload.actual_demand_person = value
+  }
+  if (batchEditForm.update_purchase_responsible) {
+    const value = batchEditForm.purchase_responsible.trim()
+    if (!value) {
+      message.error('请选择或输入申购负责人')
+      return
+    }
+    payload.purchase_responsible = value
+  }
+  if (batchEditForm.update_salesperson) {
+    payload.salesperson = batchEditForm.salesperson.trim() || null
+  }
+  if (batchEditForm.update_status) {
+    const value = batchEditForm.status.trim()
+    if (!value) {
+      message.error('请输入申购状态')
+      return
+    }
+    payload.status = value
+  }
+  if (batchEditForm.update_record_remark) {
+    payload.record_remark = batchEditForm.record_remark.trim() || null
+  }
+  if (Object.keys(payload).length === 1) {
+    message.warning('请至少勾选一个需要修改的字段')
+    return
+  }
+
+  const updatedCount = selectedRecords.value.length
+  batchUpdating.value = true
+  try {
+    await procurementApi.batchUpdateRecords(payload)
+    message.success(`已批量修改 ${updatedCount} 条申购记录`)
+    showBatchEdit.value = false
+    checkedRowKeys.value = []
+    await Promise.all([load(), loadFilterOptions()])
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '批量修改失败')
+  } finally {
+    batchUpdating.value = false
+  }
+}
+
 function resetFilters() {
-  filters.purchase_order_no = ''
-  filters.trace_no = ''
-  filters.category = null
   filters.name = ''
   filters.model_spec = ''
+  filters.trace_no = ''
+  filters.purchase_order_no = ''
+  filters.actual_demand_person = null
   filters.purchase_responsible = null
   filters.salesperson = null
   filters.status = null
@@ -486,6 +649,13 @@ onActivated(() => {
         <h1 class="page-title">申购记录</h1>
       </div>
       <n-space align="center">
+        <n-button
+          v-if="auth.can('purchase:write')"
+          :disabled="!selectedRecords.length"
+          @click="openBatchEdit"
+        >
+          批量修改（{{ selectedRecords.length }}）
+        </n-button>
         <n-tag :bordered="false" round type="info">共 {{ total }} 条记录</n-tag>
         <ExportButton :options="exportOptions" :loading="resultExporting" @select="handleExport" />
       </n-space>
@@ -508,10 +678,10 @@ onActivated(() => {
           />
         </label>
         <label class="filter-field">
-          <span>申购单号</span>
+          <span>型号规格</span>
           <n-input
-            v-model:value="filters.purchase_order_no"
-            placeholder="输入申购单号"
+            v-model:value="filters.model_spec"
+            placeholder="输入型号规格"
             clearable
             @keyup.enter="query"
           />
@@ -526,22 +696,22 @@ onActivated(() => {
           />
         </label>
         <label class="filter-field">
-          <span>类别</span>
-          <n-select
-            v-model:value="filters.category"
-            :options="categoryOptions"
-            placeholder="选择类别"
-            filterable
+          <span>申购单号</span>
+          <n-input
+            v-model:value="filters.purchase_order_no"
+            placeholder="输入申购单号"
             clearable
+            @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
-          <span>型号规格</span>
-          <n-input
-            v-model:value="filters.model_spec"
-            placeholder="输入型号规格"
+          <span>实际需求人</span>
+          <n-select
+            v-model:value="filters.actual_demand_person"
+            :options="actualDemandPersonOptions"
+            placeholder="选择或搜索需求人"
+            filterable
             clearable
-            @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
@@ -604,28 +774,233 @@ onActivated(() => {
         </div>
       </div>
     </n-card>
-    <n-card ref="tableAreaRef" class="records-card data-card" :bordered="false">
-      <n-data-table
-        :bordered="false"
-        :columns="columns"
-        :data="items"
-        :loading="loading"
-        :row-props="rowProps"
-        :row-key="(row: PurchaseRecord) => row.line_id"
-        :scroll-x="tableScrollX"
-      />
-      <div class="pagination-bar">
-        <n-pagination
-          v-model:page="page"
-          v-model:page-size="pageSize"
-          :item-count="total"
-          :page-sizes="[10, 20, 50, 100, 200]"
-          show-size-picker
-          @update:page="changePage"
-          @update:page-size="changePageSize"
+    <div ref="tableAreaRef">
+      <n-card class="records-card data-card" :bordered="false">
+        <n-data-table
+          v-model:checked-row-keys="checkedRowKeys"
+          :bordered="false"
+          :columns="columns"
+          :data="items"
+          :loading="loading"
+          :row-props="rowProps"
+          :row-key="(row: PurchaseRecord) => row.line_id"
+          :scroll-x="tableScrollX"
         />
-      </div>
-    </n-card>
+        <div class="pagination-bar">
+          <n-pagination
+            v-model:page="page"
+            v-model:page-size="pageSize"
+            :item-count="total"
+            :page-sizes="[10, 20, 50, 100, 200]"
+            show-size-picker
+            @update:page="changePage"
+            @update:page-size="changePageSize"
+          />
+        </div>
+      </n-card>
+    </div>
+    <n-modal
+      v-model:show="showBatchEdit"
+      preset="card"
+      draggable
+      title="批量修改申购记录"
+      style="width: 760px; max-width: calc(100vw - 32px)"
+      :mask-closable="false"
+    >
+      <n-alert type="info" style="margin-bottom: 16px">
+        已选择 {{ selectedRecords.length }}
+        条记录。仅勾选的字段会被统一修改；单据共享字段会同步影响同一申购单下的其他物资。
+      </n-alert>
+      <n-scrollbar style="max-height: 65vh" content-style="padding-right: 12px">
+        <n-form label-placement="top">
+          <div class="form-grid batch-edit-grid">
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_purchase_order_no">
+                  修改申购单号
+                </n-checkbox>
+              </template>
+              <n-input
+                v-model:value="batchEditForm.purchase_order_no"
+                maxlength="128"
+                placeholder="留空将清除申购单号"
+                :disabled="!batchEditForm.update_purchase_order_no"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_trace_no">修改追溯号</n-checkbox>
+              </template>
+              <n-input
+                v-model:value="batchEditForm.trace_no"
+                maxlength="128"
+                placeholder="留空将清除追溯号"
+                :disabled="!batchEditForm.update_trace_no"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_contract_no"
+                  >修改合同号</n-checkbox
+                >
+              </template>
+              <n-input
+                v-model:value="batchEditForm.contract_no"
+                maxlength="128"
+                placeholder="留空将清除合同号"
+                :disabled="!batchEditForm.update_contract_no"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_vessel_no">修改船号</n-checkbox>
+              </template>
+              <n-input
+                v-model:value="batchEditForm.vessel_no"
+                maxlength="128"
+                placeholder="留空将清除船号"
+                :disabled="!batchEditForm.update_vessel_no"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_consolidation_date">
+                  修改集港日期
+                </n-checkbox>
+              </template>
+              <n-date-picker
+                v-model:value="batchEditForm.consolidation_date"
+                type="date"
+                class="full-width"
+                clearable
+                :disabled="!batchEditForm.update_consolidation_date"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_consolidation_port">
+                  修改集港港口
+                </n-checkbox>
+              </template>
+              <n-input
+                v-model:value="batchEditForm.consolidation_port"
+                maxlength="128"
+                placeholder="留空将清除集港港口"
+                :disabled="!batchEditForm.update_consolidation_port"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_sailing_date">
+                  修改发船日期
+                </n-checkbox>
+              </template>
+              <n-date-picker
+                v-model:value="batchEditForm.sailing_date"
+                type="date"
+                class="full-width"
+                clearable
+                :disabled="!batchEditForm.update_sailing_date"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_purchase_date">
+                  修改申购日期
+                </n-checkbox>
+              </template>
+              <n-date-picker
+                v-model:value="batchEditForm.purchase_date"
+                type="date"
+                class="full-width"
+                clearable
+                :disabled="!batchEditForm.update_purchase_date"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_actual_demand_person">
+                  修改实际需求人
+                </n-checkbox>
+              </template>
+              <n-select
+                v-model:value="batchEditForm.actual_demand_person"
+                :options="actualDemandPersonOptions"
+                filterable
+                tag
+                placeholder="选择或输入实际需求人"
+                :disabled="!batchEditForm.update_actual_demand_person"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_purchase_responsible">
+                  修改申购负责人
+                </n-checkbox>
+              </template>
+              <n-select
+                v-model:value="batchEditForm.purchase_responsible"
+                :options="purchaseResponsibleOptions"
+                filterable
+                tag
+                placeholder="选择或输入申购负责人"
+                :disabled="!batchEditForm.update_purchase_responsible"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_salesperson"
+                  >修改业务员</n-checkbox
+                >
+              </template>
+              <n-select
+                v-model:value="batchEditForm.salesperson"
+                :options="salespersonOptions"
+                filterable
+                tag
+                clearable
+                placeholder="留空将清除业务员"
+                :disabled="!batchEditForm.update_salesperson"
+              />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
+                <n-checkbox v-model:checked="batchEditForm.update_status">修改申购状态</n-checkbox>
+              </template>
+              <n-input
+                v-model:value="batchEditForm.status"
+                maxlength="128"
+                placeholder="输入申购状态"
+                :disabled="!batchEditForm.update_status"
+              />
+            </n-form-item>
+          </div>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_record_remark">
+                修改申购记录备注
+              </n-checkbox>
+            </template>
+            <n-input
+              v-model:value="batchEditForm.record_remark"
+              type="textarea"
+              maxlength="1000"
+              show-count
+              placeholder="留空将清除申购记录备注"
+              :disabled="!batchEditForm.update_record_remark"
+            />
+          </n-form-item>
+        </n-form>
+      </n-scrollbar>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showBatchEdit = false">取消</n-button>
+          <n-button type="primary" :loading="batchUpdating" @click="batchUpdate">
+            保存修改
+          </n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 

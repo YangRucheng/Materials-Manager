@@ -385,6 +385,7 @@ export interface PurchaseRecordResultExportRequest {
   category?: string
   name?: string
   model_spec?: string
+  actual_demand_person?: string
   purchase_responsible?: string
   salesperson?: string
   status?: string
@@ -446,6 +447,22 @@ export interface PurchaseMaterialBatchUpdate {
   subitem_no?: string | null
   usage?: string
   status?: PurchasePlanStatus
+}
+export interface PurchaseRecordBatchUpdate {
+  records: Array<{ line_id: number; version: number }>
+  purchase_order_no?: string | null
+  trace_no?: string | null
+  contract_no?: string | null
+  vessel_no?: string | null
+  consolidation_date?: string | null
+  consolidation_port?: string | null
+  sailing_date?: string | null
+  purchase_date?: string | null
+  actual_demand_person?: string
+  purchase_responsible?: string
+  salesperson?: string | null
+  status?: string
+  record_remark?: string | null
 }
 export interface PurchaseRequestLine {
   id: number

@@ -649,3 +649,30 @@ async def purchase_materials_for_export(
     if material_ids is not None and len(items) != len(set(material_ids)):
         raise not_found("申购计划")
     return items
+
+
+def validate_purchase_application_export(materials: list[PurchaseMaterial]) -> None:
+    field_checks = {
+        "material_code": ("编码", lambda item: item.material_code),
+        "subitem_no": ("子项号", lambda item: item.subitem_no),
+        "usage": ("用途", lambda item: item.usage),
+    }
+    missing_fields: dict[str, list[int]] = {}
+    missing_labels: list[str] = []
+    for field, (label, value_getter) in field_checks.items():
+        missing_ids = [
+            item.id
+            for item in materials
+            if not (value := value_getter(item)) or not value.strip()
+        ]
+        if missing_ids:
+            missing_fields[field] = missing_ids
+            missing_labels.append(label)
+
+    if missing_fields:
+        raise AppError(
+            "PURCHASE_APPLICATION_EXPORT_FIELDS_REQUIRED",
+            f"导出采购申请表前请补全：{'、'.join(missing_labels)}",
+            status_code=409,
+            details={"missing_fields": missing_fields},
+        )

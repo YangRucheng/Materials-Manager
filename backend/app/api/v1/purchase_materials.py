@@ -288,10 +288,11 @@ async def export_purchase_application(
     materials = await material_service.purchase_materials_for_export(
         session,
         material_ids=data.material_ids,
-        coded=True,
+        coded=None,
         moved=False,
         status=None if user.role == Role.SUPER_ADMIN else PurchasePlanStatus.NORMAL,
     )
+    material_service.validate_purchase_application_export(materials)
     rows = [
         {
             "material_code": item.material_code,
