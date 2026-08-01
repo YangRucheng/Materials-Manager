@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, reactive, ref, watch } from 'vue'
 import { NButton, type DataTableColumns, useMessage } from 'naive-ui'
 import type { MaterialCodeLibrary } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { renderTwoLineText } from '@/utils/tableText'
 
-defineProps<{
+const props = defineProps<{
   modelValue: string
+  defaultName?: string
+  defaultModelSpec?: string
   disabled?: boolean
 }>()
 const emit = defineEmits<{
@@ -24,6 +26,11 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 const loading = ref(false)
+const defaultFilters = reactive({
+  materialCode: '',
+  name: '',
+  modelSpec: '',
+})
 const activeFilterCount = computed(
   () =>
     [name.value.trim(), modelSpec.value.trim(), materialCode.value.trim()].filter(Boolean).length,
@@ -77,9 +84,10 @@ async function load() {
 }
 
 function open() {
-  materialCode.value = ''
-  name.value = ''
-  modelSpec.value = ''
+  defaultFilters.materialCode = props.modelValue.trim()
+  defaultFilters.name = props.defaultName?.trim() || ''
+  defaultFilters.modelSpec = props.defaultModelSpec?.trim() || ''
+  restoreDefaultFilters()
   page.value = 1
   show.value = true
   void load()
@@ -91,6 +99,17 @@ function search() {
 }
 
 function resetSearch() {
+  restoreDefaultFilters()
+  search()
+}
+
+function restoreDefaultFilters() {
+  materialCode.value = defaultFilters.materialCode
+  name.value = defaultFilters.name
+  modelSpec.value = defaultFilters.modelSpec
+}
+
+function clearSearch() {
   materialCode.value = ''
   name.value = ''
   modelSpec.value = ''
@@ -173,6 +192,7 @@ watch(page, () => void load())
         </label>
       </div>
       <div class="selector-search-actions">
+        <n-button @click="clearSearch">清空</n-button>
         <n-button @click="resetSearch">重置</n-button>
         <n-button type="primary" :loading="loading" @click="search">查询</n-button>
       </div>
