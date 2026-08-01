@@ -5028,6 +5028,12 @@ components:
           maxItems: 200
           minItems: 1
           title: Records
+        plan_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Plan Date
         purchase_order_no:
           anyOf:
           - type: string

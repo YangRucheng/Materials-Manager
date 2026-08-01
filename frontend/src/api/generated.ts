@@ -450,6 +450,7 @@ export interface PurchaseMaterialBatchUpdate {
 }
 export interface PurchaseRecordBatchUpdate {
   records: Array<{ line_id: number; version: number }>
+  plan_date?: string
   purchase_order_no?: string | null
   trace_no?: string | null
   contract_no?: string | null

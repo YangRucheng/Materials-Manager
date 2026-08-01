@@ -992,6 +992,7 @@ class PurchaseRecordVersion(RequestModel):
 
 class BatchUpdatePurchaseRecordsRequest(RequestModel):
     records: list[PurchaseRecordVersion] = Field(min_length=1, max_length=200)
+    plan_date: date | None = None
     purchase_order_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
     ) = None
@@ -1037,6 +1038,7 @@ class BatchUpdatePurchaseRecordsRequest(RequestModel):
     @model_validator(mode="after")
     def validate_updates(self) -> BatchUpdatePurchaseRecordsRequest:
         update_fields = {
+            "plan_date",
             "purchase_order_no",
             "trace_no",
             "contract_no",
@@ -1054,7 +1056,7 @@ class BatchUpdatePurchaseRecordsRequest(RequestModel):
         selected_fields = self.model_fields_set & update_fields
         if not selected_fields:
             raise ValueError("at least one update field is required")
-        required_fields = {"actual_demand_person", "purchase_responsible", "status"}
+        required_fields = {"plan_date", "actual_demand_person", "purchase_responsible", "status"}
         for field in selected_fields & required_fields:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")

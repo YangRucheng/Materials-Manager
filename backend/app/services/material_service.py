@@ -228,7 +228,7 @@ async def _validate_stock_link(
     return stock
 
 
-async def _next_plan_no(session: AsyncSession, plan_date: date) -> str:
+async def next_purchase_plan_no(session: AsyncSession, plan_date: date) -> str:
     prefix = f"PLAN-{plan_date:%Y%m%d}-"
     previous = await session.scalar(
         select(PurchaseMaterial.plan_no)
@@ -256,7 +256,7 @@ async def create_purchase_material(
     files = await _files(session, data.image_ids)
     plan_date = data.plan_date or datetime.now(SHANGHAI).date()
     item = PurchaseMaterial(
-        plan_no=await _next_plan_no(session, plan_date),
+        plan_no=await next_purchase_plan_no(session, plan_date),
         plan_date=plan_date,
         material_code=data.material_code,
         category=data.category,
@@ -309,7 +309,7 @@ async def update_purchase_material(
     ):
         setattr(item, key, getattr(data, key))
     if data.plan_date is not None and data.plan_date != item.plan_date:
-        item.plan_no = await _next_plan_no(session, data.plan_date)
+        item.plan_no = await next_purchase_plan_no(session, data.plan_date)
         item.plan_date = data.plan_date
     if data.actual_demand_person is not None:
         item.actual_demand_person = data.actual_demand_person
@@ -362,7 +362,7 @@ async def batch_update_purchase_materials(
         validate_version(reference.version, item.version)
         if "plan_date" in update_fields and data.plan_date != item.plan_date:
             assert data.plan_date is not None
-            item.plan_no = await _next_plan_no(session, data.plan_date)
+            item.plan_no = await next_purchase_plan_no(session, data.plan_date)
             item.plan_date = data.plan_date
         if "category" in update_fields:
             item.category = data.category
