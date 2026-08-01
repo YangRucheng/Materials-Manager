@@ -985,6 +985,82 @@ class PurchaseRecordUpdate(RequestModel):
         return _empty_string_to_none(value)
 
 
+class PurchaseRecordVersion(RequestModel):
+    line_id: int
+    version: int
+
+
+class BatchUpdatePurchaseRecordsRequest(RequestModel):
+    records: list[PurchaseRecordVersion] = Field(min_length=1, max_length=200)
+    purchase_order_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    trace_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = None
+    contract_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = (
+        None
+    )
+    vessel_no: Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None = (
+        None
+    )
+    consolidation_date: date | None = None
+    consolidation_port: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    sailing_date: date | None = None
+    purchase_date: date | None = None
+    actual_demand_person: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    purchase_responsible: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    salesperson: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    status: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    record_remark: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("records")
+    @classmethod
+    def unique_records(cls, value: list[PurchaseRecordVersion]) -> list[PurchaseRecordVersion]:
+        line_ids = [item.line_id for item in value]
+        if len(line_ids) != len(set(line_ids)):
+            raise ValueError("records must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def validate_updates(self) -> BatchUpdatePurchaseRecordsRequest:
+        update_fields = {
+            "purchase_order_no",
+            "trace_no",
+            "contract_no",
+            "vessel_no",
+            "consolidation_date",
+            "consolidation_port",
+            "sailing_date",
+            "purchase_date",
+            "actual_demand_person",
+            "purchase_responsible",
+            "salesperson",
+            "status",
+            "record_remark",
+        }
+        selected_fields = self.model_fields_set & update_fields
+        if not selected_fields:
+            raise ValueError("at least one update field is required")
+        required_fields = {"actual_demand_person", "purchase_responsible", "status"}
+        for field in selected_fields & required_fields:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+        return self
+
+
 class PurchaseRecordRead(ReadModel):
     line_id: int
     purchase_request_id: int
@@ -1050,6 +1126,7 @@ class PurchaseRecordResultExportRequest(RequestModel):
     category: str | None = Field(default=None, max_length=64)
     name: str | None = Field(default=None, max_length=128)
     model_spec: str | None = Field(default=None, max_length=255)
+    actual_demand_person: str | None = Field(default=None, max_length=128)
     purchase_responsible: str | None = Field(default=None, max_length=128)
     salesperson: str | None = Field(default=None, max_length=128)
     status: str | None = Field(default=None, max_length=128)

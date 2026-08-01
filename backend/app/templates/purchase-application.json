@@ -2,7 +2,7 @@
   "schema_version": 1,
   "template_name": "采购申请模板",
   "source_template": "采购申请模版.xlsx",
-  "output_filename": "采购申请-{date}.xlsx",
+  "output_filename": "采购申请表_{date_compact}.xlsx",
   "sheet": {
     "title": "采购申请",
     "header_row": 1,

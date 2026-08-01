@@ -762,8 +762,16 @@ async function batchMove() {
 }
 async function exportPurchaseApplication() {
   if (!selectedPlans.value.length) return
-  if (selectedPlans.value.some((item) => !item.material_code)) {
-    message.warning('选中的申购计划包含未编码物资，请先补充物料编码')
+  const requiredFields = [
+    { label: '编码', missing: (item: PurchaseMaterial) => !item.material_code?.trim() },
+    { label: '子项号', missing: (item: PurchaseMaterial) => !item.subitem_no?.trim() },
+    { label: '用途', missing: (item: PurchaseMaterial) => !item.usage?.trim() },
+  ]
+  const missingLabels = requiredFields
+    .filter(({ missing }) => selectedPlans.value.some(missing))
+    .map(({ label }) => label)
+  if (missingLabels.length) {
+    message.warning(`导出采购申请表前请补全：${missingLabels.join('、')}`)
     return
   }
   batchExporting.value = true
@@ -771,7 +779,8 @@ async function exportPurchaseApplication() {
     const content = await procurementApi.exportPurchaseApplication(
       selectedPlans.value.map((item) => item.id),
     )
-    downloadBlob(content, '采购申请.xlsx')
+    const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    downloadBlob(content, `采购申请表_${date}.xlsx`)
     message.success('采购申请表已导出')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导出失败')

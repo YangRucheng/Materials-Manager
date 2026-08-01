@@ -9,6 +9,7 @@ import type {
   PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
   PurchaseRecord,
+  PurchaseRecordBatchUpdate,
   PurchaseRecordFilterOptions,
   PurchasePlanResultExportRequest,
   PurchaseRecordResultExportRequest,
@@ -84,6 +85,8 @@ export const procurementApi = {
       .then((r) => r.data),
   records: (params?: Record<string, unknown>) =>
     apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
+  batchUpdateRecords: (payload: PurchaseRecordBatchUpdate) =>
+    apiClient.patch<PurchaseRecord[]>('/purchase-records/batch', payload).then((r) => r.data),
   recordFilterOptions: () =>
     apiClient
       .get<PurchaseRecordFilterOptions>('/purchase-records/filter-options')
