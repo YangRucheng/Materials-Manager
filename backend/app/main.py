@@ -36,6 +36,21 @@ from app.services import ai_search_service, webhook_service
 
 logger = logging.getLogger("spare_parts.api")
 
+MYSQL_QUERY_ERROR_CODES = {
+    1052,  # Column is ambiguous.
+    1054,  # Unknown column.
+    1064,  # SQL syntax error.
+    1066,  # Duplicate table alias.
+    1109,  # Unknown table.
+    1146,  # Table does not exist.
+}
+
+
+def is_database_query_error(exc: SQLAlchemyError) -> bool:
+    original = getattr(exc, "orig", None)
+    args = getattr(original, "args", ())
+    return bool(args and isinstance(args[0], int) and args[0] in MYSQL_QUERY_ERROR_CODES)
+
 
 def error_response(
     request: Request,
@@ -153,7 +168,7 @@ async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONR
 
 @app.exception_handler(ProgrammingError)
 async def handle_database_programming_error(
-    request: Request, exc: ProgrammingError
+    request: Request, exc: SQLAlchemyError
 ) -> JSONResponse:
     logger.error(
         "database query error request_id=%s error_type=%s",
@@ -174,6 +189,8 @@ async def handle_database_programming_error(
 @app.exception_handler(DisconnectionError)
 @app.exception_handler(SQLAlchemyTimeoutError)
 async def handle_database_unavailable(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    if is_database_query_error(exc):
+        return await handle_database_programming_error(request, exc)
     logger.error(
         "database unavailable request_id=%s error_type=%s",
         request.state.request_id,

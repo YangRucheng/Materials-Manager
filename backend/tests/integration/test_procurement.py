@@ -991,6 +991,64 @@ async def test_batch_update_purchase_records_is_atomic(client: AsyncClient) -> N
 
 
 @pytest.mark.asyncio
+async def test_grouped_purchase_request_supports_line_tracking_fields(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "行级追溯一", code="DQ-LINE-TRACK-1")
+    second = await create_purchase_plan(client, headers, "行级追溯二", code="DQ-LINE-TRACK-2")
+    moved = await client.post(
+        "/api/v1/purchase-materials/batch-move-to-record",
+        headers=headers,
+        json={
+            "material_ids": [first["id"], second["id"]],
+            "purchase_order_no": "SG-LINE-TRACK",
+            "trace_no": "HEADER-TRACE",
+            "purchase_date": "2026-08-01",
+            "salesperson": "主表业务员",
+        },
+    )
+    assert moved.status_code == 200, moved.text
+    records = moved.json()
+
+    async with SessionLocal() as session:
+        first_line = await session.get(PurchaseRequestLine, int(records[0]["line_id"]))
+        second_line = await session.get(PurchaseRequestLine, int(records[1]["line_id"]))
+        assert first_line is not None
+        assert second_line is not None
+        first_line.trace_no = "LINE-TRACE-1"
+        first_line.salesperson = "行业务员一"
+        second_line.trace_no = "LINE-TRACE-2"
+        second_line.salesperson = "行业务员二"
+        await session.commit()
+
+    listed = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"purchase_order_no": "SG-LINE-TRACK", "page_size": 10},
+    )
+    assert listed.status_code == 200, listed.text
+    values = {
+        item["material_code"]: (item["trace_no"], item["salesperson"])
+        for item in listed.json()["items"]
+    }
+    assert values == {
+        "DQ-LINE-TRACK-1": ("LINE-TRACE-1", "行业务员一"),
+        "DQ-LINE-TRACK-2": ("LINE-TRACE-2", "行业务员二"),
+    }
+
+    filtered = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"trace_no": "LINE-TRACE-2", "salesperson": "行业务员二"},
+    )
+    assert filtered.status_code == 200, filtered.text
+    assert [item["material_code"] for item in filtered.json()["items"]] == [
+        "DQ-LINE-TRACK-2"
+    ]
+
+
+@pytest.mark.asyncio
 async def test_purchase_record_supports_full_edit_and_free_text_status(
     client: AsyncClient,
 ) -> None:

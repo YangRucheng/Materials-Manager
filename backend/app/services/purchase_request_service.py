@@ -37,7 +37,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         plan_no=material.plan_no,
         plan_date=material.plan_date,
         purchase_order_no=request.purchase_order_no,
-        trace_no=request.trace_no,
+        trace_no=line.trace_no,
         contract_no=request.contract_no,
         vessel_no=request.vessel_no,
         consolidation_date=request.consolidation_date,
@@ -53,7 +53,7 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         purchase_qty=line.purchase_qty,
         actual_demand_person=material.actual_demand_person,
         purchase_responsible=material.purchase_responsible,
-        salesperson=request.salesperson,
+        salesperson=line.salesperson,
         plan_remark=material.remark,
         record_remark=request.remark,
         usage=line.usage,
@@ -155,6 +155,8 @@ async def move_plans_to_record(
             status=data.status,
             usage=material.usage,
             subitem_no=material.subitem_no,
+            trace_no=data.trace_no or None,
+            salesperson=data.salesperson,
         )
         for material in materials
     ]
@@ -208,14 +210,14 @@ async def update_purchase_record(
         ),
     )
     request.purchase_order_no = data.purchase_order_no or None
-    request.trace_no = data.trace_no or None
+    line.trace_no = data.trace_no or None
     request.contract_no = data.contract_no or None
     request.vessel_no = data.vessel_no or None
     request.consolidation_date = data.consolidation_date
     request.consolidation_port = data.consolidation_port or None
     request.sailing_date = data.sailing_date
     request.purchase_date = data.purchase_date
-    request.salesperson = data.salesperson
+    line.salesperson = data.salesperson
     request.remark = data.record_remark
     request.version += 1
     line.material_code_snapshot = material.material_code
@@ -285,14 +287,12 @@ async def batch_update_purchase_records(
     update_fields = data.model_fields_set - {"records"}
     request_field_map = {
         "purchase_order_no": "purchase_order_no",
-        "trace_no": "trace_no",
         "contract_no": "contract_no",
         "vessel_no": "vessel_no",
         "consolidation_date": "consolidation_date",
         "consolidation_port": "consolidation_port",
         "sailing_date": "sailing_date",
         "purchase_date": "purchase_date",
-        "salesperson": "salesperson",
         "record_remark": "remark",
     }
     request_update_fields = update_fields & request_field_map.keys()
@@ -338,6 +338,12 @@ async def batch_update_purchase_records(
         if "status" in update_fields:
             assert data.status is not None
             line.status = data.status
+            line.version += 1
+        if "trace_no" in update_fields:
+            line.trace_no = data.trace_no or None
+            line.version += 1
+        if "salesperson" in update_fields:
+            line.salesperson = data.salesperson
             line.version += 1
         updated.append(line)
 
@@ -413,13 +419,13 @@ async def search_purchase_records(
     keyword_condition = contains_any(
         (
             PurchaseRequest.purchase_order_no,
-            PurchaseRequest.trace_no,
+            PurchaseRequestLine.trace_no,
             PurchaseRequest.contract_no,
             PurchaseRequest.vessel_no,
             cast(PurchaseRequest.consolidation_date, String),
             PurchaseRequest.consolidation_port,
             cast(PurchaseRequest.sailing_date, String),
-            PurchaseRequest.salesperson,
+            PurchaseRequestLine.salesperson,
             PurchaseRequest.remark,
             PurchaseMaterial.plan_no,
             cast(PurchaseMaterial.plan_date, String),
@@ -446,7 +452,7 @@ async def search_purchase_records(
             "plan_no": PurchaseMaterial.plan_no,
             "plan_date": cast(PurchaseMaterial.plan_date, String),
             "purchase_order_no": PurchaseRequest.purchase_order_no,
-            "trace_no": PurchaseRequest.trace_no,
+            "trace_no": PurchaseRequestLine.trace_no,
             "contract_no": PurchaseRequest.contract_no,
             "vessel_no": PurchaseRequest.vessel_no,
             "consolidation_date": cast(PurchaseRequest.consolidation_date, String),
@@ -458,7 +464,7 @@ async def search_purchase_records(
             "model_spec": PurchaseMaterial.model_spec,
             "unit_name": PurchaseMaterial.unit_name,
             "purchase_qty": cast(PurchaseRequestLine.purchase_qty, String),
-            "salesperson": PurchaseRequest.salesperson,
+            "salesperson": PurchaseRequestLine.salesperson,
             "status": PurchaseRequestLine.status,
             "purchase_date": cast(PurchaseRequest.purchase_date, String),
             "usage": PurchaseRequestLine.usage,
@@ -473,12 +479,15 @@ async def search_purchase_records(
         query = query.where(func.trim(PurchaseMaterial.category) == category.strip())
     field_filters = (
         ((PurchaseRequest.purchase_order_no,), purchase_order_no),
-        ((PurchaseRequest.trace_no,), trace_no),
+        ((PurchaseRequestLine.trace_no,), trace_no),
         ((PurchaseMaterial.name,), name),
         ((PurchaseMaterial.model_spec,), model_spec),
         ((PurchaseMaterial.actual_demand_person,), actual_demand_person),
         ((PurchaseMaterial.purchase_responsible,), purchase_responsible),
-        ((PurchaseRequest.salesperson,), salesperson),
+        (
+            (PurchaseRequestLine.salesperson,),
+            salesperson,
+        ),
     )
     for columns, value in field_filters:
         condition = contains_any(columns, value)
@@ -495,10 +504,10 @@ async def search_purchase_records(
                     ),
                     PurchaseRequest.purchase_order_no.desc(),
                     or_(
-                        PurchaseRequest.trace_no.is_(None),
-                        func.trim(PurchaseRequest.trace_no) == "",
+                        PurchaseRequestLine.trace_no.is_(None),
+                        func.trim(PurchaseRequestLine.trace_no) == "",
                     ),
-                    PurchaseRequest.trace_no.desc(),
+                    PurchaseRequestLine.trace_no.desc(),
                     PurchaseRequestLine.id.desc(),
                 )
                 .offset((page - 1) * page_size)
@@ -512,10 +521,10 @@ async def search_purchase_records(
 
 
 async def purchase_salesperson_options(session: AsyncSession) -> list[str]:
-    salesperson = func.trim(PurchaseRequest.salesperson)
+    salesperson = func.trim(PurchaseRequestLine.salesperson)
     query = (
         select(salesperson)
-        .where(PurchaseRequest.salesperson.is_not(None), salesperson != "")
+        .where(PurchaseRequestLine.salesperson.is_not(None), salesperson != "")
         .distinct()
         .order_by(salesperson)
     )
