@@ -444,6 +444,7 @@ export interface PurchaseMaterialBatchUpdate {
   urgency?: string
   demand_department?: string
   actual_demand_person?: string
+  purchase_responsible?: string
   subitem_no?: string | null
   usage?: string
   status?: PurchasePlanStatus

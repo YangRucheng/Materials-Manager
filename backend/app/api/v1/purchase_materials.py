@@ -298,7 +298,7 @@ async def export_purchase_application(
             "material_code": item.material_code,
             "name": item.name,
             "planned_qty": item.planned_qty,
-            "actual_demand_person": item.actual_demand_person,
+            "actual_demand_person": item.purchase_responsible,
             "demand_department": item.demand_department,
             "required_arrival_date": date.today() + timedelta(days=90),
             "urgency": item.urgency,

@@ -867,6 +867,8 @@ export const handlers = [
       if (body.plan_date !== undefined) item.plan_date = body.plan_date
       if (body.actual_demand_person !== undefined)
         item.actual_demand_person = body.actual_demand_person
+      if (body.purchase_responsible !== undefined)
+        item.purchase_responsible = body.purchase_responsible
       if ('subitem_no' in body) item.subitem_no = body.subitem_no || undefined
       if (body.usage !== undefined) item.usage = body.usage
       if (body.urgency !== undefined) item.urgency = body.urgency

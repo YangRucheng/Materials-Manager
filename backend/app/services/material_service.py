@@ -352,6 +352,7 @@ async def batch_update_purchase_materials(
         "urgency",
         "demand_department",
         "actual_demand_person",
+        "purchase_responsible",
         "subitem_no",
         "usage",
         "status",
@@ -375,6 +376,9 @@ async def batch_update_purchase_materials(
         if "actual_demand_person" in update_fields:
             assert data.actual_demand_person is not None
             item.actual_demand_person = data.actual_demand_person
+        if "purchase_responsible" in update_fields:
+            assert data.purchase_responsible is not None
+            item.purchase_responsible = data.purchase_responsible
         if "subitem_no" in update_fields:
             item.subitem_no = data.subitem_no
         if "usage" in update_fields:
