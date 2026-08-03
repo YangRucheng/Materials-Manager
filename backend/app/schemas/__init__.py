@@ -754,6 +754,10 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
         | None
     ) = None
+    purchase_responsible: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
     subitem_no: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
     ) = None
@@ -779,6 +783,7 @@ class BatchUpdatePurchasePlansRequest(RequestModel):
             "urgency",
             "demand_department",
             "actual_demand_person",
+            "purchase_responsible",
             "subitem_no",
             "usage",
             "status",
