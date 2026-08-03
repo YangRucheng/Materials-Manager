@@ -886,6 +886,7 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
             "urgency": "非常紧急",
             "demand_department": "HXNI 设备管理部",
             "actual_demand_person": "统一需求人",
+            "purchase_responsible": "统一申购负责人",
             "subitem_no": None,
             "usage": "统一批量修改用途",
         },
@@ -899,6 +900,7 @@ async def test_batch_update_purchase_plans(client: AsyncClient) -> None:
     assert {item["urgency"] for item in payload} == {"非常紧急"}
     assert {item["demand_department"] for item in payload} == {"HXNI 设备管理部"}
     assert {item["actual_demand_person"] for item in payload} == {"统一需求人"}
+    assert {item["purchase_responsible"] for item in payload} == {"统一申购负责人"}
     assert {item["subitem_no"] for item in payload} == {None}
     assert {item["usage"] for item in payload} == {"统一批量修改用途"}
     assert len({item["plan_no"] for item in payload}) == 2
@@ -1222,7 +1224,14 @@ async def test_purchase_tracking_numbers_are_optional_and_order_number_defaults(
 async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
     uncoded = await create_purchase_plan(client, headers, "待编码\u000b接触器")
-    coded = await create_purchase_plan(client, headers, "已编码\u000c接触器", code="DQ-XLSX-1")
+    coded = await create_purchase_plan(
+        client,
+        headers,
+        "已编码\u000c接触器",
+        code="DQ-XLSX-1",
+        actual_demand_person="不应导出的需求人",
+        purchase_responsible="应导出的申购负责人",
+    )
 
     code_export = await client.get(
         "/api/v1/purchase-materials/export-uncoded",
@@ -1259,6 +1268,7 @@ async def test_purchase_excel_exports_use_json_template_specs(client: AsyncClien
     assert purchase_sheet["A2"].value == coded["material_code"]
     assert purchase_sheet["B2"].value == "已编码接触器"
     assert str(purchase_sheet["C2"].value) == coded["planned_qty"]
+    assert purchase_sheet["D2"].value == "应导出的申购负责人"
     assert purchase_sheet["E2"].value == "HXNI 检修维护部"
     assert purchase_sheet["G2"].value.date() == date.today() + timedelta(days=90)
     assert purchase_sheet["H2"].value == "正常"

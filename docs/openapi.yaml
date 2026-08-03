@@ -4996,6 +4996,13 @@ components:
             minLength: 1
           - type: 'null'
           title: Actual Demand Person
+        purchase_responsible:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 1
+          - type: 'null'
+          title: Purchase Responsible
         subitem_no:
           anyOf:
           - type: string

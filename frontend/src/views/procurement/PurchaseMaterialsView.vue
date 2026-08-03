@@ -166,6 +166,8 @@ const batchEditForm = reactive({
   demand_department: defaultDemandDepartment,
   update_actual_demand_person: false,
   actual_demand_person: '',
+  update_purchase_responsible: false,
+  purchase_responsible: '',
   update_subitem_no: false,
   subitem_no: '',
   update_usage: false,
@@ -656,6 +658,8 @@ function openBatchEdit() {
     demand_department: defaultDemandDepartment,
     update_actual_demand_person: false,
     actual_demand_person: '',
+    update_purchase_responsible: false,
+    purchase_responsible: '',
     update_subitem_no: false,
     subitem_no: '',
     update_usage: false,
@@ -695,6 +699,13 @@ async function batchUpdate() {
       return
     }
     payload.actual_demand_person = batchEditForm.actual_demand_person.trim()
+  }
+  if (batchEditForm.update_purchase_responsible) {
+    if (!batchEditForm.purchase_responsible.trim()) {
+      message.error('请输入申购负责人')
+      return
+    }
+    payload.purchase_responsible = batchEditForm.purchase_responsible.trim()
   }
   if (batchEditForm.update_subitem_no) {
     payload.subitem_no = batchEditForm.subitem_no.trim() || null
@@ -1023,6 +1034,18 @@ onBeforeUnmount(() => {
               v-model:value="batchEditForm.actual_demand_person"
               maxlength="128"
               :disabled="!batchEditForm.update_actual_demand_person"
+            />
+          </n-form-item>
+          <n-form-item>
+            <template #label>
+              <n-checkbox v-model:checked="batchEditForm.update_purchase_responsible">
+                修改申购负责人
+              </n-checkbox>
+            </template>
+            <n-input
+              v-model:value="batchEditForm.purchase_responsible"
+              maxlength="128"
+              :disabled="!batchEditForm.update_purchase_responsible"
             />
           </n-form-item>
           <n-form-item>
