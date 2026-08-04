@@ -1,0 +1,47 @@
+.purchase-plans-page {
+  padding: 24rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.list-header { margin: 4rpx 4rpx 24rpx; }
+.list-header .page-title { font-size: 44rpx; }
+
+.list-tools {
+  overflow: hidden;
+  margin-bottom: 20rpx;
+  padding: 12rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.04);
+}
+
+.result-count { margin: 0 8rpx 14rpx; color: #7d8798; font-size: 23rpx; }
+.plan-list { display: flex; flex-direction: column; gap: 16rpx; }
+
+.plan-card {
+  padding: 24rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.04);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.plan-card-active { transform: scale(0.99); background: #f8faff; }
+.card-topline, .card-heading, .plan-meta { display: flex; align-items: center; }
+.card-topline { justify-content: space-between; margin-bottom: 12rpx; }
+.plan-no { color: #3658c7; font-size: 22rpx; font-weight: 650; }
+.plan-date { color: #8a94a5; font-size: 22rpx; }
+.card-heading { align-items: flex-start; justify-content: space-between; gap: 20rpx; }
+.material-name { flex: 1; min-width: 0; color: #172033; font-size: 29rpx; font-weight: 650; line-height: 1.4; }
+.material-spec { margin-top: 8rpx; color: #687386; font-size: 24rpx; line-height: 1.45; word-break: break-all; }
+.card-divider { height: 2rpx; margin: 20rpx 0 16rpx; background: #edf0f5; }
+.meta-item { min-width: 190rpx; }
+.responsible-item { flex: 1; }
+.meta-label { color: #8a94a5; font-size: 21rpx; }
+.quantity-value { margin-top: 4rpx; color: #229b6b; font-size: 30rpx; font-weight: 700; }
+.meta-value { margin-top: 8rpx; color: #4b5565; font-size: 25rpx; font-weight: 550; }
+.state-panel { display: flex; min-height: 420rpx; align-items: center; justify-content: center; }
+.empty-panel { box-sizing: border-box; padding-top: 40rpx; }
+.load-more, .load-finished { padding: 28rpx 0 8rpx; color: #a1a9b7; font-size: 22rpx; text-align: center; }

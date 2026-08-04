@@ -28,5 +28,15 @@ export function resolveImageBaseUrl(value: string | undefined, resolvedApiBaseUr
   return isAbsoluteOrigin(baseUrl) ? joinUrl(baseUrl, 'api/v1/files/images') : baseUrl
 }
 
+export function resolveMcpUrl(
+  resolvedApiBaseUrl: string,
+  token: string,
+  origin: string = window.location.origin,
+): string {
+  const url = new URL(joinUrl(resolvedApiBaseUrl, 'mcp/'), origin)
+  url.searchParams.set('token', token)
+  return url.toString()
+}
+
 export const apiBaseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 export const imageBaseUrl = resolveImageBaseUrl(import.meta.env.VITE_IMAGE_BASE_URL, apiBaseUrl)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -75,6 +76,19 @@ async def update_user(session: AsyncSession, item_id: int, data: UserUpdate) -> 
         await session.flush()
     except IntegrityError as exc:
         raise AppError("DUPLICATE_USERNAME", "用户名已存在", status_code=409) from exc
+    return item
+
+
+async def regenerate_user_api_token(
+    session: AsyncSession, item_id: int, version: int
+) -> User:
+    item = await session.get(User, item_id)
+    if item is None:
+        raise not_found("用户")
+    validate_version(version, item.version)
+    item.api_token = str(uuid4())
+    item.version += 1
+    await session.flush()
     return item
 
 

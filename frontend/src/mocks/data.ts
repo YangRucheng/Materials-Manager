@@ -1,18 +1,19 @@
 import type {
+  ManagedUser,
   MiniProgramUser,
   PurchaseMaterial,
   PurchaseRequest,
   StockMaterial,
   StockOperation,
-  User,
 } from '@/api/generated'
 
 const now = '2026-07-17T02:30:00.000Z'
 export const mockFileId = (id: number) => `01900000-0000-7000-8000-${String(id).padStart(12, '0')}`
-export const users: User[] = [
+export const users: ManagedUser[] = [
   {
     id: 1,
     username: 'admin',
+    api_token: '06c0d223-280b-4c24-b768-50e02c458a94',
     display_name: '系统管理员',
     role: 'SUPER_ADMIN',
     enabled: true,
@@ -21,6 +22,7 @@ export const users: User[] = [
   {
     id: 2,
     username: 'warehouse',
+    api_token: '92647633-706f-49ca-8bc5-75336ffc75e6',
     display_name: '仓库管理员',
     role: 'WAREHOUSE_ADMIN',
     enabled: true,
@@ -29,6 +31,7 @@ export const users: User[] = [
   {
     id: 3,
     username: 'purchase',
+    api_token: 'd1159d60-5a2f-4de7-8610-8b2c859e695a',
     display_name: '申购管理员',
     role: 'PURCHASE_ADMIN',
     enabled: true,
@@ -37,6 +40,7 @@ export const users: User[] = [
   {
     id: 4,
     username: 'readonly',
+    api_token: 'da989f08-76c0-4d51-b9eb-d9d8435b9d87',
     display_name: '只读用户',
     role: 'READ_ONLY',
     enabled: true,

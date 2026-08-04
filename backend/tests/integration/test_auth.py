@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 from httpx import AsyncClient
 
@@ -38,3 +40,41 @@ async def test_access_token_cannot_be_used_as_refresh_token(client: AsyncClient)
     )
     assert response.status_code == 401
     assert response.json()["code"] == "INVALID_REFRESH_TOKEN"
+
+
+@pytest.mark.asyncio
+async def test_permanent_api_token_authenticates_from_supported_headers(
+    client: AsyncClient,
+) -> None:
+    admin_login = await client.post(
+        "/api/v1/auth/login", json={"username": "admin", "password": "123456"}
+    )
+    users = await client.get(
+        "/api/v1/users",
+        headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
+    )
+    api_token = next(
+        item["api_token"] for item in users.json()["items"] if item["username"] == "warehouse"
+    )
+    parsed = UUID(api_token)
+    assert parsed.version == 4
+    assert str(parsed) == api_token
+    assert "api_token" not in admin_login.json()["user"]
+
+    for headers in (
+        {"X-API-Token": api_token},
+        {"Authorization": f"Bearer {api_token}"},
+    ):
+        response = await client.get("/api/v1/auth/me", headers=headers)
+        assert response.status_code == 200, response.text
+        assert response.json()["username"] == "warehouse"
+
+
+@pytest.mark.asyncio
+async def test_invalid_api_token_is_rejected(client: AsyncClient) -> None:
+    response = await client.get(
+        "/api/v1/auth/me",
+        headers={"X-API-Token": "00000000-0000-4000-8000-000000000000"},
+    )
+    assert response.status_code == 401
+    assert response.json()["code"] == "INVALID_TOKEN"

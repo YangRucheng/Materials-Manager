@@ -2,11 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.core.permissions import CurrentUser, DbSession, SuperAdmin
+from app.core.permissions import DbSession, SuperAdmin
 from app.schemas import (
     Page,
+    UserApiTokenRead,
+    UserApiTokenRegenerate,
     UserCreate,
-    UserRead,
     UserUpdate,
 )
 from app.services import dictionary_service
@@ -16,33 +17,49 @@ PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
 
 
-@router.get("/users", response_model=Page[UserRead])
+@router.get("/users", response_model=Page[UserApiTokenRead])
 async def users(
     session: DbSession,
-    user: CurrentUser,
+    user: SuperAdmin,
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: str | None = None,
-) -> Page[UserRead]:
+) -> Page[UserApiTokenRead]:
     items, total = await dictionary_service.list_users(session, keyword, page, page_size)
     return Page(
-        items=[UserRead.model_validate(x) for x in items],
+        items=[UserApiTokenRead.model_validate(x) for x in items],
         page=page,
         page_size=page_size,
         total=total,
     )
 
 
-@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def add_user(data: UserCreate, session: DbSession, user: SuperAdmin) -> UserRead:
-    return UserRead.model_validate(await dictionary_service.create_user(session, data))
+@router.post("/users", response_model=UserApiTokenRead, status_code=status.HTTP_201_CREATED)
+async def add_user(
+    data: UserCreate, session: DbSession, user: SuperAdmin
+) -> UserApiTokenRead:
+    return UserApiTokenRead.model_validate(await dictionary_service.create_user(session, data))
 
 
-@router.patch("/users/{item_id}", response_model=UserRead)
+@router.patch("/users/{item_id}", response_model=UserApiTokenRead)
 async def edit_user(
     item_id: int, data: UserUpdate, session: DbSession, user: SuperAdmin
-) -> UserRead:
-    return UserRead.model_validate(await dictionary_service.update_user(session, item_id, data))
+) -> UserApiTokenRead:
+    return UserApiTokenRead.model_validate(
+        await dictionary_service.update_user(session, item_id, data)
+    )
+
+
+@router.post("/users/{item_id}/api-token/regenerate", response_model=UserApiTokenRead)
+async def regenerate_user_api_token(
+    item_id: int,
+    data: UserApiTokenRegenerate,
+    session: DbSession,
+    user: SuperAdmin,
+) -> UserApiTokenRead:
+    return UserApiTokenRead.model_validate(
+        await dictionary_service.regenerate_user_api_token(session, item_id, data.version)
+    )
 
 
 @router.delete("/users/{item_id}", status_code=status.HTTP_204_NO_CONTENT)

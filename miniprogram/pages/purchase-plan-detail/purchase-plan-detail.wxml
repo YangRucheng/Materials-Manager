@@ -1,0 +1,58 @@
+<view class="page-shell plan-detail-page">
+  <view wx:if="{{loading}}" class="detail-state">
+    <t-loading theme="circular" size="48rpx" text="{{i18n.loadingPurchasePlanDetail}}" />
+  </view>
+  <view wx:elif="{{failed}}" class="detail-state failed-state">
+    <t-empty icon="error-circle" description="{{i18n.purchasePlanDetailFailed}}" />
+    <t-button theme="primary" variant="outline" size="small" bind:tap="retry">{{i18n.reload}}</t-button>
+  </view>
+  <block wx:elif="{{plan}}">
+    <view class="plan-summary">
+      <view class="summary-topline">
+        <view class="plan-no">{{plan.plan_no}}</view>
+        <t-tag theme="success" variant="light" size="small">{{i18n.normalPurchaseStatus}}</t-tag>
+      </view>
+      <view class="plan-name">{{plan.name}}</view>
+      <view class="plan-spec">{{plan.model_spec}}</view>
+      <view class="summary-footer">
+        <view><view class="summary-label">{{i18n.plannedQuantity}}</view><view class="quantity-value">{{plan.quantity_label}}</view></view>
+        <view class="date-block"><view class="summary-label">{{i18n.planDate}}</view><view class="date-value">{{plan.plan_date_label}}</view></view>
+      </view>
+    </view>
+
+    <view class="section-card detail-card">
+      <view class="section-heading"><view class="section-title">{{i18n.purchasePlanInfo}}</view></view>
+      <view class="section-divider"></view>
+      <view class="detail-list">
+        <view class="detail-row"><view class="detail-label">{{i18n.materialCode}}</view><view class="detail-value">{{plan.material_code_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.category}}</view><view class="detail-value">{{plan.category_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.urgency}}</view><view class="detail-value">{{plan.urgency}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.demandDepartment}}</view><view class="detail-value">{{plan.demand_department}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.actualDemandPerson}}</view><view class="detail-value">{{plan.actual_demand_person}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.purchaseResponsible}}</view><view class="detail-value">{{plan.purchase_responsible}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.subitemNo}}</view><view class="detail-value">{{plan.subitem_no_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.usage}}</view><view class="detail-value">{{plan.usage}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.remark}}</view><view class="detail-value">{{plan.remark_label}}</view></view>
+      </view>
+    </view>
+
+    <view class="section-card image-card">
+      <view class="section-heading">
+        <view class="section-title">{{i18n.imageAttachments}}</view>
+        <view class="image-count">{{plan.image_count_label}}</view>
+      </view>
+      <view class="section-divider"></view>
+      <view wx:if="{{plan.images.length}}" class="image-grid">
+        <view wx:for="{{plan.images}}" wx:key="id" class="image-item" data-index="{{index}}" bind:tap="previewImage">
+          <t-image src="{{item.preview_url}}" mode="aspectFill" shape="round" lazy width="100%" height="100%" />
+        </view>
+      </view>
+      <view wx:else class="no-image">{{i18n.noImages}}</view>
+    </view>
+
+    <t-button class="next-action" theme="primary" size="large" block disabled="{{!plan.next_id}}" bind:tap="loadNext">
+      {{plan.next_id ? i18n.nextPurchasePlan : i18n.lastPurchasePlan}}
+    </t-button>
+  </block>
+  <t-toast id="purchase-plan-detail-toast" />
+</view>

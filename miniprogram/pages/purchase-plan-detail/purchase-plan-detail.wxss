@@ -1,0 +1,35 @@
+.plan-detail-page { padding: 24rpx; padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); }
+.detail-state { display: flex; min-height: 72vh; align-items: center; justify-content: center; }
+.failed-state { flex-direction: column; gap: 24rpx; }
+
+.plan-summary {
+  margin-bottom: 18rpx;
+  padding: 28rpx;
+  border: 2rpx solid #dce5ff;
+  border-radius: 26rpx;
+  background: linear-gradient(145deg, #ffffff 0%, #edf2ff 100%);
+  box-shadow: 0 12rpx 32rpx rgba(63, 99, 216, 0.09);
+}
+
+.summary-topline, .summary-footer { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.plan-no { color: #3658c7; font-size: 23rpx; font-weight: 650; }
+.plan-name { margin-top: 22rpx; color: #172033; font-size: 34rpx; font-weight: 700; line-height: 1.4; }
+.plan-spec { margin-top: 8rpx; color: #687386; font-size: 25rpx; line-height: 1.5; word-break: break-all; }
+.summary-footer { align-items: flex-end; margin-top: 26rpx; padding-top: 20rpx; border-top: 2rpx solid #dce5ff; }
+.summary-label { color: #8a94a5; font-size: 21rpx; }
+.quantity-value { margin-top: 5rpx; color: #229b6b; font-size: 34rpx; font-weight: 700; }
+.date-block { text-align: right; }
+.date-value { margin-top: 8rpx; color: #4b5565; font-size: 25rpx; font-weight: 550; }
+.detail-card { margin-bottom: 18rpx; }
+.detail-card .section-heading, .image-card .section-heading { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 22rpx; }
+.detail-card .section-divider, .image-card .section-divider { margin: 0 22rpx; }
+.detail-list { padding: 4rpx 22rpx 10rpx; }
+.detail-row { display: flex; align-items: flex-start; gap: 20rpx; padding: 17rpx 0; border-bottom: 2rpx solid #edf0f5; }
+.detail-row:last-child { border-bottom: 0; }
+.detail-label { flex: none; width: 160rpx; color: #8a94a5; font-size: 23rpx; line-height: 1.5; }
+.detail-value { flex: 1; min-width: 0; color: #30394a; font-size: 24rpx; line-height: 1.5; text-align: right; word-break: break-all; }
+.image-count { color: #687386; font-size: 24rpx; }
+.image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; padding: 20rpx 22rpx; }
+.image-item { overflow: hidden; height: 192rpx; border-radius: 18rpx; background: #f4f6fa; }
+.no-image { padding: 32rpx 22rpx; color: #7d8798; font-size: 26rpx; text-align: center; }
+.next-action { margin-top: 20rpx; --td-button-primary-bg-color: #3f63d8; --td-button-primary-border-color: #3f63d8; --td-button-border-radius: 18rpx; }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { joinUrl, normalizeBaseUrl, resolveApiBaseUrl, resolveImageBaseUrl } from './env'
+import {
+  joinUrl,
+  normalizeBaseUrl,
+  resolveApiBaseUrl,
+  resolveImageBaseUrl,
+  resolveMcpUrl,
+} from './env'
 
 describe('构建环境配置', () => {
   it('清理地址末尾斜杠', () => {
@@ -30,5 +36,14 @@ describe('构建环境配置', () => {
     expect(resolveImageBaseUrl(undefined, 'https://api.example.com/api/v1')).toBe(
       'https://api.example.com/api/v1/files/images',
     )
+  })
+
+  it('生成带令牌的绝对 MCP 地址', () => {
+    expect(resolveMcpUrl('/api/v1', 'token-value', 'https://app.example.com')).toBe(
+      'https://app.example.com/api/v1/mcp/?token=token-value',
+    )
+    expect(
+      resolveMcpUrl('https://api.example.com/api/v1', 'a+b/c', 'https://app.example.com'),
+    ).toBe('https://api.example.com/api/v1/mcp/?token=a%2Bb%2Fc')
   })
 })

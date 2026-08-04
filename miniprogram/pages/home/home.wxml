@@ -20,6 +20,15 @@
       <t-icon name="chevron-right" size="36rpx" color="#6c83cf" />
     </view>
 
+    <view class="action-card purchase-card" hover-class="action-card-active" bind:tap="openPurchasePlans">
+      <view class="action-icon purchase-icon"><t-icon name="file-attachment" size="48rpx" /></view>
+      <view class="action-content">
+        <view class="action-title">{{i18n.purchasePlans}}</view>
+        <view class="action-description">{{i18n.purchasePlansDescription}}</view>
+      </view>
+      <t-icon name="chevron-right" size="36rpx" color="#229b6b" />
+    </view>
+
     <view class="section-card scan-card">
       <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
       <view class="scan-title">{{i18n.scanMaterialCode}}</view>

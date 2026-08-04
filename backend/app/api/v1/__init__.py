@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    agent_database,
     ai_search,
     auth,
     dictionaries,
@@ -26,7 +25,6 @@ router = APIRouter(
     }
 )
 router.include_router(auth.router)
-router.include_router(agent_database.router)
 router.include_router(ai_search.router)
 router.include_router(system_settings.router)
 router.include_router(stock_materials.router)

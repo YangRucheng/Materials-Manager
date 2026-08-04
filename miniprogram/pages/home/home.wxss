@@ -77,6 +77,15 @@
   color: #ffffff;
 }
 
+.purchase-card {
+  border-color: #d8eee6;
+  background: linear-gradient(135deg, #ffffff 0%, #eef8f4 100%);
+}
+
+.purchase-icon {
+  background: #229b6b;
+}
+
 .action-content {
   flex: 1;
   min-width: 0;

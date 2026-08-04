@@ -384,6 +384,7 @@ export const handlers = [
     const item = {
       id: nextIds.user++,
       username: body.username!,
+      api_token: crypto.randomUUID(),
       display_name: body.display_name!,
       role: body.role || 'READ_ONLY',
       enabled: body.enabled ?? true,
@@ -399,6 +400,12 @@ export const handlers = [
     if (body.username && users.some((x) => x.id !== item.id && x.username === body.username))
       return error(409, 'DUPLICATE_USERNAME', '用户名已存在')
     Object.assign(item, body, { version: item.version + 1 })
+    return HttpResponse.json(item)
+  }),
+  http.post(`${api}/users/:id/api-token/regenerate`, async ({ params }) => {
+    const item = users.find((x) => x.id === Number(params.id))
+    if (!item) return error(400, 'NOT_FOUND', '用户不存在')
+    Object.assign(item, { api_token: crypto.randomUUID(), version: item.version + 1 })
     return HttpResponse.json(item)
   }),
   http.delete(`${api}/users/:id`, ({ params, request }) => {

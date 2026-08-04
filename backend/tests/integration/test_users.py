@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 from httpx import AsyncClient
 
@@ -62,6 +64,46 @@ async def test_user_without_references_can_be_deleted(client: AsyncClient) -> No
     assert deleted.status_code == 204, deleted.text
     users = await client.get("/api/v1/users?page_size=200", headers=admin)
     assert user_id not in {item["id"] for item in users.json()["items"]}
+
+
+@pytest.mark.asyncio
+async def test_api_token_is_unique_and_can_be_regenerated(client: AsyncClient) -> None:
+    admin = await auth_headers(client, "admin")
+    created = await client.post(
+        "/api/v1/users",
+        headers=admin,
+        json={
+            "username": "api-user",
+            "password": "123456",
+            "display_name": "接口用户",
+            "role": "READ_ONLY",
+            "enabled": True,
+        },
+    )
+    assert created.status_code == 201, created.text
+    user = created.json()
+    old_token = user["api_token"]
+    assert UUID(old_token).version == 4
+
+    authenticated = await client.get(
+        "/api/v1/auth/me", headers={"X-API-Token": old_token}
+    )
+    assert authenticated.status_code == 200
+
+    regenerated = await client.post(
+        f"/api/v1/users/{user['id']}/api-token/regenerate",
+        headers=admin,
+        json={"version": user["version"]},
+    )
+    assert regenerated.status_code == 200, regenerated.text
+    new_token = regenerated.json()["api_token"]
+    assert UUID(new_token).version == 4
+    assert new_token != old_token
+
+    rejected = await client.get("/api/v1/auth/me", headers={"X-API-Token": old_token})
+    assert rejected.status_code == 401
+    accepted = await client.get("/api/v1/auth/me", headers={"X-API-Token": new_token})
+    assert accepted.status_code == 200
 
 
 @pytest.mark.asyncio
