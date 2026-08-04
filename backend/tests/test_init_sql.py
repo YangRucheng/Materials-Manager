@@ -89,6 +89,8 @@ def test_init_sql_seeds_required_accounts() -> None:
 
     for username in ("admin", "warehouse", "purchase", "readonly"):
         assert f"('{username}', '$argon2id$" in sql
+        assert f"@{username}_api_token" in sql
+    assert "RANDOM_BYTES" in sql
     assert "measurement_unit" not in sql
 
 

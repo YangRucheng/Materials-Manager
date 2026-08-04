@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(64) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
+  `api_token` VARCHAR(36) NOT NULL,
   `display_name` VARCHAR(128) NOT NULL,
   `role` ENUM('SUPER_ADMIN', 'WAREHOUSE_ADMIN', 'PURCHASE_ADMIN', 'READ_ONLY') NOT NULL,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
@@ -17,7 +18,8 @@ CREATE TABLE IF NOT EXISTS `user` (
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_user` PRIMARY KEY (`id`),
-  CONSTRAINT `uq_user_username` UNIQUE (`username`)
+  CONSTRAINT `uq_user_username` UNIQUE (`username`),
+  CONSTRAINT `uq_user_api_token` UNIQUE (`api_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `mini_program_user` (
@@ -336,12 +338,29 @@ CREATE TABLE IF NOT EXISTS `stock_operation_line` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- 首次登录账号，默认密码均为 123456。重复导入不会重置已有账号密码。
-INSERT INTO `user` (`username`, `password_hash`, `display_name`, `role`, `enabled`)
+SET @admin_api_token = LOWER(CONCAT(HEX(RANDOM_BYTES(4)), '-', HEX(RANDOM_BYTES(2)),
+  '-4', SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3), '-',
+  SUBSTRING('89ab', 1 + FLOOR(RAND() * 4), 1), SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3),
+  '-', HEX(RANDOM_BYTES(6))));
+SET @warehouse_api_token = LOWER(CONCAT(HEX(RANDOM_BYTES(4)), '-', HEX(RANDOM_BYTES(2)),
+  '-4', SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3), '-',
+  SUBSTRING('89ab', 1 + FLOOR(RAND() * 4), 1), SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3),
+  '-', HEX(RANDOM_BYTES(6))));
+SET @purchase_api_token = LOWER(CONCAT(HEX(RANDOM_BYTES(4)), '-', HEX(RANDOM_BYTES(2)),
+  '-4', SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3), '-',
+  SUBSTRING('89ab', 1 + FLOOR(RAND() * 4), 1), SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3),
+  '-', HEX(RANDOM_BYTES(6))));
+SET @readonly_api_token = LOWER(CONCAT(HEX(RANDOM_BYTES(4)), '-', HEX(RANDOM_BYTES(2)),
+  '-4', SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3), '-',
+  SUBSTRING('89ab', 1 + FLOOR(RAND() * 4), 1), SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3),
+  '-', HEX(RANDOM_BYTES(6))));
+
+INSERT INTO `user` (`username`, `password_hash`, `api_token`, `display_name`, `role`, `enabled`)
 VALUES
-  ('admin', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', '系统管理员', 'SUPER_ADMIN', 1),
-  ('warehouse', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', '仓库管理员', 'WAREHOUSE_ADMIN', 1),
-  ('purchase', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', '申购管理员', 'PURCHASE_ADMIN', 1),
-  ('readonly', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', '只读用户', 'READ_ONLY', 1)
+  ('admin', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @admin_api_token, '系统管理员', 'SUPER_ADMIN', 1),
+  ('warehouse', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @warehouse_api_token, '仓库管理员', 'WAREHOUSE_ADMIN', 1),
+  ('purchase', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @purchase_api_token, '申购管理员', 'PURCHASE_ADMIN', 1),
+  ('readonly', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @readonly_api_token, '只读用户', 'READ_ONLY', 1)
 ON DUPLICATE KEY UPDATE
   `display_name` = VALUES(`display_name`),
   `role` = VALUES(`role`),

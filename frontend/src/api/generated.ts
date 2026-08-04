@@ -32,6 +32,9 @@ export interface User {
   enabled: boolean
   version: number
 }
+export interface ManagedUser extends User {
+  api_token: string
+}
 export interface MiniProgramIdentity {
   id: number
   app_id: string

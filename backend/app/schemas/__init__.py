@@ -34,6 +34,12 @@ FileId = Annotated[
         pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     ),
 ]
+ApiToken = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    ),
+]
 
 
 def _ensure_unique_image_ids(value: list[str]) -> list[str]:
@@ -83,28 +89,6 @@ class ApiError(ReadModel):
     request_id: str
 
 
-class AgentDatabaseExecuteRequest(RequestModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
-
-    sql: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100000)]
-    parameters: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
-    max_rows: int = Field(default=1000, ge=1, le=5000)
-
-
-class AgentDatabaseExecuteRead(ReadModel):
-    statement_type: str
-    columns: list[str] = Field(default_factory=list)
-    rows: list[dict[str, object]] = Field(default_factory=list)
-    row_count: int
-    affected_rows: int | None = None
-    last_insert_id: str | int | None = None
-    truncated: bool = False
-
-
-class AgentDatabaseSchemaRead(ReadModel):
-    tables: list[dict[str, object]]
-
-
 class UserRead(ReadModel):
     id: int
     username: str
@@ -112,6 +96,10 @@ class UserRead(ReadModel):
     role: Role
     enabled: bool
     version: int
+
+
+class UserApiTokenRead(UserRead):
+    api_token: ApiToken
 
 
 class LoginRequest(RequestModel):
@@ -157,6 +145,10 @@ class UserUpdate(RequestModel):
     password: str | None = Field(default=None, min_length=6, max_length=128)
     role: Role | None = None
     enabled: bool | None = None
+    version: int
+
+
+class UserApiTokenRegenerate(RequestModel):
     version: int
 
 
@@ -612,6 +604,30 @@ class MiniProgramInventoryItemRead(ReadModel):
     unit_name: str
     current_qty: Decimal
     stock_status: MiniProgramStockStatus
+
+
+class MiniProgramPurchasePlanItemRead(ReadModel):
+    id: int
+    plan_no: str
+    plan_date: date
+    name: str
+    model_spec: str
+    unit_name: str
+    planned_qty: Decimal
+    actual_demand_person: str
+    purchase_responsible: str
+    urgency: str
+
+
+class MiniProgramPurchasePlanDetailRead(MiniProgramPurchasePlanItemRead):
+    material_code: str | None = None
+    category: str | None = None
+    demand_department: str
+    usage: str
+    subitem_no: str | None = None
+    remark: str | None = None
+    images: list[FileObjectRead] = Field(default_factory=list)
+    next_id: int | None = None
 
 
 class MiniProgramOutboundCreate(RequestModel):

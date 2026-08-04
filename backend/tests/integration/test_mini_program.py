@@ -712,6 +712,93 @@ async def test_mini_program_inventory_search_filters_pagination_and_detail(
 
 
 @pytest.mark.asyncio
+async def test_mini_program_purchase_plans_only_show_normal_items_with_images_and_next(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"purchase-plan-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    purchase_headers = await auth_headers(client, "purchase")
+    login = await client.post("/api/v1/mini-program/auth/wx-login", json={"code": "viewer"})
+    profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+        json={
+            "display_name": "申购计划查看人",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
+
+    source = io.BytesIO()
+    Image.new("RGB", (32, 24), "green").save(source, format="PNG")
+    uploaded = await client.post(
+        "/api/v1/files/images",
+        headers=purchase_headers,
+        files={"file": ("purchase-plan.png", source.getvalue(), "image/png")},
+    )
+    file_id = uploaded.json()["id"]
+
+    async def create_plan(name: str, image_ids: list[str] | None = None) -> dict[str, object]:
+        response = await client.post(
+            "/api/v1/purchase-materials",
+            headers=purchase_headers,
+            json={
+                "plan_date": "2026-08-04",
+                "category": "备品备件",
+                "name": name,
+                "model_spec": f"MODEL-{name}",
+                "unit_name": "个",
+                "actual_demand_person": "张三",
+                "purchase_responsible": "李工",
+                "planned_qty": "3",
+                "usage": "检修备用",
+                "subitem_no": "01-01",
+                "remark": "小程序查看测试",
+                "image_ids": image_ids or [],
+            },
+        )
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    older = await create_plan("正常计划一")
+    hidden = await create_plan("暂不申购计划")
+    newest = await create_plan("正常计划二", [file_id])
+    deferred = await client.patch(
+        "/api/v1/purchase-materials/batch",
+        headers=purchase_headers,
+        json={
+            "materials": [{"id": hidden["id"], "version": hidden["version"]}],
+            "status": "暂不申购",
+        },
+    )
+    assert deferred.status_code == 200, deferred.text
+
+    plans = await client.get("/api/v1/mini-program/purchase-plans", headers=mini_headers)
+    assert plans.status_code == 200, plans.text
+    assert [item["id"] for item in plans.json()["items"]] == [newest["id"], older["id"]]
+
+    detail = await client.get(
+        f"/api/v1/mini-program/purchase-plans/{newest['id']}", headers=mini_headers
+    )
+    assert detail.status_code == 200, detail.text
+    assert [image["id"] for image in detail.json()["images"]] == [file_id]
+    assert detail.json()["next_id"] == older["id"]
+
+    hidden_detail = await client.get(
+        f"/api/v1/mini-program/purchase-plans/{hidden['id']}", headers=mini_headers
+    )
+    assert hidden_detail.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_advanced_setting_can_close_new_mini_program_bindings(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

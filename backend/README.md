@@ -1,28 +1,36 @@
 # 电气车间备件管理系统后端
 
-## Agent 数据库接口
+## AI Agent / MCP 服务
 
-Agent 可使用超级管理员账号密码直接读取或修改当前业务数据库，无需先换取 JWT：
+每个管理端用户都有一个永不过期的 UUID v4 接口令牌。超级管理员可在“管理端用户”页面一键
+复制令牌或带令牌的 MCP 地址，也可重新生成令牌；重新生成后旧令牌立即失效。普通业务接口支持
+以下两种等价写法，接口权限与令牌所属用户的角色一致：
 
 ```text
-X-Agent-Username: admin
-X-Agent-Password: <超级管理员密码>
+X-API-Token: <接口令牌>
+Authorization: Bearer <接口令牌>
 ```
 
-- `GET /api/v1/agent/database/schema`：读取全库表、字段、主键和外键结构。
-- `POST /api/v1/agent/database/execute`：执行任意单条参数化 SQL，包括 `CREATE`、`ALTER`、`DROP`、`TRUNCATE`、授权语句及数据读写操作。
+MCP 使用 Streamable HTTP，服务地址格式为：
 
-请求示例：
-
-```json
-{
-  "sql": "SELECT * FROM stock_material WHERE id = :id",
-  "parameters": {"id": 1},
-  "max_rows": 1000
-}
+```text
+https://<服务域名>/api/v1/mcp/?token=<接口令牌>
 ```
 
-接口不接受分号或 SQL 注释，但不限制语句类型、数据库对象或目标表。该接口等同于直接使用应用数据库账号，能够造成不可逆的数据或结构变更；应严格保护超级管理员密码，并由数据库账号自身的权限控制最终可执行范围。生产环境必须使用 HTTPS，避免请求头密码在传输过程中泄露。
+支持自定义请求头的 MCP 客户端也可以把地址设为不含查询参数的 `/api/v1/mcp/`，并发送
+`X-API-Token` 或 `Authorization: Bearer <接口令牌>`。
+
+服务提供四个工具：
+
+- `system_whoami`：确认令牌对应的用户和角色。
+- `operations_list`：按标签或关键字查询可用业务操作。
+- `operation_describe`：读取某个操作的参数和响应契约。
+- `operation_call`：调用已登记的业务接口；文件上传和下载使用 Base64。
+
+MCP 不接受 SQL、数据库表名或任意 URL，只能按 OpenAPI 中登记的 `operationId` 调用管理端业务
+接口。每次调用仍经过原有的参数校验、角色权限、乐观锁、事务和审计逻辑；只读用户不能借助 MCP
+执行写操作。登录、令牌续期以及需要微信身份的小程序专用接口不会暴露给 MCP。MCP 地址本身包含
+永久令牌，应视为密码保存并仅通过 HTTPS 使用。
 
 ## 图片一致性与悬空文件
 
@@ -53,7 +61,12 @@ copy ..\example\template\*.json data\template\
 .venv/Scripts/uvicorn app.main:app --reload
 ```
 
-空数据库初始化通过 `../example/database/init.sql` 完成；`/health` 仅检查数据库连接。已有数据库的结构调整通过 Agent 超级管理员数据库接口执行。接口文档位于 `http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，初始密码均为 `123456`。
+空数据库初始化通过 `../example/database/init.sql` 完成；`/health` 仅检查数据库连接。已有数据库的
+结构调整必须通过版本化迁移脚本执行，不提供远程任意 SQL 接口。接口文档位于
+`http://localhost:8000/api/docs`。初始账号为 `admin`、`warehouse`、`purchase`、`readonly`，
+初始密码均为 `123456`。
+已有数据库启用接口令牌前需备份并执行
+`../example/database/migrations/20260804_add_user_api_token.sql`。
 
 ## 验证与契约
 

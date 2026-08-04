@@ -4,6 +4,8 @@
     "pages/outbound/outbound",
     "pages/inventory/inventory",
     "pages/material-detail/material-detail",
+    "pages/purchase-plans/purchase-plans",
+    "pages/purchase-plan-detail/purchase-plan-detail",
     "pages/bind/bind",
     "pages/registration-closed/registration-closed",
     "pages/disabled/disabled"
