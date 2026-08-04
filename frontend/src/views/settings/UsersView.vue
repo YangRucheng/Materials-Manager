@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NButton, NTag, useDialog, useMessage } from 'naive-ui'
-import type { Role, User } from '@/api/generated'
+import type { ManagedUser, Role } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
 import {
   getTableScrollX,
@@ -9,13 +9,17 @@ import {
   tableColumnWidths,
 } from '@/constants/table'
 import { roleLabels } from '@/types/navigation'
+import { apiBaseUrl, resolveMcpUrl } from '@/config/env'
 
 const message = useMessage()
 const dialog = useDialog()
-const items = ref<User[]>([])
+const items = ref<ManagedUser[]>([])
 const loading = ref(false)
 const show = ref(false)
-const editing = ref<User | null>(null)
+const editing = ref<ManagedUser | null>(null)
+const mcpUrl = computed(() =>
+  editing.value ? resolveMcpUrl(apiBaseUrl, editing.value.api_token) : '',
+)
 const form = reactive({
   username: '',
   display_name: '',
@@ -24,7 +28,7 @@ const form = reactive({
   password: '',
   version: 0,
 })
-const columns = preventTableColumnCompression<User>([
+const columns = preventTableColumnCompression<ManagedUser>([
   { title: '用户名', key: 'username', width: tableColumnWidths.identifier },
   { title: '显示名称', key: 'display_name', width: tableColumnWidths.name },
   {
@@ -68,7 +72,7 @@ async function load() {
     loading.value = false
   }
 }
-function open(row?: User) {
+function open(row?: ManagedUser) {
   editing.value = row || null
   Object.assign(
     form,
@@ -117,7 +121,51 @@ async function save() {
     message.error(e instanceof Error ? e.message : '保存失败')
   }
 }
-function remove(row: User) {
+async function copyApiToken() {
+  if (!editing.value) return
+  try {
+    await navigator.clipboard.writeText(editing.value.api_token)
+    message.success('接口令牌已复制')
+  } catch {
+    message.error('复制失败，请手动选择令牌')
+  }
+}
+async function copyMcpUrl() {
+  if (!mcpUrl.value) return
+  try {
+    await navigator.clipboard.writeText(mcpUrl.value)
+    message.success('MCP 地址已复制')
+  } catch {
+    message.error('复制失败，请手动选择地址')
+  }
+}
+function regenerateApiToken() {
+  if (!editing.value) return
+  dialog.warning({
+    draggable: true,
+    title: '重新生成接口令牌',
+    content: `重新生成后，“${editing.value.username}”的旧令牌将立即失效。`,
+    positiveText: '重新生成',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const updated = await dictionaryApi.regenerateUserApiToken(
+          editing.value!.id,
+          editing.value!.version,
+        )
+        editing.value = updated
+        form.version = updated.version
+        const index = items.value.findIndex((item) => item.id === updated.id)
+        if (index >= 0) items.value[index] = updated
+        message.success('接口令牌已重新生成')
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '重新生成失败')
+        return false
+      }
+    },
+  })
+}
+function remove(row: ManagedUser) {
   dialog.warning({
     draggable: true,
     title: '删除用户',
@@ -154,13 +202,13 @@ onMounted(load)
         :data="items"
         :loading="loading"
         :scroll-x="tableScrollX"
-        :row-key="(r: User) => r.id" /></n-card
+        :row-key="(r: ManagedUser) => r.id" /></n-card
     ><n-modal
       v-model:show="show"
       preset="card"
       draggable
       :title="editing ? '编辑管理端用户' : '新建管理端用户'"
-      style="width: 520px"
+      style="width: min(620px, calc(100vw - 32px))"
       ><n-form label-placement="top"
         ><n-form-item label="用户名" required><n-input v-model:value="form.username" /></n-form-item
         ><n-form-item label="显示名称" required
@@ -178,6 +226,17 @@ onMounted(load)
             v-model:value="form.password"
             type="password"
             show-password-on="click" /></n-form-item
+        ><n-form-item v-if="editing" label="接口令牌"
+          ><n-input-group>
+            <n-input :value="editing.api_token" readonly />
+            <n-button @click="copyApiToken">复制令牌</n-button>
+            <n-button @click="regenerateApiToken">重新生成</n-button>
+          </n-input-group></n-form-item
+        ><n-form-item v-if="editing" label="MCP 地址"
+          ><n-input-group>
+            <n-input :value="mcpUrl" readonly />
+            <n-button type="primary" secondary @click="copyMcpUrl">复制地址</n-button>
+          </n-input-group></n-form-item
         ><n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item></n-form
       ><template #footer
         ><n-space justify="end"

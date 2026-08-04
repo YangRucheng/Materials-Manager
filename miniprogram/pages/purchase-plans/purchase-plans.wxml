@@ -1,0 +1,56 @@
+<view class="page-shell purchase-plans-page">
+  <view class="list-header"><view class="page-title">{{i18n.purchasePlansTitle}}</view></view>
+  <view class="list-tools">
+    <t-search
+      value="{{keyword}}"
+      placeholder="{{i18n.purchasePlanSearchPlaceholder}}"
+      shape="round"
+      confirm-type="search"
+      bind:change="onSearchChange"
+    />
+  </view>
+  <view wx:if="{{!loading || items.length}}" class="result-count">{{resultCount}}</view>
+  <view wx:if="{{loading && !items.length}}" class="state-panel">
+    <t-loading theme="circular" size="48rpx" text="{{i18n.loadingPurchasePlans}}" />
+  </view>
+  <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
+    <t-empty icon="file" description="{{i18n.purchasePlansEmpty}}" />
+  </view>
+  <view wx:else class="plan-list">
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="plan-card"
+      hover-class="plan-card-active"
+      data-id="{{item.id}}"
+      bind:tap="openDetail"
+    >
+      <view class="card-topline">
+        <view class="plan-no">{{item.plan_no}}</view>
+        <view class="plan-date">{{item.plan_date_label}}</view>
+      </view>
+      <view class="card-heading">
+        <view class="material-name">{{item.name}}</view>
+        <t-tag theme="{{item.urgency_theme}}" variant="light" size="small">{{item.urgency}}</t-tag>
+      </view>
+      <view class="material-spec">{{item.model_spec}}</view>
+      <view class="card-divider"></view>
+      <view class="plan-meta">
+        <view class="meta-item">
+          <view class="meta-label">{{i18n.plannedQuantity}}</view>
+          <view class="quantity-value">{{item.quantity_label}}</view>
+        </view>
+        <view class="meta-item responsible-item">
+          <view class="meta-label">{{i18n.purchaseResponsible}}</view>
+          <view class="meta-value">{{item.purchase_responsible}}</view>
+        </view>
+        <t-icon name="chevron-right" size="36rpx" color="#a1a9b7" />
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{loadingMore}}" class="load-more">
+    <t-loading theme="circular" size="36rpx" text="{{i18n.loadMore}}" />
+  </view>
+  <view wx:elif="{{items.length && !hasMore}}" class="load-finished">{{i18n.noMore}}</view>
+  <t-toast id="purchase-plans-toast" />
+</view>

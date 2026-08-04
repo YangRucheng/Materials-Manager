@@ -65,6 +65,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_token: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, default=lambda: str(uuid4())
+    )
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     role: Mapped[Role] = mapped_column(SAEnum(Role), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")

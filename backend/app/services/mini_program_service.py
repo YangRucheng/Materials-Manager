@@ -19,12 +19,14 @@ from app.domain.enums import (
     MiniProgramCodeEnv,
     MiniProgramStockStatus,
     OperationType,
+    PurchasePlanStatus,
     SourceType,
     WebhookEventType,
 )
 from app.models import (
     MiniProgramIdentity,
     MiniProgramUser,
+    PurchaseMaterial,
     StockBalance,
     StockMaterial,
     StockOperation,
@@ -35,6 +37,8 @@ from app.schemas import (
     MiniProgramMaterialRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
+    MiniProgramPurchasePlanDetailRead,
+    MiniProgramPurchasePlanItemRead,
     MiniProgramUserMergeRequest,
     MiniProgramUserUpdate,
     OperationCreate,
@@ -77,6 +81,79 @@ async def list_users(
         ).all()
     )
     return items, total
+
+
+async def list_purchase_plans(
+    session: AsyncSession,
+    keyword: str | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[PurchaseMaterial], int]:
+    query = select(PurchaseMaterial).where(
+        PurchaseMaterial.status == PurchasePlanStatus.NORMAL
+    )
+    keyword_condition = contains_any(
+        (
+            PurchaseMaterial.plan_no,
+            PurchaseMaterial.name,
+            PurchaseMaterial.model_spec,
+            PurchaseMaterial.material_code,
+            PurchaseMaterial.actual_demand_person,
+            PurchaseMaterial.purchase_responsible,
+            PurchaseMaterial.subitem_no,
+        ),
+        keyword,
+    )
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
+    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
+    items = list(
+        (
+            await session.scalars(
+                query.order_by(PurchaseMaterial.id.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+    )
+    return items, total
+
+
+def purchase_plan_item_read(item: PurchaseMaterial) -> MiniProgramPurchasePlanItemRead:
+    return MiniProgramPurchasePlanItemRead.model_validate(item)
+
+
+async def purchase_plan_detail(
+    session: AsyncSession, material_id: int
+) -> MiniProgramPurchasePlanDetailRead:
+    item = await session.scalar(
+        select(PurchaseMaterial).where(
+            PurchaseMaterial.id == material_id,
+            PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
+        )
+    )
+    if item is None:
+        raise not_found("申购计划")
+    next_id = await session.scalar(
+        select(PurchaseMaterial.id)
+        .where(
+            PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
+            PurchaseMaterial.id < item.id,
+        )
+        .order_by(PurchaseMaterial.id.desc())
+        .limit(1)
+    )
+    return MiniProgramPurchasePlanDetailRead(
+        **MiniProgramPurchasePlanItemRead.model_validate(item).model_dump(),
+        material_code=item.material_code,
+        category=item.category,
+        demand_department=item.demand_department,
+        usage=item.usage,
+        subitem_no=item.subitem_no,
+        remark=item.remark,
+        images=[file_read(link.file) for link in item.images],
+        next_id=next_id,
+    )
 
 
 async def update_user(

@@ -51,6 +51,10 @@ Page({
     wx.navigateTo({ url: '/pages/inventory/inventory' });
   },
 
+  openPurchasePlans() {
+    wx.navigateTo({ url: '/pages/purchase-plans/purchase-plans' });
+  },
+
   showUserProfile() {
     this.setData({ userProfileVisible: true });
   },

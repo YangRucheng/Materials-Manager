@@ -146,132 +146,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
-  /api/v1/agent/database/schema:
-    get:
-      tags:
-      - Agent 数据库
-      summary: Database Schema
-      operationId: database_schema_api_v1_agent_database_schema_get
-      parameters:
-      - name: X-Agent-Username
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Agent-Username
-      - name: X-Agent-Password
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Agent-Password
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentDatabaseSchemaRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /api/v1/agent/database/execute:
-    post:
-      tags:
-      - Agent 数据库
-      summary: Execute Database Sql
-      operationId: execute_database_sql_api_v1_agent_database_execute_post
-      parameters:
-      - name: X-Agent-Username
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Agent-Username
-      - name: X-Agent-Password
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Agent-Password
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AgentDatabaseExecuteRequest'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentDatabaseExecuteRead'
-        '400':
-          description: 业务校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: 未认证或凭证无效
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: 权限不足
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: 版本、状态或业务数据冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: 请求参数校验失败
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+      - APIKeyHeader: []
   /api/v1/ai-search/expand:
     post:
       tags:
@@ -323,6 +198,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/ai-search/status:
     get:
       tags:
@@ -368,6 +244,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/ai-search/settings:
     get:
       tags:
@@ -413,6 +290,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
     put:
       tags:
       - AI 搜索
@@ -463,6 +341,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/ai-search/settings/test:
     post:
       tags:
@@ -514,6 +393,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/system-settings/image-acceleration:
     get:
       tags:
@@ -605,6 +485,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/system-settings/webhooks/{platform}:
     put:
       tags:
@@ -613,6 +494,7 @@ paths:
       operationId: update_webhook_channel_api_v1_system_settings_webhooks__platform__put
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: platform
         in: path
@@ -670,6 +552,7 @@ paths:
       operationId: test_webhook_channel_api_v1_system_settings_webhooks__platform__test_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: platform
         in: path
@@ -727,6 +610,7 @@ paths:
       operationId: list_materials_api_v1_stock_materials_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -797,6 +681,7 @@ paths:
       operationId: create_material_api_v1_stock_materials_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       requestBody:
         required: true
         content:
@@ -848,6 +733,7 @@ paths:
       operationId: material_detail_api_v1_stock_materials__material_id__get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -899,6 +785,7 @@ paths:
       operationId: update_material_api_v1_stock_materials__material_id__patch
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -956,6 +843,7 @@ paths:
       operationId: delete_material_api_v1_stock_materials__material_id__delete
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -1010,6 +898,7 @@ paths:
       operationId: material_mini_program_code_api_v1_stock_materials_mini_program_codes__material_uuid__get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_uuid
         in: path
@@ -1074,6 +963,7 @@ paths:
       operationId: material_mini_program_code_redirect_api_v1_stock_materials__material_id__mini_program_code_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -1122,6 +1012,7 @@ paths:
       operationId: save_policy_api_v1_stock_materials__material_id__replenishment_policy_put
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -1217,6 +1108,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/inventory/balances:
     get:
       tags:
@@ -1225,6 +1117,7 @@ paths:
       operationId: balances_api_v1_inventory_balances_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -1323,6 +1216,7 @@ paths:
       operationId: low_stock_api_v1_inventory_low_stock_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -1394,6 +1288,7 @@ paths:
       operationId: balance_detail_api_v1_inventory_balances__material_id__get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -1489,6 +1384,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/inventory/outbounds:
     post:
       tags:
@@ -1540,6 +1436,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/inventory/operations:
     get:
       tags:
@@ -1548,6 +1445,7 @@ paths:
       operationId: operations_api_v1_inventory_operations_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -1659,6 +1557,7 @@ paths:
       operationId: operation_detail_api_v1_inventory_operations__operation_id__get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: operation_id
         in: path
@@ -1710,6 +1609,7 @@ paths:
       operationId: edit_operation_api_v1_inventory_operations__operation_id__patch
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: operation_id
         in: path
@@ -1768,6 +1668,7 @@ paths:
       operationId: reverse_operation_api_v1_inventory_operations__operation_id__reverse_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: operation_id
         in: path
@@ -1826,6 +1727,7 @@ paths:
       operationId: replenish_api_v1_inventory_low_stock__material_id__create_replenishment_draft_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -1921,6 +1823,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/material-code-library:
     get:
       tags:
@@ -1929,6 +1832,7 @@ paths:
       operationId: list_material_codes_api_v1_material_code_library_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -2071,6 +1975,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/mini-program-users:
     get:
       tags:
@@ -2079,6 +1984,7 @@ paths:
       operationId: list_mini_program_users_api_v1_mini_program_users_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -2151,6 +2057,7 @@ paths:
       operationId: update_mini_program_user_api_v1_mini_program_users__user_id__patch
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: user_id
         in: path
@@ -2208,6 +2115,7 @@ paths:
       operationId: delete_mini_program_user_api_v1_mini_program_users__user_id__delete
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: user_id
         in: path
@@ -2262,6 +2170,7 @@ paths:
       operationId: merge_mini_program_users_api_v1_mini_program_users__target_user_id__merge_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: target_user_id
         in: path
@@ -2315,7 +2224,7 @@ paths:
   /api/v1/mini-program/auth/wx-login:
     post:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Mini Program Wechat Login
       operationId: mini_program_wechat_login_api_v1_mini_program_auth_wx_login_post
       requestBody:
@@ -2364,7 +2273,7 @@ paths:
   /api/v1/mini-program/me:
     get:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Mini Program Me
       operationId: mini_program_me_api_v1_mini_program_me_get
       responses:
@@ -2409,7 +2318,7 @@ paths:
   /api/v1/mini-program/profile:
     post:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Create Mini Program Profile
       operationId: create_mini_program_profile_api_v1_mini_program_profile_post
       requestBody:
@@ -2460,7 +2369,7 @@ paths:
   /api/v1/mini-program/materials/{material_uuid}:
     get:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Scan Material
       operationId: scan_material_api_v1_mini_program_materials__material_uuid__get
       security:
@@ -2521,7 +2430,7 @@ paths:
   /api/v1/mini-program/inventory:
     get:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Mini Program Inventory
       operationId: mini_program_inventory_api_v1_mini_program_inventory_get
       security:
@@ -2606,10 +2515,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/purchase-plans:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Purchase Plans
+      operationId: mini_program_purchase_plans_api_v1_mini_program_purchase_plans_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Keyword
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_MiniProgramPurchasePlanItemRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/purchase-plans/{material_id}:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Purchase Plan Detail
+      operationId: mini_program_purchase_plan_detail_api_v1_mini_program_purchase_plans__material_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: material_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Material Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramPurchasePlanDetailRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program/outbound:
     post:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Mini Program Outbound
       operationId: mini_program_outbound_api_v1_mini_program_outbound_post
       requestBody:
@@ -2660,7 +2693,7 @@ paths:
   /api/v1/mini-program/outbound-reasons:
     get:
       tags:
-      - 小程序扫码出库
+      - 小程序
       summary: Mini Program Outbound Reasons
       operationId: mini_program_outbound_reasons_api_v1_mini_program_outbound_reasons_get
       responses:
@@ -2710,6 +2743,7 @@ paths:
       operationId: list_materials_api_v1_purchase_materials_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -2922,6 +2956,7 @@ paths:
       operationId: create_material_api_v1_purchase_materials_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       requestBody:
         required: true
         content:
@@ -2973,6 +3008,7 @@ paths:
       operationId: filter_options_api_v1_purchase_materials_filter_options_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: moved
         in: query
@@ -3069,6 +3105,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-materials/export-uncoded:
     get:
       tags:
@@ -3077,6 +3114,7 @@ paths:
       operationId: export_uncoded_materials_api_v1_purchase_materials_export_uncoded_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: keyword
         in: query
@@ -3172,6 +3210,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-materials/batch-move-to-record:
     post:
       tags:
@@ -3227,6 +3266,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-materials/batch:
     patch:
       tags:
@@ -3282,6 +3322,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-materials/{material_id}:
     get:
       tags:
@@ -3290,6 +3331,7 @@ paths:
       operationId: material_detail_api_v1_purchase_materials__material_id__get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -3341,6 +3383,7 @@ paths:
       operationId: update_material_api_v1_purchase_materials__material_id__patch
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -3398,6 +3441,7 @@ paths:
       operationId: delete_material_api_v1_purchase_materials__material_id__delete
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -3452,6 +3496,7 @@ paths:
       operationId: link_stock_material_api_v1_purchase_materials__material_id__link_stock_material_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -3510,6 +3555,7 @@ paths:
       operationId: move_to_record_api_v1_purchase_materials__material_id__move_to_record_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: material_id
         in: path
@@ -3568,6 +3614,7 @@ paths:
       operationId: purchase_records_api_v1_purchase_records_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -3829,6 +3876,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-records/export-results:
     post:
       tags:
@@ -3879,6 +3927,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-records/batch:
     patch:
       tags:
@@ -3934,6 +3983,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-records/{line_id}:
     get:
       tags:
@@ -3942,6 +3992,7 @@ paths:
       operationId: purchase_record_api_v1_purchase_records__line_id__get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: line_id
         in: path
@@ -3993,6 +4044,7 @@ paths:
       operationId: edit_purchase_record_api_v1_purchase_records__line_id__patch
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: line_id
         in: path
@@ -4051,6 +4103,7 @@ paths:
       operationId: restore_purchase_record_to_plan_api_v1_purchase_records__line_id__restore_to_plan_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: line_id
         in: path
@@ -4110,6 +4163,7 @@ paths:
       operationId: users_api_v1_users_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: page
         in: query
@@ -4142,7 +4196,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Page_UserRead_'
+                $ref: '#/components/schemas/Page_UserApiTokenRead_'
         '400':
           description: 业务校验失败
           content:
@@ -4180,6 +4234,7 @@ paths:
       operationId: add_user_api_v1_users_post
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       requestBody:
         required: true
         content:
@@ -4192,7 +4247,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserRead'
+                $ref: '#/components/schemas/UserApiTokenRead'
         '400':
           description: 业务校验失败
           content:
@@ -4231,6 +4286,7 @@ paths:
       operationId: edit_user_api_v1_users__item_id__patch
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: item_id
         in: path
@@ -4250,7 +4306,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserRead'
+                $ref: '#/components/schemas/UserApiTokenRead'
         '400':
           description: 业务校验失败
           content:
@@ -4288,6 +4344,7 @@ paths:
       operationId: remove_user_api_v1_users__item_id__delete
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: item_id
         in: path
@@ -4298,6 +4355,65 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/users/{item_id}/api-token/regenerate:
+    post:
+      tags:
+      - 基础数据
+      summary: Regenerate User Api Token
+      operationId: regenerate_user_api_token_api_v1_users__item_id__api_token_regenerate_post
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Item Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserApiTokenRegenerate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserApiTokenRead'
         '400':
           description: 业务校验失败
           content:
@@ -4379,6 +4495,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/files/images/orphans:
     get:
       tags:
@@ -4387,6 +4504,7 @@ paths:
       operationId: orphan_report_api_v1_files_images_orphans_get
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: older_than_hours
         in: query
@@ -4441,6 +4559,7 @@ paths:
       operationId: remove_orphans_api_v1_files_images_orphans_delete
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: older_than_hours
         in: query
@@ -4555,6 +4674,7 @@ paths:
       operationId: remove_api_v1_files_images__file_id__delete
       security:
       - HTTPBearer: []
+      - APIKeyHeader: []
       parameters:
       - name: file_id
         in: path
@@ -4598,85 +4718,6 @@ paths:
                 $ref: '#/components/schemas/ApiError'
 components:
   schemas:
-    AgentDatabaseExecuteRead:
-      properties:
-        statement_type:
-          type: string
-          title: Statement Type
-        columns:
-          items:
-            type: string
-          type: array
-          title: Columns
-        rows:
-          items:
-            additionalProperties: true
-            type: object
-          type: array
-          title: Rows
-        row_count:
-          type: integer
-          title: Row Count
-        affected_rows:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Affected Rows
-        last_insert_id:
-          anyOf:
-          - type: string
-          - type: integer
-          - type: 'null'
-          title: Last Insert Id
-        truncated:
-          type: boolean
-          title: Truncated
-          default: false
-      type: object
-      required:
-      - statement_type
-      - row_count
-      title: AgentDatabaseExecuteRead
-    AgentDatabaseExecuteRequest:
-      properties:
-        sql:
-          type: string
-          maxLength: 100000
-          minLength: 1
-          title: Sql
-        parameters:
-          additionalProperties:
-            anyOf:
-            - type: string
-            - type: integer
-            - type: number
-            - type: boolean
-            - type: 'null'
-          type: object
-          title: Parameters
-        max_rows:
-          type: integer
-          maximum: 5000.0
-          minimum: 1.0
-          title: Max Rows
-          default: 1000
-      additionalProperties: false
-      type: object
-      required:
-      - sql
-      title: AgentDatabaseExecuteRequest
-    AgentDatabaseSchemaRead:
-      properties:
-        tables:
-          items:
-            additionalProperties: true
-            type: object
-          type: array
-          title: Tables
-      type: object
-      required:
-      - tables
-      title: AgentDatabaseSchemaRead
     AiSearchExpandRead:
       properties:
         original:
@@ -5645,6 +5686,138 @@ components:
       - display_name
       - department_name
       title: MiniProgramProfileUpdate
+    MiniProgramPurchasePlanDetailRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        plan_no:
+          type: string
+          title: Plan No
+        plan_date:
+          type: string
+          format: date
+          title: Plan Date
+        name:
+          type: string
+          title: Name
+        model_spec:
+          type: string
+          title: Model Spec
+        unit_name:
+          type: string
+          title: Unit Name
+        planned_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Planned Qty
+        actual_demand_person:
+          type: string
+          title: Actual Demand Person
+        purchase_responsible:
+          type: string
+          title: Purchase Responsible
+        urgency:
+          type: string
+          title: Urgency
+        material_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Material Code
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+        demand_department:
+          type: string
+          title: Demand Department
+        usage:
+          type: string
+          title: Usage
+        subitem_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No
+        remark:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Remark
+        images:
+          items:
+            $ref: '#/components/schemas/FileObjectRead'
+          type: array
+          title: Images
+        next_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Next Id
+      type: object
+      required:
+      - id
+      - plan_no
+      - plan_date
+      - name
+      - model_spec
+      - unit_name
+      - planned_qty
+      - actual_demand_person
+      - purchase_responsible
+      - urgency
+      - demand_department
+      - usage
+      title: MiniProgramPurchasePlanDetailRead
+    MiniProgramPurchasePlanItemRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        plan_no:
+          type: string
+          title: Plan No
+        plan_date:
+          type: string
+          format: date
+          title: Plan Date
+        name:
+          type: string
+          title: Name
+        model_spec:
+          type: string
+          title: Model Spec
+        unit_name:
+          type: string
+          title: Unit Name
+        planned_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Planned Qty
+        actual_demand_person:
+          type: string
+          title: Actual Demand Person
+        purchase_responsible:
+          type: string
+          title: Purchase Responsible
+        urgency:
+          type: string
+          title: Urgency
+      type: object
+      required:
+      - id
+      - plan_no
+      - plan_date
+      - name
+      - model_spec
+      - unit_name
+      - planned_qty
+      - actual_demand_person
+      - purchase_responsible
+      - urgency
+      title: MiniProgramPurchasePlanItemRead
     MiniProgramStockStatus:
       type: string
       enum:
@@ -6111,6 +6284,29 @@ components:
       - page_size
       - total
       title: Page[MiniProgramInventoryItemRead]
+    Page_MiniProgramPurchasePlanItemRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MiniProgramPurchasePlanItemRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[MiniProgramPurchasePlanItemRead]
     Page_MiniProgramUserRead_:
       properties:
         items:
@@ -6226,11 +6422,11 @@ components:
       - page_size
       - total
       title: Page[StockOperationRead]
-    Page_UserRead_:
+    Page_UserApiTokenRead_:
       properties:
         items:
           items:
-            $ref: '#/components/schemas/UserRead'
+            $ref: '#/components/schemas/UserApiTokenRead'
           type: array
           title: Items
         page:
@@ -6248,7 +6444,7 @@ components:
       - page
       - page_size
       - total
-      title: Page[UserRead]
+      title: Page[UserApiTokenRead]
     PurchaseFilterOptions:
       properties:
         actual_demand_persons:
@@ -7659,6 +7855,49 @@ components:
       - access_token
       - refresh_token
       title: TokenPairResponse
+    UserApiTokenRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        username:
+          type: string
+          title: Username
+        display_name:
+          type: string
+          title: Display Name
+        role:
+          $ref: '#/components/schemas/Role'
+        enabled:
+          type: boolean
+          title: Enabled
+        version:
+          type: integer
+          title: Version
+        api_token:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          title: Api Token
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      - role
+      - enabled
+      - version
+      - api_token
+      title: UserApiTokenRead
+    UserApiTokenRegenerate:
+      properties:
+        version:
+          type: integer
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - version
+      title: UserApiTokenRegenerate
     UserCreate:
       properties:
         username:
@@ -7882,3 +8121,7 @@ components:
     HTTPBearer:
       type: http
       scheme: bearer
+    APIKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Token

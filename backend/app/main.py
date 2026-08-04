@@ -32,6 +32,7 @@ from app.core.database import engine
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware
+from app.mcp_server import bind_application, mcp_http_app
 from app.services import ai_search_service, webhook_service
 
 logger = logging.getLogger("spare_parts.api")
@@ -254,3 +255,5 @@ async def health(request: Request) -> JSONResponse:
 
 app.add_middleware(RealIPMiddleware)
 app.include_router(api_router, prefix="/api/v1")
+bind_application(app)
+app.mount("/api/v1/mcp", mcp_http_app, name="mcp")

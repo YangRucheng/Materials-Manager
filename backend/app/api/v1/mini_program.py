@@ -22,6 +22,8 @@ from app.schemas import (
     MiniProgramOutboundRead,
     MiniProgramOutboundReasonOptions,
     MiniProgramProfileUpdate,
+    MiniProgramPurchasePlanDetailRead,
+    MiniProgramPurchasePlanItemRead,
     MiniProgramUserMergeRequest,
     MiniProgramUserRead,
     MiniProgramUserUpdate,
@@ -31,7 +33,7 @@ from app.schemas import (
 from app.services import mini_program_service
 
 management_router = APIRouter(prefix="/mini-program-users", tags=["小程序用户管理"])
-mini_router = APIRouter(prefix="/mini-program", tags=["小程序扫码出库"])
+mini_router = APIRouter(prefix="/mini-program", tags=["小程序"])
 PageNo = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=200)]
 AcceptLanguage = Annotated[str | None, Header(alias="Accept-Language")]
@@ -166,6 +168,36 @@ async def mini_program_inventory(
         page_size=page_size,
         total=total,
     )
+
+
+@mini_router.get("/purchase-plans", response_model=Page[MiniProgramPurchasePlanItemRead])
+async def mini_program_purchase_plans(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    keyword: Annotated[str | None, Query(max_length=255)] = None,
+) -> Page[MiniProgramPurchasePlanItemRead]:
+    items, total = await mini_program_service.list_purchase_plans(
+        session, keyword, page, page_size
+    )
+    return Page(
+        items=[mini_program_service.purchase_plan_item_read(item) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@mini_router.get(
+    "/purchase-plans/{material_id}", response_model=MiniProgramPurchasePlanDetailRead
+)
+async def mini_program_purchase_plan_detail(
+    material_id: int,
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> MiniProgramPurchasePlanDetailRead:
+    return await mini_program_service.purchase_plan_detail(session, material_id)
 
 
 @mini_router.post(
