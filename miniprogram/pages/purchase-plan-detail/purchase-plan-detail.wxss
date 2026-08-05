@@ -32,4 +32,4 @@
 .image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; padding: 20rpx 22rpx; }
 .image-item { overflow: hidden; height: 192rpx; border-radius: 18rpx; background: #f4f6fa; }
 .no-image { padding: 32rpx 22rpx; color: #7d8798; font-size: 26rpx; text-align: center; }
-.next-action { margin-top: 20rpx; --td-button-primary-bg-color: #3f63d8; --td-button-primary-border-color: #3f63d8; --td-button-border-radius: 18rpx; }
+.next-action { margin-top: 20rpx; --td-button-primary-bg-color: #3f63d8; --td-button-primary-border-color: #3f63d8; --td-button-primary-active-bg-color: #3151bd; --td-button-primary-active-border-color: #3151bd; --td-button-border-radius: 18rpx; box-shadow: 0 12rpx 28rpx rgba(63, 99, 216, 0.2); }
