@@ -385,7 +385,7 @@ async def test_stock_material_delete_requires_no_operation_records(client: Async
     )
     assert deleted.status_code == 204, deleted.text
     missing = await client.get(f"/api/v1/stock-materials/{deletable_id}", headers=headers)
-    assert missing.status_code == 400
+    assert missing.status_code == 404
     assert missing.json()["code"] == "NOT_FOUND"
 
     protected_id = await create_stock(client, headers, "有操作记录物资")
