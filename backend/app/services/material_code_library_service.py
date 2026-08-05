@@ -44,6 +44,11 @@ def parse_material_code_workbook(content: bytes) -> list[dict[str, str | None]]:
         workbook = load_workbook(BytesIO(content), read_only=True, data_only=True)
     except (BadZipFile, InvalidFileException, OSError, ValueError) as exc:
         raise AppError("INVALID_EXCEL_FILE", "无法读取 Excel 文件，请确认文件格式正确") from exc
+    except Exception as exc:
+        raise AppError(
+            "INVALID_EXCEL_FILE",
+            "读取 Excel 文件时发生未知错误，请确认文件未被损坏",
+        ) from exc
 
     try:
         worksheet = workbook.active
