@@ -4,6 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
+from app.mcp_server import mcp
 from app.models import User
 
 MCP_HEADERS = {
@@ -46,11 +47,15 @@ async def test_mcp_streamable_http_lists_safe_tools_with_user_token(
         token = await session.scalar(select(User.api_token).where(User.username == "admin"))
     assert token
 
-    response = await client.post(
-        "/api/v1/mcp/",
-        headers={**MCP_HEADERS, "X-API-Token": token},
-        json=mcp_request("tools/list"),
-    )
+    # The MCP HTTP app is mounted as a sub-app, so Starlette never runs its
+    # lifespan. Enter the session manager's run() (which creates the task group)
+    # directly for this request, exactly as the SDK's lifespan wiring would.
+    async with mcp.session_manager.run():
+        response = await client.post(
+            "/api/v1/mcp/",
+            headers={**MCP_HEADERS, "X-API-Token": token},
+            json=mcp_request("tools/list"),
+        )
 
     assert response.status_code == 200, response.text
     tools = response.json()["result"]["tools"]
