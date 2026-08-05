@@ -17,7 +17,7 @@
 .plan-spec { margin-top: 8rpx; color: #687386; font-size: 25rpx; line-height: 1.5; word-break: break-all; }
 .summary-footer { align-items: flex-end; margin-top: 26rpx; padding-top: 20rpx; border-top: 2rpx solid #dce5ff; }
 .summary-label { color: #8a94a5; font-size: 21rpx; }
-.quantity-value { margin-top: 5rpx; color: #229b6b; font-size: 34rpx; font-weight: 700; }
+.quantity-value { margin-top: 5rpx; color: #3658c7; font-size: 34rpx; font-weight: 700; }
 .date-block { text-align: right; }
 .date-value { margin-top: 8rpx; color: #4b5565; font-size: 25rpx; font-weight: 550; }
 .detail-card { margin-bottom: 18rpx; }
