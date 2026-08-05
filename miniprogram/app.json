@@ -2,6 +2,7 @@
   "pages": [
     "pages/home/home",
     "pages/outbound/outbound",
+    "pages/outbound-success/outbound-success",
     "pages/inventory/inventory",
     "pages/material-detail/material-detail",
     "pages/purchase-plans/purchase-plans",

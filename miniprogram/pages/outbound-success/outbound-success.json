@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "出库成功",
+  "usingComponents": {
+    "t-button": "tdesign-miniprogram/button/button",
+    "t-result": "tdesign-miniprogram/result/result",
+    "t-toast": "tdesign-miniprogram/toast/toast"
+  }
+}

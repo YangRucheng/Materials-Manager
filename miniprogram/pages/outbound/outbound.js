@@ -148,23 +148,8 @@ Page({
           receiver_unit: '',
         },
       });
-      Toast({
-        context: this,
-        selector: '#outbound-toast',
-        message: t('outboundSuccess', {
-          quantity: result.after_qty,
-          unit: result.unit_name,
-        }),
-        theme: 'success',
-        direction: 'column',
-      });
-      setTimeout(() => {
-        if (getCurrentPages().length > 1) {
-          wx.navigateBack();
-          return;
-        }
-        wx.reLaunch({ url: '/pages/home/home' });
-      }, 800);
+      getApp().globalData.lastOutbound = result;
+      wx.redirectTo({ url: '/pages/outbound-success/outbound-success' });
     } catch (error) {
       this.showError(error);
     } finally {
