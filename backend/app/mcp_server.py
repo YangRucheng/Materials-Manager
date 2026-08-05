@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, quote
 import httpx
 from fastapi import FastAPI
 from mcp.server import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -349,11 +350,19 @@ class McpTokenAuthMiddleware:
             _token_context.reset(token_marker)
 
 
+# The endpoint is deployed behind a reverse proxy (1panel/nginx) and
+# authenticated by McpTokenAuthMiddleware (X-API-Token header or ?token query),
+# not by ambient browser cookies, so the SDK's default localhost-only DNS
+# rebinding allowlist would reject the real public Host header with 421. Keep
+# the transport-level host check disabled.
 mcp_http_app = McpTokenAuthMiddleware(
     mcp.streamable_http_app(
         streamable_http_path="/",
         stateless_http=True,
         json_response=True,
         max_request_body_size=16 * 1024 * 1024,
+        transport_security=TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        ),
     )
 )

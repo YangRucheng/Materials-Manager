@@ -32,7 +32,7 @@ from app.core.database import engine
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware
-from app.mcp_server import bind_application, mcp_http_app
+from app.mcp_server import bind_application, mcp, mcp_http_app
 from app.services import ai_search_service, webhook_service
 
 logger = logging.getLogger("spare_parts.api")
@@ -87,7 +87,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         name="webhook-delivery-worker",
     )
     try:
-        yield
+        async with mcp.session_manager.run():
+            yield
     finally:
         webhook_stop_event.set()
         await webhook_worker
