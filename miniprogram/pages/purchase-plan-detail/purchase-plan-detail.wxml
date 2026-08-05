@@ -48,7 +48,7 @@
       <view class="section-divider"></view>
       <view wx:if="{{plan.images.length}}" class="image-grid">
         <view wx:for="{{plan.images}}" wx:key="id" class="image-item" data-index="{{index}}" bind:tap="previewImage">
-          <t-image src="{{item.preview_url}}" mode="aspectFill" shape="round" lazy width="100%" height="100%" />
+          <t-image src="{{item.preview_url}}" mode="aspectFill" shape="round" lazy webp width="100%" height="100%" />
         </view>
       </view>
       <view wx:else class="no-image">{{i18n.noImages}}</view>

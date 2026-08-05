@@ -45,8 +45,8 @@
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
-  background: #229b6b;
-  box-shadow: 0 0 0 6rpx rgba(34, 155, 107, 0.12);
+  background: #3f63d8;
+  box-shadow: 0 0 0 6rpx rgba(63, 99, 216, 0.12);
 }
 
 .operator-name {
