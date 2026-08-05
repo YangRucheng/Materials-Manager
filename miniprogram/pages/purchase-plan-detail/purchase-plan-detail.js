@@ -49,6 +49,7 @@ Page({
         ...result,
         plan_date_label: String(result.plan_date || '').replace(/-/g, '/'),
         quantity_label: `${result.planned_qty} ${result.unit_name}`,
+        urgency_theme: result.urgency === '紧急' ? 'warning' : 'default',
         material_code_label: present(result.material_code, t('notSet')),
         category_label: present(result.category, t('notSet')),
         subitem_no_label: present(result.subitem_no, t('notSet')),
@@ -74,10 +75,6 @@ Page({
   previewImage(event) {
     const urls = this.data.plan.images.map((image) => image.original_url);
     wx.previewImage({ current: urls[event.currentTarget.dataset.index], urls });
-  },
-
-  loadNext() {
-    if (this.data.plan?.next_id) void this.loadPlan(this.data.plan.next_id);
   },
 
   retry() {
