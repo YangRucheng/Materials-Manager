@@ -27,10 +27,12 @@
     >
       <view class="card-topline">
         <view class="plan-date">{{item.plan_date_label}}</view>
+        <view class="topline-right">
+          <t-tag theme="{{item.urgency_theme}}" variant="light" size="small">{{item.urgency}}</t-tag>
+        </view>
       </view>
       <view class="card-heading">
         <view class="material-name">{{item.name}}</view>
-        <t-tag theme="{{item.urgency_theme}}" variant="light" size="small">{{item.urgency}}</t-tag>
       </view>
       <view class="material-spec">{{item.model_spec}}</view>
       <view class="card-divider"></view>
