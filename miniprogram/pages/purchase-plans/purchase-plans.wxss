@@ -40,7 +40,7 @@
 .meta-item { min-width: 190rpx; }
 .responsible-item { flex: 1; }
 .meta-label { color: #8a94a5; font-size: 21rpx; }
-.quantity-value { margin-top: 4rpx; color: #229b6b; font-size: 30rpx; font-weight: 700; }
+.quantity-value { margin-top: 4rpx; color: #3658c7; font-size: 30rpx; font-weight: 700; }
 .meta-value { margin-top: 8rpx; color: #4b5565; font-size: 25rpx; font-weight: 550; }
 .state-panel { display: flex; min-height: 420rpx; align-items: center; justify-content: center; }
 .empty-panel { box-sizing: border-box; padding-top: 40rpx; }

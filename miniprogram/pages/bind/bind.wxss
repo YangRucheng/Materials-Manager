@@ -71,7 +71,7 @@
 
 .binding-warning {
   margin: 22rpx 28rpx 0;
-  color: #b16b12;
+  color: #1d4fa8;
   font-size: 22rpx;
   line-height: 1.5;
   text-align: center;
