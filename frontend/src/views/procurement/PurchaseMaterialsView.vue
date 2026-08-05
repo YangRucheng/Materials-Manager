@@ -82,7 +82,6 @@ const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
 const createAdvancedSections = ref<string[]>([])
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
-const ALL_SUBITEM_FILTER = '__all_subitem_no__'
 const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
 const routeStatuses = routeQueryString(route.query.status)
   .split(',')
@@ -99,7 +98,7 @@ const filters = reactive({
   name: routeQueryString(route.query.name),
   model_spec: routeQueryString(route.query.model_spec),
   actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
-  subitem_no: routeQueryString(route.query.subitem_no) || ALL_SUBITEM_FILTER,
+  subitem_no: routeQueryString(route.query.subitem_no) || null,
   category: routeQueryString(route.query.category) || null,
   status:
     routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档').length > 0
@@ -118,7 +117,6 @@ const actualDemandPersonOptions = computed(() => [
   ...filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
 ])
 const subitemOptions = computed(() => [
-  { label: '全部子项号', value: ALL_SUBITEM_FILTER },
   { label: '空子项号', value: EMPTY_SUBITEM_FILTER },
   ...filterOptions.value.subitem_nos.map((value) => ({ label: value, value })),
 ])
@@ -135,7 +133,7 @@ const activeFilterCount = computed(
       filters.name.trim(),
       filters.model_spec.trim(),
       filters.actual_demand_person,
-      filters.subitem_no === ALL_SUBITEM_FILTER ? '' : filters.subitem_no,
+      filters.subitem_no,
       filters.category,
       filters.status.length === 1 && filters.status[0] === defaultPurchasePlanStatus
         ? ''
@@ -443,9 +441,7 @@ async function load() {
       empty_actual_demand_person:
         filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER || undefined,
       subitem_no:
-        filters.subitem_no !== ALL_SUBITEM_FILTER && filters.subitem_no !== EMPTY_SUBITEM_FILTER
-          ? filters.subitem_no
-          : undefined,
+        filters.subitem_no && filters.subitem_no !== EMPTY_SUBITEM_FILTER ? filters.subitem_no : undefined,
       empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
       category: filters.category || undefined,
       status: filters.status.length ? filters.status : undefined,
@@ -476,7 +472,7 @@ async function syncRoute() {
       name: filters.name,
       model_spec: filters.model_spec,
       actual_demand_person: filters.actual_demand_person,
-      subitem_no: filters.subitem_no === ALL_SUBITEM_FILTER ? undefined : filters.subitem_no,
+      subitem_no: filters.subitem_no || undefined,
       category: filters.category,
       status:
         filters.status.length === 1 && filters.status[0] === defaultPurchasePlanStatus
@@ -532,9 +528,7 @@ async function exportResults() {
       actual_demand_person: actualDemandPerson,
       empty_actual_demand_person: filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER,
       subitem_no:
-        filters.subitem_no !== ALL_SUBITEM_FILTER && filters.subitem_no !== EMPTY_SUBITEM_FILTER
-          ? filters.subitem_no
-          : undefined,
+        filters.subitem_no && filters.subitem_no !== EMPTY_SUBITEM_FILTER ? filters.subitem_no : undefined,
       empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER,
       category: filters.category || undefined,
       status: filters.status.length ? filters.status : undefined,
@@ -552,7 +546,7 @@ function resetFilters() {
   filters.name = ''
   filters.model_spec = ''
   filters.actual_demand_person = null
-  filters.subitem_no = ALL_SUBITEM_FILTER
+  filters.subitem_no = null
   filters.category = null
   filters.status = [defaultPurchasePlanStatus]
   query()
@@ -877,7 +871,13 @@ onBeforeUnmount(() => {
         </label>
         <label class="filter-field">
           <span>子项号</span>
-          <n-select v-model:value="filters.subitem_no" :options="subitemOptions" filterable />
+          <n-select
+            v-model:value="filters.subitem_no"
+            :options="subitemOptions"
+            placeholder="选择或搜索子项号"
+            filterable
+            clearable
+          />
         </label>
         <label class="filter-field">
           <span>类别</span>
