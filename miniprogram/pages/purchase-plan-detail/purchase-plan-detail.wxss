@@ -80,4 +80,5 @@
 .image-count { color: #687386; font-size: 24rpx; }
 .image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; padding: 20rpx 22rpx; }
 .image-item { overflow: hidden; height: 192rpx; border-radius: 18rpx; background: #f4f6fa; }
+.plan-image { display: block; width: 100%; height: 100%; }
 .no-image { padding: 32rpx 22rpx; color: #7d8798; font-size: 26rpx; text-align: center; }
