@@ -30,8 +30,7 @@
 
 .plan-card-active { transform: scale(0.99); background: #f8faff; }
 .card-topline, .card-heading, .plan-meta { display: flex; align-items: center; }
-.card-topline { justify-content: space-between; margin-bottom: 12rpx; }
-.plan-no { color: #3658c7; font-size: 22rpx; font-weight: 650; }
+.card-topline { justify-content: flex-end; margin-bottom: 12rpx; }
 .plan-date { color: #8a94a5; font-size: 22rpx; }
 .card-heading { align-items: flex-start; justify-content: space-between; gap: 20rpx; }
 .material-name { flex: 1; min-width: 0; color: #172033; font-size: 29rpx; font-weight: 650; line-height: 1.4; }
