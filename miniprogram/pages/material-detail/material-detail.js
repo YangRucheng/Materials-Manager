@@ -53,7 +53,7 @@ Page({
         image_count_label: t('imageCount', { count: (result.images || []).length }),
         images: (result.images || []).map((image) => ({
           ...image,
-          preview_url: imageUrl(image.id, 720),
+          preview_url: imageUrl(image.id, 192),
           original_url: imageUrl(image.id),
         })),
       };
