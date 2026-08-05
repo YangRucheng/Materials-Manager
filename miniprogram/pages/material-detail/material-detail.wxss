@@ -77,6 +77,12 @@
   background: #f4f6fa;
 }
 
+.material-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .no-image {
   padding: 32rpx 22rpx;
   color: #7d8798;
