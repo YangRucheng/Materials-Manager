@@ -27,6 +27,7 @@ from app.models import (
     MiniProgramIdentity,
     MiniProgramUser,
     PurchaseMaterial,
+    PurchaseRequestLine,
     StockBalance,
     StockMaterial,
     StockOperation,
@@ -90,7 +91,12 @@ async def list_purchase_plans(
     page_size: int,
 ) -> tuple[list[PurchaseMaterial], int]:
     query = select(PurchaseMaterial).where(
-        PurchaseMaterial.status == PurchasePlanStatus.NORMAL
+        PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
+        ~(
+            select(PurchaseRequestLine.id)
+            .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+            .exists()
+        ),
     )
     keyword_condition = contains_any(
         (
@@ -130,6 +136,11 @@ async def purchase_plan_detail(
         select(PurchaseMaterial).where(
             PurchaseMaterial.id == material_id,
             PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
+            ~(
+                select(PurchaseRequestLine.id)
+                .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+                .exists()
+            ),
         )
     )
     if item is None:
@@ -139,6 +150,11 @@ async def purchase_plan_detail(
         .where(
             PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
             PurchaseMaterial.id < item.id,
+            ~(
+                select(PurchaseRequestLine.id)
+                .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+                .exists()
+            ),
         )
         .order_by(PurchaseMaterial.id.desc())
         .limit(1)

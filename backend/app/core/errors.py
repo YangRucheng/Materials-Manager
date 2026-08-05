@@ -18,7 +18,7 @@ class AppError(Exception):
 
 
 def not_found(resource: str = "资源") -> AppError:
-    return AppError("NOT_FOUND", f"{resource}不存在")
+    return AppError("NOT_FOUND", f"{resource}不存在", status_code=404)
 
 
 def version_conflict(expected: int, actual: int) -> AppError:

@@ -799,6 +799,92 @@ async def test_mini_program_purchase_plans_only_show_normal_items_with_images_an
 
 
 @pytest.mark.asyncio
+async def test_mini_program_purchase_plans_exclude_plans_moved_to_record(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"purchase-plan-moved-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    purchase_headers = await auth_headers(client, "purchase")
+    login = await client.post("/api/v1/mini-program/auth/wx-login", json={"code": "viewer"})
+    profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+        json={
+            "display_name": "申购计划查看人",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
+
+    async def create_plan(name: str, code: str) -> dict[str, object]:
+        response = await client.post(
+            "/api/v1/purchase-materials",
+            headers=purchase_headers,
+            json={
+                "plan_date": "2026-08-04",
+                "material_code": code,
+                "category": "备品备件",
+                "name": name,
+                "model_spec": f"MODEL-{name}",
+                "unit_name": "个",
+                "actual_demand_person": "张三",
+                "purchase_responsible": "李工",
+                "planned_qty": "3",
+                "usage": "检修备用",
+                "subitem_no": "01-01",
+                "remark": "小程序转记录测试",
+                "image_ids": [],
+            },
+        )
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    moved_plan = await create_plan("已转记录计划", "DQ-MOVED-001")
+    kept_plan = await create_plan("未转记录计划", "DQ-MOVED-002")
+
+    moved = await client.post(
+        f"/api/v1/purchase-materials/{moved_plan['id']}/move-to-record",
+        headers=purchase_headers,
+        json={
+            "purchase_order_no": "SG-2026-008",
+            "trace_no": "ZS-2026-008",
+            "contract_no": "HT-2026-008",
+            "vessel_no": "VESSEL-08",
+            "consolidation_date": "2026-08-03",
+            "consolidation_port": "上海港",
+            "sailing_date": "2026-08-04",
+            "purchase_date": "2026-08-02",
+            "salesperson": "赵经理",
+            "status": "已申购",
+            "record_remark": "供应商信息待补充",
+        },
+    )
+    assert moved.status_code == 200, moved.text
+
+    plans = await client.get("/api/v1/mini-program/purchase-plans", headers=mini_headers)
+    assert plans.status_code == 200, plans.text
+    assert [item["id"] for item in plans.json()["items"]] == [kept_plan["id"]]
+
+    moved_detail = await client.get(
+        f"/api/v1/mini-program/purchase-plans/{moved_plan['id']}", headers=mini_headers
+    )
+    assert moved_detail.status_code == 404
+
+    kept_detail = await client.get(
+        f"/api/v1/mini-program/purchase-plans/{kept_plan['id']}", headers=mini_headers
+    )
+    assert kept_detail.status_code == 200, kept_detail.text
+
+
+@pytest.mark.asyncio
 async def test_advanced_setting_can_close_new_mini_program_bindings(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
