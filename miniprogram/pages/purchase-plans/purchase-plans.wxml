@@ -26,7 +26,6 @@
       bind:tap="openDetail"
     >
       <view class="card-topline">
-        <view class="plan-no">{{item.plan_no}}</view>
         <view class="plan-date">{{item.plan_date_label}}</view>
       </view>
       <view class="card-heading">
@@ -41,8 +40,8 @@
           <view class="quantity-value">{{item.quantity_label}}</view>
         </view>
         <view class="meta-item responsible-item">
-          <view class="meta-label">{{i18n.purchaseResponsible}}</view>
-          <view class="meta-value">{{item.purchase_responsible}}</view>
+          <view class="meta-label">{{i18n.actualDemandPerson}}</view>
+          <view class="meta-value">{{item.actual_demand_person}}</view>
         </view>
         <t-icon name="chevron-right" size="36rpx" color="#a1a9b7" />
       </view>
