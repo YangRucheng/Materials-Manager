@@ -4,9 +4,13 @@ page {
   --td-brand-color-disabled: #aebce8;
   --td-brand-color-light: #edf2ff;
   --td-brand-color-light-active: #e6edff;
-  --td-success-color: #229b6b;
-  --td-warning-color: #d99020;
-  --td-error-color: #d94b64;
+  --td-success-color: #2e7ad6;
+  --td-success-color-1: #e8f1fd;
+  --td-warning-color: #3f63d8;
+  --td-warning-color-1: #edf2ff;
+  --td-error-color: #1d4fa8;
+  --td-error-color-1: #dfe9fb;
+  --td-error-color-6: #1d4fa8;
   --td-bg-color-page: #f4f6fa;
   --td-bg-color-container: #ffffff;
   --td-bg-color-secondarycontainer: #f8faff;

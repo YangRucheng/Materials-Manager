@@ -26,7 +26,7 @@
         <view class="action-title">{{i18n.purchasePlans}}</view>
         <view class="action-description">{{i18n.purchasePlansDescription}}</view>
       </view>
-      <t-icon name="chevron-right" size="36rpx" color="#229b6b" />
+      <t-icon name="chevron-right" size="36rpx" color="#3f63d8" />
     </view>
 
     <view class="section-card scan-card">
