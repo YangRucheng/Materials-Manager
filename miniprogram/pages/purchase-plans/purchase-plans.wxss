@@ -20,26 +20,27 @@
 .plan-list { display: flex; flex-direction: column; gap: 16rpx; }
 
 .plan-card {
-  padding: 24rpx;
-  border: 2rpx solid #edf0f5;
-  border-radius: 24rpx;
+  padding: 28rpx 28rpx 24rpx;
+  border: 2rpx solid #eef1f6;
+  border-radius: 28rpx;
   background: #ffffff;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.04);
-  transition: transform 120ms ease, background 120ms ease;
+  box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.06);
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.plan-card-active { transform: scale(0.99); background: #f8faff; }
+.plan-card-active { transform: scale(0.99); box-shadow: 0 6rpx 18rpx rgba(15, 23, 42, 0.08); }
 .card-topline, .card-heading, .plan-meta { display: flex; align-items: center; }
-.card-topline { justify-content: flex-end; margin-bottom: 12rpx; }
+.card-topline { justify-content: flex-start; gap: 12rpx; margin-bottom: 14rpx; }
 .plan-date { color: #8a94a5; font-size: 22rpx; }
-.card-heading { align-items: flex-start; justify-content: space-between; gap: 20rpx; }
-.material-name { flex: 1; min-width: 0; color: #172033; font-size: 29rpx; font-weight: 650; line-height: 1.4; }
-.material-spec { margin-top: 8rpx; color: #687386; font-size: 24rpx; line-height: 1.45; word-break: break-all; }
-.card-divider { height: 2rpx; margin: 20rpx 0 16rpx; background: #edf0f5; }
+.topline-right { margin-left: auto; }
+.card-heading { margin-bottom: 6rpx; }
+.material-name { flex: 1; min-width: 0; color: #172033; font-size: 30rpx; font-weight: 700; line-height: 1.4; }
+.material-spec { color: #7d8798; font-size: 24rpx; line-height: 1.45; word-break: break-all; padding-left: 2rpx; }
+.card-divider { height: 2rpx; margin: 22rpx 0 18rpx; background: #f0f2f6; }
 .meta-item { min-width: 190rpx; }
 .responsible-item { flex: 1; }
 .meta-label { color: #8a94a5; font-size: 21rpx; }
-.quantity-value { margin-top: 4rpx; color: #3658c7; font-size: 30rpx; font-weight: 700; }
+.quantity-value { margin-top: 4rpx; color: #2b4fc4; font-size: 31rpx; font-weight: 750; }
 .meta-value { margin-top: 8rpx; color: #4b5565; font-size: 25rpx; font-weight: 550; }
 .state-panel { display: flex; min-height: 420rpx; align-items: center; justify-content: center; }
 .empty-panel { box-sizing: border-box; padding-top: 40rpx; }
