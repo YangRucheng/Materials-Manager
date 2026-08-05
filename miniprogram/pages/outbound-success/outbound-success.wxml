@@ -1,0 +1,87 @@
+<view class="page-shell success-page">
+  <view class="success-result">
+    <t-result
+      theme="success"
+      title="{{i18n.outboundSuccessTitle}}"
+      description="{{i18n.outboundSuccessDescription}}"
+    />
+  </view>
+
+  <view wx:if="{{result}}" class="material-card">
+    <view class="summary-heading">
+      <view class="material-name">{{result.material_name}}</view>
+    </view>
+    <view class="material-spec">{{result.model_spec}}</view>
+    <view class="stock-block">
+      <view>
+        <view class="stock-label">{{i18n.outboundQuantity}}</view>
+        <view class="quantity-value">{{result.quantity}}<text class="quantity-unit">{{result.unit_name}}</text></view>
+      </view>
+      <view class="after-block">
+        <view class="stock-label">{{i18n.remainingStock}}</view>
+        <view class="after-value">{{result.after_qty}} {{result.unit_name}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{result}}" class="section-card detail-card">
+    <view class="section-heading">
+      <view class="section-title">{{i18n.outboundDetail}}</view>
+    </view>
+    <view class="section-divider"></view>
+    <view class="detail-list">
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.outboundNo}}</view>
+        <view class="detail-value">{{result.operation_no}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.outboundQuantity}}</view>
+        <view class="detail-value">{{result.quantity}} {{result.unit_name}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.stockChange}}</view>
+        <view class="detail-value">{{result.before_qty}} → {{result.after_qty}} {{result.unit_name}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.subitemNo}}</view>
+        <view class="detail-value">{{result.subitem_no_label}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.outboundPurpose}}</view>
+        <view class="detail-value">{{result.business_reason}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.receiverName}}</view>
+        <view class="detail-value">{{result.receiver_name_label}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.executedBy}}</view>
+        <view class="detail-value">{{result.executed_by}}</view>
+      </view>
+      <view class="detail-row">
+        <view class="detail-label">{{i18n.outboundTime}}</view>
+        <view class="detail-value">{{result.occurred_at_label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="success-actions">
+    <t-button
+      class="success-action home-action"
+      theme="default"
+      variant="outline"
+      size="large"
+      icon="home"
+      bind:tap="goHome"
+    >{{i18n.goHome}}</t-button>
+    <t-button
+      class="success-action finish-action"
+      theme="primary"
+      size="large"
+      icon="check"
+      bind:tap="goHome"
+    >{{i18n.finish}}</t-button>
+  </view>
+
+  <t-toast id="outbound-success-toast" />
+</view>
