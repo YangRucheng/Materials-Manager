@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 
-from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
+from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, WarehouseWriter
 from app.domain.enums import MiniProgramCodeEnv
 from app.schemas import (
     Page,
@@ -144,12 +144,12 @@ async def update_material(
 @router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_material(
     material_id: int,
-    version: int,
     session: DbSession,
     user: WarehouseWriter,
+    if_match: IfMatchVersion,
 ) -> None:
     item = await material_service.get_stock_material(session, material_id)
-    await material_service.delete_stock_material(session, item, version)
+    await material_service.delete_stock_material(session, item, if_match)
 
 
 @router.put("/{material_id}/replenishment-policy", response_model=StockMaterialRead)

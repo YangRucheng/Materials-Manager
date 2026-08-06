@@ -46,6 +46,9 @@ async def read_image(
     session: DbSession,
     size: Annotated[int | None, Query(ge=16, le=2048)] = None,
 ) -> Response:
+    # 图片匿名读取是刻意设计：前端 <img>/小程序 image 直接加载，无法携带 Authorization 头。
+    # 安全性依赖 file_id 为 UUIDv7（不可猜解）+ 仅返回系统上传的图片。若需更强保护，
+    # 应改为签名/短时效 URL 而非强制鉴权（会破坏图片加载）。
     item, path = await file_service.get_image(session, file_id)
     headers = {"Cache-Control": CACHE_CONTROL}
     if size is not None:

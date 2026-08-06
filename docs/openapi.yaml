@@ -851,12 +851,14 @@ paths:
         schema:
           type: integer
           title: Material Id
-      - name: version
-        in: query
-        required: true
+      - name: if-match
+        in: header
+        required: false
         schema:
-          type: integer
-          title: Version
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
       responses:
         '204':
           description: Successful Response
@@ -2123,12 +2125,14 @@ paths:
         schema:
           type: integer
           title: User Id
-      - name: version
-        in: query
-        required: true
+      - name: if-match
+        in: header
+        required: false
         schema:
-          type: integer
-          title: Version
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
       responses:
         '204':
           description: Successful Response
@@ -3449,12 +3453,14 @@ paths:
         schema:
           type: integer
           title: Material Id
-      - name: version
-        in: query
-        required: true
+      - name: if-match
+        in: header
+        required: false
         schema:
-          type: integer
-          title: Version
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
       responses:
         '204':
           description: Successful Response
@@ -4111,13 +4117,14 @@ paths:
         schema:
           type: integer
           title: Line Id
-      - name: version
-        in: query
-        required: true
+      - name: if-match
+        in: header
+        required: false
         schema:
-          type: integer
-          minimum: 1
-          title: Version
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
       responses:
         '200':
           description: Successful Response

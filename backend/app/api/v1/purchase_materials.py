@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
 from app.core.errors import AppError
-from app.core.permissions import CurrentUser, DbSession, PurchaseWriter, require_roles
+from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter, require_roles
 from app.domain.enums import PurchasePlanStatus, Role
 from app.models import User
 from app.schemas import (
@@ -360,12 +360,12 @@ async def update_material(
 @router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_material(
     material_id: int,
-    version: int,
     session: DbSession,
     user: PurchaseWriter,
+    if_match: IfMatchVersion,
 ) -> None:
     item = await material_service.get_purchase_material(session, material_id)
-    await material_service.delete_purchase_material(session, item, version)
+    await material_service.delete_purchase_material(session, item, if_match)
 
 
 @router.post("/{material_id}/link-stock-material", response_model=PurchaseMaterialRead)

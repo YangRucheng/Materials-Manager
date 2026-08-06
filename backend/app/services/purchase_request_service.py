@@ -354,7 +354,7 @@ async def batch_update_purchase_records(
 async def restore_purchase_record_to_plan(
     session: AsyncSession,
     line: PurchaseRequestLine,
-    version: int,
+    version: int | None,
 ) -> PurchaseMaterial:
     request = await session.scalar(
         select(PurchaseRequest)

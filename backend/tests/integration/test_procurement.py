@@ -755,8 +755,7 @@ async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) ->
     deletable = await create_purchase_plan(client, headers, "待删除计划")
     deleted = await client.delete(
         f"/api/v1/purchase-materials/{deletable['id']}",
-        headers=headers,
-        params={"version": deletable["version"]},
+        headers={**headers, "If-Match": str(deletable["version"])},
     )
     assert deleted.status_code == 204, deleted.text
     missing = await client.get(f"/api/v1/purchase-materials/{deletable['id']}", headers=headers)
@@ -766,8 +765,7 @@ async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) ->
     await move_to_record(client, headers, int(moved["id"]))
     rejected = await client.delete(
         f"/api/v1/purchase-materials/{moved['id']}",
-        headers=headers,
-        params={"version": moved["version"]},
+        headers={**headers, "If-Match": str(moved["version"])},
     )
     assert rejected.status_code == 409
     assert rejected.json()["code"] == "PURCHASE_PLAN_IN_USE"
@@ -787,8 +785,7 @@ async def test_purchase_record_can_restore_to_purchase_plan(client: AsyncClient)
 
     restored = await client.post(
         f"/api/v1/purchase-records/{record['line_id']}/restore-to-plan",
-        headers=headers,
-        params={"version": record["version"]},
+        headers={**headers, "If-Match": str(record["version"])},
     )
     assert restored.status_code == 200, restored.text
     restored_plan = restored.json()
@@ -847,8 +844,7 @@ async def test_multiple_plans_can_move_to_one_purchase_record_batch(client: Asyn
 
     restored = await client.post(
         f"/api/v1/purchase-records/{records[0]['line_id']}/restore-to-plan",
-        headers=headers,
-        params={"version": records[0]["version"]},
+        headers={**headers, "If-Match": str(records[0]["version"])},
     )
     assert restored.status_code == 200, restored.text
     assert restored.json()["moved_to_record"] is False

@@ -16,6 +16,8 @@ router = APIRouter(prefix="/system-settings", tags=["系统设置"])
 
 @router.get("/image-acceleration", response_model=ImageAccelerationSettingsRead)
 async def image_acceleration_settings(session: DbSession) -> ImageAccelerationSettingsRead:
+    # 公开配置端点：同时服务管理端（Bearer 管理端 token）与小程序（Bearer 小程序 token），
+    # 两种鉴权体系不同，故保持匿名。仅返回一个图片加速 URL，泄露价值低。
     server_url = await ai_search_service.get_image_acceleration_server_url(session)
     return ImageAccelerationSettingsRead(image_acceleration_server_url=server_url)
 

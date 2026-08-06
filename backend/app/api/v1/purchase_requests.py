@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
 from app.core.errors import AppError
-from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
+from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter
 from app.schemas import (
     BatchUpdatePurchaseRecordsRequest,
     Page,
@@ -243,12 +243,12 @@ async def purchase_record(
 @router.post("/purchase-records/{line_id}/restore-to-plan", response_model=PurchaseMaterialRead)
 async def restore_purchase_record_to_plan(
     line_id: int,
-    version: Annotated[int, Query(ge=1)],
     session: DbSession,
     user: PurchaseWriter,
+    if_match: IfMatchVersion,
 ) -> PurchaseMaterialRead:
     line = await service.get_purchase_record(session, line_id, for_update=True)
-    material = await service.restore_purchase_record_to_plan(session, line, version)
+    material = await service.restore_purchase_record_to_plan(session, line, if_match)
     return await material_service.purchase_read(session, material)
 
 
