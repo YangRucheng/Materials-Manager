@@ -7527,11 +7527,18 @@ components:
           maxLength: 500
           minLength: 1
           title: Reason
+        lines:
+          items:
+            $ref: '#/components/schemas/OperationLineWrite'
+          type: array
+          minItems: 1
+          title: Lines
       additionalProperties: false
       type: object
       required:
       - client_request_id
       - reason
+      - lines
       title: ReverseOperationRequest
     Role:
       type: string
@@ -7746,6 +7753,10 @@ components:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
           title: Quantity
+        remaining_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Remaining Qty
         before_qty:
           type: string
           pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
@@ -7762,6 +7773,7 @@ components:
       - model_spec
       - unit_name
       - quantity
+      - remaining_qty
       - before_qty
       - after_qty
       title: StockOperationLineRead
@@ -7804,6 +7816,10 @@ components:
           - type: integer
           - type: 'null'
           title: Reversal Of Id
+        is_reversed:
+          type: boolean
+          title: Is Reversed
+          default: false
         client_request_id:
           type: string
           title: Client Request Id

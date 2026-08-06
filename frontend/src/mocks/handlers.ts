@@ -652,8 +652,8 @@ export const handlers = [
         material_name: material.name,
         model_spec: material.model_spec,
         unit_name: material.unit_name,
-        quantity: line.quantity,
-        remaining_qty: line.quantity,
+        quantity: String(line.quantity),
+        remaining_qty: String(line.quantity),
         before_qty: String(before),
         after_qty: material.current_qty,
       }

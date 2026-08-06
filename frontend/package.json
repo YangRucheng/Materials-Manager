@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
-    "generate:api": "openapi-typescript ../docs/openapi.yaml -o src/api/generated.ts"
+    "generate:api": "openapi-typescript ../docs/openapi.yaml -o src/api/generated.raw.ts"
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",

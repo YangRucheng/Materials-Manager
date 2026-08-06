@@ -84,8 +84,9 @@ apiClient.interceptors.response.use(
       ? {
           code: 'SERVER_ERROR',
           message: `服务请求失败（HTTP ${error.response.status}），请稍后重试`,
+          request_id: originalRequest?.headers?.['X-Request-ID'] ?? '',
         }
-      : { code: 'NETWORK_ERROR', message: '无法连接服务器，请检查网络后重试' }
+      : { code: 'NETWORK_ERROR', message: '无法连接服务器，请检查网络后重试', request_id: '' }
     return Promise.reject(payload?.code ? new AppError(payload) : new AppError(fallback))
   },
 )

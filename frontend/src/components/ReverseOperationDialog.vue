@@ -11,6 +11,7 @@ const emit = defineEmits<{ 'update:show': [value: boolean]; reversed: [id: numbe
 
 const message = useMessage()
 const submitting = ref(false)
+const requestId = ref<string | null>(null)
 const lines = reactive<Array<{ stock_material_id: number; quantity: string; max: string }>>([])
 
 // 用 computed + update:show 实现 v-model，避免直接改写 prop
@@ -23,6 +24,8 @@ watch(
   () => [props.show, props.operation],
   () => {
     if (!props.show || !props.operation) return
+    // 幂等 id 在弹窗打开时生成一次，确认重试复用，成功或彻底失败后作废
+    requestId.value = crypto.randomUUID()
     lines.splice(
       0,
       lines.length,
@@ -52,7 +55,7 @@ async function confirm() {
   submitting.value = true
   try {
     const result = await inventoryApi.reverseOperation(props.operation.id, {
-      client_request_id: crypto.randomUUID(),
+      client_request_id: requestId.value || crypto.randomUUID(),
       reason: `冲销 ${props.operation.operation_no}`,
       lines: lines.map((line) => ({
         stock_material_id: line.stock_material_id,
@@ -60,6 +63,7 @@ async function confirm() {
       })),
     })
     message.success(`已生成冲销流水 ${result.operation_no}`)
+    requestId.value = null
     emit('update:show', false)
     emit('reversed', result.id)
   } catch (error) {

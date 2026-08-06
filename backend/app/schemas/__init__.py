@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
@@ -9,7 +9,9 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PlainSerializer,
     StringConstraints,
+    WithJsonSchema,
     field_validator,
     model_validator,
 )
@@ -61,6 +63,24 @@ class ReadModel(BaseModel):
         from_attributes=True,
         json_encoders={Decimal: lambda value: format(value.normalize(), "f")},
     )
+
+
+def _to_utc_iso(value: datetime) -> str:
+    """naive 值按 UTC 处理（存储层 utcnow() 即 naive UTC），aware 值转为 UTC。
+
+    约定：服务端一律输出带 +00:00 的 ISO 字符串，客户端按上海时区展示。
+    """
+    aware = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+    return aware.isoformat()
+
+
+# 用于需要统一输出 UTC 时区的 datetime 字段（尤其是经 model_validate 直接序列化的读模型）。
+# WithJsonSchema 显式声明 JSON Schema，避免 PlainSerializer 使 openapi 丢失 format: date-time。
+UtcDateTime = Annotated[
+    datetime,
+    PlainSerializer(_to_utc_iso, return_type=str),
+    WithJsonSchema({"type": "string", "format": "date-time"}),
+]
 
 
 class Page[T](ReadModel):
@@ -156,7 +176,7 @@ class MiniProgramIdentityRead(ReadModel):
     id: int
     app_id: str
     wechat_openid: str
-    created_at: datetime
+    created_at: UtcDateTime
 
 
 class MiniProgramUserRead(ReadModel):
@@ -165,8 +185,8 @@ class MiniProgramUserRead(ReadModel):
     department_name: str
     enabled: bool
     identities: list[MiniProgramIdentityRead]
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
     version: int
 
 
