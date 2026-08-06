@@ -411,3 +411,109 @@ async def test_stock_material_delete_requires_no_operation_records(client: Async
     )
     assert rejected.status_code == 409, rejected.text
     assert rejected.json()["code"] == "STOCK_MATERIAL_IN_USE"
+
+
+def reverse_payload(request_id: str, material_id: int, quantity: str) -> dict[str, object]:
+    return {
+        "client_request_id": request_id,
+        "reason": "测试冲销",
+        "lines": [{"stock_material_id": material_id, "quantity": quantity}],
+    }
+
+
+@pytest.mark.asyncio
+async def test_partial_reverse_multiple_times_and_overage_rejected(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    material_id = await create_stock(client, headers, "冲销测试物资")
+    inbound = await client.post(
+        "/api/v1/inventory/inbounds",
+        headers=headers,
+        json=operation_payload("rev-in-10", material_id, "10", "2026-07-25T10:00:00+08:00"),
+    )
+    assert inbound.status_code == 201, inbound.text
+    original = inbound.json()
+
+    # 1) 部分冲销 3
+    rev1 = await client.post(
+        f"/api/v1/inventory/operations/{original['id']}/reverse",
+        headers=headers,
+        json=reverse_payload("rev-1", material_id, "3"),
+    )
+    assert rev1.status_code == 200, rev1.text
+    rev1_body = rev1.json()
+    assert rev1_body["operation_type"] == "OUTBOUND"
+    assert rev1_body["source_type"] == "REVERSAL"
+    assert rev1_body["reversal_of_id"] == original["id"]
+    assert rev1_body["is_reversed"] is True
+    assert rev1_body["lines"][0]["quantity"] == "3"
+    assert rev1_body["lines"][0]["remaining_qty"] == "3"
+
+    # 原流水剩余量回退为 7，且原流水本身不是冲销流水
+    detail = await client.get(f"/api/v1/inventory/operations/{original['id']}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["lines"][0]["remaining_qty"] == "7"
+    assert detail.json()["is_reversed"] is False
+
+    # 余额 = 10 - 3 = 7
+    balance = await client.get(f"/api/v1/inventory/balances/{material_id}", headers=headers)
+    assert balance.status_code == 200, balance.text
+    assert balance.json()["current_qty"] == "7"
+
+    # 2) 再次冲销 4，可多次冲销
+    rev2 = await client.post(
+        f"/api/v1/inventory/operations/{original['id']}/reverse",
+        headers=headers,
+        json=reverse_payload("rev-2", material_id, "4"),
+    )
+    assert rev2.status_code == 200, rev2.text
+    assert rev2.json()["reversal_of_id"] == original["id"]
+    assert rev2.json()["id"] != rev1_body["id"]
+    detail = await client.get(f"/api/v1/inventory/operations/{original['id']}", headers=headers)
+    assert detail.json()["lines"][0]["remaining_qty"] == "3"
+    balance = await client.get(f"/api/v1/inventory/balances/{material_id}", headers=headers)
+    assert balance.json()["current_qty"] == "3"
+
+    # 3) 超量拒绝：剩余 3，冲 5
+    over = await client.post(
+        f"/api/v1/inventory/operations/{original['id']}/reverse",
+        headers=headers,
+        json=reverse_payload("rev-over", material_id, "5"),
+    )
+    assert over.status_code == 409, over.text
+    assert over.json()["code"] == "INSUFFICIENT_QUANTITY"
+
+    # 4) 冲销行不在原流水内
+    other = await create_stock(client, headers, "无关物资")
+    invalid = await client.post(
+        f"/api/v1/inventory/operations/{original['id']}/reverse",
+        headers=headers,
+        json=reverse_payload("rev-invalid", other, "1"),
+    )
+    assert invalid.status_code == 400, invalid.text
+    assert invalid.json()["code"] == "INVALID_REVERSAL_LINE"
+
+
+@pytest.mark.asyncio
+async def test_reverse_inbound_after_full_consume_marks_reversed(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    material_id = await create_stock(client, headers, "冲销标记测试")
+    inbound = await client.post(
+        "/api/v1/inventory/inbounds",
+        headers=headers,
+        json=operation_payload("rev-mark-in", material_id, "10", "2026-07-26T10:00:00+08:00"),
+    )
+    assert inbound.status_code == 201, inbound.text
+    original = inbound.json()
+    rev = await client.post(
+        f"/api/v1/inventory/operations/{original['id']}/reverse",
+        headers=headers,
+        json=reverse_payload("rev-mark", material_id, "10"),
+    )
+    assert rev.status_code == 200, rev.text
+    assert rev.json()["is_reversed"] is True
+    detail = await client.get(f"/api/v1/inventory/operations/{original['id']}", headers=headers)
+    assert detail.json()["lines"][0]["remaining_qty"] == "0"
+    # 原流水本身不是冲销流水，is_reversed 为 False；是否已冲完由 remaining_qty 决定
+    assert detail.json()["is_reversed"] is False
+    balance = await client.get(f"/api/v1/inventory/balances/{material_id}", headers=headers)
+    assert balance.json()["current_qty"] == "0"

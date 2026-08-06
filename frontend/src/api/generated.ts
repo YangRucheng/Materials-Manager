@@ -234,6 +234,7 @@ export interface StockOperationLine {
   model_spec: string
   unit_name: string
   quantity: string
+  remaining_qty: string
   before_qty: string
   after_qty: string
 }
@@ -248,6 +249,7 @@ export interface StockOperation {
   subitem_no?: string
   source_type: SourceType
   reversal_of_id?: number
+  is_reversed: boolean
   client_request_id: string
   mini_program_user_name?: string
   lines: StockOperationLine[]

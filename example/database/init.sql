@@ -193,13 +193,13 @@ CREATE TABLE IF NOT EXISTS `stock_operation` (
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_operation` PRIMARY KEY (`id`),
   CONSTRAINT `uq_stock_operation_operation_no` UNIQUE (`operation_no`),
-  CONSTRAINT `uq_stock_operation_reversal_of_id` UNIQUE (`reversal_of_id`),
   CONSTRAINT `fk_stock_operation_reversal_of_id_stock_operation`
     FOREIGN KEY (`reversal_of_id`) REFERENCES `stock_operation` (`id`),
   CONSTRAINT `uq_stock_operation_client_request_id` UNIQUE (`client_request_id`),
   INDEX `ix_stock_operation_occurred_at` (`occurred_at`),
   INDEX `ix_stock_operation_source_occurred` (`source_type`, `occurred_at`),
-  INDEX `ix_stock_operation_type_occurred` (`operation_type`, `occurred_at`)
+  INDEX `ix_stock_operation_type_occurred` (`operation_type`, `occurred_at`),
+  INDEX `ix_stock_operation_reversal_of_id` (`reversal_of_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `purchase_material` (
@@ -319,6 +319,7 @@ CREATE TABLE IF NOT EXISTS `stock_operation_line` (
   `operation_id` BIGINT UNSIGNED NOT NULL,
   `stock_material_id` BIGINT UNSIGNED NOT NULL,
   `quantity` DECIMAL(18, 1) NOT NULL,
+  `remaining_qty` DECIMAL(18, 1) NOT NULL,
   `before_qty` DECIMAL(18, 1) NOT NULL,
   `after_qty` DECIMAL(18, 1) NOT NULL,
   `material_name_snapshot` VARCHAR(128) NOT NULL,

@@ -554,6 +554,12 @@ class ReverseOperationRequest(RequestModel):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
     ]
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+    lines: list[OperationLineWrite] = Field(min_length=1)
+
+    @field_validator("lines")
+    @classmethod
+    def unique_materials(cls, value: list[OperationLineWrite]) -> list[OperationLineWrite]:
+        return _ensure_unique_operation_materials(value)
 
 
 class StockOperationLineRead(ReadModel):
@@ -563,6 +569,7 @@ class StockOperationLineRead(ReadModel):
     model_spec: str
     unit_name: str
     quantity: Decimal
+    remaining_qty: Decimal
     before_qty: Decimal
     after_qty: Decimal
 
@@ -578,6 +585,7 @@ class StockOperationRead(ReadModel):
     subitem_no: str | None = None
     source_type: SourceType
     reversal_of_id: int | None = None
+    is_reversed: bool = False
     client_request_id: str
     mini_program_user_name: str | None = None
     lines: list[StockOperationLineRead]

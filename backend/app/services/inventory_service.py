@@ -108,6 +108,7 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
         subitem_no=item.subitem_no,
         source_type=_operation_source_type(item),
         reversal_of_id=item.reversal_of_id,
+        is_reversed=item.reversal_of_id is not None,
         client_request_id=item.client_request_id,
         mini_program_user_name=item.mini_program_user_name_snapshot,
         lines=[
@@ -118,6 +119,7 @@ async def operation_read(session: AsyncSession, item: StockOperation) -> StockOp
                 model_spec=line.model_spec_snapshot,
                 unit_name=line.unit_name_snapshot,
                 quantity=line.quantity,
+                remaining_qty=line.remaining_qty,
                 before_qty=line.before_qty,
                 after_qty=line.after_qty,
             )
@@ -251,6 +253,7 @@ async def create_operation(
     operation_type: OperationType,
     *,
     reversal_of_id: int | None = None,
+    reversal_of: StockOperation | None = None,
     mini_program_user: MiniProgramUser | None = None,
 ) -> StockOperation:
     existing = await session.scalar(
@@ -304,10 +307,27 @@ async def create_operation(
     await session.flush()
     prefix = "IN" if operation_type == OperationType.INBOUND else "OUT"
     item.operation_no = f"{prefix}{item.occurred_at:%Y%m%d}{item.id:06d}"
+    original_lines = {line.stock_material_id: line for line in reversal_of.lines} if reversal_of else {}
+    reversal_quantities: dict[int, Decimal] = {}
+    for line in data.lines:
+        if reversal_of is None:
+            reversal_quantities[line.stock_material_id] = line.quantity
+            continue
+        original_line = original_lines.get(line.stock_material_id)
+        if original_line is None:
+            raise AppError("INVALID_REVERSAL_LINE", "冲销行不在原流水内", status_code=400)
+        if line.quantity > original_line.remaining_qty:
+            raise AppError(
+                "INSUFFICIENT_QUANTITY",
+                f"冲销数量超过剩余可冲数量 {original_line.remaining_qty}",
+                status_code=409,
+            )
+        reversal_quantities[line.stock_material_id] = line.quantity
     item.lines = [
         StockOperationLine(
             stock_material_id=line.stock_material_id,
-            quantity=line.quantity,
+            quantity=reversal_quantities[line.stock_material_id],
+            remaining_qty=reversal_quantities[line.stock_material_id],
             before_qty=ZERO,
             after_qty=ZERO,
             material_name_snapshot=materials[line.stock_material_id].name,
@@ -316,6 +336,13 @@ async def create_operation(
         )
         for line in data.lines
     ]
+    await session.flush()
+    for line in data.lines:
+        original_line = original_lines.get(line.stock_material_id) if reversal_of else None
+        if original_line is not None:
+            original_line.remaining_qty = original_line.remaining_qty - reversal_quantities[
+                line.stock_material_id
+            ]
     await session.flush()
     await replay_materials(session, materials)
     await log_event(
@@ -398,8 +425,10 @@ async def update_operation(
                 stock_material_id=line.stock_material_id,
                 before_qty=ZERO,
                 after_qty=ZERO,
+                remaining_qty=line.quantity,
             )
         stored.quantity = line.quantity
+        stored.remaining_qty = min(stored.remaining_qty, line.quantity)
         stored.material_name_snapshot = material.name
         stored.model_spec_snapshot = material.model_spec
         stored.unit_name_snapshot = material.unit_name
@@ -427,11 +456,6 @@ async def reverse_operation(
     )
     if existing:
         return existing
-    reversal = await session.scalar(
-        select(StockOperation.id).where(StockOperation.reversal_of_id == original.id)
-    )
-    if reversal:
-        raise AppError("ALREADY_REVERSED", "该流水已经冲销", status_code=409)
     reverse_at = max(
         datetime.now(UTC),
         original.occurred_at.replace(tzinfo=UTC) + timedelta(microseconds=1),
@@ -444,20 +468,16 @@ async def reverse_operation(
         receiver_unit=None,
         receiver_name=None,
         subitem_no=original.subitem_no,
-        lines=[
-            OperationLineWrite(
-                stock_material_id=line.stock_material_id,
-                quantity=line.quantity,
-            )
-            for line in original.lines
-        ],
+        lines=data.lines,
     )
     reverse_type = (
         OperationType.OUTBOUND
         if original.operation_type == OperationType.INBOUND
         else OperationType.INBOUND
     )
-    return await create_operation(session, payload, reverse_type, reversal_of_id=original.id)
+    return await create_operation(
+        session, payload, reverse_type, reversal_of_id=original.id, reversal_of=original
+    )
 
 
 async def search_operations(

@@ -246,6 +246,7 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
       model_spec: material.model_spec,
       unit_name: material.unit_name,
       quantity: line.quantity,
+      remaining_qty: line.quantity,
       before_qty: String(before),
       after_qty: String(after),
     }
@@ -261,6 +262,7 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
     subitem_no: payload.subitem_no,
     source_type: payload.source_type,
     client_request_id: payload.client_request_id,
+    is_reversed: false,
     created_at: now(),
     version: 1,
     lines,
@@ -651,6 +653,7 @@ export const handlers = [
         model_spec: material.model_spec,
         unit_name: material.unit_name,
         quantity: line.quantity,
+        remaining_qty: line.quantity,
         before_qty: String(before),
         after_qty: material.current_qty,
       }
@@ -670,22 +673,45 @@ export const handlers = [
   http.post(`${api}/inventory/operations/:id/reverse`, async ({ params, request }) => {
     const original = operations.find((x) => x.id === Number(params.id))
     if (!original) return error(400, 'NOT_FOUND', '流水不存在')
-    const body = (await request.json()) as { client_request_id: string; reason: string }
+    const body = (await request.json()) as {
+      client_request_id: string
+      reason: string
+      lines: Array<{ stock_material_id: number; quantity: string }>
+    }
     const type = original.operation_type === 'INBOUND' ? 'OUTBOUND' : 'INBOUND'
+    // 校验冲销数量不超过剩余可冲数量
+    for (const requested of body.lines) {
+      const originalLine = original.lines.find(
+        (x) => x.stock_material_id === requested.stock_material_id,
+      )
+      if (!originalLine) return error(400, 'INVALID_REVERSAL_LINE', '冲销行不在原流水内')
+      if (Number(requested.quantity) > Number(originalLine.remaining_qty))
+        return error(409, 'INSUFFICIENT_QUANTITY', '冲销数量超过剩余可冲数量')
+    }
     const op = makeOperation(
       {
         client_request_id: body.client_request_id,
         occurred_at: now(),
         source_type: 'REVERSAL',
         business_reason: body.reason,
-        lines: original.lines.map((x) => ({
-          stock_material_id: x.stock_material_id,
-          quantity: x.quantity,
+        lines: body.lines.map((line) => ({
+          stock_material_id: line.stock_material_id,
+          quantity: line.quantity,
         })),
       },
       type,
     )
     op.reversal_of_id = original.id
+    op.is_reversed = true
+    // 扣减原流水剩余可冲数量
+    for (const requested of body.lines) {
+      const originalLine = original.lines.find(
+        (x) => x.stock_material_id === requested.stock_material_id,
+      )!
+      originalLine.remaining_qty = String(
+        Number(originalLine.remaining_qty) - Number(requested.quantity),
+      )
+    }
     return HttpResponse.json(op, { status: 201 })
   }),
   http.get(`${api}/inventory/replenishment-defaults`, () => {
