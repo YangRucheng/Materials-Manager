@@ -16,6 +16,8 @@ Page({
       businessReason: '',
       subitemNo: '',
     },
+    // 幂等 id：进入出库页生成一次，提交重试复用，成功或彻底失败后作废
+    clientRequestId: '',
     i18n: getMessages(),
   },
 
@@ -49,6 +51,7 @@ Page({
         return;
       }
       await Promise.all([this.loadReasonOptions(), this.loadMaterial(materialUuid)]);
+      this.setData({ clientRequestId: createClientRequestId() });
     } catch (error) {
       this.showError(error);
     } finally {
@@ -139,7 +142,8 @@ Page({
         url: '/mini-program/outbound',
         method: 'POST',
         data: {
-          client_request_id: createClientRequestId(),
+          client_request_id:
+            this.data.clientRequestId || createClientRequestId(),
           material_uuid: this.data.material.uuid,
           occurred_at: new Date().toISOString(),
           quantity,
@@ -149,6 +153,8 @@ Page({
         },
       });
       getApp().globalData.lastOutbound = result;
+      // 成功后作废幂等 id
+      this.setData({ clientRequestId: '' });
       wx.redirectTo({ url: '/pages/outbound-success/outbound-success' });
     } catch (error) {
       this.showError(error);

@@ -10,53 +10,118 @@ const errorMessageKeys = {
   USER_DISABLED: 'invalidToken',
 };
 
+// 模块级单例：并发的 401 只触发一次静默重登。
+let refreshPromise = null;
+
+function clearAuthStorage() {
+  wx.removeStorageSync('miniProgramAccessToken');
+  wx.removeStorageSync('miniProgramRegistrationToken');
+  wx.removeStorageSync('miniProgramUser');
+}
+
 function request(options) {
-  const token = options.token || wx.getStorageSync('miniProgramAccessToken');
-  const headers = {
-    'content-type': 'application/json',
-    'Accept-Language': getLocale(),
-    ...(options.header || {}),
-  };
-  if (token && options.auth !== false) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  // 可恢复的鉴权失败仅发生在：需要鉴权且未显式传入 token。
+  // auth:false（登录/设置接口）与显式 options.token（绑定页注册 token）不参与重登重试。
+  const canRetry = options.auth !== false && !options.token;
 
   return new Promise((resolve, reject) => {
-    wx.request({
-      url: `${apiBaseUrl}${options.url}`,
-      method: options.method || 'GET',
-      data: options.data,
-      header: headers,
-      success(response) {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          resolve(response.data);
-          return;
-        }
-        if (response.statusCode === 401 && options.auth !== false && !options.token) {
-          wx.removeStorageSync('miniProgramAccessToken');
-        }
-        if (response.data?.code === 'ACCOUNT_DISABLED') {
-          wx.removeStorageSync('miniProgramAccessToken');
-          wx.removeStorageSync('miniProgramRegistrationToken');
-          wx.removeStorageSync('miniProgramUser');
-          wx.reLaunch({ url: '/pages/disabled/disabled' });
-        }
-        if (response.data?.code === 'MINI_PROGRAM_REGISTRATION_DISABLED') {
-          wx.removeStorageSync('miniProgramAccessToken');
-          wx.removeStorageSync('miniProgramRegistrationToken');
-          wx.removeStorageSync('miniProgramUser');
-          wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
-        }
-        const messageKey = errorMessageKeys[response.data?.code];
-        const error = new Error(messageKey ? t(messageKey) : response.data?.message || t('requestFailed'));
-        error.code = response.data?.code;
-        error.statusCode = response.statusCode;
-        reject(error);
-      },
-      fail(error) {
-        reject(new Error(error.errMsg || t('networkFailed')));
-      },
-    });
+    function refreshSessionAndRetry() {
+      if (!refreshPromise) {
+        // 懒加载以打破 auth.js <-> request.js 顶层循环依赖（CommonJS 按调用时机求值）。
+        const { loginSilently } = require('./auth');
+        refreshPromise = loginSilently()
+          .then((session) => {
+            refreshPromise = null;
+            return session;
+          })
+          .catch((error) => {
+            refreshPromise = null;
+            if (
+              error.code === 'ACCOUNT_DISABLED' ||
+              error.code === 'MINI_PROGRAM_REGISTRATION_DISABLED'
+            ) {
+              clearAuthStorage();
+              wx.reLaunch({
+                url:
+                  error.code === 'ACCOUNT_DISABLED'
+                    ? '/pages/disabled/disabled'
+                    : '/pages/registration-closed/registration-closed',
+              });
+            }
+            throw error;
+          });
+      }
+      return refreshPromise;
+    }
+
+    function doRequest() {
+      // 每次重试都重新读取 token，重登后自动带上新 token。
+      const token = options.token || wx.getStorageSync('miniProgramAccessToken');
+      const headers = {
+        'content-type': 'application/json',
+        'Accept-Language': getLocale(),
+        ...(options.header || {}),
+      };
+      if (token && options.auth !== false) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      wx.request({
+        url: `${apiBaseUrl}${options.url}`,
+        method: options.method || 'GET',
+        data: options.data,
+        header: headers,
+        success(response) {
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(response.data);
+            return;
+          }
+
+          const code = response.data?.code;
+
+          // 账号禁用 / 注册关闭：全局处理，清空凭证并跳转。
+          if (code === 'ACCOUNT_DISABLED') {
+            clearAuthStorage();
+            wx.reLaunch({ url: '/pages/disabled/disabled' });
+          } else if (code === 'MINI_PROGRAM_REGISTRATION_DISABLED') {
+            clearAuthStorage();
+            wx.reLaunch({ url: '/pages/registration-closed/registration-closed' });
+          }
+
+          // 静默重登 + 单次重试：token 缺失或过期（UNAUTHORIZED / INVALID_TOKEN）。
+          if (
+            response.statusCode === 401 &&
+            canRetry &&
+            !options._retried &&
+            (code === 'UNAUTHORIZED' || code === 'INVALID_TOKEN')
+          ) {
+            options._retried = true;
+            refreshSessionAndRetry()
+              .then(doRequest)
+              .catch(reject);
+            return;
+          }
+
+          // 不可恢复的 401（重试后仍失败等）：仅丢弃已失效的 access token，不循环。
+          if (response.statusCode === 401 && canRetry) {
+            wx.removeStorageSync('miniProgramAccessToken');
+          }
+
+          const messageKey = errorMessageKeys[code];
+          const error = new Error(
+            messageKey ? t(messageKey) : response.data?.message || t('requestFailed'),
+          );
+          error.code = code;
+          error.statusCode = response.statusCode;
+          reject(error);
+        },
+        fail(error) {
+          reject(new Error(error.errMsg || t('networkFailed')));
+        },
+      });
+    }
+
+    doRequest();
   });
 }
 

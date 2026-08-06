@@ -63,7 +63,11 @@ Page({
         token: wx.getStorageSync('miniProgramRegistrationToken'),
       });
       storeSession(session);
-      if (session.user && !session.user.enabled) {
+      // 只有拿到 access_token 才算账号可用（待审核用户后端不会签发 token）。
+      // 无 token 时必须落在禁用页，不能带着空 token 进首页，否则后续请求都会提示"请先登录"。
+      const hasAccessToken = Boolean(session.access_token);
+      const userDisabled = session.user && !session.user.enabled;
+      if (!hasAccessToken || userDisabled) {
         getApp().globalData.accountDisabled = true;
         wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
