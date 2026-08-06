@@ -340,7 +340,7 @@ class StockOperation(AuditMixin, Base):
     subitem_no: Mapped[str | None] = mapped_column(String(64))
     source_type: Mapped[SourceType] = mapped_column(SAEnum(SourceType), nullable=False)
     reversal_of_id: Mapped[int | None] = mapped_column(
-        BIGINT_ID, ForeignKey("stock_operation.id"), unique=True
+        BIGINT_ID, ForeignKey("stock_operation.id"), index=True
     )
     client_request_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     mini_program_user_name_snapshot: Mapped[str | None] = mapped_column(String(128))
@@ -369,6 +369,7 @@ class StockOperationLine(AuditMixin, Base):
         BIGINT_ID, ForeignKey("stock_material.id"), nullable=False
     )
     quantity: Mapped[Decimal] = mapped_column(QTY, nullable=False)
+    remaining_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     before_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     after_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     material_name_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)

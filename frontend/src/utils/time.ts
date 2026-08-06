@@ -33,7 +33,7 @@ export const toShanghaiDate = (timestamp: number): string => {
   return `${value('year')}-${value('month')}-${value('day')}`
 }
 
-export const dateToTimestamp = (value?: string): number =>
+export const dateToTimestamp = (value?: string | null): number =>
   value ? new Date(`${value}T00:00:00+08:00`).getTime() : Date.now()
 
 export const formatDate = (value?: string): string => (value ? value.replace(/-/g, '/') : '—')

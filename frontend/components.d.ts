@@ -33,6 +33,7 @@ declare module 'vue' {
     NEmpty: typeof import('naive-ui')['NEmpty']
     NForm: typeof import('naive-ui')['NForm']
     NFormItem: typeof import('naive-ui')['NFormItem']
+    NIcon: typeof import('naive-ui')['NIcon']
     NImage: typeof import('naive-ui')['NImage']
     NInput: typeof import('naive-ui')['NInput']
     NInputGroup: typeof import('naive-ui')['NInputGroup']
@@ -55,6 +56,7 @@ declare module 'vue' {
     NTag: typeof import('naive-ui')['NTag']
     OperationLinesEditor: typeof import('./src/components/OperationLinesEditor.vue')['default']
     QuantityInput: typeof import('./src/components/QuantityInput.vue')['default']
+    ReverseOperationDialog: typeof import('./src/components/ReverseOperationDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
