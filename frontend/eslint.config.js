@@ -5,7 +5,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'src/api/generated.ts'] },
+  { ignores: ['dist', 'coverage', 'src/api/generated.ts', 'src/api/generated.raw.ts'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...vue.configs['flat/recommended'],

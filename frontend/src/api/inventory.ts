@@ -56,7 +56,14 @@ export const inventoryApi = {
     apiClient.get<StockOperation>(`/inventory/operations/${id}`).then((r) => r.data),
   updateOperation: (id: number, payload: OperationUpdate) =>
     apiClient.patch<StockOperation>(`/inventory/operations/${id}`, payload).then((r) => r.data),
-  reverseOperation: (id: number, payload: { client_request_id: string; reason: string }) =>
+  reverseOperation: (
+    id: number,
+    payload: {
+      client_request_id: string
+      reason: string
+      lines: Array<{ stock_material_id: number; quantity: string }>
+    },
+  ) =>
     apiClient
       .post<StockOperation>(`/inventory/operations/${id}/reverse`, payload)
       .then((r) => r.data),

@@ -9,7 +9,8 @@ import { formatShanghaiTime, toIsoWithTimezone } from '@/utils/time'
 import OperationLinesEditor, {
   type OperationLineModel,
 } from '@/components/OperationLinesEditor.vue'
-import { isDecimalString } from '@/utils/decimal'
+import ReverseOperationDialog from '@/components/ReverseOperationDialog.vue'
+import { compareDecimal, isDecimalString, subtractDecimal } from '@/utils/decimal'
 
 const route = useRoute()
 const router = useRouter()
@@ -118,6 +119,40 @@ async function save() {
     saving.value = false
   }
 }
+// 对比原流水行与新编辑行，产出受影响物资的数量变化摘要（含新增/删除的行）
+const editChanges = computed<string[]>(() => {
+  const value = operation.value
+  if (!value) return []
+  const oldByMaterial = new Map(value.lines.map((line) => [line.stock_material_id, line.quantity]))
+  const newByMaterial = new Map(
+    edit.lines
+      .filter(
+        (line): line is OperationLineModel & { stock_material_id: number } =>
+          !!line.stock_material_id,
+      )
+      .map((line) => [line.stock_material_id, line.quantity]),
+  )
+  const ids = new Set([...oldByMaterial.keys(), ...newByMaterial.keys()])
+  const summary: string[] = []
+  for (const id of ids) {
+    const oldQty = oldByMaterial.get(id)
+    const newQty = newByMaterial.get(id)
+    const name = value.lines.find((line) => line.stock_material_id === id)?.material_name
+    const unit = value.lines.find((line) => line.stock_material_id === id)?.unit_name || ''
+    if (oldQty === undefined) {
+      summary.push(`${name}：新增 ${newQty} ${unit}`)
+    } else if (newQty === undefined) {
+      summary.push(`${name}：删除 ${oldQty} ${unit}`)
+    } else if (oldQty !== newQty) {
+      const diff = subtractDecimal(newQty, oldQty)
+      summary.push(`${name}：${oldQty} → ${newQty} ${unit}（变化 ${diff}）`)
+    } else {
+      summary.push(`${name}：${oldQty} ${unit}（无变化）`)
+    }
+  }
+  return summary
+})
+
 function confirmSave() {
   const error = validationError()
   if (error) {
@@ -127,7 +162,7 @@ function confirmSave() {
   dialog.warning({
     draggable: true,
     title: '确认修改流水',
-    content: '修改流水将重新计算受影响物资的库存和后续流水快照。',
+    content: `修改流水将重新计算受影响物资的库存和后续流水快照。\n\n${editChanges.value.join('\n')}`,
     positiveText: '确认修改',
     negativeText: '取消',
     onPositiveClick: save,
@@ -143,19 +178,16 @@ async function cancelEdit() {
   if (operation.value) await resetEditor(operation.value)
   editing.value = false
 }
-async function reverse() {
-  if (!operation.value) return
-  try {
-    const result = await inventoryApi.reverseOperation(operation.value.id, {
-      client_request_id: crypto.randomUUID(),
-      reason: `冲销 ${operation.value.operation_no}`,
-    })
-    message.success(`已生成冲销流水 ${result.operation_no}`)
-    await router.push(`/warehouse/operations/${result.id}`)
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '冲销失败')
-  }
+const showReverse = ref(false)
+function onReversed(id: number) {
+  void router.push(`/warehouse/operations/${id}`)
 }
+// 冲销流水本身不可再冲销；原流水还有剩余可冲数量时才显示冲销按钮
+const canReverse = computed(() => {
+  const value = operation.value
+  if (!value || value.is_reversed) return false
+  return value.lines.some((line) => compareDecimal(line.remaining_qty, '0') > 0)
+})
 onMounted(load)
 </script>
 
@@ -164,7 +196,7 @@ onMounted(load)
     <div class="detail-toolbar">
       <n-button secondary @click="router.back()">← 返回操作记录</n-button>
       <n-space v-if="auth.can('warehouse:write')">
-        <n-button secondary @click="reverse">反向冲销</n-button>
+        <n-button secondary :disabled="!canReverse" @click="showReverse = true">反向冲销</n-button>
         <n-button type="primary" @click="editing ? cancelEdit() : (editing = true)">{{
           editing ? '取消编辑' : '编辑流水'
         }}</n-button>
@@ -277,13 +309,14 @@ onMounted(load)
     </n-card>
     <n-card title="物资明细">
       <OperationLinesEditor v-if="editing" v-model:lines="edit.lines" :type="edit.operation_type" />
-      <div v-else class="table-scroll" style="--table-min-width: 900px">
+      <div v-else class="table-scroll" style="--table-min-width: 1000px">
         <n-table :bordered="false">
           <thead>
             <tr>
               <th>物资</th>
               <th>型号规格</th>
               <th>数量</th>
+              <th>剩余可冲</th>
               <th>操作前</th>
               <th>操作后</th>
             </tr>
@@ -293,6 +326,15 @@ onMounted(load)
               <td>{{ line.material_name }}</td>
               <td>{{ line.model_spec }}</td>
               <td>{{ line.quantity }} {{ line.unit_name }}</td>
+              <td>
+                <n-tag
+                  v-if="compareDecimal(line.remaining_qty, '0') <= 0"
+                  type="success"
+                  size="small"
+                  >已冲销</n-tag
+                >
+                <span v-else>{{ line.remaining_qty }} {{ line.unit_name }}</span>
+              </td>
               <td>{{ line.before_qty }}</td>
               <td>{{ line.after_qty }}</td>
             </tr>
@@ -304,6 +346,11 @@ onMounted(load)
       ><n-button @click="cancelEdit">取消</n-button
       ><n-button type="primary" :loading="saving" @click="confirmSave">保存修改</n-button></n-space
     >
+    <ReverseOperationDialog
+      v-model:show="showReverse"
+      :operation="operation"
+      @reversed="onReversed"
+    />
   </div>
 </template>
 
