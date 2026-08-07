@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { h, reactive, ref } from 'vue'
 import { NButton, NTag, useMessage } from 'naive-ui'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
 import type { InventoryBalance, ReplenishmentDraftWrite } from '@/api/generated'
 import { useAuthStore } from '@/stores/auth'
@@ -9,22 +9,17 @@ import { formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { isDecimalString } from '@/utils/decimal'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import QuantityInput from '@/components/QuantityInput.vue'
+import { usePagedTable } from '@/composables/usePagedTable'
 import {
   getTableScrollX,
   preventTableColumnCompression,
   tableColumnWidths,
 } from '@/constants/table'
 
-const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
-const loading = ref(false)
-const items = ref<InventoryBalance[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
 const showReplenishment = ref(false)
 const replenishing = ref(false)
 const loadingDefaults = ref(false)
@@ -35,11 +30,52 @@ const replenishmentForm = reactive<ReplenishmentDraftWrite>({
   actual_demand_person: '',
   purchase_responsible: '',
 })
-const filters = reactive({
-  keyword: '',
-  low_stock: route.query.low_stock === 'true' ? true : (null as boolean | null),
-  min_qty: '',
-  max_qty: '',
+type StockFilters = {
+  keyword: string
+  low_stock: boolean | null
+  min_qty: string
+  max_qty: string
+}
+const {
+  items,
+  total,
+  page,
+  pageSize,
+  loading,
+  filters,
+  query,
+  changePage,
+  changePageSize,
+  resetFilters,
+} = usePagedTable<InventoryBalance, StockFilters>({
+  fetch: (f, pager) => {
+    // 低库存筛选动态切换 API（lowStock 只返回低库存物资）
+    const api = f.low_stock ? inventoryApi.lowStock : inventoryApi.balances
+    return api({
+      page: pager.page,
+      page_size: pager.page_size,
+      keyword: f.keyword || undefined,
+      min_qty: f.min_qty || undefined,
+      max_qty: f.max_qty || undefined,
+    })
+  },
+  initialFilters: () => ({ keyword: '', low_stock: null, min_qty: '', max_qty: '' }),
+  onError: (error) => message.error(error instanceof Error ? error.message : '库存查询失败'),
+  urlSync: {
+    routeName: 'stock',
+    fromQuery: (route) => ({
+      keyword: String(route.query.keyword || ''),
+      low_stock: route.query.low_stock === 'true' ? true : null,
+      min_qty: String(route.query.min_qty || ''),
+      max_qty: String(route.query.max_qty || ''),
+    }),
+    toQuery: (f) => ({
+      keyword: f.keyword || undefined,
+      low_stock: f.low_stock === true ? 'true' : undefined,
+      min_qty: f.min_qty || undefined,
+      max_qty: f.max_qty || undefined,
+    }),
+  },
 })
 const columns = preventTableColumnCompression<InventoryBalance>([
   {
@@ -122,42 +158,6 @@ const columns = preventTableColumnCompression<InventoryBalance>([
   },
 ])
 const tableScrollX = getTableScrollX(columns)
-async function load() {
-  loading.value = true
-  try {
-    const api = filters.low_stock ? inventoryApi.lowStock : inventoryApi.balances
-    const data = await api({
-      page: page.value,
-      page_size: pageSize.value,
-      keyword: filters.keyword || undefined,
-      min_qty: filters.min_qty || undefined,
-      max_qty: filters.max_qty || undefined,
-    })
-    items.value = data.items
-    total.value = data.total
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '库存查询失败')
-  } finally {
-    loading.value = false
-  }
-}
-function query() {
-  page.value = 1
-  void load()
-}
-function changePage(nextPage: number) {
-  page.value = nextPage
-  void load()
-}
-function changePageSize(nextPageSize: number) {
-  pageSize.value = nextPageSize
-  page.value = 1
-  void load()
-}
-function resetFilters() {
-  Object.assign(filters, { keyword: '', low_stock: null, min_qty: '', max_qty: '' })
-  query()
-}
 function rowProps(row: InventoryBalance) {
   return {
     style: 'cursor: pointer',
@@ -223,7 +223,6 @@ async function confirmReplenishment() {
     replenishing.value = false
   }
 }
-onMounted(load)
 </script>
 
 <template>

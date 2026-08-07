@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { h, reactive, ref } from 'vue'
 import { NButton, NTag, useDialog, useMessage, type FormInst, type FormRules } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { inventoryApi } from '@/api/inventory'
@@ -9,6 +9,7 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { isDecimalString } from '@/utils/decimal'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
+import { usePagedTable } from '@/composables/usePagedTable'
 import {
   getTableScrollX,
   preventTableColumnCompression,
@@ -20,12 +21,34 @@ const message = useMessage()
 const dialog = useDialog()
 const auth = useAuthStore()
 const rowClickGuard = createTableRowClickGuard()
-const loading = ref(false)
-const items = ref<StockMaterial[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
-const filters = reactive({ keyword: '' })
+const {
+  items,
+  total,
+  page,
+  pageSize,
+  loading,
+  filters,
+  load,
+  query,
+  changePage,
+  changePageSize,
+  resetFilters,
+} = usePagedTable<StockMaterial, { keyword: string }>({
+  fetch: (f, pager) =>
+    inventoryApi.materials({
+      page: pager.page,
+      page_size: pager.page_size,
+      keyword: f.keyword.trim() || undefined,
+    }),
+  initialFilters: () => ({ keyword: '' }),
+  onError: (error) => message.error(error instanceof Error ? error.message : '物资档案加载失败'),
+  rollbackEmptyPage: true,
+  urlSync: {
+    routeName: 'stock-materials',
+    fromQuery: (route) => ({ keyword: String(route.query.keyword || '') }),
+    toQuery: (f) => ({ keyword: f.keyword.trim() || undefined }),
+  },
+})
 const showModal = ref(false)
 const saving = ref(false)
 const deletingId = ref<number | null>(null)
@@ -111,42 +134,6 @@ const columns = preventTableColumnCompression<StockMaterial>([
   },
 ])
 const tableScrollX = getTableScrollX(columns)
-
-async function load() {
-  loading.value = true
-  try {
-    const data = await inventoryApi.materials({
-      page: page.value,
-      page_size: pageSize.value,
-      keyword: filters.keyword.trim() || undefined,
-    })
-    items.value = data.items
-    total.value = data.total
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '物资档案加载失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-function query() {
-  page.value = 1
-  void load()
-}
-function changePage(nextPage: number) {
-  page.value = nextPage
-  void load()
-}
-function changePageSize(nextPageSize: number) {
-  pageSize.value = nextPageSize
-  page.value = 1
-  void load()
-}
-
-function resetFilters() {
-  filters.keyword = ''
-  query()
-}
 
 function resetForm() {
   Object.assign(form, {
@@ -237,7 +224,7 @@ function confirmDelete(row: StockMaterial) {
       try {
         await inventoryApi.deleteMaterial(row.id, row.version)
         message.success('物资档案已删除')
-        if (items.value.length === 1 && page.value > 1) page.value -= 1
+        // 防空页回退由 usePagedTable 的 rollbackEmptyPage 处理（删掉末页最后一条后自动退页）
         await load()
       } catch (error) {
         message.error(error instanceof Error ? error.message : '删除失败')
@@ -261,8 +248,6 @@ function rowProps(row: StockMaterial) {
     },
   }
 }
-
-onMounted(() => void load())
 </script>
 
 <template>
