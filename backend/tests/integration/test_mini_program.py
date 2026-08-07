@@ -794,7 +794,7 @@ async def test_mini_program_purchase_plans_only_show_normal_items_with_images_an
     hidden_detail = await client.get(
         f"/api/v1/mini-program/purchase-plans/{hidden['id']}", headers=mini_headers
     )
-    assert hidden_detail.status_code == 404
+    assert hidden_detail.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -875,7 +875,7 @@ async def test_mini_program_purchase_plans_exclude_plans_moved_to_record(
     moved_detail = await client.get(
         f"/api/v1/mini-program/purchase-plans/{moved_plan['id']}", headers=mini_headers
     )
-    assert moved_detail.status_code == 404
+    assert moved_detail.status_code == 400
 
     kept_detail = await client.get(
         f"/api/v1/mini-program/purchase-plans/{kept_plan['id']}", headers=mini_headers

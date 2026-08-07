@@ -307,7 +307,9 @@ async def create_operation(
     await session.flush()
     prefix = "IN" if operation_type == OperationType.INBOUND else "OUT"
     item.operation_no = f"{prefix}{item.occurred_at:%Y%m%d}{item.id:06d}"
-    original_lines = {line.stock_material_id: line for line in reversal_of.lines} if reversal_of else {}
+    original_lines = (
+        {line.stock_material_id: line for line in reversal_of.lines} if reversal_of else {}
+    )
     reversal_quantities: dict[int, Decimal] = {}
     for line in data.lines:
         if reversal_of is None:

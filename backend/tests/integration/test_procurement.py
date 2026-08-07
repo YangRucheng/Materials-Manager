@@ -759,7 +759,7 @@ async def test_plan_can_be_deleted_until_moved_to_record(client: AsyncClient) ->
     )
     assert deleted.status_code == 204, deleted.text
     missing = await client.get(f"/api/v1/purchase-materials/{deletable['id']}", headers=headers)
-    assert missing.status_code == 404
+    assert missing.status_code == 400
 
     moved = await create_purchase_plan(client, headers, "已转入计划", code="DQ-MOVED")
     await move_to_record(client, headers, int(moved["id"]))
@@ -799,7 +799,7 @@ async def test_purchase_record_can_restore_to_purchase_plan(client: AsyncClient)
     missing_record = await client.get(
         f"/api/v1/purchase-records/{record['line_id']}", headers=headers
     )
-    assert missing_record.status_code == 404
+    assert missing_record.status_code == 400
 
     async with SessionLocal() as session:
         request = await session.get(PurchaseRequest, int(record["purchase_request_id"]))

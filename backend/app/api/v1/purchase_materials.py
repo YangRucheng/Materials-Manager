@@ -6,7 +6,13 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
 from app.core.errors import AppError
-from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter, require_roles
+from app.core.permissions import (
+    CurrentUser,
+    DbSession,
+    IfMatchVersion,
+    PurchaseWriter,
+    require_roles,
+)
 from app.domain.enums import PurchasePlanStatus, Role
 from app.models import User
 from app.schemas import (
