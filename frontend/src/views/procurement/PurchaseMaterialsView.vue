@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
-  NButton,
   NTag,
   useMessage,
   type DataTableBaseColumn,
@@ -10,7 +9,6 @@ import {
   type FormRules,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import { SettingsOutline } from '@vicons/ionicons5'
 import type {
   FileObject,
   MaterialCodeLibrary,
@@ -460,21 +458,6 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
     ...availableColumns
       .filter((item) => visibleColumnKeys.value.includes(item.key))
       .map((item) => item.column),
-    ...(auth.can('purchase:write')
-      ? [
-          {
-            title: '操作',
-            key: 'actions',
-            width: tableColumnWidths.action,
-            render: (row: PurchaseMaterial) =>
-              h(
-                NButton,
-                { size: 'small', secondary: true, onClick: () => openEdit(row) },
-                { default: () => '编辑' },
-              ),
-          },
-        ]
-      : []),
   ]),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
@@ -488,7 +471,8 @@ function rowProps(row: PurchaseMaterial) {
     onMousedown: rowClickGuard.onMouseDown,
     onClick: (event: MouseEvent) => {
       if (rowClickGuard.shouldIgnore(event)) return
-      void router.push(`/procurement/materials/${row.id}`)
+      // 点击行直接打开编辑弹窗（与「新建」共用同一弹窗）
+      openEdit(row)
     },
   }
 }
@@ -1289,14 +1273,10 @@ onBeforeUnmount(() => {
             <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
         </div>
-        <n-divider class="advanced-divider" />
         <n-collapse v-model:expanded-names="createAdvancedSections" class="create-advanced-fields">
           <n-collapse-item name="advanced">
             <template #header>
-              <span class="advanced-header">
-                <n-icon><SettingsOutline /></n-icon>
-                <span>更多设置</span>
-              </span>
+              <span class="advanced-header">更多设置</span>
             </template>
             <div class="form-grid">
               <n-form-item label="状态" required>
@@ -1440,14 +1420,6 @@ onBeforeUnmount(() => {
   gap: 6px;
   font-weight: 500;
   color: #4b5565;
-}
-
-.advanced-header .n-icon {
-  color: #5573d1;
-}
-
-.advanced-divider {
-  margin: 18px 0 10px;
 }
 
 .open-new-page-btn {
