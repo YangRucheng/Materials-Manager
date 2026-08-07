@@ -3,14 +3,19 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NTag, useMessage, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type {
+  FileObject,
   PurchaseRecord,
   PurchaseRecordBatchUpdate,
   PurchaseRecordFilterOptions,
+  PurchaseRecordWrite,
 } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import ImageUploader from '@/components/ImageUploader.vue'
+import MaterialSelector from '@/components/MaterialSelector.vue'
+import QuantityInput from '@/components/QuantityInput.vue'
 import type { ExportOption } from '@/types/export'
 import {
   getTableScrollX,
@@ -18,7 +23,7 @@ import {
   tableColumnWidths,
 } from '@/constants/table'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
-import { formatDate, toShanghaiDate } from '@/utils/time'
+import { dateToTimestamp, formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
@@ -26,6 +31,7 @@ import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
 import { renderTwoLineText } from '@/utils/tableText'
 import { useAuthStore } from '@/stores/auth'
+import { purchaseCategoryOptions } from '@/constants/purchase'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -117,6 +123,45 @@ const showBatchEdit = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
+// 单条编辑弹窗（点击行打开，与申购计划一致）
+const showEdit = ref(false)
+const editing = ref<PurchaseRecord | null>(null)
+const editSaving = ref(false)
+const editAdvancedSections = ref<string[]>([])
+const editPlanDate = ref<number | null>(null)
+const editPurchaseDate = ref<number | null>(null)
+const editConsolidationDate = ref<number | null>(null)
+const editSailingDate = ref<number | null>(null)
+const editImages = ref<FileObject[]>([])
+const editForm = reactive<PurchaseRecordWrite>({
+  plan_date: '',
+  material_code: '',
+  category: '',
+  demand_department: '',
+  material_name: '',
+  model_spec: '',
+  unit_name: '',
+  actual_demand_person: '',
+  purchase_responsible: '',
+  purchase_qty: '',
+  usage: '',
+  subitem_no: '',
+  plan_remark: '',
+  stock_material_id: undefined,
+  image_ids: [],
+  purchase_order_no: '',
+  trace_no: '',
+  contract_no: '',
+  vessel_no: '',
+  consolidation_date: undefined,
+  consolidation_port: '',
+  sailing_date: undefined,
+  purchase_date: '',
+  salesperson: '',
+  status: '',
+  record_remark: '',
+  version: 1,
+})
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
@@ -431,7 +476,8 @@ function rowProps(row: PurchaseRecord) {
     onMousedown: rowClickGuard.onMouseDown,
     onClick: (event: MouseEvent) => {
       if (rowClickGuard.shouldIgnore(event)) return
-      void router.push(`/procurement/records/${row.line_id}`)
+      // 点击行直接打开编辑弹窗（与申购计划一致）
+      openEditRecord(row)
     },
   }
 }
@@ -502,6 +548,109 @@ async function exportResults() {
 
 function handleExport(key: string) {
   if (key === 'results') void exportResults()
+}
+
+function syncEditForm(value: PurchaseRecord) {
+  Object.assign(editForm, {
+    plan_date: value.plan_date,
+    material_code: value.material_code || '',
+    category: value.category || '',
+    demand_department: value.demand_department,
+    material_name: value.material_name,
+    model_spec: value.model_spec,
+    unit_name: value.unit_name,
+    actual_demand_person: value.actual_demand_person,
+    purchase_responsible: value.purchase_responsible,
+    purchase_qty: value.purchase_qty,
+    usage: value.usage,
+    subitem_no: value.subitem_no || '',
+    plan_remark: value.plan_remark || '',
+    stock_material_id: value.stock_material_id,
+    image_ids: value.images.map((image) => image.id),
+    purchase_order_no: value.purchase_order_no || '',
+    trace_no: value.trace_no || '',
+    contract_no: value.contract_no || '',
+    vessel_no: value.vessel_no || '',
+    consolidation_date: value.consolidation_date,
+    consolidation_port: value.consolidation_port || '',
+    sailing_date: value.sailing_date,
+    purchase_date: value.purchase_date || '',
+    salesperson: value.salesperson || '',
+    status: value.status,
+    record_remark: value.record_remark || '',
+    version: value.version,
+  })
+  editPlanDate.value = dateToTimestamp(value.plan_date)
+  editPurchaseDate.value = dateToTimestamp(value.purchase_date)
+  editConsolidationDate.value = dateToTimestamp(value.consolidation_date)
+  editSailingDate.value = dateToTimestamp(value.sailing_date)
+  editImages.value = [...value.images]
+}
+
+function openEditRecord(row: PurchaseRecord) {
+  editing.value = row
+  syncEditForm(row)
+  editAdvancedSections.value = []
+  showEdit.value = true
+}
+
+function openRecordInNewPage() {
+  const target = editing.value
+  if (!target) return
+  showEdit.value = false
+  editing.value = null
+  void router.push(`/procurement/records/${target.line_id}`)
+}
+
+async function saveEditRecord() {
+  if (
+    !editing.value ||
+    !editPlanDate.value ||
+    !editPurchaseDate.value ||
+    !editForm.material_name.trim() ||
+    !editForm.model_spec.trim() ||
+    !editForm.unit_name.trim() ||
+    !editForm.actual_demand_person.trim() ||
+    !editForm.purchase_responsible.trim() ||
+    !editForm.purchase_qty ||
+    !editForm.usage.trim() ||
+    !editForm.status.trim()
+  ) {
+    message.error('请完整填写日期、物资、申购数量、用途、人员和状态')
+    return
+  }
+  editSaving.value = true
+  try {
+    await procurementApi.updateRecord(editing.value.line_id, {
+      ...editForm,
+      plan_date: toShanghaiDate(editPlanDate.value),
+      purchase_date: toShanghaiDate(editPurchaseDate.value),
+      consolidation_date: editConsolidationDate.value
+        ? toShanghaiDate(editConsolidationDate.value)
+        : undefined,
+      sailing_date: editSailingDate.value ? toShanghaiDate(editSailingDate.value) : undefined,
+      material_code: editForm.material_code?.trim() || undefined,
+      category: editForm.category?.trim() || undefined,
+      subitem_no: editForm.subitem_no?.trim() || undefined,
+      plan_remark: editForm.plan_remark?.trim() || undefined,
+      record_remark: editForm.record_remark?.trim() || undefined,
+      purchase_order_no: editForm.purchase_order_no?.trim() || null,
+      trace_no: editForm.trace_no?.trim() || null,
+      contract_no: editForm.contract_no?.trim() || null,
+      vessel_no: editForm.vessel_no?.trim() || null,
+      consolidation_port: editForm.consolidation_port?.trim() || null,
+      salesperson: editForm.salesperson?.trim() || undefined,
+      image_ids: editImages.value.map((image) => image.id),
+    })
+    message.success('申购记录已保存')
+    showEdit.value = false
+    editing.value = null
+    await load()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '保存失败')
+  } finally {
+    editSaving.value = false
+  }
 }
 
 function openBatchEdit() {
@@ -1015,6 +1164,187 @@ onMounted(() => {
         </n-space>
       </template>
     </n-modal>
+    <n-modal
+      v-model:show="showEdit"
+      preset="card"
+      draggable
+      :title="editing ? '编辑申购记录' : '申购记录'"
+      style="width: 760px; max-width: calc(100vw - 32px)"
+      :mask-closable="false"
+    >
+      <n-scrollbar style="max-height: 70vh" content-style="padding-right: 12px">
+        <n-form label-placement="top">
+          <div class="form-grid">
+            <n-form-item label="需求日期" required>
+              <n-date-picker v-model:value="editPlanDate" type="date" class="full-width" />
+            </n-form-item>
+            <n-form-item label="申购日期" required>
+              <n-date-picker v-model:value="editPurchaseDate" type="date" class="full-width" />
+            </n-form-item>
+            <n-form-item label="申购单号">
+              <n-input
+                v-model:value="editForm.purchase_order_no"
+                maxlength="128"
+                placeholder="可留空"
+              />
+            </n-form-item>
+            <n-form-item label="追溯号">
+              <n-input v-model:value="editForm.trace_no" maxlength="128" placeholder="可留空" />
+            </n-form-item>
+            <n-form-item label="类别">
+              <n-select
+                v-model:value="editForm.category"
+                :options="purchaseCategoryOptions"
+                filterable
+                clearable
+                placeholder="选择类别"
+              />
+            </n-form-item>
+            <n-form-item label="状态" required>
+              <n-input
+                v-model:value="editForm.status"
+                maxlength="128"
+                placeholder="可填写任意状态"
+              />
+            </n-form-item>
+            <n-form-item label="名称" required>
+              <n-input v-model:value="editForm.material_name" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="型号规格" required>
+              <n-input v-model:value="editForm.model_spec" maxlength="255" />
+            </n-form-item>
+            <n-form-item label="申购数量 / 计量单位" required>
+              <n-input-group>
+                <QuantityInput
+                  v-model:value="editForm.purchase_qty"
+                  :decimal-places="1"
+                  class="quantity-input"
+                />
+                <n-input
+                  v-model:value="editForm.unit_name"
+                  maxlength="32"
+                  placeholder="计量单位"
+                  class="quantity-unit-select"
+                />
+              </n-input-group>
+            </n-form-item>
+            <n-form-item label="实际需求人" required>
+              <n-input v-model:value="editForm.actual_demand_person" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="申购负责人" required>
+              <n-input v-model:value="editForm.purchase_responsible" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="业务员">
+              <n-input v-model:value="editForm.salesperson" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="子项号">
+              <n-input v-model:value="editForm.subitem_no" maxlength="64" placeholder="选填" />
+            </n-form-item>
+            <n-form-item label="用途" required>
+              <n-input v-model:value="editForm.usage" maxlength="500" />
+            </n-form-item>
+          </div>
+          <n-collapse v-model:expanded-names="editAdvancedSections" class="edit-advanced-fields">
+            <n-collapse-item name="advanced">
+              <template #header>
+                <span class="advanced-header">更多设置</span>
+              </template>
+              <div class="form-grid">
+                <n-form-item label="合同号">
+                  <n-input
+                    v-model:value="editForm.contract_no"
+                    maxlength="128"
+                    placeholder="可留空"
+                  />
+                </n-form-item>
+                <n-form-item label="船号">
+                  <n-input
+                    v-model:value="editForm.vessel_no"
+                    maxlength="128"
+                    placeholder="可留空"
+                  />
+                </n-form-item>
+                <n-form-item label="集港日期">
+                  <n-date-picker
+                    v-model:value="editConsolidationDate"
+                    type="date"
+                    class="full-width"
+                    clearable
+                  />
+                </n-form-item>
+                <n-form-item label="集港港口">
+                  <n-input
+                    v-model:value="editForm.consolidation_port"
+                    maxlength="128"
+                    placeholder="可留空"
+                  />
+                </n-form-item>
+                <n-form-item label="发船日期">
+                  <n-date-picker
+                    v-model:value="editSailingDate"
+                    type="date"
+                    class="full-width"
+                    clearable
+                  />
+                </n-form-item>
+                <n-form-item label="物料编码">
+                  <n-input
+                    v-model:value="editForm.material_code"
+                    maxlength="64"
+                    placeholder="可留空"
+                  />
+                </n-form-item>
+                <n-form-item label="需求部门" required>
+                  <n-input v-model:value="editForm.demand_department" maxlength="128" />
+                </n-form-item>
+                <n-form-item label="关联二级库物资">
+                  <MaterialSelector
+                    :value="editForm.stock_material_id ?? null"
+                    @update:value="editForm.stock_material_id = $event ?? undefined"
+                  />
+                </n-form-item>
+              </div>
+            </n-collapse-item>
+          </n-collapse>
+          <n-form-item label="申购计划备注">
+            <n-input
+              v-model:value="editForm.plan_remark"
+              type="textarea"
+              maxlength="1000"
+              show-count
+            />
+          </n-form-item>
+          <n-form-item label="申购记录备注">
+            <n-input
+              v-model:value="editForm.record_remark"
+              type="textarea"
+              maxlength="1000"
+              show-count
+            />
+          </n-form-item>
+          <n-form-item label="图片附件">
+            <ImageUploader v-model:files="editImages" />
+          </n-form-item>
+        </n-form>
+      </n-scrollbar>
+      <template #footer>
+        <n-space justify="space-between">
+          <n-button
+            v-if="editing"
+            text
+            type="primary"
+            class="open-new-page-btn"
+            @click="openRecordInNewPage"
+            >在新页面查看</n-button
+          >
+          <span v-else></span>
+          <n-space justify="end">
+            <n-button @click="showEdit = false">取消</n-button>
+            <n-button type="primary" :loading="editSaving" @click="saveEditRecord">保存</n-button>
+          </n-space>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -1100,5 +1430,50 @@ onMounted(() => {
   .filter-action-buttons {
     justify-content: flex-end;
   }
+}
+
+.quantity-input {
+  flex: 1;
+}
+
+.quantity-unit-select {
+  width: 160px;
+}
+
+.edit-advanced-fields {
+  margin-bottom: 18px;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item) {
+  border-radius: 8px;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item__header) {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f6f8fb;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item__header:hover) {
+  background: #eef2f9;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item__content-inner) {
+  padding: 14px 4px 4px;
+}
+
+.advanced-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: #4b5565;
+}
+
+.open-new-page-btn {
+  align-self: center;
 }
 </style>
