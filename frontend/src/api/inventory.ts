@@ -5,6 +5,7 @@ import type {
   OperationUpdate,
   OperationWrite,
   Page,
+  PagedQueryParams,
   ReplenishmentDraftWrite,
   ReplenishmentDefaults,
   ReplenishmentPolicy,
@@ -13,9 +14,30 @@ import type {
   StockOperation,
 } from './generated'
 
+/** 物资档案列表查询 */
+export interface StockMaterialListQuery extends PagedQueryParams {
+  keyword?: string
+}
+
+/** 库存查询（balances / lowStock 共用） */
+export interface InventoryBalanceListQuery extends PagedQueryParams {
+  keyword?: string
+  min_qty?: string
+  max_qty?: string
+}
+
+/** 操作记录列表查询 */
+export interface StockOperationListQuery extends PagedQueryParams {
+  operation_no?: string
+  operation_type?: string
+  material_name?: string
+  start_at?: string
+  end_at?: string
+}
+
 export const inventoryApi = {
   summary: () => apiClient.get<DashboardSummary>('/dashboard/summary').then((r) => r.data),
-  materials: (params?: Record<string, unknown>) =>
+  materials: (params?: StockMaterialListQuery) =>
     apiClient.get<Page<StockMaterial>>('/stock-materials', { params }).then((r) => r.data),
   material: (id: number) =>
     apiClient.get<StockMaterial>(`/stock-materials/${id}`).then((r) => r.data),
@@ -38,11 +60,11 @@ export const inventoryApi = {
     apiClient
       .put<StockMaterial>(`/stock-materials/${id}/replenishment-policy`, payload)
       .then((r) => r.data),
-  balances: (params?: Record<string, unknown>) =>
+  balances: (params?: InventoryBalanceListQuery) =>
     apiClient.get<Page<InventoryBalance>>('/inventory/balances', { params }).then((r) => r.data),
   balance: (materialId: number) =>
     apiClient.get<InventoryBalance>(`/inventory/balances/${materialId}`).then((r) => r.data),
-  lowStock: (params?: Record<string, unknown>) =>
+  lowStock: (params?: InventoryBalanceListQuery) =>
     apiClient.get<Page<InventoryBalance>>('/inventory/low-stock', { params }).then((r) => r.data),
   replenishmentDefaults: () =>
     apiClient.get<ReplenishmentDefaults>('/inventory/replenishment-defaults').then((r) => r.data),
@@ -50,7 +72,7 @@ export const inventoryApi = {
     apiClient.post<StockOperation>('/inventory/inbounds', payload).then((r) => r.data),
   outbound: (payload: OperationWrite) =>
     apiClient.post<StockOperation>('/inventory/outbounds', payload).then((r) => r.data),
-  operations: (params?: Record<string, unknown>) =>
+  operations: (params?: StockOperationListQuery) =>
     apiClient.get<Page<StockOperation>>('/inventory/operations', { params }).then((r) => r.data),
   operation: (id: number) =>
     apiClient.get<StockOperation>(`/inventory/operations/${id}`).then((r) => r.data),

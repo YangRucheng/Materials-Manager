@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, reactive, ref } from 'vue'
 import { NButton, NTag, useDialog, useMessage } from 'naive-ui'
 import type { ManagedUser, Role } from '@/api/generated'
 import { dictionaryApi } from '@/api/dictionaries'
@@ -10,11 +10,17 @@ import {
 } from '@/constants/table'
 import { roleLabels } from '@/types/navigation'
 import { apiBaseUrl, resolveMcpUrl } from '@/config/env'
+import { usePagedTable } from '@/composables/usePagedTable'
 
 const message = useMessage()
 const dialog = useDialog()
-const items = ref<ManagedUser[]>([])
-const loading = ref(false)
+const { items, loading, load } = usePagedTable<ManagedUser, Record<string, never>>({
+  // 管理端用户无分页，全量拉取
+  fetch: (_f, pager) => dictionaryApi.users({ page_size: pager.page_size }),
+  initialFilters: () => ({}),
+  paginated: false,
+  defaultPageSize: 200,
+})
 const show = ref(false)
 const editing = ref<ManagedUser | null>(null)
 const mcpUrl = computed(() =>
@@ -64,14 +70,6 @@ const columns = preventTableColumnCompression<ManagedUser>([
   },
 ])
 const tableScrollX = getTableScrollX(columns)
-async function load() {
-  loading.value = true
-  try {
-    items.value = (await dictionaryApi.users({ page_size: 200 })).items
-  } finally {
-    loading.value = false
-  }
-}
 function open(row?: ManagedUser) {
   editing.value = row || null
   Object.assign(
@@ -184,7 +182,6 @@ function remove(row: ManagedUser) {
     },
   })
 }
-onMounted(load)
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, ref } from 'vue'
 import { type DataTableBaseColumn, type DataTableColumns, useDialog, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { PurchaseMaterial } from '@/api/generated'
@@ -16,16 +16,24 @@ import { formatDate, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { defaultPurchasePlanStatus } from '@/constants/purchase'
+import { usePagedTable } from '@/composables/usePagedTable'
 
 const router = useRouter()
 const dialog = useDialog()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
-const items = ref<PurchaseMaterial[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
-const loading = ref(false)
+const { items, total, page, pageSize, loading, changePage, changePageSize } = usePagedTable<
+  PurchaseMaterial,
+  Record<string, never>
+>({
+  fetch: (_f, pager) =>
+    procurementApi.uncodedMaterials({
+      page: pager.page,
+      page_size: pager.page_size,
+      status: defaultPurchasePlanStatus,
+    }),
+  initialFilters: () => ({}),
+})
 const exporting = ref(false)
 const exportOptions: ExportOption[] = [{ label: '导出物料编码申请表', key: 'application' }]
 type UncodedColumnKey = 'plan_no' | 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
@@ -118,26 +126,6 @@ function rowProps(row: PurchaseMaterial) {
   }
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const data = await procurementApi.uncodedMaterials({
-      page: page.value,
-      page_size: pageSize.value,
-      status: defaultPurchasePlanStatus,
-    })
-    items.value = data.items
-    total.value = data.total
-  } finally {
-    loading.value = false
-  }
-}
-
-function changePageSize() {
-  page.value = 1
-  void load()
-}
-
 async function exportExcel() {
   exporting.value = true
   try {
@@ -155,8 +143,6 @@ async function exportExcel() {
 function handleExport(key: string) {
   if (key === 'application') void exportExcel()
 }
-
-onMounted(load)
 </script>
 
 <template>
@@ -197,7 +183,7 @@ onMounted(load)
           :item-count="total"
           :page-sizes="[10, 20, 50, 100, 200]"
           show-size-picker
-          @update:page="load"
+          @update:page="changePage"
           @update:page-size="changePageSize"
         />
       </div>

@@ -59,6 +59,12 @@ export type PurchaseRecord = components['schemas']['PurchaseRecordRead']
 
 /* ===== 前端自建视图模型 / 泛型 / Literal（openapi 无对应 schema，手写保留） ===== */
 
+/** 分页查询基础参数（每个列表接口都含，各 api 模块的 XxxListQuery 继承它） */
+export interface PagedQueryParams {
+  page?: number
+  page_size?: number
+}
+
 /** 分页包装（对应后端 Page[T] 泛型，openapi 里是 Page_Xxx_ 具体类型） */
 export interface Page<T> {
   items: T[]
