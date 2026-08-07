@@ -45,7 +45,7 @@ export const procurementApi = {
   batchUpdateMaterials: (payload: PurchaseMaterialBatchUpdate) =>
     apiClient.patch<PurchaseMaterial[]>('/purchase-materials/batch', payload).then((r) => r.data),
   deleteMaterial: (id: number, version: number) =>
-    apiClient.delete(`/purchase-materials/${id}`, { params: { version } }),
+    apiClient.delete(`/purchase-materials/${id}`, { headers: { 'If-Match': String(version) } }),
   linkStock: (id: number, stock_material_id: number) =>
     apiClient
       .post<PurchaseMaterial>(`/purchase-materials/${id}/link-stock-material`, {
@@ -100,7 +100,7 @@ export const procurementApi = {
   restoreRecordToPlan: (lineId: number, version: number) =>
     apiClient
       .post<PurchaseMaterial>(`/purchase-records/${lineId}/restore-to-plan`, null, {
-        params: { version },
+        headers: { 'If-Match': String(version) },
       })
       .then((r) => r.data),
   updateRecord: (lineId: number, payload: PurchaseRecordWrite) =>

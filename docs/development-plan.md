@@ -401,6 +401,18 @@ backend/
 
 重点错误码：`VERSION_CONFLICT`、`DUPLICATE_MATERIAL`、`MATERIAL_CODE_REQUIRED`、`INVALID_STATUS_TRANSITION`、`NEGATIVE_RECEIPT`、`IDEMPOTENCY_CONFLICT`。
 
+#### 状态码约定（禁止 HTTP 404）
+
+本项目**不使用 HTTP 404 状态码**。`404 Not Found` 语义模糊，容易与「路由/文件不存在」混淆，
+而「资源不存在」在本系统是正常业务分支：
+
+- 资源不存在（按 ID 查询不存在的物资、用户、流水等）统一返回 **HTTP 400** + `code=NOT_FOUND`，
+  由前端按业务码区分处理，不依赖 HTTP 状态码。
+- 未匹配的 API 路径（框架级 `HTTPException(404)`）由全局处理兜底，返回 **HTTP 400** +
+  `code=ROUTE_NOT_FOUND` 的结构化业务错误体，确保系统对外不产生 404 状态码。
+- 前端路由级「页面不存在」（`NotFoundView.vue`）属于 UI 展示，不涉及 HTTP 状态码。
+- 对上游服务返回 404 的适配（如 `ai_search_service`）不属于本 API 契约，不受此约定约束。
+
 ## 8. API 契约
 
 统一前缀 `/api/v1`。

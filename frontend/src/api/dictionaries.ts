@@ -18,7 +18,7 @@ export const dictionaryApi = {
   updateMiniProgramUser: (id: number, payload: Partial<MiniProgramUser>) =>
     apiClient.patch<MiniProgramUser>(`/mini-program-users/${id}`, payload).then((r) => r.data),
   deleteMiniProgramUser: (id: number, version: number) =>
-    apiClient.delete(`/mini-program-users/${id}`, { params: { version } }),
+    apiClient.delete(`/mini-program-users/${id}`, { headers: { 'If-Match': String(version) } }),
   mergeMiniProgramUsers: (targetId: number, payload: MiniProgramUserMergeInput) =>
     apiClient
       .post<MiniProgramUser>(`/mini-program-users/${targetId}/merge`, payload)

@@ -30,7 +30,7 @@ export const inventoryApi = {
   updateMaterial: (id: number, payload: StockMaterialWrite) =>
     apiClient.patch<StockMaterial>(`/stock-materials/${id}`, payload).then((r) => r.data),
   deleteMaterial: (id: number, version: number) =>
-    apiClient.delete(`/stock-materials/${id}`, { params: { version } }),
+    apiClient.delete(`/stock-materials/${id}`, { headers: { 'If-Match': String(version) } }),
   savePolicy: (
     id: number,
     payload: Pick<ReplenishmentPolicy, 'minimum_qty' | 'enabled'> & { version?: number },

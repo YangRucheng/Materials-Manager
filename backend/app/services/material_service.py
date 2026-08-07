@@ -104,7 +104,9 @@ async def stock_material_ids_with_operations(
     return set(ids.all())
 
 
-async def delete_stock_material(session: AsyncSession, item: StockMaterial, version: int) -> None:
+async def delete_stock_material(
+    session: AsyncSession, item: StockMaterial, version: int | None
+) -> None:
     validate_version(version, item.version)
     if await stock_material_ids_with_operations(session, [item.id]):
         raise AppError(
@@ -394,7 +396,7 @@ async def batch_update_purchase_materials(
 
 
 async def delete_purchase_material(
-    session: AsyncSession, item: PurchaseMaterial, version: int
+    session: AsyncSession, item: PurchaseMaterial, version: int | None
 ) -> None:
     validate_version(version, item.version)
     referenced = await session.scalar(

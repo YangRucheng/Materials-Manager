@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, Query, status
 from app.core.permissions import (
     CurrentMiniProgramUser,
     DbSession,
+    IfMatchVersion,
     MiniProgramRegistrationOpenId,
     SuperAdmin,
 )
@@ -71,11 +72,11 @@ async def update_mini_program_user(
 @management_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_mini_program_user(
     user_id: int,
-    version: int,
     session: DbSession,
     user: SuperAdmin,
+    if_match: IfMatchVersion,
 ) -> None:
-    await mini_program_service.delete_user(session, user_id, version)
+    await mini_program_service.delete_user(session, user_id, if_match)
 
 
 @management_router.post("/{target_user_id}/merge", response_model=MiniProgramUserRead)

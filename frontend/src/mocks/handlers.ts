@@ -109,8 +109,21 @@ const compareNullableTextDesc = (
   if (normalizedRight === null) return -1
   return normalizedRight.localeCompare(normalizedLeft, 'zh-CN')
 }
+// 与后端 AppError 保持一致：显式 status 优先，否则按 code 推断默认状态码。
+const DEFAULT_STATUS_BY_CODE: Record<string, number> = {
+  NOT_FOUND: 400,
+  VERSION_CONFLICT: 409,
+  DATA_CONFLICT: 409,
+  INVALID_TOKEN: 401,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  VALIDATION_ERROR: 422,
+}
 const error = (status: number, code: string, message: string, details?: Record<string, unknown>) =>
-  HttpResponse.json({ code, message, details, request_id: crypto.randomUUID() }, { status })
+  HttpResponse.json(
+    { code, message, details, request_id: crypto.randomUUID() },
+    { status: status || DEFAULT_STATUS_BY_CODE[code] || 400 },
+  )
 const actor = (request: Request) => {
   const token = request.headers.get('Authorization')?.replace('Bearer mock-', '')
   return users.find((x) => x.username === token) || users[0]
@@ -368,6 +381,17 @@ export const handlers = [
       refresh_token: `mock-refresh-${user.username}`,
       token_type: 'bearer',
       user,
+    })
+  }),
+  http.post(`${api}/auth/refresh`, async ({ request }) => {
+    const body = (await request.json()) as { refresh_token: string }
+    const match = body.refresh_token?.match(/^mock-refresh-(.+)$/)
+    const user = match ? users.find((x) => x.username === match[1] && x.enabled) : undefined
+    if (!user) return error(401, 'INVALID_TOKEN', '刷新凭证无效或已过期')
+    return HttpResponse.json({
+      access_token: `mock-${user.username}`,
+      refresh_token: `mock-refresh-${user.username}`,
+      token_type: 'bearer',
     })
   }),
   http.get(`${api}/auth/me`, ({ request }) => HttpResponse.json(actor(request))),
@@ -928,7 +952,7 @@ export const handlers = [
     const index = purchaseMaterials.findIndex((x) => x.id === Number(params.id))
     if (index < 0) return error(400, 'NOT_FOUND', '申购物资不存在')
     const item = purchaseMaterials[index]
-    const version = Number(new URL(request.url).searchParams.get('version'))
+    const version = Number(request.headers.get('If-Match') || '')
     if (version !== item.version) return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改')
     if (item.moved_to_record)
       return error(409, 'PURCHASE_PLAN_IN_USE', '已转入申购记录的计划不能删除')
@@ -1132,7 +1156,7 @@ export const handlers = [
     return error(400, 'NOT_FOUND', '申购记录不存在')
   }),
   http.post(`${api}/purchase-records/:id/restore-to-plan`, ({ params, request }) => {
-    const version = Number(new URL(request.url).searchParams.get('version'))
+    const version = Number(request.headers.get('If-Match') || '')
     for (let requestIndex = 0; requestIndex < purchaseRequests.length; requestIndex += 1) {
       const purchaseRequest = purchaseRequests[requestIndex]
       const lineIndex = purchaseRequest.lines.findIndex((item) => item.id === Number(params.id))
