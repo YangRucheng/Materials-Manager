@@ -2,75 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
-import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
 
-from fastapi import FastAPI, Request, Response
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import (
-    DisconnectionError,
-    IntegrityError,
-    InterfaceError,
-    OperationalError,
-    ProgrammingError,
-    SQLAlchemyError,
-)
-from sqlalchemy.exc import (
-    TimeoutError as SQLAlchemyTimeoutError,
-)
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.v1 import router as api_router
 from app.core.config import settings
 from app.core.database import engine
-from app.core.errors import AppError
+from app.core.exception_handlers import error_response, register_exception_handlers
 from app.core.logging import configure_logging
-from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware
+from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware, request_context
 from app.mcp_server import bind_application, mcp, mcp_http_app
 from app.services import ai_search_service, webhook_service
 
 logger = logging.getLogger("spare_parts.api")
-
-MYSQL_QUERY_ERROR_CODES = {
-    1052,  # Column is ambiguous.
-    1054,  # Unknown column.
-    1064,  # SQL syntax error.
-    1066,  # Duplicate table alias.
-    1109,  # Unknown table.
-    1146,  # Table does not exist.
-}
-
-
-def is_database_query_error(exc: SQLAlchemyError) -> bool:
-    original = getattr(exc, "orig", None)
-    args = getattr(original, "args", ())
-    return bool(args and isinstance(args[0], int) and args[0] in MYSQL_QUERY_ERROR_CODES)
-
-
-def error_response(
-    request: Request,
-    *,
-    status_code: int,
-    code: str,
-    message: str,
-    details: dict[str, Any] | list[Any] | None = None,
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "code": code,
-            "message": message,
-            "details": details or {},
-            "request_id": getattr(request.state, "request_id", "unknown"),
-        },
-    )
 
 
 @asynccontextmanager
@@ -109,154 +57,11 @@ app.add_middleware(
     allow_credentials=settings.cors_allow_credentials,
     max_age=settings.cors_max_age,
 )
-
-
-@app.middleware("http")
-async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
-    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))[:128]
-    request.state.request_id = request_id
-    started = time.perf_counter()
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    client_ip = request.client.host if request.client else "unknown"
-    logger.info(
-        "HTTP %s %s -> %s | %.2f ms | client_ip=%s | user=%s | request_id=%s",
-        request.method,
-        request.url.path,
-        response.status_code,
-        (time.perf_counter() - started) * 1000,
-        client_ip,
-        getattr(request.state, "username", "anonymous"),
-        request_id,
-    )
-    return response
-
-
-@app.exception_handler(AppError)
-async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
-    return error_response(
-        request,
-        status_code=exc.status_code,
-        code=exc.code,
-        message=exc.message,
-        details=exc.details,
-    )
-
-
-@app.exception_handler(StarletteHTTPException)
-async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    # 约定：禁止对外产生 404 状态码（见 docs/api-error-conventions.md）。
-    # 未匹配的 API 路径（框架级 404）重映射为 400 + code=ROUTE_NOT_FOUND，返回结构化业务错误体。
-    # 其余 Starlette HTTP 异常（如 405/422）保持原状态码透传。
-    if exc.status_code == 404:
-        return error_response(
-            request,
-            status_code=400,
-            code="ROUTE_NOT_FOUND",
-            message="接口路径不存在",
-        )
-    return error_response(
-        request,
-        status_code=exc.status_code,
-        code="HTTP_ERROR",
-        message=str(exc.detail) if exc.detail else "请求错误",
-    )
-
-
-@app.exception_handler(RequestValidationError)
-async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
-    return error_response(
-        request,
-        status_code=422,
-        code="VALIDATION_ERROR",
-        message="请求参数校验失败",
-        details={"errors": jsonable_encoder(exc.errors())},
-    )
-
-
-@app.exception_handler(IntegrityError)
-async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
-    logger.warning(
-        "database integrity error request_id=%s",
-        request.state.request_id,
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
-    return error_response(
-        request,
-        status_code=409,
-        code="DATA_CONFLICT",
-        message="数据约束冲突",
-    )
-
-
-@app.exception_handler(ProgrammingError)
-async def handle_database_programming_error(
-    request: Request, exc: SQLAlchemyError
-) -> JSONResponse:
-    logger.error(
-        "database query error request_id=%s error_type=%s",
-        request.state.request_id,
-        type(exc).__name__,
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
-    return error_response(
-        request,
-        status_code=500,
-        code="DATABASE_QUERY_ERROR",
-        message="数据库查询执行失败，请联系管理员",
-    )
-
-
-@app.exception_handler(OperationalError)
-@app.exception_handler(InterfaceError)
-@app.exception_handler(DisconnectionError)
-@app.exception_handler(SQLAlchemyTimeoutError)
-async def handle_database_unavailable(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-    if is_database_query_error(exc):
-        return await handle_database_programming_error(request, exc)
-    logger.error(
-        "database unavailable request_id=%s error_type=%s",
-        request.state.request_id,
-        type(exc).__name__,
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
-    return error_response(
-        request,
-        status_code=503,
-        code="DATABASE_UNAVAILABLE",
-        message="数据库暂时不可用，请稍后重试",
-    )
-
-
-@app.exception_handler(SQLAlchemyError)
-async def handle_database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-    logger.error(
-        "database error request_id=%s error_type=%s",
-        request.state.request_id,
-        type(exc).__name__,
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
-    return error_response(
-        request,
-        status_code=500,
-        code="DATABASE_ERROR",
-        message="数据库操作失败，请联系管理员",
-    )
-
-
-@app.exception_handler(Exception)
-async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception(
-        "unexpected server error request_id=%s error_type=%s",
-        request.state.request_id,
-        type(exc).__name__,
-    )
-    return error_response(
-        request,
-        status_code=500,
-        code="INTERNAL_SERVER_ERROR",
-        message="服务内部异常，请联系管理员",
-    )
+# 注意注册顺序：后注册的中间件更外层（先处理请求）。
+# request_context 需在 RealIP 内层，才能读到 RealIP 改写后的真实客户端 IP。
+app.middleware("http")(request_context)
+app.add_middleware(RealIPMiddleware)
+register_exception_handlers(app)
 
 
 @app.get("/health", include_in_schema=False)
@@ -275,7 +80,6 @@ async def health(request: Request) -> JSONResponse:
     return JSONResponse(content={"status": "ok", "database": "ok"})
 
 
-app.add_middleware(RealIPMiddleware)
 app.include_router(api_router, prefix="/api/v1")
 bind_application(app)
 app.mount("/api/v1/mcp", mcp_http_app, name="mcp")

@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from ipaddress import ip_address
 from urllib.parse import urlsplit
 
+from fastapi import Request, Response
 from starlette.datastructures import Headers, MutableHeaders
+from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+logger = logging.getLogger("spare_parts.api")
 
 
 def _real_ip(scope: Scope) -> str | None:
@@ -148,3 +155,24 @@ class RealIPMiddleware:
             client = scope.get("client")
             scope["client"] = (real_ip, client[1] if client else 0)
         await self.app(scope, receive, send)
+
+
+async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    """为每个请求注入 request_id 并记录访问日志。"""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))[:128]
+    request.state.request_id = request_id
+    started = time.perf_counter()
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        "HTTP %s %s -> %s | %.2f ms | client_ip=%s | user=%s | request_id=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        (time.perf_counter() - started) * 1000,
+        client_ip,
+        getattr(request.state, "username", "anonymous"),
+        request_id,
+    )
+    return response

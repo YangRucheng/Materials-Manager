@@ -6,7 +6,7 @@ from pytest import LogCaptureFixture
 from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError, TimeoutError
 from starlette.requests import Request
 
-from app.main import (
+from app.core.exception_handlers import (
     handle_database_error,
     handle_database_programming_error,
     handle_database_unavailable,

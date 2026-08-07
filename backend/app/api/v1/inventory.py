@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, status
 
+from app.api.deps import PageNo, PageSize
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
 from app.domain.enums import OperationType, SourceType
@@ -22,8 +22,6 @@ from app.schemas import (
 from app.services import dashboard_service, inventory_service, replenishment_service
 
 router = APIRouter(tags=["库存"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
 
 
 def _query_time(value: str | None) -> datetime | None:

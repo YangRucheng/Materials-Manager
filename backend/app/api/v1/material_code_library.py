@@ -4,14 +4,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Query, UploadFile
 
+from app.api.deps import PageNo, PageSize
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
 from app.schemas import MaterialCodeLibraryImportRead, MaterialCodeLibraryRead, Page
 from app.services import material_code_library_service
 
 router = APIRouter(prefix="/material-code-library", tags=["物料编码库"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
 
 
 @router.get("", response_model=Page[MaterialCodeLibraryRead])

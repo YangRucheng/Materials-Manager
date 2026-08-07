@@ -7,7 +7,9 @@ from datetime import date
 from decimal import Decimal
 from io import BytesIO
 from typing import Any
+from urllib.parse import quote
 
+from fastapi.responses import Response
 from openpyxl import Workbook  # type: ignore[import-untyped]
 from openpyxl.formatting.rule import FormulaRule  # type: ignore[import-untyped]
 from openpyxl.styles import (  # type: ignore[import-untyped]
@@ -27,6 +29,15 @@ from app.core.errors import AppError
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
+
+
+def excel_response(content: bytes, filename: str) -> Response:
+    """构造 Excel 下载响应（各导出路由共用，统一 Content-Type 与文件名）。"""
+    return Response(
+        content=content,
+        media_type=XLSX_CONTENT_TYPE,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
 
 
 def _load_spec(file_name: str) -> dict[str, Any]:
