@@ -36,6 +36,7 @@ from app.models import (
 from app.schemas import (
     MiniProgramInventoryItemRead,
     MiniProgramMaterialRead,
+    MiniProgramOperationRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
     MiniProgramPurchasePlanDetailRead,
@@ -681,3 +682,70 @@ async def get_outbound_by_no(
     if material is None:
         raise not_found("二级库物资")
     return _outbound_read(operation, material, user)
+
+
+def operation_read_rows(item: StockOperation) -> list[MiniProgramOperationRead]:
+    """把一条库存操作按行展平为小程序出入库记录（兼容入库/出库、多行/管理端操作）。
+
+    仅使用各行的快照字段，不依赖实时关联，历史数据稳定。
+    """
+    executed_by = item.mini_program_user_name_snapshot or item.receiver_name
+    rows: list[MiniProgramOperationRead] = []
+    for line in item.lines:
+        rows.append(
+            MiniProgramOperationRead(
+                operation_id=item.id,
+                operation_no=item.operation_no,
+                operation_type=item.operation_type,
+                material_name=line.material_name_snapshot,
+                model_spec=line.model_spec_snapshot,
+                unit_name=line.unit_name_snapshot,
+                quantity=line.quantity,
+                before_qty=line.before_qty,
+                after_qty=line.after_qty,
+                occurred_at=cast(datetime, utc_aware(item.occurred_at)),
+                business_reason=item.business_reason,
+                receiver_unit=item.receiver_unit,
+                receiver_name=item.receiver_name,
+                subitem_no=item.subitem_no,
+                executed_by=executed_by,
+            )
+        )
+    return rows
+
+
+async def list_operations_by_user(
+    session: AsyncSession, user: MiniProgramUser, page: int, page_size: int
+) -> tuple[list[MiniProgramOperationRead], int]:
+    """按当前用户姓名匹配查询所有出入库记录（含管理端操作）。
+
+    姓名匹配 receiver_name（领用人）或 mini_program_user_name_snapshot（小程序执行人）。
+    服务端用 user.display_name 匹配，不接受客户端传姓名，避免越权查看他人记录。
+    空结果返回空列表，不抛 404（符合禁止 404 约定）。
+    """
+    condition = or_(
+        StockOperation.receiver_name == user.display_name,
+        StockOperation.mini_program_user_name_snapshot == user.display_name,
+    )
+    total = int(
+        (
+            await session.scalar(
+                select(func.count()).select_from(StockOperation).where(condition)
+            )
+        )
+        or 0
+    )
+    items = list(
+        (
+            await session.scalars(
+                select(StockOperation)
+                .where(condition)
+                .order_by(StockOperation.occurred_at.desc(), StockOperation.id.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        )
+        .unique()
+        .all()
+    )
+    return [row for item in items for row in operation_read_rows(item)], total

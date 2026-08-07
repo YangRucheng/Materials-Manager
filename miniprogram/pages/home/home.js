@@ -70,6 +70,11 @@ Page({
     this.setData({ userProfileVisible: event.detail.visible });
   },
 
+  openRecords() {
+    this.setData({ userProfileVisible: false });
+    wx.navigateTo({ url: '/pages/records/records' });
+  },
+
   async scanMaterial() {
     this.setData({ scanning: true });
     try {

@@ -197,3 +197,31 @@
   text-align: right;
   word-break: break-all;
 }
+
+.user-profile-records {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 22rpx;
+  border: 2rpx solid #e5ebf7;
+  border-radius: 20rpx;
+  background: #f8faff;
+  transition: background 120ms ease;
+}
+
+.user-profile-records-active {
+  background: #eef2ff;
+}
+
+.records-entry {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.records-entry-text {
+  color: #3658c7;
+  font-size: 26rpx;
+  font-weight: 550;
+}

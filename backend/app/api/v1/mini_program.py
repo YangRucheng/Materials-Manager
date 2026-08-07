@@ -19,6 +19,7 @@ from app.schemas import (
     MiniProgramInventoryItemRead,
     MiniProgramLoginResponse,
     MiniProgramMaterialRead,
+    MiniProgramOperationRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
     MiniProgramOutboundReasonOptions,
@@ -224,6 +225,20 @@ async def mini_program_outbound_reasons(
         personal_reasons=personal_reasons,
         system_reasons=system_reasons,
     )
+
+
+@mini_router.get("/operations", response_model=Page[MiniProgramOperationRead])
+async def mini_program_operations(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+) -> Page[MiniProgramOperationRead]:
+    """按当前用户姓名匹配查询出入库记录（含管理端操作）。"""
+    items, total = await mini_program_service.list_operations_by_user(
+        session, user, page, page_size
+    )
+    return Page(items=items, page=page, page_size=page_size, total=total)
 
 
 @mini_router.get("/outbound/{operation_no}", response_model=MiniProgramOutboundRead)

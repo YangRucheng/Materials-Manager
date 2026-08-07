@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
+  NButton,
   NTag,
   useMessage,
   type DataTableBaseColumn,
@@ -9,6 +10,7 @@ import {
   type FormRules,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
+import { SettingsOutline } from '@vicons/ionicons5'
 import type {
   FileObject,
   MaterialCodeLibrary,
@@ -47,7 +49,7 @@ import {
   purchaseUrgencyOptions,
   purchasePlanStatusOptions,
 } from '@/constants/purchase'
-import { formatDate, toShanghaiDate } from '@/utils/time'
+import { dateToTimestamp, formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
 import { routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
@@ -158,6 +160,7 @@ const aiAvailable = ref(false)
 const aiSearching = ref(false)
 const resultExporting = ref(false)
 const show = ref(false)
+const editing = ref<PurchaseMaterial | null>(null)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
 const saving = ref(false)
@@ -457,6 +460,21 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
     ...availableColumns
       .filter((item) => visibleColumnKeys.value.includes(item.key))
       .map((item) => item.column),
+    ...(auth.can('purchase:write')
+      ? [
+          {
+            title: '操作',
+            key: 'actions',
+            width: tableColumnWidths.action,
+            render: (row: PurchaseMaterial) =>
+              h(
+                NButton,
+                { size: 'small', secondary: true, onClick: () => openEdit(row) },
+                { default: () => '编辑' },
+              ),
+          },
+        ]
+      : []),
   ]),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
@@ -558,6 +576,7 @@ async function exportResults() {
   }
 }
 function openCreate() {
+  editing.value = null
   Object.assign(form, {
     status: defaultPurchasePlanStatus,
     material_code: '',
@@ -581,6 +600,32 @@ function openCreate() {
   createAdvancedSections.value = []
   show.value = true
 }
+function openEdit(row: PurchaseMaterial) {
+  editing.value = row
+  Object.assign(form, {
+    status: row.status,
+    material_code: row.material_code || '',
+    category: row.category || '',
+    urgency: row.urgency,
+    demand_department: row.demand_department,
+    name: row.name,
+    model_spec: row.model_spec,
+    unit_name: row.unit_name,
+    actual_demand_person: row.actual_demand_person,
+    purchase_responsible: row.purchase_responsible,
+    planned_qty: row.planned_qty,
+    usage: row.usage,
+    subitem_no: row.subitem_no || '',
+    stock_material_id: row.stock_material_id,
+    remark: row.remark || '',
+    image_ids: row.images.map((image) => image.id),
+    version: row.version,
+  })
+  images.value = [...row.images]
+  createPlanDate.value = dateToTimestamp(row.plan_date)
+  createAdvancedSections.value = []
+  show.value = true
+}
 function applyMaterialCode(item: MaterialCodeLibrary) {
   form.material_code = item.material_code
   if (item.name?.trim()) form.name = item.name
@@ -596,21 +641,35 @@ async function save() {
   saving.value = true
   try {
     form.image_ids = images.value.map((x) => x.id)
-    await procurementApi.createMaterial({
+    const payload = {
       ...form,
       plan_date: toShanghaiDate(createPlanDate.value),
       subitem_no: form.subitem_no?.trim() || undefined,
-    })
-    rememberPurchaseResponsible(form.purchase_responsible || '')
-    message.success('申购计划已创建')
+    }
+    if (editing.value) {
+      await procurementApi.updateMaterial(editing.value.id, payload)
+      message.success('申购计划已保存')
+    } else {
+      await procurementApi.createMaterial(payload)
+      rememberPurchaseResponsible(form.purchase_responsible || '')
+      message.success('申购计划已创建')
+    }
     show.value = false
+    editing.value = null
     page.value = 1
     await Promise.all([load(), loadFilterOptions()])
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '创建失败')
+    message.error(e instanceof Error ? e.message : '保存失败')
   } finally {
     saving.value = false
   }
+}
+function openInNewPage() {
+  const target = editing.value
+  if (!target) return
+  show.value = false
+  editing.value = null
+  void router.push(`/procurement/materials/${target.id}`)
 }
 function openBatchMove() {
   if (!selectedPlans.value.length) {
@@ -1171,7 +1230,7 @@ onBeforeUnmount(() => {
       v-model:show="show"
       preset="card"
       draggable
-      title="新建申购计划"
+      :title="editing ? '编辑申购计划' : '新建申购计划'"
       style="width: 680px"
       :mask-closable="false"
     >
@@ -1195,14 +1254,8 @@ onBeforeUnmount(() => {
           <n-form-item label="型号规格" path="model_spec">
             <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
-          <n-form-item label="类别">
-            <n-select
-              v-model:value="form.category"
-              :options="categoryOptions"
-              filterable
-              clearable
-              placeholder="选择类别"
-            />
+          <n-form-item label="紧急程度">
+            <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
           </n-form-item>
           <n-form-item label="计划数量 / 计量单位" path="planned_qty">
             <n-input-group>
@@ -1236,14 +1289,27 @@ onBeforeUnmount(() => {
             <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
         </div>
+        <n-divider class="advanced-divider" />
         <n-collapse v-model:expanded-names="createAdvancedSections" class="create-advanced-fields">
-          <n-collapse-item title="更多设置" name="advanced">
+          <n-collapse-item name="advanced">
+            <template #header>
+              <span class="advanced-header">
+                <n-icon><SettingsOutline /></n-icon>
+                <span>更多设置</span>
+              </span>
+            </template>
             <div class="form-grid">
               <n-form-item label="状态" required>
                 <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
               </n-form-item>
-              <n-form-item label="紧急程度">
-                <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
+              <n-form-item label="类别">
+                <n-select
+                  v-model:value="form.category"
+                  :options="categoryOptions"
+                  filterable
+                  clearable
+                  placeholder="选择类别"
+                />
               </n-form-item>
               <n-form-item label="需求部门">
                 <n-input v-model:value="form.demand_department" maxlength="128" />
@@ -1258,13 +1324,23 @@ onBeforeUnmount(() => {
           </n-collapse-item>
         </n-collapse>
         <n-form-item label="备注"
-          ><n-input v-model:value="form.remark" maxlength="1000" /></n-form-item
-        ><n-form-item label="图片附件"
-          ><ImageUploader v-model:files="images" /></n-form-item></n-form
+          ><n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count
+        /></n-form-item>
+        <n-form-item label="图片附件"><ImageUploader v-model:files="images" /></n-form-item></n-form
       ><template #footer
-        ><n-space justify="end"
-          ><n-button @click="show = false">取消</n-button
-          ><n-button type="primary" :loading="saving" @click="save">保存</n-button></n-space
+        ><n-space justify="space-between"
+          ><n-button
+            v-if="editing"
+            text
+            type="primary"
+            class="open-new-page-btn"
+            @click="openInNewPage"
+            >在新页面查看</n-button
+          ><span v-else></span
+          ><n-space justify="end"
+            ><n-button @click="show = false">取消</n-button
+            ><n-button type="primary" :loading="saving" @click="save">保存</n-button></n-space
+          ></n-space
         ></template
       ></n-modal
     >
@@ -1335,12 +1411,47 @@ onBeforeUnmount(() => {
 
 .create-advanced-fields {
   margin-bottom: 18px;
-  border-top: 1px solid #edf1f6;
-  border-bottom: 1px solid #edf1f6;
+}
+
+.create-advanced-fields :deep(.n-collapse-item) {
+  border-radius: 8px;
+}
+
+.create-advanced-fields :deep(.n-collapse-item__header) {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f6f8fb;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.create-advanced-fields :deep(.n-collapse-item__header:hover) {
+  background: #eef2f9;
 }
 
 .create-advanced-fields :deep(.n-collapse-item__content-inner) {
-  padding-top: 6px;
+  padding: 14px 4px 4px;
+}
+
+.advanced-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: #4b5565;
+}
+
+.advanced-header .n-icon {
+  color: #5573d1;
+}
+
+.advanced-divider {
+  margin: 18px 0 10px;
+}
+
+.open-new-page-btn {
+  align-self: center;
 }
 
 .filter-actions {
