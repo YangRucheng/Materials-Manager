@@ -190,7 +190,7 @@ async def update_user(
     return item
 
 
-async def delete_user(session: AsyncSession, item_id: int, version: int) -> None:
+async def delete_user(session: AsyncSession, item_id: int, version: int | None) -> None:
     item = await session.get(MiniProgramUser, item_id)
     if item is None:
         raise not_found("小程序用户")

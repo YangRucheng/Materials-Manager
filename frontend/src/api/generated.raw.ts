@@ -3734,10 +3734,10 @@ export interface operations {
     };
     delete_material_api_v1_stock_materials__material_id__delete: {
         parameters: {
-            query: {
-                version: number;
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
             };
-            header?: never;
             path: {
                 material_id: number;
             };
@@ -5118,10 +5118,10 @@ export interface operations {
     };
     delete_mini_program_user_api_v1_mini_program_users__user_id__delete: {
         parameters: {
-            query: {
-                version: number;
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
             };
-            header?: never;
             path: {
                 user_id: number;
             };
@@ -6576,10 +6576,10 @@ export interface operations {
     };
     delete_material_api_v1_purchase_materials__material_id__delete: {
         parameters: {
-            query: {
-                version: number;
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
             };
-            header?: never;
             path: {
                 material_id: number;
             };
@@ -7288,10 +7288,10 @@ export interface operations {
     };
     restore_purchase_record_to_plan_api_v1_purchase_records__line_id__restore_to_plan_post: {
         parameters: {
-            query: {
-                version: number;
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
             };
-            header?: never;
             path: {
                 line_id: number;
             };

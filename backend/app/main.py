@@ -24,6 +24,7 @@ from sqlalchemy.exc import (
 from sqlalchemy.exc import (
     TimeoutError as SQLAlchemyTimeoutError,
 )
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.v1 import router as api_router
@@ -139,6 +140,26 @@ async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         code=exc.code,
         message=exc.message,
         details=exc.details,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    # 约定：禁止对外产生 404 状态码（见 docs/api-error-conventions.md）。
+    # 未匹配的 API 路径（框架级 404）重映射为 400 + code=ROUTE_NOT_FOUND，返回结构化业务错误体。
+    # 其余 Starlette HTTP 异常（如 405/422）保持原状态码透传。
+    if exc.status_code == 404:
+        return error_response(
+            request,
+            status_code=400,
+            code="ROUTE_NOT_FOUND",
+            message="接口路径不存在",
+        )
+    return error_response(
+        request,
+        status_code=exc.status_code,
+        code="HTTP_ERROR",
+        message=str(exc.detail) if exc.detail else "请求错误",
     )
 
 

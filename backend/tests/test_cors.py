@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from httpx import AsyncClient
 
+from app.core.config import settings
+
 
 def _vary_values(response) -> set[str]:
     return {item.strip().lower() for item in response.headers["vary"].split(",")}
@@ -42,6 +44,8 @@ async def test_cors_preflight_falls_back_to_origin(client: AsyncClient) -> None:
 
 
 async def test_cors_headers_are_added_to_not_found_response(client: AsyncClient) -> None:
+    # 框架级路由 404 会被全局处理重映射为 400 + ROUTE_NOT_FOUND（禁止 404，见
+    # docs/api-error-conventions.md），CORS 头仍应补齐在结构化错误响应上。
     response = await client.post(
         "/auth/login",
         headers={
@@ -51,7 +55,8 @@ async def test_cors_headers_are_added_to_not_found_response(client: AsyncClient)
         json={},
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 400
+    assert response.json()["code"] == "ROUTE_NOT_FOUND"
     assert response.headers["access-control-allow-origin"] == "https://frontend.example.com"
     exposed = response.headers["access-control-expose-headers"].lower()
     assert "content-disposition" in exposed
@@ -75,3 +80,32 @@ async def test_response_without_referer_or_origin_has_no_cors_headers(
 
     assert response.status_code == 200
     assert "access-control-allow-origin" not in response.headers
+
+
+async def test_cors_whitelist_rejects_unknown_origin(client: AsyncClient) -> None:
+    """配置白名单后，未知来源不反射 CORS 头（浏览器拦截跨域）。"""
+    original = settings.cors_origins
+    settings.cors_origins = ["https://frontend.example.com", ".example.com"]
+    try:
+        response = await client.get(
+            "/health",
+            headers={"Origin": "https://evil-attacker.com", "Referer": "https://evil-attacker.com/x"},
+        )
+        assert response.status_code == 200
+        assert "access-control-allow-origin" not in response.headers
+
+        # 白名单内来源正常放行
+        allowed = await client.get(
+            "/health",
+            headers={"Origin": "https://app.example.com", "Referer": "https://app.example.com/x"},
+        )
+        assert allowed.headers["access-control-allow-origin"] == "https://app.example.com"
+
+        # 子域后缀匹配（.example.com 匹配 app.example.com）
+        sub = await client.get(
+            "/health",
+            headers={"Referer": "https://sub.example.com/page"},
+        )
+        assert sub.headers["access-control-allow-origin"] == "https://sub.example.com"
+    finally:
+        settings.cors_origins = original

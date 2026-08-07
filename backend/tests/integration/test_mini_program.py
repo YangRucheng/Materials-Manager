@@ -336,8 +336,7 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
 
     deleted = await client.delete(
         f"/api/v1/mini-program-users/{created_user['id']}",
-        headers=admin,
-        params={"version": disabled.json()["version"]},
+        headers={**admin, "If-Match": str(disabled.json()["version"])},
     )
     assert deleted.status_code == 204, deleted.text
     historical_operation = await client.get(
@@ -795,7 +794,7 @@ async def test_mini_program_purchase_plans_only_show_normal_items_with_images_an
     hidden_detail = await client.get(
         f"/api/v1/mini-program/purchase-plans/{hidden['id']}", headers=mini_headers
     )
-    assert hidden_detail.status_code == 404
+    assert hidden_detail.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -876,7 +875,7 @@ async def test_mini_program_purchase_plans_exclude_plans_moved_to_record(
     moved_detail = await client.get(
         f"/api/v1/mini-program/purchase-plans/{moved_plan['id']}", headers=mini_headers
     )
-    assert moved_detail.status_code == 404
+    assert moved_detail.status_code == 400
 
     kept_detail = await client.get(
         f"/api/v1/mini-program/purchase-plans/{kept_plan['id']}", headers=mini_headers
@@ -1063,7 +1062,7 @@ async def test_mini_program_users_require_super_admin(client: AsyncClient) -> No
     response = await client.get("/api/v1/mini-program-users", headers=warehouse)
     assert response.status_code == 403
     deleted = await client.delete(
-        "/api/v1/mini-program-users/1", headers=warehouse, params={"version": 1}
+        "/api/v1/mini-program-users/1", headers={**warehouse, "If-Match": "1"}
     )
     assert deleted.status_code == 403
     merged = await client.post(

@@ -211,7 +211,7 @@ async def test_import_rejects_corrupted_file(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_import_large_file_succeeds(client: AsyncClient) -> None:
     purchase_headers = await auth_headers(client, "purchase")
-    rows = [[f"生效", f"Y{i:04d}", f"物料{i}", "个", f"型号{i}", "忽略"] for i in range(500)]
+    rows = [["生效", f"Y{i:04d}", f"物料{i}", "个", f"型号{i}", "忽略"] for i in range(500)]
     file_content = build_workbook(rows)
     response = await client.post(
         "/api/v1/material-code-library/import",

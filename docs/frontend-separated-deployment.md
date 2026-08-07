@@ -50,7 +50,7 @@ Access-Control-Allow-Origin: https://spares.example.com
 Vary: Origin, Referer
 ```
 
-该逻辑覆盖 OPTIONS 预检、正常响应和 404 等错误响应。预检会回显浏览器请求的 Header，并允许常用 HTTP 方法；响应同时暴露 `X-Request-ID` 和 `Content-Disposition`。
+该逻辑覆盖 OPTIONS 预检和正常响应，并为所有响应（含结构化错误响应）补齐 CORS Header。预检会回显浏览器请求的 Header，并允许常用 HTTP 方法；响应同时暴露 `X-Request-ID` 和 `Content-Disposition`。本项目不使用 HTTP 404 状态码，错误响应统一为结构化业务错误体，详见 `../docs/api-error-conventions.md`。
 
 可配置项：
 

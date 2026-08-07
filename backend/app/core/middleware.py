@@ -36,8 +36,33 @@ def _origin_from_url(value: str | None) -> str | None:
     return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
-def _cors_origin(headers: Headers) -> str | None:
-    return _origin_from_url(headers.get("Referer")) or _origin_from_url(headers.get("Origin"))
+def _cors_origin(headers: Headers, allowed_origins: list[str]) -> str | None:
+    """返回允许回显的 Origin。
+
+    Referer 优先（兼容不发 Origin 的内嵌 WebView/微信），缺失时回退 Origin。
+    仅当来源在白名单内才回显；不在白名单返回 None（浏览器会拦截跨域响应）。
+    """
+    origin = _origin_from_url(headers.get("Referer"))
+    if origin is None:
+        origin = _origin_from_url(headers.get("Origin"))
+    if origin is None:
+        return None
+    if not allowed_origins or _is_allowed_origin(origin, allowed_origins):
+        return origin
+    return None
+
+
+def _is_allowed_origin(origin: str, allowed_origins: list[str]) -> bool:
+    """精确匹配或 host 后缀匹配（.example.com 匹配 app.example.com 等子域）。"""
+    parsed = urlsplit(origin)
+    host = parsed.netloc.lower()
+    if origin in allowed_origins:
+        return True
+    return any(
+        allowed.lower() in ("*", host)
+        or (allowed.lower().startswith(".") and host.endswith(allowed.lower()))
+        for allowed in allowed_origins
+    )
 
 
 class RefererCORSMiddleware:
@@ -52,10 +77,14 @@ class RefererCORSMiddleware:
         *,
         allow_credentials: bool = True,
         max_age: int = 86400,
+        allowed_origins: list[str] | None = None,
     ) -> None:
         self.app = app
         self.allow_credentials = allow_credentials
         self.max_age = max_age
+        # 优先使用显式传入的白名单；否则在请求时读 settings.cors_origins
+        # （settings 为进程级单例，启动时从环境变量加载，生产环境安全且便于测试）。
+        self.allowed_origins = allowed_origins
 
     def _apply_headers(self, headers: MutableHeaders, origin: str) -> None:
         headers["Access-Control-Allow-Origin"] = origin
@@ -71,7 +100,12 @@ class RefererCORSMiddleware:
             return
 
         request_headers = Headers(scope=scope)
-        origin = _cors_origin(request_headers)
+        allowed = self.allowed_origins
+        if allowed is None:
+            from app.core.config import settings
+
+            allowed = settings.cors_origins
+        origin = _cors_origin(request_headers, allowed)
         if origin is None:
             await self.app(scope, receive, send)
             return

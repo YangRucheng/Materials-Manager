@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable
 from typing import Annotated, cast
 
 import jwt
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,23 @@ from app.models import MiniProgramUser, User
 bearer = HTTPBearer(auto_error=False)
 api_token_header = APIKeyHeader(name="X-API-Token", auto_error=False)
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def get_if_match_version(if_match: Annotated[str | None, Header()] = None) -> int | None:
+    """从 If-Match 头读取乐观锁版本号。
+
+    统一约定：所有带乐观锁的写操作（PATCH/PUT/DELETE/restore）版本号放 If-Match 头，
+    而非 query 参数（避免版本号进入访问日志）。缺失时返回 None（service 层校验）。
+    """
+    if if_match is None or not if_match.strip():
+        return None
+    try:
+        return int(if_match.strip().strip('"'))
+    except ValueError:
+        return None
+
+
+IfMatchVersion = Annotated[int | None, Depends(get_if_match_version)]
 
 
 async def find_user_by_api_token(session: AsyncSession, api_token: str) -> User | None:
