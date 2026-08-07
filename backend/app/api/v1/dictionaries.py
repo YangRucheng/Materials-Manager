@@ -1,7 +1,7 @@
-from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, status
 
+from app.api.deps import PageNo, PageSize
 from app.core.permissions import DbSession, SuperAdmin
 from app.schemas import (
     Page,
@@ -13,8 +13,6 @@ from app.schemas import (
 from app.services import dictionary_service
 
 router = APIRouter(tags=["基础数据"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
 
 
 @router.get("/users", response_model=Page[UserApiTokenRead])

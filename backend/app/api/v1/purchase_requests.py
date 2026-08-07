@@ -1,10 +1,11 @@
 from decimal import Decimal
 from typing import Annotated, Literal
-from urllib.parse import quote
 
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
+from app.api.deps import OrSearch, OrSearch128, OrSearch255, PageNo, PageSize, StatusFilter
+from app.core.constants import EXPORT_ROW_LIMIT
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter
 from app.schemas import (
@@ -20,13 +21,6 @@ from app.services import ai_search_service, excel_export_service, material_servi
 from app.services import purchase_request_service as service
 
 router = APIRouter(tags=["申购记录"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
-StatusFilter = Annotated[str | None, Query(alias="status", max_length=128)]
-OR_SEARCH_DESCRIPTION = "可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词"
-OrSearch = Annotated[str | None, Query(description=OR_SEARCH_DESCRIPTION)]
-OrSearch128 = Annotated[str | None, Query(max_length=128, description=OR_SEARCH_DESCRIPTION)]
-OrSearch255 = Annotated[str | None, Query(max_length=255, description=OR_SEARCH_DESCRIPTION)]
 RecordSearchField = Literal[
     "plan_no",
     "plan_date",
@@ -51,7 +45,6 @@ RecordSearchField = Literal[
     "plan_remark",
     "record_remark",
 ]
-RESULT_EXPORT_LIMIT = 10_000
 RECORD_RESULT_HEADERS = {
     "purchase_qty": "申购数量",
     "plan_date": "需求日期",
@@ -72,14 +65,6 @@ RECORD_RESULT_HEADERS = {
     "status": "状态",
     "purchase_date": "申购日期",
 }
-
-
-def _excel_response(content: bytes, filename: str) -> Response:
-    return Response(
-        content=content,
-        media_type=excel_export_service.XLSX_CONTENT_TYPE,
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
-    )
 
 
 def _quantity_text(value: Decimal) -> str:
@@ -180,14 +165,14 @@ async def export_purchase_record_results(
         purchase_responsible=data.purchase_responsible,
         salesperson=data.salesperson,
         page=1,
-        page_size=RESULT_EXPORT_LIMIT + 1,
+        page_size=EXPORT_ROW_LIMIT + 1,
     )
-    if total > RESULT_EXPORT_LIMIT:
+    if total > EXPORT_ROW_LIMIT:
         raise AppError(
             "EXPORT_RESULT_LIMIT_EXCEEDED",
-            f"查询结果超过 {RESULT_EXPORT_LIMIT} 行，请缩小筛选范围后导出",
+            f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
             status_code=400,
-            details={"total": total, "limit": RESULT_EXPORT_LIMIT},
+            details={"total": total, "limit": EXPORT_ROW_LIMIT},
         )
     rows = []
     for item in items:
@@ -220,7 +205,8 @@ async def export_purchase_record_results(
             }
         )
     columns = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
-    return _excel_response(*excel_export_service.render_result_excel("申购记录导出", columns, rows))
+    return excel_export_service.excel_response(*excel_export_service.render_result_excel(
+      "申购记录导出", columns, rows))
 
 
 @router.patch("/purchase-records/batch", response_model=list[PurchaseRecordRead])

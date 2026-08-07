@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from calendar import monthrange
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import cast
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
 
 from app.core.errors import AppError, not_found
 from app.domain.enums import OperationType, SourceType, WebhookEventType
@@ -19,8 +17,8 @@ from app.models import (
     StockMaterial,
     StockOperation,
     StockOperationLine,
-    StockReplenishmentPolicy,
 )
+from app.repositories import inventory_repository
 from app.schemas import (
     InventoryBalanceRead,
     OperationCreate,
@@ -32,7 +30,6 @@ from app.schemas import (
 )
 from app.services import webhook_service
 from app.services.common import (
-    contains_any,
     log_event,
     utc_aware,
     utc_naive,
@@ -44,53 +41,21 @@ from app.services.common import (
 ZERO = Decimal("0")
 
 
-def _months_before(value: datetime, months: int) -> datetime:
-    month_index = value.year * 12 + value.month - 1 - months
-    year, zero_based_month = divmod(month_index, 12)
-    month = zero_based_month + 1
-    day = min(value.day, monthrange(year, month)[1])
-    return value.replace(year=year, month=month, day=day)
-
-
 async def recent_outbound_consumption(
     session: AsyncSession,
     material_ids: Iterable[int],
     *,
     now: datetime | None = None,
 ) -> dict[int, Decimal]:
-    ids = list(dict.fromkeys(material_ids))
-    if not ids:
-        return {}
-    end_at = now or utcnow()
-    start_at = _months_before(end_at, 6)
-    reversal = aliased(StockOperation)
-    rows = await session.execute(
-        select(
-            StockOperationLine.stock_material_id,
-            func.sum(StockOperationLine.quantity),
-        )
-        .join(StockOperation, StockOperation.id == StockOperationLine.operation_id)
-        .outerjoin(reversal, reversal.reversal_of_id == StockOperation.id)
-        .where(
-            StockOperationLine.stock_material_id.in_(ids),
-            StockOperation.operation_type == OperationType.OUTBOUND,
-            StockOperation.source_type != SourceType.REVERSAL,
-            StockOperation.occurred_at >= start_at,
-            StockOperation.occurred_at <= end_at,
-            reversal.id.is_(None),
-        )
-        .group_by(StockOperationLine.stock_material_id)
+    return await inventory_repository.recent_outbound_consumption(
+        session, material_ids, now=now
     )
-    return {material_id: quantity for material_id, quantity in rows.all()}
 
 
 async def get_operation(
     session: AsyncSession, operation_id: int, *, for_update: bool = False
 ) -> StockOperation:
-    query = select(StockOperation).where(StockOperation.id == operation_id)
-    if for_update:
-        query = query.with_for_update()
-    item = await session.scalar(query)
+    item = await inventory_repository.get_operation(session, operation_id, for_update=for_update)
     if item is None:
         raise not_found("库存流水")
     return item
@@ -494,46 +459,17 @@ async def search_operations(
     page: int,
     page_size: int,
 ) -> tuple[list[StockOperation], int]:
-    query = select(StockOperation)
-    if operation_no:
-        query = query.where(StockOperation.operation_no.like(f"%{operation_no}%"))
-    if operation_type:
-        query = query.where(StockOperation.operation_type == operation_type)
-    if material_name:
-        query = query.join(StockOperationLine)
-    material_condition = contains_any(
-        (StockOperationLine.material_name_snapshot, StockOperationLine.model_spec_snapshot),
-        material_name,
+    return await inventory_repository.search_operations(
+        session,
+        operation_no=operation_no,
+        operation_type=operation_type,
+        material_name=material_name,
+        source_type=source_type,
+        start_at=start_at,
+        end_at=end_at,
+        page=page,
+        page_size=page_size,
     )
-    if material_condition is not None:
-        query = query.where(material_condition)
-    if source_type == SourceType.MINI_PROGRAM:
-        query = query.where(StockOperation.mini_program_user_name_snapshot.is_not(None))
-    elif source_type == SourceType.MANUAL:
-        query = query.where(
-            StockOperation.source_type == SourceType.MANUAL,
-            StockOperation.mini_program_user_name_snapshot.is_(None),
-        )
-    elif source_type:
-        query = query.where(StockOperation.source_type == source_type)
-    if start_at:
-        query = query.where(StockOperation.occurred_at >= start_at)
-    if end_at:
-        query = query.where(StockOperation.occurred_at <= end_at)
-    query = query.distinct()
-    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
-    items = list(
-        (
-            await session.scalars(
-                query.order_by(StockOperation.occurred_at.desc(), StockOperation.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-            )
-        )
-        .unique()
-        .all()
-    )
-    return items, total
 
 
 async def inventory_balances(
@@ -547,32 +483,15 @@ async def inventory_balances(
     page_size: int,
     material_id: int | None = None,
 ) -> tuple[list[InventoryBalanceRead], int]:
-    query = select(StockMaterial).join(StockBalance)
-    if material_id is not None:
-        query = query.where(StockMaterial.id == material_id)
-    keyword_condition = contains_any(
-        (StockMaterial.name, StockMaterial.alias, StockMaterial.model_spec), keyword
-    )
-    if keyword_condition is not None:
-        query = query.where(keyword_condition)
-    if minimum_qty is not None:
-        query = query.where(StockBalance.quantity >= minimum_qty)
-    if maximum_qty is not None:
-        query = query.where(StockBalance.quantity <= maximum_qty)
-    if low_stock_only:
-        query = query.join(StockReplenishmentPolicy).where(
-            StockReplenishmentPolicy.enabled.is_(True),
-            StockBalance.quantity <= StockReplenishmentPolicy.minimum_qty,
-        )
-    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
-    materials = list(
-        (
-            await session.scalars(
-                query.order_by(StockMaterial.id).offset((page - 1) * page_size).limit(page_size)
-            )
-        )
-        .unique()
-        .all()
+    materials, total = await inventory_repository.search_inventory_materials(
+        session,
+        keyword=keyword,
+        minimum_qty=minimum_qty,
+        maximum_qty=maximum_qty,
+        low_stock_only=low_stock_only,
+        page=page,
+        page_size=page_size,
+        material_id=material_id,
     )
     recent_consumption = await recent_outbound_consumption(session, (item.id for item in materials))
     result = []

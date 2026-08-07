@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import SHANGHAI
 from app.core.errors import AppError, not_found
 from app.domain.enums import PurchasePlanStatus
 from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
+from app.repositories import purchase_request_repository
 from app.schemas import (
     BatchMovePurchasePlansRequest,
     BatchUpdatePurchaseRecordsRequest,
@@ -16,10 +18,8 @@ from app.schemas import (
     PurchaseRecordRead,
     PurchaseRecordUpdate,
 )
-from app.services.common import contains_any, file_read, utc_aware, validate_version
+from app.services.common import file_read, utc_aware, validate_version
 from app.services.material_service import next_purchase_plan_no, update_purchase_material
-
-SHANGHAI = timezone(timedelta(hours=8))
 
 
 def default_purchase_order_no() -> str:
@@ -168,10 +168,9 @@ async def move_plans_to_record(
 async def get_purchase_record(
     session: AsyncSession, line_id: int, *, for_update: bool = False
 ) -> PurchaseRequestLine:
-    query = select(PurchaseRequestLine).where(PurchaseRequestLine.id == line_id)
-    if for_update:
-        query = query.with_for_update()
-    line = await session.scalar(query)
+    line = await purchase_request_repository.get_purchase_record(
+        session, line_id, for_update=for_update
+    )
     if line is None:
         raise not_found("申购记录")
     return line
@@ -405,140 +404,29 @@ async def search_purchase_records(
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseRequestLine], int]:
-    query = (
-        select(PurchaseRequestLine)
-        .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
-        .join(PurchaseMaterial, PurchaseMaterial.id == PurchaseRequestLine.purchase_material_id)
+    return await purchase_request_repository.search_purchase_records(
+        session,
+        status=status,
+        empty_status=empty_status,
+        keyword=keyword,
+        search_field=search_field,
+        search_value=search_value,
+        purchase_order_no=purchase_order_no,
+        trace_no=trace_no,
+        category=category,
+        name=name,
+        model_spec=model_spec,
+        actual_demand_person=actual_demand_person,
+        purchase_responsible=purchase_responsible,
+        salesperson=salesperson,
+        page=page,
+        page_size=page_size,
     )
-    if empty_status:
-        query = query.where(
-            or_(PurchaseRequestLine.status.is_(None), func.trim(PurchaseRequestLine.status) == "")
-        )
-    elif status:
-        query = query.where(PurchaseRequestLine.status == status)
-    keyword_condition = contains_any(
-        (
-            PurchaseRequest.purchase_order_no,
-            PurchaseRequestLine.trace_no,
-            PurchaseRequest.contract_no,
-            PurchaseRequest.vessel_no,
-            cast(PurchaseRequest.consolidation_date, String),
-            PurchaseRequest.consolidation_port,
-            cast(PurchaseRequest.sailing_date, String),
-            PurchaseRequestLine.salesperson,
-            PurchaseRequest.remark,
-            PurchaseMaterial.plan_no,
-            cast(PurchaseMaterial.plan_date, String),
-            PurchaseRequestLine.status,
-            PurchaseMaterial.material_code,
-            PurchaseMaterial.category,
-            PurchaseMaterial.name,
-            PurchaseMaterial.model_spec,
-            PurchaseMaterial.unit_name,
-            cast(PurchaseRequestLine.purchase_qty, String),
-            PurchaseRequestLine.usage,
-            PurchaseRequestLine.subitem_no,
-            PurchaseMaterial.actual_demand_person,
-            PurchaseMaterial.purchase_responsible,
-            PurchaseMaterial.remark,
-            cast(PurchaseRequest.purchase_date, String),
-        ),
-        keyword,
-    )
-    if keyword_condition is not None:
-        query = query.where(keyword_condition)
-    if search_field and search_value:
-        search_columns = {
-            "plan_no": PurchaseMaterial.plan_no,
-            "plan_date": cast(PurchaseMaterial.plan_date, String),
-            "purchase_order_no": PurchaseRequest.purchase_order_no,
-            "trace_no": PurchaseRequestLine.trace_no,
-            "contract_no": PurchaseRequest.contract_no,
-            "vessel_no": PurchaseRequest.vessel_no,
-            "consolidation_date": cast(PurchaseRequest.consolidation_date, String),
-            "consolidation_port": PurchaseRequest.consolidation_port,
-            "sailing_date": cast(PurchaseRequest.sailing_date, String),
-            "category": PurchaseMaterial.category,
-            "material_code": PurchaseMaterial.material_code,
-            "material_name": PurchaseMaterial.name,
-            "model_spec": PurchaseMaterial.model_spec,
-            "unit_name": PurchaseMaterial.unit_name,
-            "purchase_qty": cast(PurchaseRequestLine.purchase_qty, String),
-            "salesperson": PurchaseRequestLine.salesperson,
-            "status": PurchaseRequestLine.status,
-            "purchase_date": cast(PurchaseRequest.purchase_date, String),
-            "usage": PurchaseRequestLine.usage,
-            "subitem_no": PurchaseRequestLine.subitem_no,
-            "plan_remark": PurchaseMaterial.remark,
-            "record_remark": PurchaseRequest.remark,
-        }
-        search_condition = contains_any((search_columns[search_field],), search_value)
-        if search_condition is not None:
-            query = query.where(search_condition)
-    if category:
-        query = query.where(func.trim(PurchaseMaterial.category) == category.strip())
-    field_filters = (
-        ((PurchaseRequest.purchase_order_no,), purchase_order_no),
-        ((PurchaseRequestLine.trace_no,), trace_no),
-        ((PurchaseMaterial.name,), name),
-        ((PurchaseMaterial.model_spec,), model_spec),
-        ((PurchaseMaterial.actual_demand_person,), actual_demand_person),
-        ((PurchaseMaterial.purchase_responsible,), purchase_responsible),
-        (
-            (PurchaseRequestLine.salesperson,),
-            salesperson,
-        ),
-    )
-    for columns, value in field_filters:
-        condition = contains_any(columns, value)
-        if condition is not None:
-            query = query.where(condition)
-    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
-    items = list(
-        (
-            await session.scalars(
-                query.order_by(
-                    or_(
-                        PurchaseRequest.purchase_order_no.is_(None),
-                        func.trim(PurchaseRequest.purchase_order_no) == "",
-                    ),
-                    PurchaseRequest.purchase_order_no.desc(),
-                    or_(
-                        PurchaseRequestLine.trace_no.is_(None),
-                        func.trim(PurchaseRequestLine.trace_no) == "",
-                    ),
-                    PurchaseRequestLine.trace_no.desc(),
-                    PurchaseRequestLine.id.desc(),
-                )
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-            )
-        )
-        .unique()
-        .all()
-    )
-    return items, total
 
 
 async def purchase_salesperson_options(session: AsyncSession) -> list[str]:
-    salesperson = func.trim(PurchaseRequestLine.salesperson)
-    query = (
-        select(salesperson)
-        .where(PurchaseRequestLine.salesperson.is_not(None), salesperson != "")
-        .distinct()
-        .order_by(salesperson)
-    )
-    return list(await session.scalars(query))
+    return await purchase_request_repository.purchase_salesperson_options(session)
 
 
 async def purchase_status_options(session: AsyncSession) -> list[str]:
-    query = (
-        select(PurchaseRequestLine.status)
-        .where(
-            PurchaseRequestLine.status.is_not(None),
-            func.trim(PurchaseRequestLine.status) != "",
-        )
-        .distinct()
-        .order_by(PurchaseRequestLine.status)
-    )
-    return list(await session.scalars(query))
+    return await purchase_request_repository.purchase_status_options(session)

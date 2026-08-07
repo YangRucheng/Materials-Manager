@@ -1,47 +1,14 @@
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.enums import PurchasePlanStatus
-from app.models import (
-    PurchaseMaterial,
-    PurchaseRequestLine,
-    StockBalance,
-    StockMaterial,
-    StockReplenishmentPolicy,
-)
+from app.repositories import dashboard_repository
 from app.schemas import DashboardSummaryRead
 
 
 async def dashboard_summary(session: AsyncSession) -> DashboardSummaryRead:
-    stock_count = int((await session.scalar(select(func.count(StockMaterial.id)))) or 0)
-    low_count = int(
-        (
-            await session.scalar(
-                select(func.count(StockMaterial.id))
-                .join(StockBalance)
-                .join(StockReplenishmentPolicy)
-                .where(
-                    StockReplenishmentPolicy.enabled.is_(True),
-                    StockBalance.quantity <= StockReplenishmentPolicy.minimum_qty,
-                )
-            )
-        )
-        or 0
-    )
-    uncoded_count = int(
-        (
-            await session.scalar(
-                select(func.count(PurchaseMaterial.id)).where(
-                    PurchaseMaterial.material_code.is_(None),
-                    PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
-                )
-            )
-        )
-        or 0
-    )
-    purchase_record_count = int(
-        (await session.scalar(select(func.count(PurchaseRequestLine.id)))) or 0
-    )
+    stock_count = await dashboard_repository.count_stock_materials(session)
+    low_count = await dashboard_repository.count_low_stock_materials(session)
+    uncoded_count = await dashboard_repository.count_uncoded_purchase_materials(session)
+    purchase_record_count = await dashboard_repository.count_purchase_records(session)
     return DashboardSummaryRead(
         stock_material_count=stock_count,
         low_stock_count=low_count,

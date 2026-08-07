@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 
+from app.api.deps import PageNo, PageSize
 from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, WarehouseWriter
 from app.domain.enums import MiniProgramCodeEnv
 from app.schemas import (
@@ -22,8 +23,6 @@ from app.services import (
 )
 
 router = APIRouter(prefix="/stock-materials", tags=["二级库物资"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
 
 
 async def _stock_read(session: DbSession, material_id: int) -> StockMaterialRead:
