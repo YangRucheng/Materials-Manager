@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { imageUrl } = require('../../utils/inventory');
+const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -25,7 +26,10 @@ Page({
       if (session.account_disabled) return;
       if (session.registration_disabled) return;
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/bind/bind' });
+        const redirect = buildRedirectQuery(
+          `/pages/purchase-plan-detail/purchase-plan-detail?id=${this.planId}`,
+        );
+        wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
       await getApp().globalData.imageSettingsPromise;
@@ -75,6 +79,14 @@ Page({
   previewImage(event) {
     const urls = this.data.plan.images.map((image) => image.original_url);
     wx.previewImage({ current: urls[event.currentTarget.dataset.index], urls });
+  },
+
+  onShareAppMessage() {
+    const plan = this.data.plan;
+    return {
+      title: plan ? `${t('sharePurchasePlan')} · ${plan.name}` : t('sharePurchasePlan'),
+      path: `/pages/purchase-plan-detail/purchase-plan-detail?id=${this.planId}`,
+    };
   },
 
   retry() {

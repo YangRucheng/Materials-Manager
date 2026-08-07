@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { storeSession } = require('../../utils/auth');
+const { REDIRECT_KEY, extractRedirect, takeRedirect } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -12,8 +13,12 @@ Page({
     i18n: getMessages(),
   },
 
-  async onLoad() {
+  async onLoad(options = {}) {
     setNavigationBarTitle('bindTitle');
+    const redirect = extractRedirect(options);
+    if (redirect) {
+      wx.setStorageSync(REDIRECT_KEY, redirect);
+    }
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
@@ -73,10 +78,12 @@ Page({
         return;
       }
       const materialUuid = getApp().globalData.pendingMaterialUuid;
+      // 回跳优先级：扫码场景（pendingMaterialUuid）→ 分享/直达场景（redirect）→ 首页。
+      const redirect = takeRedirect();
       wx.reLaunch({
         url: materialUuid
           ? `/pages/outbound/outbound?uuid=${materialUuid}`
-          : '/pages/home/home',
+          : redirect || '/pages/home/home',
       });
     } catch (error) {
       this.showError(error);

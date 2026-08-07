@@ -224,3 +224,13 @@ async def mini_program_outbound_reasons(
         personal_reasons=personal_reasons,
         system_reasons=system_reasons,
     )
+
+
+@mini_router.get("/outbound/{operation_no}", response_model=MiniProgramOutboundRead)
+async def mini_program_outbound_by_no(
+    operation_no: str,
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> MiniProgramOutboundRead:
+    """按流水号查询小程序出库明细（分享结果页恢复数据用）。"""
+    return await mini_program_service.get_outbound_by_no(session, operation_no, user)

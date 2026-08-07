@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { decorateStock } = require('../../utils/inventory');
+const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -32,7 +33,8 @@ Page({
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/bind/bind' });
+        const redirect = buildRedirectQuery('/pages/inventory/inventory');
+        wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
       await this.loadInventory(true);
@@ -123,6 +125,13 @@ Page({
     wx.navigateTo({
       url: `/pages/material-detail/material-detail?uuid=${event.currentTarget.dataset.uuid}`,
     });
+  },
+
+  onShareAppMessage() {
+    return {
+      title: t('shareInventory'),
+      path: '/pages/inventory/inventory',
+    };
   },
 
   showError(error) {

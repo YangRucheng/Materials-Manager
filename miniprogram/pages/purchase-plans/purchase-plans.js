@@ -1,5 +1,6 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
+const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -33,7 +34,8 @@ Page({
       if (session.account_disabled) return;
       if (session.registration_disabled) return;
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/bind/bind' });
+        const redirect = buildRedirectQuery('/pages/purchase-plans/purchase-plans');
+        wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
       await this.loadPlans(true);
@@ -94,6 +96,13 @@ Page({
     wx.navigateTo({
       url: `/pages/purchase-plan-detail/purchase-plan-detail?id=${event.currentTarget.dataset.id}`,
     });
+  },
+
+  onShareAppMessage() {
+    return {
+      title: t('sharePurchasePlans'),
+      path: '/pages/purchase-plans/purchase-plans',
+    };
   },
 
   showError(error) {
