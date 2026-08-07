@@ -1306,22 +1306,24 @@ onMounted(() => {
               </div>
             </n-collapse-item>
           </n-collapse>
-          <n-form-item label="申购计划备注">
-            <n-input
-              v-model:value="editForm.plan_remark"
-              type="textarea"
-              maxlength="1000"
-              show-count
-            />
-          </n-form-item>
-          <n-form-item label="申购记录备注">
-            <n-input
-              v-model:value="editForm.record_remark"
-              type="textarea"
-              maxlength="1000"
-              show-count
-            />
-          </n-form-item>
+          <div class="form-grid">
+            <n-form-item label="申购计划备注">
+              <n-input
+                v-model:value="editForm.plan_remark"
+                type="textarea"
+                maxlength="1000"
+                show-count
+              />
+            </n-form-item>
+            <n-form-item label="申购记录备注">
+              <n-input
+                v-model:value="editForm.record_remark"
+                type="textarea"
+                maxlength="1000"
+                show-count
+              />
+            </n-form-item>
+          </div>
           <n-form-item label="图片附件">
             <ImageUploader v-model:files="editImages" />
           </n-form-item>
@@ -1442,6 +1444,9 @@ onMounted(() => {
 
 .edit-advanced-fields {
   margin-bottom: 18px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f6f8fb;
 }
 
 .edit-advanced-fields :deep(.n-collapse-item) {
@@ -1450,11 +1455,7 @@ onMounted(() => {
 
 .edit-advanced-fields :deep(.n-collapse-item__header) {
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #f6f8fb;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .edit-advanced-fields :deep(.n-collapse-item__header:hover) {
@@ -1462,7 +1463,7 @@ onMounted(() => {
 }
 
 .edit-advanced-fields :deep(.n-collapse-item__content-inner) {
-  padding: 14px 4px 4px;
+  padding: 4px 12px 14px;
 }
 
 .advanced-header {
