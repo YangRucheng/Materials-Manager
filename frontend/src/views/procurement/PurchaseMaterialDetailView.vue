@@ -24,7 +24,6 @@ import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/tim
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
-import { SettingsOutline } from '@vicons/ionicons5'
 
 const route = useRoute()
 const router = useRouter()
@@ -288,14 +287,10 @@ onMounted(() => void load())
             <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
         </div>
-        <n-divider class="advanced-divider" />
         <n-collapse v-model:expanded-names="advancedSections" class="detail-advanced-fields">
           <n-collapse-item name="advanced">
             <template #header>
-              <span class="advanced-header">
-                <n-icon><SettingsOutline /></n-icon>
-                <span>更多设置</span>
-              </span>
+              <span class="advanced-header">更多设置</span>
             </template>
             <div class="form-grid">
               <n-form-item label="状态" required>
@@ -454,13 +449,5 @@ onMounted(() => void load())
   gap: 6px;
   font-weight: 500;
   color: #4b5565;
-}
-
-.advanced-header .n-icon {
-  color: #5573d1;
-}
-
-.advanced-divider {
-  margin: 18px 0 10px;
 }
 </style>
