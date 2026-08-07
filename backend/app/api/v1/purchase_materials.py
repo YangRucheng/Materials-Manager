@@ -1,10 +1,11 @@
 from datetime import date, timedelta
 from typing import Annotated, Literal
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
+from app.api.deps import OrSearch, OrSearch128, OrSearch255, PageNo, PageSize
+from app.core.constants import EXPORT_ROW_LIMIT
 from app.core.errors import AppError
 from app.core.permissions import (
     CurrentUser,
@@ -39,12 +40,6 @@ from app.services import (
 from app.services.common import validate_version
 
 router = APIRouter(prefix="/purchase-materials", tags=["申购计划"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
-OR_SEARCH_DESCRIPTION = "可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词"
-OrSearch = Annotated[str | None, Query(description=OR_SEARCH_DESCRIPTION)]
-OrSearch128 = Annotated[str | None, Query(max_length=128, description=OR_SEARCH_DESCRIPTION)]
-OrSearch255 = Annotated[str | None, Query(max_length=255, description=OR_SEARCH_DESCRIPTION)]
 PlanSearchField = Literal[
     "plan_no",
     "plan_date",
@@ -62,7 +57,6 @@ LinkWriter = Annotated[
     User,
     Depends(require_roles(Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.PURCHASE_ADMIN)),
 ]
-RESULT_EXPORT_LIMIT = 10_000
 PLAN_RESULT_HEADERS = {
     "plan_no": "计划 ID",
     "plan_date": "需求日期",
@@ -135,8 +129,11 @@ async def list_materials(
         page=page,
         page_size=page_size,
     )
+    moved_ids = await material_service.purchase_material_ids_moved_to_record(
+        session, [item.id for item in items]
+    )
     return Page(
-        items=[await material_service.purchase_read(session, item) for item in items],
+        items=[await material_service.purchase_read(session, item, moved_ids) for item in items],
         page=page,
         page_size=page_size,
         total=total,
@@ -175,14 +172,6 @@ async def create_material(
     return await material_service.purchase_read(session, item)
 
 
-def _excel_response(content: bytes, filename: str) -> Response:
-    return Response(
-        content=content,
-        media_type=excel_export_service.XLSX_CONTENT_TYPE,
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
-    )
-
-
 @router.post("/export-results")
 async def export_material_results(
     data: PurchasePlanResultExportRequest,
@@ -215,14 +204,14 @@ async def export_material_results(
         coded=None,
         moved=False,
         page=1,
-        page_size=RESULT_EXPORT_LIMIT + 1,
+        page_size=EXPORT_ROW_LIMIT + 1,
     )
-    if total > RESULT_EXPORT_LIMIT:
+    if total > EXPORT_ROW_LIMIT:
         raise AppError(
             "EXPORT_RESULT_LIMIT_EXCEEDED",
-            f"查询结果超过 {RESULT_EXPORT_LIMIT} 行，请缩小筛选范围后导出",
+            f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
             status_code=400,
-            details={"total": total, "limit": RESULT_EXPORT_LIMIT},
+            details={"total": total, "limit": EXPORT_ROW_LIMIT},
         )
     rows = [
         {
@@ -244,7 +233,8 @@ async def export_material_results(
         for item in items
     ]
     columns = [(key, PLAN_RESULT_HEADERS[key]) for key in data.columns]
-    return _excel_response(*excel_export_service.render_result_excel("申购计划导出", columns, rows))
+    return excel_export_service.excel_response(*excel_export_service.render_result_excel(
+      "申购计划导出", columns, rows))
 
 
 @router.get(
@@ -277,7 +267,7 @@ async def export_uncoded_materials(
         }
         for index, item in enumerate(materials, start=1)
     ]
-    return _excel_response(
+    return excel_export_service.excel_response(
         *excel_export_service.render_excel("material-code-application.json", rows)
     )
 
@@ -314,7 +304,8 @@ async def export_purchase_application(
         }
         for item in materials
     ]
-    return _excel_response(*excel_export_service.render_excel("purchase-application.json", rows))
+    return excel_export_service.excel_response(*excel_export_service.render_excel(
+      "purchase-application.json", rows))
 
 
 @router.post("/batch-move-to-record", response_model=list[PurchaseRecordRead])
@@ -334,7 +325,12 @@ async def batch_update_materials(
     user: PurchaseWriter,
 ) -> list[PurchaseMaterialRead]:
     items = await material_service.batch_update_purchase_materials(session, data)
-    return [await material_service.purchase_read(session, item) for item in items]
+    moved_ids = await material_service.purchase_material_ids_moved_to_record(
+        session, [item.id for item in items]
+    )
+    return [
+        await material_service.purchase_read(session, item, moved_ids) for item in items
+    ]
 
 
 @router.get("/{material_id}", response_model=PurchaseMaterialRead)

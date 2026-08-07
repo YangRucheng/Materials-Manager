@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Header, Query, status
 
+from app.api.deps import PageNo, PageSize
 from app.core.permissions import (
     CurrentMiniProgramUser,
     DbSession,
@@ -36,8 +37,6 @@ from app.services import mini_program_service
 
 management_router = APIRouter(prefix="/mini-program-users", tags=["小程序用户管理"])
 mini_router = APIRouter(prefix="/mini-program", tags=["小程序"])
-PageNo = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=200)]
 AcceptLanguage = Annotated[str | None, Header(alias="Accept-Language")]
 
 

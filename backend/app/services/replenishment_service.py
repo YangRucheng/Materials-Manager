@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import SHANGHAI
 from app.core.errors import AppError
 from app.models import (
     PurchaseMaterial,
@@ -24,7 +25,6 @@ from app.services.inventory_service import recent_outbound_consumption
 from app.services.material_service import create_purchase_material, get_stock_material
 
 ZERO = Decimal("0")
-SHANGHAI = timezone(timedelta(hours=8))
 
 
 async def replenishment_defaults(session: AsyncSession) -> ReplenishmentDefaultsRead:

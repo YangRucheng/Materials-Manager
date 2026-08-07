@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import String, cast, func, or_, select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import SHANGHAI
 from app.core.errors import AppError, not_found
 from app.domain.enums import PurchasePlanStatus
 from app.models import (
@@ -17,8 +18,8 @@ from app.models import (
     StockBalance,
     StockMaterial,
     StockMaterialImage,
-    StockOperationLine,
 )
+from app.repositories import material_repository
 from app.schemas import (
     BatchUpdatePurchasePlansRequest,
     PurchaseMaterialCreate,
@@ -29,15 +30,12 @@ from app.schemas import (
     StockMaterialUpdate,
 )
 from app.services.common import (
-    contains_any,
     file_read,
     identity_hash,
     utc_aware,
     validate_quantity_precision,
     validate_version,
 )
-
-SHANGHAI = timezone(timedelta(hours=8))
 
 
 async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject]:
@@ -74,7 +72,7 @@ def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> S
 
 
 async def get_stock_material(session: AsyncSession, material_id: int) -> StockMaterial:
-    item = await session.scalar(select(StockMaterial).where(StockMaterial.id == material_id))
+    item = await material_repository.get_stock_material(session, material_id)
     if item is None:
         raise not_found("二级库物资")
     return item
@@ -83,9 +81,7 @@ async def get_stock_material(session: AsyncSession, material_id: int) -> StockMa
 async def get_stock_material_by_uuid(
     session: AsyncSession, material_uuid: UUID
 ) -> StockMaterial:
-    item = await session.scalar(
-        select(StockMaterial).where(StockMaterial.uuid == str(material_uuid))
-    )
+    item = await material_repository.get_stock_material_by_uuid(session, material_uuid)
     if item is None:
         raise not_found("二级库物资")
     return item
@@ -94,14 +90,7 @@ async def get_stock_material_by_uuid(
 async def stock_material_ids_with_operations(
     session: AsyncSession, material_ids: list[int]
 ) -> set[int]:
-    if not material_ids:
-        return set()
-    ids = await session.scalars(
-        select(StockOperationLine.stock_material_id)
-        .where(StockOperationLine.stock_material_id.in_(material_ids))
-        .distinct()
-    )
-    return set(ids.all())
+    return await material_repository.stock_material_ids_with_operations(session, material_ids)
 
 
 async def delete_stock_material(
@@ -183,14 +172,27 @@ async def get_purchase_material(session: AsyncSession, material_id: int) -> Purc
     return item
 
 
-async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> PurchaseMaterialRead:
-    moved_to_record = bool(
-        await session.scalar(
-            select(PurchaseRequestLine.id)
-            .where(PurchaseRequestLine.purchase_material_id == item.id)
-            .limit(1)
+async def purchase_read(
+    session: AsyncSession,
+    item: PurchaseMaterial,
+    moved_ids: set[int] | None = None,
+) -> PurchaseMaterialRead:
+    """组装申购计划 read。
+
+    moved_ids 为 None 时单条内联查询「是否已转入申购记录」（单条调用场景，无 N+1）；
+    批量场景（列表页/批量页）由调用方先用 purchase_material_ids_moved_to_record
+    一次性预算出 moved set 再传入，避免逐条查询。
+    """
+    if moved_ids is None:
+        moved_to_record = bool(
+            await session.scalar(
+                select(PurchaseRequestLine.id)
+                .where(PurchaseRequestLine.purchase_material_id == item.id)
+                .limit(1)
+            )
         )
-    )
+    else:
+        moved_to_record = item.id in moved_ids
     return PurchaseMaterialRead(
         id=item.id,
         plan_no=item.plan_no,
@@ -217,6 +219,12 @@ async def purchase_read(session: AsyncSession, item: PurchaseMaterial) -> Purcha
         updated_at=utc_aware(item.updated_at),
         version=item.version,
     )
+
+
+async def purchase_material_ids_moved_to_record(
+    session: AsyncSession, ids: list[int]
+) -> set[int]:
+    return await material_repository.purchase_material_ids_moved_to_record(session, ids)
 
 
 async def _validate_stock_link(
@@ -421,26 +429,9 @@ async def search_stock_materials(
     page: int,
     page_size: int,
 ) -> tuple[list[StockMaterial], int]:
-    query = select(StockMaterial)
-    keyword_condition = contains_any(
-        (StockMaterial.name, StockMaterial.name_id, StockMaterial.alias, StockMaterial.model_spec),
-        keyword,
+    return await material_repository.search_stock_materials(
+        session, keyword=keyword, page=page, page_size=page_size
     )
-    if keyword_condition is not None:
-        query = query.where(keyword_condition)
-    count = await session.scalar(select(func.count()).select_from(query.subquery()))
-    items = list(
-        (
-            await session.scalars(
-                query.order_by(StockMaterial.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-            )
-        )
-        .unique()
-        .all()
-    )
-    return items, int(count or 0)
 
 
 async def search_purchase_materials(
@@ -463,102 +454,25 @@ async def search_purchase_materials(
     page: int,
     page_size: int,
 ) -> tuple[list[PurchaseMaterial], int]:
-    query = select(PurchaseMaterial)
-    keyword_condition = contains_any(
-        (
-            PurchaseMaterial.plan_no,
-            cast(PurchaseMaterial.plan_date, String),
-            PurchaseMaterial.name,
-            PurchaseMaterial.model_spec,
-            PurchaseMaterial.material_code,
-            PurchaseMaterial.category,
-            PurchaseMaterial.unit_name,
-            cast(PurchaseMaterial.planned_qty, String),
-            PurchaseMaterial.actual_demand_person,
-            PurchaseMaterial.purchase_responsible,
-            PurchaseMaterial.usage,
-            PurchaseMaterial.subitem_no,
-            PurchaseMaterial.remark,
-        ),
-        keyword,
+    return await material_repository.search_purchase_materials(
+        session,
+        keyword=keyword,
+        search_field=search_field,
+        search_value=search_value,
+        name=name,
+        model_spec=model_spec,
+        actual_demand_person=actual_demand_person,
+        empty_actual_demand_person=empty_actual_demand_person,
+        purchase_responsible=purchase_responsible,
+        subitem_no=subitem_no,
+        empty_subitem_no=empty_subitem_no,
+        category=category,
+        status=status,
+        coded=coded,
+        moved=moved,
+        page=page,
+        page_size=page_size,
     )
-    if keyword_condition is not None:
-        query = query.where(keyword_condition)
-    if search_field and search_value:
-        search_columns = {
-            "plan_no": PurchaseMaterial.plan_no,
-            "plan_date": cast(PurchaseMaterial.plan_date, String),
-            "material_code": PurchaseMaterial.material_code,
-            "category": PurchaseMaterial.category,
-            "name": PurchaseMaterial.name,
-            "model_spec": PurchaseMaterial.model_spec,
-            "unit_name": PurchaseMaterial.unit_name,
-            "planned_qty": cast(PurchaseMaterial.planned_qty, String),
-            "usage": PurchaseMaterial.usage,
-            "subitem_no": PurchaseMaterial.subitem_no,
-            "remark": PurchaseMaterial.remark,
-        }
-        search_condition = contains_any((search_columns[search_field],), search_value)
-        if search_condition is not None:
-            query = query.where(search_condition)
-    name_condition = contains_any((PurchaseMaterial.name,), name)
-    if name_condition is not None:
-        query = query.where(name_condition)
-    model_condition = contains_any((PurchaseMaterial.model_spec,), model_spec)
-    if model_condition is not None:
-        query = query.where(model_condition)
-    if empty_actual_demand_person:
-        query = query.where(
-            or_(
-                PurchaseMaterial.actual_demand_person.is_(None),
-                func.trim(PurchaseMaterial.actual_demand_person).in_(("", "\\", "/", "—", "-")),
-            )
-        )
-    else:
-        demand_person_condition = contains_any(
-            (PurchaseMaterial.actual_demand_person,), actual_demand_person
-        )
-        if demand_person_condition is not None:
-            query = query.where(demand_person_condition)
-    responsible_condition = contains_any(
-        (PurchaseMaterial.purchase_responsible,), purchase_responsible
-    )
-    if responsible_condition is not None:
-        query = query.where(responsible_condition)
-    if empty_subitem_no:
-        query = query.where(
-            or_(PurchaseMaterial.subitem_no.is_(None), func.trim(PurchaseMaterial.subitem_no) == "")
-        )
-    elif subitem_no:
-        query = query.where(func.trim(PurchaseMaterial.subitem_no) == subitem_no.strip())
-    if category:
-        query = query.where(func.trim(PurchaseMaterial.category) == category.strip())
-    if status:
-        query = query.where(PurchaseMaterial.status.in_(status))
-    if coded is True:
-        query = query.where(PurchaseMaterial.material_code.is_not(None))
-    elif coded is False:
-        query = query.where(PurchaseMaterial.material_code.is_(None))
-    if moved is not None:
-        record_exists = (
-            select(PurchaseRequestLine.id)
-            .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
-            .exists()
-        )
-        query = query.where(record_exists if moved else ~record_exists)
-    count = await session.scalar(select(func.count()).select_from(query.subquery()))
-    items = list(
-        (
-            await session.scalars(
-                query.order_by(PurchaseMaterial.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-            )
-        )
-        .unique()
-        .all()
-    )
-    return items, int(count or 0)
 
 
 async def purchase_filter_options(
@@ -567,53 +481,9 @@ async def purchase_filter_options(
     moved: bool | None,
     status: PurchasePlanStatus | None,
 ) -> tuple[list[str], list[str], list[str], list[str]]:
-    record_exists = (
-        select(PurchaseRequestLine.id)
-        .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
-        .exists()
+    return await material_repository.purchase_filter_options(
+        session, moved=moved, status=status
     )
-    actual_demand_query = select(PurchaseMaterial.actual_demand_person).where(
-        ~func.trim(PurchaseMaterial.actual_demand_person).in_(("", "\\", "/", "—", "-"))
-    )
-    responsible_query = select(PurchaseMaterial.purchase_responsible).where(
-        func.trim(PurchaseMaterial.purchase_responsible) != ""
-    )
-    subitem_query = select(PurchaseMaterial.subitem_no).where(
-        PurchaseMaterial.subitem_no.is_not(None),
-        func.trim(PurchaseMaterial.subitem_no) != "",
-    )
-    category_query = select(PurchaseMaterial.category).where(
-        PurchaseMaterial.category.is_not(None),
-        func.trim(PurchaseMaterial.category) != "",
-    )
-    if status is not None:
-        actual_demand_query = actual_demand_query.where(PurchaseMaterial.status == status)
-        responsible_query = responsible_query.where(PurchaseMaterial.status == status)
-        subitem_query = subitem_query.where(PurchaseMaterial.status == status)
-        category_query = category_query.where(PurchaseMaterial.status == status)
-    if moved is not None:
-        moved_filter = record_exists if moved else ~record_exists
-        actual_demand_query = actual_demand_query.where(moved_filter)
-        responsible_query = responsible_query.where(moved_filter)
-        subitem_query = subitem_query.where(moved_filter)
-        category_query = category_query.where(moved_filter)
-    actual_demand_persons = list(
-        await session.scalars(
-            actual_demand_query.distinct().order_by(PurchaseMaterial.actual_demand_person)
-        )
-    )
-    purchase_responsibles = list(
-        await session.scalars(
-            responsible_query.distinct().order_by(PurchaseMaterial.purchase_responsible)
-        )
-    )
-    subitem_nos = list(
-        await session.scalars(subitem_query.distinct().order_by(PurchaseMaterial.subitem_no))
-    )
-    categories = list(
-        await session.scalars(category_query.distinct().order_by(PurchaseMaterial.category))
-    )
-    return actual_demand_persons, purchase_responsibles, subitem_nos, categories
 
 
 async def purchase_materials_for_export(
