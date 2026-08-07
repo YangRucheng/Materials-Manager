@@ -129,6 +129,13 @@ const dictionaries = {
     sharePurchasePlans: '申购计划',
     sharePurchasePlan: '申购计划详情',
     shareOutboundSuccess: '出库成功记录',
+    recordsTitle: '出入库记录',
+    viewRecords: '查看出入库记录',
+    recordsEmpty: '暂无出入库记录',
+    loadingRecords: '正在加载出入库记录',
+    operationInbound: '入库',
+    operationOutbound: '出库',
+    recordCount: '共 {count} 条出入库记录',
   },
   [LOCALE_ID_ID]: {
     appTitle: 'Manajemen Suku Cadang',
@@ -257,6 +264,13 @@ const dictionaries = {
     sharePurchasePlans: 'Rencana Pengadaan',
     sharePurchasePlan: 'Detail Rencana Pengadaan',
     shareOutboundSuccess: 'Catatan Pengeluaran Berhasil',
+    recordsTitle: 'Catatan Stok',
+    viewRecords: 'Lihat Catatan Stok',
+    recordsEmpty: 'Belum ada catatan stok',
+    loadingRecords: 'Memuat catatan stok',
+    operationInbound: 'Masuk',
+    operationOutbound: 'Keluar',
+    recordCount: '{count} catatan stok',
   },
 };
 

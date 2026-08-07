@@ -71,6 +71,13 @@
           <view class="user-profile-value">{{user.registered_at}}</view>
         </view>
       </view>
+      <view class="user-profile-records" hover-class="user-profile-records-active" bind:tap="openRecords">
+        <view class="records-entry">
+          <t-icon name="time" size="36rpx" color="#5573d1" />
+          <view class="records-entry-text">{{i18n.viewRecords}}</view>
+        </view>
+        <t-icon name="chevron-right" size="36rpx" color="#a1a9b7" />
+      </view>
     </view>
   </t-popup>
 </view>

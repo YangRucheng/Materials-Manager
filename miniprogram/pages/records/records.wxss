@@ -1,0 +1,126 @@
+.records-page {
+  padding: 24rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.records-header {
+  margin: 4rpx 4rpx 24rpx;
+}
+
+.records-header .page-title {
+  font-size: 44rpx;
+}
+
+.result-count {
+  margin: 0 8rpx 14rpx;
+  color: #7d8798;
+  font-size: 23rpx;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.record-card {
+  padding: 24rpx;
+  border: 2rpx solid #edf0f5;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.04);
+}
+
+.card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.record-no {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #687386;
+  font-size: 23rpx;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-line {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  margin-top: 12rpx;
+}
+
+.material-name {
+  color: #172033;
+  font-size: 29rpx;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.material-spec {
+  color: #687386;
+  font-size: 24rpx;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.card-divider {
+  height: 2rpx;
+  margin: 18rpx 0 14rpx;
+  background: #edf0f5;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+  min-width: 0;
+}
+
+.detail-label {
+  flex: none;
+  width: 120rpx;
+  color: #8a94a5;
+  font-size: 23rpx;
+}
+
+.detail-value {
+  flex: 1;
+  min-width: 0;
+  color: #3d4757;
+  font-size: 24rpx;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.state-panel {
+  display: flex;
+  min-height: 420rpx;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-panel {
+  padding-top: 40rpx;
+  box-sizing: border-box;
+}
+
+.load-more,
+.load-finished {
+  padding: 28rpx 0 8rpx;
+  color: #a1a9b7;
+  font-size: 22rpx;
+  text-align: center;
+}

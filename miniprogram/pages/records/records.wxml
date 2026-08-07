@@ -1,0 +1,65 @@
+<view class="page-shell records-page">
+  <view class="records-header">
+    <view class="page-title">{{i18n.recordsTitle}}</view>
+  </view>
+
+  <view wx:if="{{!loading || items.length}}" class="result-count">{{resultCount}}</view>
+
+  <view wx:if="{{loading && !items.length}}" class="state-panel">
+    <t-loading theme="circular" size="48rpx" text="{{i18n.loadingRecords}}" />
+  </view>
+
+  <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
+    <t-empty icon="time" description="{{i18n.recordsEmpty}}" />
+  </view>
+
+  <view wx:else class="records-list">
+    <view wx:for="{{items}}" wx:key="operation_id" class="record-card">
+      <view class="card-heading">
+        <view class="record-type">
+          <t-tag theme="{{item.operation_type_theme}}" variant="light" size="small">
+            {{item.operation_type_label}}
+          </t-tag>
+        </view>
+        <view class="record-no">{{item.operation_no}}</view>
+      </view>
+      <view class="material-line">
+        <view class="material-name">{{item.material_name}}</view>
+        <view class="material-spec">{{item.model_spec}}</view>
+      </view>
+      <view class="card-divider"></view>
+      <view class="detail-list">
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.outboundQuantity}}</view>
+          <view class="detail-value">{{item.quantity_label}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.stockChange}}</view>
+          <view class="detail-value">{{item.stock_change_label}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.outboundPurpose}}</view>
+          <view class="detail-value">{{item.business_reason}}</view>
+        </view>
+        <view class="detail-row" wx:if="{{item.operation_type === 'OUTBOUND'}}">
+          <view class="detail-label">{{i18n.receiverName}}</view>
+          <view class="detail-value">{{item.receiver_name_label}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.subitemNo}}</view>
+          <view class="detail-value">{{item.subitem_no_label}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.outboundTime}}</view>
+          <view class="detail-value">{{item.occurred_at_label}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loadingMore}}" class="load-more">
+    <t-loading theme="circular" size="36rpx" text="{{i18n.loadMore}}" />
+  </view>
+  <view wx:elif="{{items.length && !hasMore}}" class="load-finished">{{i18n.noMore}}</view>
+  <t-toast id="records-toast" />
+</view>
