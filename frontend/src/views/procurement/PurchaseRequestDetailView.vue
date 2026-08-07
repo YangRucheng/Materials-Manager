@@ -20,6 +20,7 @@ const record = ref<PurchaseRecord | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const restoring = ref(false)
+const advancedSections = ref<string[]>([])
 const images = ref<FileObject[]>([])
 const planDate = ref<number | null>(null)
 const purchaseDate = ref<number | null>(null)
@@ -214,29 +215,6 @@ onMounted(() => void load())
           <n-form-item label="追溯号">
             <n-input v-model:value="form.trace_no" maxlength="128" placeholder="可留空" />
           </n-form-item>
-          <n-form-item label="合同号">
-            <n-input v-model:value="form.contract_no" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="船号">
-            <n-input v-model:value="form.vessel_no" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="集港日期">
-            <n-date-picker
-              v-model:value="consolidationDate"
-              type="date"
-              class="full-width"
-              clearable
-            />
-          </n-form-item>
-          <n-form-item label="集港港口">
-            <n-input v-model:value="form.consolidation_port" maxlength="128" placeholder="可留空" />
-          </n-form-item>
-          <n-form-item label="发船日期">
-            <n-date-picker v-model:value="sailingDate" type="date" class="full-width" clearable />
-          </n-form-item>
-          <n-form-item label="物料编码">
-            <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
-          </n-form-item>
           <n-form-item label="类别">
             <n-select
               v-model:value="form.category"
@@ -246,8 +224,8 @@ onMounted(() => void load())
               placeholder="选择类别"
             />
           </n-form-item>
-          <n-form-item label="需求部门" required>
-            <n-input v-model:value="form.demand_department" maxlength="128" />
+          <n-form-item label="状态" required>
+            <n-input v-model:value="form.status" maxlength="128" placeholder="可填写任意状态" />
           </n-form-item>
           <n-form-item label="名称" required>
             <n-input v-model:value="form.material_name" maxlength="128" />
@@ -279,21 +257,64 @@ onMounted(() => void load())
           <n-form-item label="业务员">
             <n-input v-model:value="form.salesperson" maxlength="128" />
           </n-form-item>
-          <n-form-item label="状态" required>
-            <n-input v-model:value="form.status" maxlength="128" placeholder="可填写任意状态" />
-          </n-form-item>
           <n-form-item label="子项号">
             <n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填" />
           </n-form-item>
           <n-form-item label="用途" required>
             <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
-          <n-form-item label="关联二级库物资" class="wide-form-item">
-            <MaterialSelector
-              :value="form.stock_material_id ?? null"
-              @update:value="form.stock_material_id = $event ?? undefined"
-            />
-          </n-form-item>
+        </div>
+        <n-collapse v-model:expanded-names="advancedSections" class="edit-advanced-fields">
+          <n-collapse-item name="advanced">
+            <template #header>
+              <span class="advanced-header">更多设置</span>
+            </template>
+            <div class="form-grid">
+              <n-form-item label="合同号">
+                <n-input v-model:value="form.contract_no" maxlength="128" placeholder="可留空" />
+              </n-form-item>
+              <n-form-item label="船号">
+                <n-input v-model:value="form.vessel_no" maxlength="128" placeholder="可留空" />
+              </n-form-item>
+              <n-form-item label="集港日期">
+                <n-date-picker
+                  v-model:value="consolidationDate"
+                  type="date"
+                  class="full-width"
+                  clearable
+                />
+              </n-form-item>
+              <n-form-item label="集港港口">
+                <n-input
+                  v-model:value="form.consolidation_port"
+                  maxlength="128"
+                  placeholder="可留空"
+                />
+              </n-form-item>
+              <n-form-item label="发船日期">
+                <n-date-picker
+                  v-model:value="sailingDate"
+                  type="date"
+                  class="full-width"
+                  clearable
+                />
+              </n-form-item>
+              <n-form-item label="物料编码">
+                <n-input v-model:value="form.material_code" maxlength="64" placeholder="可留空" />
+              </n-form-item>
+              <n-form-item label="需求部门" required>
+                <n-input v-model:value="form.demand_department" maxlength="128" />
+              </n-form-item>
+              <n-form-item label="关联二级库物资">
+                <MaterialSelector
+                  :value="form.stock_material_id ?? null"
+                  @update:value="form.stock_material_id = $event ?? undefined"
+                />
+              </n-form-item>
+            </div>
+          </n-collapse-item>
+        </n-collapse>
+        <div class="form-grid">
           <n-form-item label="申购计划备注">
             <n-input v-model:value="form.plan_remark" type="textarea" maxlength="1000" show-count />
           </n-form-item>
@@ -337,5 +358,37 @@ onMounted(() => void load())
 
 .attachment-form-item {
   margin-bottom: 0;
+}
+
+.edit-advanced-fields {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f6f8fb;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item) {
+  border-radius: 8px;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item__header) {
+  padding: 10px 12px;
+  transition: background-color 0.2s ease;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item__header:hover) {
+  background: #eef2f9;
+}
+
+.edit-advanced-fields :deep(.n-collapse-item__content-inner) {
+  padding: 4px 12px 14px;
+}
+
+.advanced-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: #4b5565;
 }
 </style>
