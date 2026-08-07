@@ -704,6 +704,29 @@ class MiniProgramOutboundReasonOptions(ReadModel):
     system_reasons: list[str]
 
 
+class MiniProgramOperationRead(ReadModel):
+    """小程序端出入库记录（按姓名匹配，行级展平）。
+
+    兼容入库/出库、小程序/管理端来源；多行操作按行展平为多条记录。
+    """
+
+    operation_id: int
+    operation_no: str
+    operation_type: OperationType
+    material_name: str
+    model_spec: str
+    unit_name: str
+    quantity: Decimal
+    before_qty: Decimal
+    after_qty: Decimal
+    occurred_at: datetime
+    business_reason: str
+    receiver_unit: str | None = None
+    receiver_name: str | None = None
+    subitem_no: str | None = None
+    executed_by: str | None = None
+
+
 class PurchaseMaterialBase(RequestModel):
     plan_date: date | None = None
     material_code: (

@@ -285,6 +285,15 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
         "system_reasons": ["全员用途四", "全员用途三", "全员用途二"],
     }
 
+    # 按姓名匹配查询出入库记录（此时用户仍是「扫码出库员」）
+    operations = await client.get("/api/v1/mini-program/operations", headers=mini_headers)
+    assert operations.status_code == 200, operations.text
+    assert operations.json()["total"] >= 1
+    assert all(item["executed_by"] == "扫码出库员" for item in operations.json()["items"])
+    assert outbound.json()["operation_no"] in {
+        item["operation_no"] for item in operations.json()["items"]
+    }
+
     rename = await client.patch(
         f"/api/v1/mini-program-users/{created_user['id']}",
         headers=admin,

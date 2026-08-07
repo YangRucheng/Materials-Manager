@@ -707,6 +707,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mini-program/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mini Program Operations
+         * @description 按当前用户姓名匹配查询出入库记录（含管理端操作）。
+         */
+        get: operations["mini_program_operations_api_v1_mini_program_operations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program/outbound/{operation_no}": {
         parameters: {
             query?: never;
@@ -1516,6 +1536,46 @@ export interface components {
             /** Images */
             images?: components["schemas"]["FileObjectRead"][];
         };
+        /**
+         * MiniProgramOperationRead
+         * @description 小程序端出入库记录（按姓名匹配，行级展平）。
+         *
+         *     兼容入库/出库、小程序/管理端来源；多行操作按行展平为多条记录。
+         */
+        MiniProgramOperationRead: {
+            /** Operation Id */
+            operation_id: number;
+            /** Operation No */
+            operation_no: string;
+            operation_type: components["schemas"]["OperationType"];
+            /** Material Name */
+            material_name: string;
+            /** Model Spec */
+            model_spec: string;
+            /** Unit Name */
+            unit_name: string;
+            /** Quantity */
+            quantity: string;
+            /** Before Qty */
+            before_qty: string;
+            /** After Qty */
+            after_qty: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Business Reason */
+            business_reason: string;
+            /** Receiver Unit */
+            receiver_unit?: string | null;
+            /** Receiver Name */
+            receiver_name?: string | null;
+            /** Subitem No */
+            subitem_no?: string | null;
+            /** Executed By */
+            executed_by?: string | null;
+        };
         /** MiniProgramOutboundCreate */
         MiniProgramOutboundCreate: {
             /** Client Request Id */
@@ -1880,6 +1940,17 @@ export interface components {
         Page_MiniProgramInventoryItemRead_: {
             /** Items */
             items: components["schemas"]["MiniProgramInventoryItemRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[MiniProgramOperationRead] */
+        Page_MiniProgramOperationRead_: {
+            /** Items */
+            items: components["schemas"]["MiniProgramOperationRead"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -5910,6 +5981,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MiniProgramOutboundReasonOptions"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_operations_api_v1_mini_program_operations_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MiniProgramOperationRead_"];
                 };
             };
             /** @description 业务校验失败 */

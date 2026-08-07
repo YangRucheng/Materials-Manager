@@ -24,6 +24,7 @@ import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/tim
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import { defaultPurchaseOrderNo } from '@/utils/purchase'
+import { SettingsOutline } from '@vicons/ionicons5'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,6 +35,7 @@ const material = ref<PurchaseMaterial | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const deleting = ref(false)
+const advancedSections = ref<string[]>([])
 const showMove = ref(false)
 const moving = ref(false)
 const moveForm = reactive({
@@ -237,12 +239,6 @@ onMounted(() => void load())
     <n-card title="申购计划信息">
       <n-form label-placement="top" :disabled="!auth.can('purchase:write')">
         <div class="form-grid">
-          <n-form-item label="计划 ID">
-            <n-input :value="material.plan_no" disabled />
-          </n-form-item>
-          <n-form-item label="状态" required>
-            <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
-          </n-form-item>
           <n-form-item label="需求日期" required>
             <n-date-picker v-model:value="planDate" type="date" class="full-width" />
           </n-form-item>
@@ -255,32 +251,29 @@ onMounted(() => void load())
               @select="applyMaterialCode"
             />
           </n-form-item>
-          <n-form-item label="类别">
-            <n-select
-              v-model:value="form.category"
-              :options="purchaseCategoryOptions"
-              filterable
-              clearable
-              placeholder="选择类别"
-            />
-          </n-form-item>
-          <n-form-item label="紧急程度" required>
-            <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
-          </n-form-item>
-          <n-form-item label="需求部门" required>
-            <n-input v-model:value="form.demand_department" maxlength="128" />
-          </n-form-item>
           <n-form-item label="名称" required>
             <n-input v-model:value="form.name" maxlength="128" />
           </n-form-item>
           <n-form-item label="型号规格" required>
             <n-input v-model:value="form.model_spec" maxlength="255" />
           </n-form-item>
-          <n-form-item label="计划数量" required>
-            <QuantityInput v-model:value="form.planned_qty" :decimal-places="1" />
+          <n-form-item label="紧急程度" required>
+            <n-select v-model:value="form.urgency" :options="purchaseUrgencyOptions" />
           </n-form-item>
-          <n-form-item label="计量单位" required>
-            <n-input v-model:value="form.unit_name" maxlength="32" placeholder="可任意填写" />
+          <n-form-item label="计划数量 / 计量单位" required>
+            <n-input-group>
+              <QuantityInput
+                v-model:value="form.planned_qty"
+                :decimal-places="1"
+                class="quantity-input"
+              />
+              <n-input
+                v-model:value="form.unit_name"
+                maxlength="32"
+                placeholder="计量单位"
+                class="quantity-unit-select"
+              />
+            </n-input-group>
           </n-form-item>
           <n-form-item label="实际需求人" required>
             <n-input v-model:value="form.actual_demand_person" maxlength="128" />
@@ -295,12 +288,40 @@ onMounted(() => void load())
             <n-input v-model:value="form.usage" maxlength="500" />
           </n-form-item>
         </div>
-        <n-form-item label="关联二级库物资">
-          <MaterialSelector
-            :value="form.stock_material_id ?? null"
-            @update:value="form.stock_material_id = $event ?? undefined"
-          />
-        </n-form-item>
+        <n-divider class="advanced-divider" />
+        <n-collapse v-model:expanded-names="advancedSections" class="detail-advanced-fields">
+          <n-collapse-item name="advanced">
+            <template #header>
+              <span class="advanced-header">
+                <n-icon><SettingsOutline /></n-icon>
+                <span>更多设置</span>
+              </span>
+            </template>
+            <div class="form-grid">
+              <n-form-item label="状态" required>
+                <n-select v-model:value="form.status" :options="purchasePlanStatusOptions" />
+              </n-form-item>
+              <n-form-item label="类别">
+                <n-select
+                  v-model:value="form.category"
+                  :options="purchaseCategoryOptions"
+                  filterable
+                  clearable
+                  placeholder="选择类别"
+                />
+              </n-form-item>
+              <n-form-item label="需求部门" required>
+                <n-input v-model:value="form.demand_department" maxlength="128" />
+              </n-form-item>
+              <n-form-item label="关联二级库物资">
+                <MaterialSelector
+                  :value="form.stock_material_id ?? null"
+                  @update:value="form.stock_material_id = $event ?? undefined"
+                />
+              </n-form-item>
+            </div>
+          </n-collapse-item>
+        </n-collapse>
         <n-form-item label="备注">
           <n-input v-model:value="form.remark" type="textarea" maxlength="1000" show-count />
         </n-form-item>
@@ -396,3 +417,50 @@ onMounted(() => void load())
     </n-modal>
   </div>
 </template>
+
+<style scoped>
+.quantity-input {
+  flex: 1;
+}
+
+.quantity-unit-select {
+  width: 160px;
+}
+
+.detail-advanced-fields :deep(.n-collapse-item) {
+  border-radius: 8px;
+}
+
+.detail-advanced-fields :deep(.n-collapse-item__header) {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f6f8fb;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.detail-advanced-fields :deep(.n-collapse-item__header:hover) {
+  background: #eef2f9;
+}
+
+.detail-advanced-fields :deep(.n-collapse-item__content-inner) {
+  padding: 14px 4px 4px;
+}
+
+.advanced-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: #4b5565;
+}
+
+.advanced-header .n-icon {
+  color: #5573d1;
+}
+
+.advanced-divider {
+  margin: 18px 0 10px;
+}
+</style>
