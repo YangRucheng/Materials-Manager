@@ -655,3 +655,29 @@ async def create_outbound(
         mini_program_user=user,
     )
     return _outbound_read(operation, material, user)
+
+
+async def get_outbound_by_no(
+    session: AsyncSession, operation_no: str, user: MiniProgramUser
+) -> MiniProgramOutboundRead:
+    """按流水号查询小程序出库明细，供分享结果页恢复数据使用。
+
+    仅接受小程序扫码的出库流水：小程序来源的流水在数据库中 source_type 存为 MANUAL，
+    但 mini_program_user_name_snapshot 非空（见 inventory_service.create_operation）。
+    用它作为真实来源判别，避免通过流水号枚举其他渠道的库存操作。
+    """
+    operation = await session.scalar(
+        select(StockOperation).where(
+            StockOperation.operation_no == operation_no,
+            StockOperation.operation_type == OperationType.OUTBOUND,
+            StockOperation.mini_program_user_name_snapshot.is_not(None),
+        )
+    )
+    if operation is None or len(operation.lines) != 1:
+        raise not_found("出库流水")
+    material = await session.scalar(
+        select(StockMaterial).where(StockMaterial.id == operation.lines[0].stock_material_id)
+    )
+    if material is None:
+        raise not_found("二级库物资")
+    return _outbound_read(operation, material, user)

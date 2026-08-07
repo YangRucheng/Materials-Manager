@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { imageUrl } = require('../../utils/inventory');
+const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -26,7 +27,10 @@ Page({
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/bind/bind' });
+        const redirect = buildRedirectQuery(
+          `/pages/material-detail/material-detail?uuid=${this.materialUuid}`,
+        );
+        wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
       await getApp().globalData.imageSettingsPromise;
@@ -80,6 +84,14 @@ Page({
 
   goOutbound() {
     wx.navigateTo({ url: `/pages/outbound/outbound?uuid=${this.materialUuid}` });
+  },
+
+  onShareAppMessage() {
+    const material = this.data.material;
+    return {
+      title: material ? material.name : t('shareMaterial'),
+      path: `/pages/material-detail/material-detail?uuid=${this.materialUuid}`,
+    };
   },
 
   showError(error) {
