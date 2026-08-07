@@ -303,6 +303,22 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert replayed_after_rename.status_code == 201, replayed_after_rename.text
     assert replayed_after_rename.json()["operation_id"] == outbound.json()["operation_id"]
+
+    # 按流水号查询出库明细（分享结果页恢复数据）
+    by_no = await client.get(
+        f"/api/v1/mini-program/outbound/{outbound.json()['operation_no']}",
+        headers=mini_headers,
+    )
+    assert by_no.status_code == 200, by_no.text
+    assert by_no.json()["operation_id"] == outbound.json()["operation_id"]
+    assert by_no.json()["material_name"] == outbound.json()["material_name"]
+    assert by_no.json()["quantity"] == outbound.json()["quantity"]
+
+    missing_no = await client.get(
+        "/api/v1/mini-program/outbound/NO-SUCH-OPERATION", headers=mini_headers
+    )
+    assert missing_no.status_code == 400
+    assert missing_no.json()["code"] == "NOT_FOUND"
     assert replayed_after_rename.json()["executed_by"] == "扫码出库员"
 
     repeated_login = await client.post(
