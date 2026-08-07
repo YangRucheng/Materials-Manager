@@ -122,6 +122,13 @@ const dictionaries = {
     loginRequired: '请先登录',
     invalidToken: '登录凭证无效或已过期',
     forbidden: '没有执行此操作的权限',
+    shareHome: '电气车间备件管理',
+    shareInventory: '全库库存查询',
+    shareMaterial: '查看物资详情',
+    shareOutbound: '扫码出库',
+    sharePurchasePlans: '申购计划',
+    sharePurchasePlan: '申购计划详情',
+    shareOutboundSuccess: '出库成功记录',
   },
   [LOCALE_ID_ID]: {
     appTitle: 'Manajemen Suku Cadang',
@@ -243,6 +250,13 @@ const dictionaries = {
     loginRequired: 'Silakan login terlebih dahulu',
     invalidToken: 'Sesi login tidak valid atau telah kedaluwarsa',
     forbidden: 'Anda tidak memiliki izin untuk melakukan operasi ini',
+    shareHome: 'Manajemen Suku Cadang Bengkel Listrik',
+    shareInventory: 'Cek Stok Gudang',
+    shareMaterial: 'Lihat Detail Material',
+    shareOutbound: 'Pengeluaran Barang',
+    sharePurchasePlans: 'Rencana Pengadaan',
+    sharePurchasePlan: 'Detail Rencana Pengadaan',
+    shareOutboundSuccess: 'Catatan Pengeluaran Berhasil',
   },
 };
 

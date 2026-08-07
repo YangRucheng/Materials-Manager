@@ -1,6 +1,7 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { createClientRequestId, extractMaterialUuid } = require('../../utils/material');
+const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -42,7 +43,14 @@ Page({
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/bind/bind' });
+        // 记录待回跳目标（扫码场景用 pendingMaterialUuid，其余用 redirect）。
+        // 保留 pendingMaterialUuid 兼容既有扫码→绑定→出库回跳流程。
+        const redirect = buildRedirectQuery(
+          materialUuid
+            ? `/pages/outbound/outbound?uuid=${materialUuid}`
+            : '/pages/outbound/outbound',
+        );
+        wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
       app.globalData.pendingMaterialUuid = '';
@@ -90,6 +98,17 @@ Page({
     } finally {
       this.setData({ scanning: false });
     }
+  },
+
+  onShareAppMessage() {
+    const material = this.data.material;
+    const materialUuid = (material && material.uuid) || '';
+    return {
+      title: material ? `${t('shareOutbound')} · ${material.name}` : t('shareOutbound'),
+      path: materialUuid
+        ? `/pages/outbound/outbound?uuid=${materialUuid}`
+        : '/pages/outbound/outbound',
+    };
   },
 
   async loadMaterial(materialUuid) {

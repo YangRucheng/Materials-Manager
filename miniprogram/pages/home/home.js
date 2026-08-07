@@ -55,6 +55,13 @@ Page({
     wx.navigateTo({ url: '/pages/purchase-plans/purchase-plans' });
   },
 
+  onShareAppMessage() {
+    return {
+      title: t('shareHome'),
+      path: '/pages/home/home',
+    };
+  },
+
   showUserProfile() {
     this.setData({ userProfileVisible: true });
   },
