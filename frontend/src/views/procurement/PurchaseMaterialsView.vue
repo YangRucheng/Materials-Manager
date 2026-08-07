@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   NTag,
   useMessage,
@@ -8,7 +8,7 @@ import {
   type FormInst,
   type FormRules,
 } from 'naive-ui'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type {
   FileObject,
   MaterialCodeLibrary,
@@ -49,21 +49,111 @@ import {
 } from '@/constants/purchase'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
-import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
+import { routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
 import { renderTwoLineText } from '@/utils/tableText'
 
-const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
-const items = ref<PurchaseMaterial[]>([])
-const total = ref(0)
-const page = ref(routeQueryPositiveInteger(route.query.page, 1))
-const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
-const loading = ref(false)
+const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
+const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
+const canViewArchivedPlans = computed(() => auth.user?.role === 'SUPER_ADMIN')
+const statusFilterOptions = computed(() =>
+  purchasePlanStatusOptions.filter(
+    (option) => canViewArchivedPlans.value || option.value !== '已归档',
+  ),
+)
+type PurchaseFilters = {
+  name: string
+  model_spec: string
+  actual_demand_person: string | null
+  subitem_no: string | null
+  category: string | null
+  status: PurchasePlanStatus[]
+}
+const {
+  items,
+  total,
+  page,
+  pageSize,
+  loading,
+  filters,
+  load,
+  query,
+  changePage,
+  changePageSize,
+  resetFilters,
+  syncRoute,
+} = usePagedTable<PurchaseMaterial, PurchaseFilters>({
+  fetch: (f, pager) =>
+    procurementApi.materials({
+      page: pager.page,
+      page_size: pager.page_size,
+      moved: false,
+      name: searchName.value,
+      model_spec: f.model_spec.trim() || undefined,
+      actual_demand_person:
+        f.actual_demand_person && f.actual_demand_person !== EMPTY_DEMAND_PERSON_FILTER
+          ? f.actual_demand_person.trim()
+          : undefined,
+      empty_actual_demand_person:
+        f.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER || undefined,
+      subitem_no: f.subitem_no && f.subitem_no !== EMPTY_SUBITEM_FILTER ? f.subitem_no : undefined,
+      empty_subitem_no: f.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
+      category: f.category || undefined,
+      status: f.status.length ? f.status : undefined,
+    }),
+  initialFilters: () => ({
+    name: '',
+    model_spec: '',
+    actual_demand_person: null,
+    subitem_no: null,
+    category: null,
+    status: [defaultPurchasePlanStatus],
+  }),
+  onLoaded: () => {
+    checkedRowKeys.value = []
+  },
+  beforeQuery: () => clearExpandedName(),
+  urlSync: {
+    routeName: 'purchase-materials',
+    fromQuery: (route) => {
+      const routeStatuses = routeQueryString(route.query.status)
+        .split(',')
+        .filter((value): value is PurchasePlanStatus =>
+          purchasePlanStatusOptions.some((option) => option.value === value),
+        )
+      return {
+        name: routeQueryString(route.query.name),
+        model_spec: routeQueryString(route.query.model_spec),
+        actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
+        subitem_no: routeQueryString(route.query.subitem_no) || null,
+        category: routeQueryString(route.query.category) || null,
+        status:
+          routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档')
+            .length > 0
+            ? routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档')
+            : [defaultPurchasePlanStatus],
+      }
+    },
+    toQuery: (f) => ({
+      name: f.name,
+      model_spec: f.model_spec,
+      actual_demand_person: f.actual_demand_person || undefined,
+      subitem_no: f.subitem_no || undefined,
+      category: f.category || undefined,
+      status:
+        f.status.length === 1 && f.status[0] === defaultPurchasePlanStatus
+          ? undefined
+          : f.status.join(','),
+    }),
+  },
+})
+const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
 const resultExporting = ref(false)
@@ -81,31 +171,6 @@ const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createPlanDate = ref(Date.now())
 const createAdvancedSections = ref<string[]>([])
-const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
-const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
-const routeStatuses = routeQueryString(route.query.status)
-  .split(',')
-  .filter((value): value is PurchasePlanStatus =>
-    purchasePlanStatusOptions.some((option) => option.value === value),
-  )
-const canViewArchivedPlans = computed(() => auth.user?.role === 'SUPER_ADMIN')
-const statusFilterOptions = computed(() =>
-  purchasePlanStatusOptions.filter(
-    (option) => canViewArchivedPlans.value || option.value !== '已归档',
-  ),
-)
-const filters = reactive({
-  name: routeQueryString(route.query.name),
-  model_spec: routeQueryString(route.query.model_spec),
-  actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
-  subitem_no: routeQueryString(route.query.subitem_no) || null,
-  category: routeQueryString(route.query.category) || null,
-  status:
-    routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档').length > 0
-      ? routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档')
-      : [defaultPurchasePlanStatus],
-})
-const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const filterOptions = ref<PurchaseFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
@@ -425,34 +490,6 @@ async function toggleTableFullscreen() {
     message.error('切换全屏失败')
   }
 }
-async function load() {
-  loading.value = true
-  try {
-    const d = await procurementApi.materials({
-      page: page.value,
-      page_size: pageSize.value,
-      moved: false,
-      name: searchName.value,
-      model_spec: filters.model_spec.trim() || undefined,
-      actual_demand_person:
-        filters.actual_demand_person && filters.actual_demand_person !== EMPTY_DEMAND_PERSON_FILTER
-          ? filters.actual_demand_person.trim()
-          : undefined,
-      empty_actual_demand_person:
-        filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER || undefined,
-      subitem_no:
-        filters.subitem_no && filters.subitem_no !== EMPTY_SUBITEM_FILTER ? filters.subitem_no : undefined,
-      empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
-      category: filters.category || undefined,
-      status: filters.status.length ? filters.status : undefined,
-    })
-    items.value = d.items
-    total.value = d.total
-    checkedRowKeys.value = []
-  } finally {
-    loading.value = false
-  }
-}
 async function loadFilterOptions() {
   filterOptions.value = await procurementApi.materialFilterOptions({ moved: false })
 }
@@ -462,33 +499,6 @@ async function loadAiStatus() {
   } catch {
     aiAvailable.value = false
   }
-}
-async function syncRoute() {
-  await router.replace({
-    name: 'purchase-materials',
-    query: compactRouteQuery({
-      page: page.value === 1 ? undefined : page.value,
-      page_size: pageSize.value === 20 ? undefined : pageSize.value,
-      name: filters.name,
-      model_spec: filters.model_spec,
-      actual_demand_person: filters.actual_demand_person,
-      subitem_no: filters.subitem_no || undefined,
-      category: filters.category,
-      status:
-        filters.status.length === 1 && filters.status[0] === defaultPurchasePlanStatus
-          ? undefined
-          : filters.status.join(','),
-    }),
-  })
-}
-async function syncRouteAndLoad(resetPage = false) {
-  if (resetPage) page.value = 1
-  await syncRoute()
-  await load()
-}
-function query() {
-  clearExpandedName()
-  void syncRouteAndLoad(true)
 }
 async function aiQuery() {
   const value = filters.name.trim()
@@ -500,7 +510,10 @@ async function aiQuery() {
   try {
     const data = await aiSearchApi.expand(value)
     applyExpandedName(data.expanded)
-    await syncRouteAndLoad(true)
+    // 走原语而非 query()，避免 beforeQuery 清掉刚 apply 的扩展名
+    page.value = 1
+    await syncRoute()
+    await load()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '智能查询失败')
   } finally {
@@ -528,7 +541,9 @@ async function exportResults() {
       actual_demand_person: actualDemandPerson,
       empty_actual_demand_person: filters.actual_demand_person === EMPTY_DEMAND_PERSON_FILTER,
       subitem_no:
-        filters.subitem_no && filters.subitem_no !== EMPTY_SUBITEM_FILTER ? filters.subitem_no : undefined,
+        filters.subitem_no && filters.subitem_no !== EMPTY_SUBITEM_FILTER
+          ? filters.subitem_no
+          : undefined,
       empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER,
       category: filters.category || undefined,
       status: filters.status.length ? filters.status : undefined,
@@ -541,21 +556,6 @@ async function exportResults() {
   } finally {
     resultExporting.value = false
   }
-}
-function resetFilters() {
-  filters.name = ''
-  filters.model_spec = ''
-  filters.actual_demand_person = null
-  filters.subitem_no = null
-  filters.category = null
-  filters.status = [defaultPurchasePlanStatus]
-  query()
-}
-function changePageSize() {
-  void syncRouteAndLoad(true)
-}
-function changePage() {
-  void syncRouteAndLoad()
 }
 function openCreate() {
   Object.assign(form, {
@@ -804,10 +804,7 @@ onMounted(() => {
   document.addEventListener('fullscreenchange', syncTableFullscreen)
   void loadFilterOptions()
   void loadAiStatus()
-  void load()
-})
-onActivated(() => {
-  void syncRoute()
+  // 列表首载由 usePagedTable（immediate）触发
 })
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncTableFullscreen)

@@ -3,11 +3,13 @@ import type {
   MaterialCodeLibrary,
   MaterialCodeLibraryImportResult,
   Page,
+  PagedQueryParams,
   MovePurchasePlansWrite,
   PurchaseFilterOptions,
   PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
+  PurchasePlanStatus,
   PurchaseRecord,
   PurchaseRecordBatchUpdate,
   PurchaseRecordFilterOptions,
@@ -16,8 +18,51 @@ import type {
   PurchaseRecordWrite,
 } from './generated'
 
+/** 申购计划列表查询（materials 与导出共享筛选字段） */
+export interface PurchaseMaterialListQuery extends PagedQueryParams {
+  moved?: boolean
+  name?: string
+  model_spec?: string
+  actual_demand_person?: string
+  empty_actual_demand_person?: boolean
+  subitem_no?: string
+  empty_subitem_no?: boolean
+  category?: string
+  status?: PurchasePlanStatus[]
+}
+
+/** 申购记录列表查询（records 与导出共享筛选字段） */
+export interface PurchaseRecordListQuery extends PagedQueryParams {
+  name?: string
+  model_spec?: string
+  trace_no?: string
+  purchase_order_no?: string
+  actual_demand_person?: string
+  purchase_responsible?: string
+  salesperson?: string
+  status?: string
+  empty_status?: boolean
+}
+
+/** 未编码物资查询（uncodedMaterials 内部追加 coded:false） */
+export interface UncodedMaterialListQuery extends PagedQueryParams {
+  status?: PurchasePlanStatus
+}
+
+/** 物料编码库列表查询 */
+export interface MaterialCodeLibraryListQuery extends PagedQueryParams {
+  material_code?: string
+  name?: string
+  model_spec?: string
+}
+
+/** 申购计划筛选下拉选项查询 */
+export interface MaterialFilterOptionsQuery {
+  moved?: boolean
+}
+
 export const procurementApi = {
-  materialCodes: (params?: Record<string, unknown>) =>
+  materialCodes: (params?: MaterialCodeLibraryListQuery) =>
     apiClient
       .get<Page<MaterialCodeLibrary>>('/material-code-library', { params })
       .then((r) => r.data),
@@ -30,9 +75,9 @@ export const procurementApi = {
       })
       .then((r) => r.data)
   },
-  materials: (params?: Record<string, unknown>) =>
+  materials: (params?: PurchaseMaterialListQuery) =>
     apiClient.get<Page<PurchaseMaterial>>('/purchase-materials', { params }).then((r) => r.data),
-  materialFilterOptions: (params?: Record<string, unknown>) =>
+  materialFilterOptions: (params?: MaterialFilterOptionsQuery) =>
     apiClient
       .get<PurchaseFilterOptions>('/purchase-materials/filter-options', { params })
       .then((r) => r.data),
@@ -75,15 +120,15 @@ export const procurementApi = {
     apiClient
       .post<Blob>('/purchase-materials/export-results', payload, { responseType: 'blob' })
       .then((r) => r.data),
-  exportUncodedMaterials: (params?: Record<string, unknown>) =>
+  exportUncodedMaterials: (params?: UncodedMaterialListQuery) =>
     apiClient
       .get<Blob>('/purchase-materials/export-uncoded', { params, responseType: 'blob' })
       .then((r) => r.data),
-  uncodedMaterials: (params?: Record<string, unknown>) =>
+  uncodedMaterials: (params?: UncodedMaterialListQuery) =>
     apiClient
       .get<Page<PurchaseMaterial>>('/purchase-materials', { params: { ...params, coded: false } })
       .then((r) => r.data),
-  records: (params?: Record<string, unknown>) =>
+  records: (params?: PurchaseRecordListQuery) =>
     apiClient.get<Page<PurchaseRecord>>('/purchase-records', { params }).then((r) => r.data),
   batchUpdateRecords: (payload: PurchaseRecordBatchUpdate) =>
     apiClient.patch<PurchaseRecord[]>('/purchase-records/batch', payload).then((r) => r.data),

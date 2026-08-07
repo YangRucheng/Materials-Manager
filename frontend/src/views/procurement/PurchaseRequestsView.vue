@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NTag, useMessage, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type {
   PurchaseRecord,
   PurchaseRecordBatchUpdate,
@@ -20,19 +20,95 @@ import {
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatDate, toShanghaiDate } from '@/utils/time'
 import { downloadBlob } from '@/utils/download'
-import { compactRouteQuery, routeQueryPositiveInteger, routeQueryString } from '@/utils/routeQuery'
+import { routeQueryString } from '@/utils/routeQuery'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
 import { renderTwoLineText } from '@/utils/tableText'
 import { useAuthStore } from '@/stores/auth'
 
-const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
-const items = ref<PurchaseRecord[]>([])
-const loading = ref(false)
+const EMPTY_STATUS_FILTER = '__empty_status__'
+type RecordFilters = {
+  name: string
+  model_spec: string
+  trace_no: string
+  purchase_order_no: string
+  actual_demand_person: string | null
+  purchase_responsible: string | null
+  salesperson: string | null
+  status: string | null
+}
+const {
+  items,
+  total,
+  page,
+  pageSize,
+  loading,
+  filters,
+  load,
+  query,
+  changePage,
+  changePageSize,
+  resetFilters,
+  syncRoute,
+} = usePagedTable<PurchaseRecord, RecordFilters>({
+  fetch: (f, pager) =>
+    procurementApi.records({
+      page: pager.page,
+      page_size: pager.page_size,
+      name: searchName.value,
+      model_spec: f.model_spec.trim() || undefined,
+      trace_no: f.trace_no.trim() || undefined,
+      purchase_order_no: f.purchase_order_no.trim() || undefined,
+      actual_demand_person: f.actual_demand_person?.trim() || undefined,
+      purchase_responsible: f.purchase_responsible?.trim() || undefined,
+      salesperson: f.salesperson?.trim() || undefined,
+      status: f.status && f.status !== EMPTY_STATUS_FILTER ? f.status : undefined,
+      empty_status: f.status === EMPTY_STATUS_FILTER || undefined,
+    }),
+  initialFilters: () => ({
+    name: '',
+    model_spec: '',
+    trace_no: '',
+    purchase_order_no: '',
+    actual_demand_person: null,
+    purchase_responsible: null,
+    salesperson: null,
+    status: null,
+  }),
+  onLoaded: () => {
+    checkedRowKeys.value = []
+  },
+  beforeQuery: () => clearExpandedName(),
+  urlSync: {
+    routeName: 'purchase-records',
+    fromQuery: (route) => ({
+      name: routeQueryString(route.query.name),
+      model_spec: routeQueryString(route.query.model_spec),
+      trace_no: routeQueryString(route.query.trace_no),
+      purchase_order_no: routeQueryString(route.query.purchase_order_no),
+      actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
+      purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
+      salesperson: routeQueryString(route.query.salesperson) || null,
+      status: routeQueryString(route.query.status) || null,
+    }),
+    toQuery: (f) => ({
+      name: f.name,
+      model_spec: f.model_spec,
+      trace_no: f.trace_no,
+      purchase_order_no: f.purchase_order_no,
+      actual_demand_person: f.actual_demand_person || undefined,
+      purchase_responsible: f.purchase_responsible || undefined,
+      salesperson: f.salesperson || undefined,
+      status: f.status || undefined,
+    }),
+  },
+})
+const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
 const resultExporting = ref(false)
@@ -41,21 +117,6 @@ const showBatchEdit = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
-const total = ref(0)
-const page = ref(routeQueryPositiveInteger(route.query.page, 1))
-const pageSize = ref(routeQueryPositiveInteger(route.query.page_size, 20))
-const EMPTY_STATUS_FILTER = '__empty_status__'
-const filters = reactive({
-  name: routeQueryString(route.query.name),
-  model_spec: routeQueryString(route.query.model_spec),
-  trace_no: routeQueryString(route.query.trace_no),
-  purchase_order_no: routeQueryString(route.query.purchase_order_no),
-  actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
-  purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
-  salesperson: routeQueryString(route.query.salesperson) || null,
-  status: routeQueryString(route.query.status) || null,
-})
-const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
   purchase_responsibles: [],
@@ -375,29 +436,6 @@ function rowProps(row: PurchaseRecord) {
   }
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const data = await procurementApi.records({
-      page: page.value,
-      page_size: pageSize.value,
-      name: searchName.value,
-      model_spec: filters.model_spec.trim() || undefined,
-      trace_no: filters.trace_no.trim() || undefined,
-      purchase_order_no: filters.purchase_order_no.trim() || undefined,
-      actual_demand_person: filters.actual_demand_person?.trim() || undefined,
-      purchase_responsible: filters.purchase_responsible?.trim() || undefined,
-      salesperson: filters.salesperson?.trim() || undefined,
-      status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
-      empty_status: filters.status === EMPTY_STATUS_FILTER || undefined,
-    })
-    items.value = data.items
-    total.value = data.total
-  } finally {
-    loading.value = false
-  }
-}
-
 async function loadFilterOptions() {
   filterOptions.value = await procurementApi.recordFilterOptions()
 }
@@ -410,34 +448,6 @@ async function loadAiStatus() {
   }
 }
 
-async function syncRoute() {
-  await router.replace({
-    name: 'purchase-records',
-    query: compactRouteQuery({
-      page: page.value === 1 ? undefined : page.value,
-      page_size: pageSize.value === 20 ? undefined : pageSize.value,
-      name: filters.name,
-      model_spec: filters.model_spec,
-      trace_no: filters.trace_no,
-      purchase_order_no: filters.purchase_order_no,
-      actual_demand_person: filters.actual_demand_person,
-      purchase_responsible: filters.purchase_responsible,
-      salesperson: filters.salesperson,
-      status: filters.status,
-    }),
-  })
-}
-async function syncRouteAndLoad(resetPage = false) {
-  if (resetPage) page.value = 1
-  await syncRoute()
-  await load()
-}
-
-function query() {
-  clearExpandedName()
-  void syncRouteAndLoad(true)
-}
-
 async function aiQuery() {
   const value = filters.name.trim()
   if (!value) {
@@ -448,7 +458,10 @@ async function aiQuery() {
   try {
     const data = await aiSearchApi.expand(value)
     applyExpandedName(data.expanded)
-    await syncRouteAndLoad(true)
+    // 走原语而非 query()，避免 beforeQuery 清掉刚 apply 的扩展名
+    page.value = 1
+    await syncRoute()
+    await load()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '智能查询失败')
   } finally {
@@ -623,33 +636,10 @@ async function batchUpdate() {
   }
 }
 
-function resetFilters() {
-  filters.name = ''
-  filters.model_spec = ''
-  filters.trace_no = ''
-  filters.purchase_order_no = ''
-  filters.actual_demand_person = null
-  filters.purchase_responsible = null
-  filters.salesperson = null
-  filters.status = null
-  query()
-}
-
-function changePageSize() {
-  void syncRouteAndLoad(true)
-}
-
-function changePage() {
-  void syncRouteAndLoad()
-}
-
 onMounted(() => {
   void loadFilterOptions()
   void loadAiStatus()
-  void load()
-})
-onActivated(() => {
-  void syncRoute()
+  // 列表首载由 usePagedTable（immediate）触发
 })
 </script>
 

@@ -1,89 +1,81 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref, watch } from 'vue'
+import { computed, h, ref } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { useDialog, useMessage } from 'naive-ui'
 import type { MaterialCodeLibrary, MaterialCodeLibraryImportResult } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
 import { useAuthStore } from '@/stores/auth'
+import {
+  getTableScrollX,
+  preventTableColumnCompression,
+  tableColumnWidths,
+} from '@/constants/table'
+import { usePagedTable } from '@/composables/usePagedTable'
 
 const auth = useAuthStore()
 const dialog = useDialog()
 const message = useMessage()
 const fileInput = ref<HTMLInputElement | null>(null)
-const items = ref<MaterialCodeLibrary[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
-const materialCode = ref('')
-const name = ref('')
-const modelSpec = ref('')
-const loading = ref(false)
+type CodeLibraryFilters = {
+  materialCode: string
+  name: string
+  modelSpec: string
+}
+const {
+  items,
+  total,
+  page,
+  pageSize,
+  loading,
+  filters,
+  query,
+  changePage,
+  changePageSize,
+  resetFilters,
+} = usePagedTable<MaterialCodeLibrary, CodeLibraryFilters>({
+  fetch: (f, pager) =>
+    procurementApi.materialCodes({
+      material_code: f.materialCode.trim() || undefined,
+      name: f.name.trim() || undefined,
+      model_spec: f.modelSpec.trim() || undefined,
+      page: pager.page,
+      page_size: pager.page_size,
+    }),
+  initialFilters: () => ({ materialCode: '', name: '', modelSpec: '' }),
+  onError: (error) => message.error(error instanceof Error ? error.message : '加载物料编码库失败'),
+  pageSizeOptions: [20, 50, 100, 200],
+})
 const importing = ref(false)
 const activeFilterCount = computed(
   () =>
-    [name.value.trim(), modelSpec.value.trim(), materialCode.value.trim()].filter(Boolean).length,
+    [filters.name.trim(), filters.modelSpec.trim(), filters.materialCode.trim()].filter(Boolean)
+      .length,
 )
 
-const columns: DataTableColumns<MaterialCodeLibrary> = [
+const columns: DataTableColumns<MaterialCodeLibrary> = preventTableColumnCompression([
   {
     title: '物料编码',
     key: 'material_code',
-    width: 170,
+    width: tableColumnWidths.code,
     render: (row) => h('strong', row.material_code),
   },
   {
     title: '名称',
     key: 'name',
-    minWidth: 220,
+    width: tableColumnWidths.name,
     ellipsis: { tooltip: true },
     render: (row) => row.name || '—',
   },
   {
     title: '型号',
     key: 'model_spec',
-    minWidth: 260,
+    width: tableColumnWidths.model,
     ellipsis: { tooltip: true },
     render: (row) => row.model_spec || '—',
   },
-  { title: '计量单位', key: 'unit_name', width: 120 },
-]
-
-async function load() {
-  loading.value = true
-  try {
-    const result = await procurementApi.materialCodes({
-      material_code: materialCode.value.trim() || undefined,
-      name: name.value.trim() || undefined,
-      model_spec: modelSpec.value.trim() || undefined,
-      page: page.value,
-      page_size: pageSize.value,
-    })
-    items.value = result.items
-    total.value = result.total
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载物料编码库失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-function search() {
-  page.value = 1
-  void load()
-}
-
-function resetSearch() {
-  materialCode.value = ''
-  name.value = ''
-  modelSpec.value = ''
-  search()
-}
-
-function changePageSize(value: number) {
-  pageSize.value = value
-  page.value = 1
-  void load()
-}
+  { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
+])
+const tableScrollX = getTableScrollX(columns)
 
 function openFilePicker() {
   fileInput.value?.click()
@@ -110,11 +102,11 @@ async function importFile(file: File) {
   try {
     const result = await procurementApi.importMaterialCodes(file)
     showImportSummary(result)
-    materialCode.value = ''
-    name.value = ''
-    modelSpec.value = ''
+    filters.materialCode = ''
+    filters.name = ''
+    filters.modelSpec = ''
     page.value = 1
-    await load()
+    await query()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导入失败')
   } finally {
@@ -136,9 +128,6 @@ function onFileChange(event: Event) {
     onPositiveClick: () => importFile(file),
   })
 }
-
-watch(page, () => void load())
-onMounted(() => void load())
 </script>
 
 <template>
@@ -173,36 +162,36 @@ onMounted(() => void load())
         <label class="filter-field">
           <span>物资名称</span>
           <n-input
-            v-model:value="name"
+            v-model:value="filters.name"
             clearable
             placeholder="输入物资名称"
-            @keyup.enter="search"
+            @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
           <span>型号规格</span>
           <n-input
-            v-model:value="modelSpec"
+            v-model:value="filters.modelSpec"
             clearable
             placeholder="输入型号规格"
-            @keyup.enter="search"
+            @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
           <span>物料编码</span>
           <n-input
-            v-model:value="materialCode"
+            v-model:value="filters.materialCode"
             clearable
             placeholder="输入物料编码"
-            @keyup.enter="search"
+            @keyup.enter="query"
           />
         </label>
       </div>
       <div class="filter-actions">
         <span class="muted">共 {{ total.toLocaleString() }} 条</span>
         <div class="filter-action-buttons">
-          <n-button @click="resetSearch">重置</n-button>
-          <n-button type="primary" :loading="loading" @click="search">查询</n-button>
+          <n-button @click="resetFilters">重置</n-button>
+          <n-button type="primary" :loading="loading" @click="query">查询</n-button>
         </div>
       </div>
     </n-card>
@@ -214,15 +203,16 @@ onMounted(() => void load())
         :data="items"
         :loading="loading"
         :row-key="(row: MaterialCodeLibrary) => row.id"
-        :scroll-x="780"
+        :scroll-x="tableScrollX"
       />
       <div class="pagination-bar">
         <n-pagination
           v-model:page="page"
-          :page-size="pageSize"
+          v-model:page-size="pageSize"
           :item-count="total"
           show-size-picker
           :page-sizes="[20, 50, 100, 200]"
+          @update:page="changePage"
           @update:page-size="changePageSize"
         />
       </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { h } from 'vue'
 import { NButton, NTag, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { StockOperation } from '@/api/generated'
@@ -11,20 +11,58 @@ import {
 } from '@/constants/table'
 import { formatShanghaiTime } from '@/utils/time'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
+import { usePagedTable } from '@/composables/usePagedTable'
 
 const router = useRouter()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
-const items = ref<StockOperation[]>([])
-const loading = ref(false)
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
-const dateRange = ref<[number, number] | null>(null)
-const filters = reactive({
-  operation_no: '',
-  operation_type: null as string | null,
-  material_name: '',
+type OperationFilters = {
+  operation_no: string
+  operation_type: string | null
+  material_name: string
+  dateRange: [number, number] | null
+}
+function emptyFilters(): OperationFilters {
+  return { operation_no: '', operation_type: null, material_name: '', dateRange: null }
+}
+const {
+  items,
+  total,
+  page,
+  pageSize,
+  loading,
+  filters,
+  query,
+  changePage,
+  changePageSize,
+  resetFilters,
+} = usePagedTable<StockOperation, OperationFilters>({
+  fetch: (f, pager) =>
+    inventoryApi.operations({
+      page: pager.page,
+      page_size: pager.page_size,
+      operation_no: f.operation_no.trim() || undefined,
+      operation_type: f.operation_type || undefined,
+      material_name: f.material_name.trim() || undefined,
+      start_at: f.dateRange ? new Date(f.dateRange[0]).toISOString() : undefined,
+      end_at: f.dateRange ? new Date(f.dateRange[1]).toISOString() : undefined,
+    }),
+  initialFilters: emptyFilters,
+  onError: (error) => message.error(error instanceof Error ? error.message : '操作记录查询失败'),
+  urlSync: {
+    routeName: 'operations',
+    fromQuery: (route) => ({
+      operation_no: String(route.query.operation_no || ''),
+      operation_type: String(route.query.operation_type || '') || null,
+      material_name: String(route.query.material_name || ''),
+      dateRange: null,
+    }),
+    toQuery: (f) => ({
+      operation_no: f.operation_no.trim() || undefined,
+      operation_type: f.operation_type || undefined,
+      material_name: f.material_name.trim() || undefined,
+    }),
+  },
 })
 const columns = preventTableColumnCompression<StockOperation>([
   {
@@ -89,47 +127,6 @@ const columns = preventTableColumnCompression<StockOperation>([
 ])
 const tableScrollX = getTableScrollX(columns)
 
-async function load() {
-  loading.value = true
-  try {
-    const data = await inventoryApi.operations({
-      page: page.value,
-      page_size: pageSize.value,
-      operation_no: filters.operation_no.trim() || undefined,
-      operation_type: filters.operation_type || undefined,
-      material_name: filters.material_name.trim() || undefined,
-      start_at: dateRange.value ? new Date(dateRange.value[0]).toISOString() : undefined,
-      end_at: dateRange.value ? new Date(dateRange.value[1]).toISOString() : undefined,
-    })
-    items.value = data.items
-    total.value = data.total
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '操作记录查询失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-function query() {
-  page.value = 1
-  void load()
-}
-function changePage(nextPage: number) {
-  page.value = nextPage
-  void load()
-}
-function changePageSize(nextPageSize: number) {
-  pageSize.value = nextPageSize
-  page.value = 1
-  void load()
-}
-
-function resetFilters() {
-  Object.assign(filters, { operation_no: '', operation_type: null, material_name: '' })
-  dateRange.value = null
-  query()
-}
-
 function rowProps(row: StockOperation) {
   return {
     style: 'cursor: pointer',
@@ -141,8 +138,6 @@ function rowProps(row: StockOperation) {
     },
   }
 }
-
-onMounted(load)
 </script>
 
 <template>
@@ -193,7 +188,7 @@ onMounted(load)
         <label class="filter-field">
           <span>发生时间</span>
           <n-date-picker
-            v-model:value="dateRange"
+            v-model:value="filters.dateRange"
             type="datetimerange"
             clearable
             class="full-width"
