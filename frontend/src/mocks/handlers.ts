@@ -109,6 +109,30 @@ const compareNullableTextDesc = (
   if (normalizedRight === null) return -1
   return normalizedRight.localeCompare(normalizedLeft, 'zh-CN')
 }
+// 列表任意列排序：数值感知，空值自然参与（升序在前/降序在后），方向由调用方取反。
+const compareField =
+  <T>(key: string) =>
+  (left: T, right: T) => {
+    const leftRow = left as Record<string, unknown>
+    const rightRow = right as Record<string, unknown>
+    const leftValue = leftRow[key] as string | number | null | undefined
+    const rightValue = rightRow[key] as string | number | null | undefined
+    const leftNull = leftValue == null
+    const rightNull = rightValue == null
+    if (leftNull && rightNull) return 0
+    if (leftNull) return -1
+    if (rightNull) return 1
+    const leftText = String(leftValue).trim()
+    const rightText = String(rightValue).trim()
+    const leftNum = Number(leftText)
+    const rightNum = Number(rightText)
+    if (Number.isFinite(leftNum) && Number.isFinite(rightNum)) return leftNum - rightNum
+    return leftText.localeCompare(rightText, 'zh-CN')
+  }
+const sortResultBy = <T>(items: T[], sortBy: string, sortOrder: string) => {
+  const sorted = items.slice().sort(compareField<T>(sortBy))
+  return sortOrder === 'desc' ? sorted.reverse() : sorted
+}
 // 与后端 AppError 保持一致：显式 status 优先，否则按 code 推断默认状态码。
 const DEFAULT_STATUS_BY_CODE: Record<string, number> = {
   NOT_FOUND: 400,
@@ -829,45 +853,45 @@ export const handlers = [
     const coded = url.searchParams.get('coded')
     const moved = url.searchParams.get('moved')
     const status = url.searchParams.get('status')
+    const sortBy = url.searchParams.get('sort_by')
+    const sortOrder = url.searchParams.get('sort_order') || 'asc'
     if (currentUser.role !== 'SUPER_ADMIN' && status === '已归档')
       return error(403, 'ARCHIVED_PURCHASE_PLAN_FORBIDDEN', '仅超级管理员可查询已归档申购计划')
     const effectiveStatus = currentUser.role === 'SUPER_ADMIN' ? status : '正常'
+    const filteredPlans = purchaseMaterials.filter((x) => {
+      const searchValues: Record<string, string | number | null | undefined> = {
+        plan_no: x.plan_no,
+        plan_date: x.plan_date,
+        material_code: x.material_code,
+        name: x.name,
+        model_spec: x.model_spec,
+        unit_name: x.unit_name,
+        planned_qty: x.planned_qty,
+        usage: x.usage,
+        subitem_no: x.subitem_no,
+        remark: x.remark,
+      }
+      return (
+        matchesOrSearch(
+          `${x.plan_no}${x.plan_date}${x.material_code || ''}${x.name}${x.model_spec}${x.unit_name}${x.planned_qty}${x.actual_demand_person || ''}${x.purchase_responsible || ''}${x.usage}${x.subitem_no || ''}${x.remark || ''}`,
+          keyword,
+        ) &&
+        (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
+        matchesOrSearch(x.name, name) &&
+        matchesOrSearch(x.model_spec, modelSpec) &&
+        (emptyActualDemandPerson
+          ? !x.actual_demand_person?.trim() ||
+            ['\\', '/', '—', '-'].includes(x.actual_demand_person)
+          : matchesOrSearch(x.actual_demand_person, actualDemandPerson)) &&
+        matchesOrSearch(x.purchase_responsible, purchaseResponsible) &&
+        (emptySubitemNo ? !x.subitem_no?.trim() : !subitemNo || x.subitem_no === subitemNo) &&
+        (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
+        (moved === null || x.moved_to_record === (moved === 'true')) &&
+        (effectiveStatus === null || x.status === effectiveStatus)
+      )
+    })
     return HttpResponse.json(
-      page(
-        purchaseMaterials.filter((x) => {
-          const searchValues: Record<string, string | number | null | undefined> = {
-            plan_no: x.plan_no,
-            plan_date: x.plan_date,
-            material_code: x.material_code,
-            name: x.name,
-            model_spec: x.model_spec,
-            unit_name: x.unit_name,
-            planned_qty: x.planned_qty,
-            usage: x.usage,
-            subitem_no: x.subitem_no,
-            remark: x.remark,
-          }
-          return (
-            matchesOrSearch(
-              `${x.plan_no}${x.plan_date}${x.material_code || ''}${x.name}${x.model_spec}${x.unit_name}${x.planned_qty}${x.actual_demand_person || ''}${x.purchase_responsible || ''}${x.usage}${x.subitem_no || ''}${x.remark || ''}`,
-              keyword,
-            ) &&
-            (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
-            matchesOrSearch(x.name, name) &&
-            matchesOrSearch(x.model_spec, modelSpec) &&
-            (emptyActualDemandPerson
-              ? !x.actual_demand_person?.trim() ||
-                ['\\', '/', '—', '-'].includes(x.actual_demand_person)
-              : matchesOrSearch(x.actual_demand_person, actualDemandPerson)) &&
-            matchesOrSearch(x.purchase_responsible, purchaseResponsible) &&
-            (emptySubitemNo ? !x.subitem_no?.trim() : !subitemNo || x.subitem_no === subitemNo) &&
-            (coded === null || Boolean(x.material_code) === (coded === 'true')) &&
-            (moved === null || x.moved_to_record === (moved === 'true')) &&
-            (effectiveStatus === null || x.status === effectiveStatus)
-          )
-        }),
-        url,
-      ),
+      page(sortBy ? sortResultBy(filteredPlans, sortBy, sortOrder) : filteredPlans, url),
     )
   }),
   http.get(`${api}/purchase-materials/:id`, ({ params, request }) => {
@@ -1023,57 +1047,56 @@ export const handlers = [
     const salesperson = url.searchParams.get('salesperson')
     const status = url.searchParams.get('status')
     const emptyStatus = url.searchParams.get('empty_status') === 'true'
+    const sortBy = url.searchParams.get('sort_by')
+    const sortOrder = url.searchParams.get('sort_order') || 'asc'
     const records = purchaseRequests.flatMap((purchaseRequest) =>
       purchaseRequest.lines.map((line) => purchaseRecord(purchaseRequest, line)),
     )
-    return HttpResponse.json(
-      page(
-        records
-          .filter((record) => {
-            const searchValues: Record<string, string | number | null | undefined> = {
-              plan_no: record.plan_no,
-              plan_date: record.plan_date,
-              purchase_order_no: record.purchase_order_no,
-              trace_no: record.trace_no,
-              material_code: record.material_code,
-              material_name: record.material_name,
-              model_spec: record.model_spec,
-              unit_name: record.unit_name,
-              purchase_qty: record.purchase_qty,
-              salesperson: record.salesperson,
-              status: record.status,
-              purchase_date: record.purchase_date,
-              usage: record.usage,
-              subitem_no: record.subitem_no,
-              plan_remark: record.plan_remark,
-              record_remark: record.record_remark,
-            }
-            return (
-              matchesOrSearch(
-                `${record.plan_no}${record.plan_date}${record.trace_no || ''}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.model_spec}${record.unit_name}${record.purchase_qty}${record.actual_demand_person || ''}${record.purchase_responsible || ''}${record.salesperson || ''}${record.status}${record.purchase_date}${record.usage || ''}${record.subitem_no || ''}${record.plan_remark || ''}${record.record_remark || ''}`,
-                keyword,
-              ) &&
-              (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
-              matchesOrSearch(record.purchase_order_no, purchaseOrderNo) &&
-              matchesOrSearch(record.trace_no, traceNo) &&
-              matchesOrSearch(record.material_name, name) &&
-              matchesOrSearch(record.model_spec, modelSpec) &&
-              matchesOrSearch(record.actual_demand_person, actualDemandPerson) &&
-              matchesOrSearch(record.purchase_responsible, purchaseResponsible) &&
-              matchesOrSearch(record.salesperson, salesperson) &&
-              (!status || record.status === status) &&
-              (!emptyStatus || !record.status?.trim())
-            )
-          })
-          .sort(
-            (left, right) =>
-              compareNullableTextDesc(left.purchase_order_no, right.purchase_order_no) ||
-              compareNullableTextDesc(left.trace_no, right.trace_no) ||
-              right.line_id - left.line_id,
-          ),
-        url,
-      ),
-    )
+    const filteredRecords = records.filter((record) => {
+      const searchValues: Record<string, string | number | null | undefined> = {
+        plan_no: record.plan_no,
+        plan_date: record.plan_date,
+        purchase_order_no: record.purchase_order_no,
+        trace_no: record.trace_no,
+        material_code: record.material_code,
+        material_name: record.material_name,
+        model_spec: record.model_spec,
+        unit_name: record.unit_name,
+        purchase_qty: record.purchase_qty,
+        salesperson: record.salesperson,
+        status: record.status,
+        purchase_date: record.purchase_date,
+        usage: record.usage,
+        subitem_no: record.subitem_no,
+        plan_remark: record.plan_remark,
+        record_remark: record.record_remark,
+      }
+      return (
+        matchesOrSearch(
+          `${record.plan_no}${record.plan_date}${record.trace_no || ''}${record.purchase_order_no || ''}${record.material_code || ''}${record.material_name}${record.model_spec}${record.unit_name}${record.purchase_qty}${record.actual_demand_person || ''}${record.purchase_responsible || ''}${record.salesperson || ''}${record.status}${record.purchase_date}${record.usage || ''}${record.subitem_no || ''}${record.plan_remark || ''}${record.record_remark || ''}`,
+          keyword,
+        ) &&
+        (!searchField || matchesOrSearch(searchValues[searchField], searchValue)) &&
+        matchesOrSearch(record.purchase_order_no, purchaseOrderNo) &&
+        matchesOrSearch(record.trace_no, traceNo) &&
+        matchesOrSearch(record.material_name, name) &&
+        matchesOrSearch(record.model_spec, modelSpec) &&
+        matchesOrSearch(record.actual_demand_person, actualDemandPerson) &&
+        matchesOrSearch(record.purchase_responsible, purchaseResponsible) &&
+        matchesOrSearch(record.salesperson, salesperson) &&
+        (!status || record.status === status) &&
+        (!emptyStatus || !record.status?.trim())
+      )
+    })
+    const sortedRecords = sortBy
+      ? sortResultBy(filteredRecords, sortBy, sortOrder)
+      : filteredRecords.sort(
+          (left, right) =>
+            compareNullableTextDesc(left.purchase_order_no, right.purchase_order_no) ||
+            compareNullableTextDesc(left.trace_no, right.trace_no) ||
+            right.line_id - left.line_id,
+        )
+    return HttpResponse.json(page(sortedRecords, url))
   }),
   http.patch(`${api}/purchase-records/batch`, async ({ request }) => {
     const body = (await request.json()) as PurchaseRecordBatchUpdate

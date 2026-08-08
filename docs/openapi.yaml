@@ -3033,6 +3033,39 @@ paths:
           type: boolean
           default: false
           title: Ai Expand
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - plan_no
+            - plan_date
+            - material_code
+            - category
+            - urgency
+            - demand_department
+            - name
+            - model_spec
+            - planned_qty
+            - unit_name
+            - actual_demand_person
+            - purchase_responsible
+            - subitem_no
+            - usage
+            type: string
+          - type: 'null'
+          title: Sort By
+      - name: sort_order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: asc
+          title: Sort Order
       responses:
         '200':
           description: Successful Response
@@ -3917,6 +3950,43 @@ paths:
           type: boolean
           default: false
           title: Ai Expand
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - purchase_qty
+            - plan_date
+            - purchase_order_no
+            - trace_no
+            - contract_no
+            - vessel_no
+            - consolidation_date
+            - consolidation_port
+            - sailing_date
+            - category
+            - demand_department
+            - material_name
+            - actual_demand_person
+            - usage
+            - purchase_responsible
+            - salesperson
+            - status
+            - purchase_date
+            type: string
+          - type: 'null'
+          title: Sort By
+      - name: sort_order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: asc
+          title: Sort Order
       responses:
         '200':
           description: Successful Response
@@ -7121,6 +7191,33 @@ components:
             maxLength: 64
           - type: 'null'
           title: Category
+        sort_by:
+          anyOf:
+          - type: string
+            enum:
+            - plan_no
+            - plan_date
+            - material_code
+            - category
+            - urgency
+            - demand_department
+            - name
+            - model_spec
+            - planned_qty
+            - unit_name
+            - actual_demand_person
+            - purchase_responsible
+            - subitem_no
+            - usage
+          - type: 'null'
+          title: Sort By
+        sort_order:
+          type: string
+          enum:
+          - asc
+          - desc
+          title: Sort Order
+          default: asc
       additionalProperties: false
       type: object
       required:
@@ -7435,6 +7532,37 @@ components:
           type: boolean
           title: Empty Status
           default: false
+        sort_by:
+          anyOf:
+          - type: string
+            enum:
+            - purchase_qty
+            - plan_date
+            - purchase_order_no
+            - trace_no
+            - contract_no
+            - vessel_no
+            - consolidation_date
+            - consolidation_port
+            - sailing_date
+            - category
+            - demand_department
+            - material_name
+            - actual_demand_person
+            - usage
+            - purchase_responsible
+            - salesperson
+            - status
+            - purchase_date
+          - type: 'null'
+          title: Sort By
+        sort_order:
+          type: string
+          enum:
+          - asc
+          - desc
+          title: Sort Order
+          default: asc
       additionalProperties: false
       type: object
       required:

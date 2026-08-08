@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NTag, useMessage, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
+import {
+  NTag,
+  useMessage,
+  type DataTableBaseColumn,
+  type DataTableColumns,
+  type DataTableSortState,
+} from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type {
   FileObject,
@@ -47,7 +53,31 @@ type RecordFilters = {
   purchase_responsible: string | null
   salesperson: string | null
   status: string | null
+  sort_by: RecordColumnKey | null
+  sort_order: 'asc' | 'desc' | null
 }
+// fromQuery 在 usePagedTable setup 期同步执行，早于 availableColumns 定义，
+// 需在 hook 调用前声明运行时值用于校验 URL 恢复的 sort_by 合法性。
+const RECORD_SORTABLE_KEYS: readonly RecordColumnKey[] = [
+  'plan_date',
+  'purchase_date',
+  'purchase_order_no',
+  'trace_no',
+  'contract_no',
+  'vessel_no',
+  'consolidation_date',
+  'consolidation_port',
+  'sailing_date',
+  'category',
+  'demand_department',
+  'material_name',
+  'purchase_qty',
+  'usage',
+  'actual_demand_person',
+  'purchase_responsible',
+  'salesperson',
+  'status',
+]
 const {
   items,
   total,
@@ -75,6 +105,8 @@ const {
       salesperson: f.salesperson?.trim() || undefined,
       status: f.status && f.status !== EMPTY_STATUS_FILTER ? f.status : undefined,
       empty_status: f.status === EMPTY_STATUS_FILTER || undefined,
+      sort_by: f.sort_by || undefined,
+      sort_order: f.sort_order || undefined,
     }),
   initialFilters: () => ({
     name: '',
@@ -85,6 +117,8 @@ const {
     purchase_responsible: null,
     salesperson: null,
     status: null,
+    sort_by: null,
+    sort_order: null,
   }),
   onLoaded: () => {
     checkedRowKeys.value = []
@@ -92,16 +126,24 @@ const {
   beforeQuery: () => clearExpandedName(),
   urlSync: {
     routeName: 'purchase-records',
-    fromQuery: (route) => ({
-      name: routeQueryString(route.query.name),
-      model_spec: routeQueryString(route.query.model_spec),
-      trace_no: routeQueryString(route.query.trace_no),
-      purchase_order_no: routeQueryString(route.query.purchase_order_no),
-      actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
-      purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
-      salesperson: routeQueryString(route.query.salesperson) || null,
-      status: routeQueryString(route.query.status) || null,
-    }),
+    fromQuery: (route) => {
+      const sortBy = routeQueryString(route.query.sort_by)
+      const sortOrder = routeQueryString(route.query.sort_order)
+      return {
+        name: routeQueryString(route.query.name),
+        model_spec: routeQueryString(route.query.model_spec),
+        trace_no: routeQueryString(route.query.trace_no),
+        purchase_order_no: routeQueryString(route.query.purchase_order_no),
+        actual_demand_person: routeQueryString(route.query.actual_demand_person) || null,
+        purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
+        salesperson: routeQueryString(route.query.salesperson) || null,
+        status: routeQueryString(route.query.status) || null,
+        sort_by: RECORD_SORTABLE_KEYS.includes(sortBy as RecordColumnKey)
+          ? (sortBy as RecordColumnKey)
+          : null,
+        sort_order: sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder : null,
+      }
+    },
     toQuery: (f) => ({
       name: f.name,
       model_spec: f.model_spec,
@@ -111,6 +153,8 @@ const {
       purchase_responsible: f.purchase_responsible || undefined,
       salesperson: f.salesperson || undefined,
       status: f.status || undefined,
+      sort_by: f.sort_by || undefined,
+      sort_order: f.sort_order || undefined,
     }),
   },
 })
@@ -218,7 +262,11 @@ const batchEditForm = reactive({
   record_remark: '',
 })
 const activeFilterCount = computed(
-  () => Object.values(filters).filter((value) => value?.trim()).length,
+  () =>
+    Object.entries(filters)
+      // 排序字段不视为启用筛选
+      .filter(([key]) => key !== 'sort_by' && key !== 'sort_order')
+      .filter(([, value]) => value?.trim()).length,
 )
 type RecordColumnKey =
   | 'plan_date'
@@ -462,9 +510,32 @@ const columns = computed<DataTableColumns<PurchaseRecord>>(() =>
     },
     ...availableColumns
       .filter((item) => visibleColumnKeys.value.includes(item.key))
-      .map((item) => item.column),
+      .map((item) => ({
+        ...item.column,
+        sorter: true,
+        // 首次点击升序（Naive UI 默认首击为降序，此处覆盖）
+        customNextSortOrder: (order: 'ascend' | 'descend' | false) =>
+          order === false ? 'ascend' : order === 'ascend' ? 'descend' : false,
+        // 每列都注入 sortOrder 使表格进入受控排序模式，保证 3 击循环正确
+        sortOrder: (filters.sort_by === item.key
+          ? filters.sort_order === 'desc'
+            ? 'descend'
+            : 'ascend'
+          : false) as 'ascend' | 'descend' | false,
+      })),
   ]),
 )
+function handleSorterChange(sortState: DataTableSortState | DataTableSortState[] | null) {
+  const state = Array.isArray(sortState) ? (sortState[0] ?? null) : sortState
+  if (!state?.order) {
+    filters.sort_by = null
+    filters.sort_order = null
+  } else {
+    filters.sort_by = state.columnKey as RecordColumnKey
+    filters.sort_order = state.order === 'descend' ? 'desc' : 'asc'
+  }
+  void query()
+}
 const tableScrollX = computed(() => getTableScrollX(columns.value))
 useShiftWheelHorizontalScroll(tableAreaRef)
 function setVisibleColumnKeys(value: string[]) {
@@ -535,6 +606,8 @@ async function exportResults() {
       salesperson: filters.salesperson?.trim() || undefined,
       status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
       empty_status: filters.status === EMPTY_STATUS_FILTER,
+      sort_by: filters.sort_by || undefined,
+      sort_order: filters.sort_order || 'asc',
     })
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
     downloadBlob(content, `申购记录导出_${date}.xlsx`)
@@ -932,9 +1005,11 @@ onMounted(() => {
           :columns="columns"
           :data="items"
           :loading="loading"
+          :remote="true"
           :row-props="rowProps"
           :row-key="(row: PurchaseRecord) => row.line_id"
           :scroll-x="tableScrollX"
+          @update:sorter="handleSorterChange"
         />
         <div class="pagination-bar">
           <n-pagination
@@ -1306,22 +1381,24 @@ onMounted(() => {
               </div>
             </n-collapse-item>
           </n-collapse>
-          <n-form-item label="申购计划备注">
-            <n-input
-              v-model:value="editForm.plan_remark"
-              type="textarea"
-              maxlength="1000"
-              show-count
-            />
-          </n-form-item>
-          <n-form-item label="申购记录备注">
-            <n-input
-              v-model:value="editForm.record_remark"
-              type="textarea"
-              maxlength="1000"
-              show-count
-            />
-          </n-form-item>
+          <div class="form-grid">
+            <n-form-item label="申购计划备注">
+              <n-input
+                v-model:value="editForm.plan_remark"
+                type="textarea"
+                maxlength="1000"
+                show-count
+              />
+            </n-form-item>
+            <n-form-item label="申购记录备注">
+              <n-input
+                v-model:value="editForm.record_remark"
+                type="textarea"
+                maxlength="1000"
+                show-count
+              />
+            </n-form-item>
+          </div>
           <n-form-item label="图片附件">
             <ImageUploader v-model:files="editImages" />
           </n-form-item>
@@ -1442,6 +1519,9 @@ onMounted(() => {
 
 .edit-advanced-fields {
   margin-bottom: 18px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f6f8fb;
 }
 
 .edit-advanced-fields :deep(.n-collapse-item) {
@@ -1450,11 +1530,7 @@ onMounted(() => {
 
 .edit-advanced-fields :deep(.n-collapse-item__header) {
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #f6f8fb;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .edit-advanced-fields :deep(.n-collapse-item__header:hover) {
@@ -1462,7 +1538,7 @@ onMounted(() => {
 }
 
 .edit-advanced-fields :deep(.n-collapse-item__content-inner) {
-  padding: 14px 4px 4px;
+  padding: 4px 12px 14px;
 }
 
 .advanced-header {
