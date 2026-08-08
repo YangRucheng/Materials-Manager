@@ -422,17 +422,20 @@ onMounted(() => void load())
   width: 160px;
 }
 
+.detail-advanced-fields {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f6f8fb;
+}
+
 .detail-advanced-fields :deep(.n-collapse-item) {
   border-radius: 8px;
 }
 
 .detail-advanced-fields :deep(.n-collapse-item__header) {
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #f6f8fb;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .detail-advanced-fields :deep(.n-collapse-item__header:hover) {
@@ -440,7 +443,7 @@ onMounted(() => void load())
 }
 
 .detail-advanced-fields :deep(.n-collapse-item__content-inner) {
-  padding: 14px 4px 4px;
+  padding: 4px 12px 14px;
 }
 
 .advanced-header {

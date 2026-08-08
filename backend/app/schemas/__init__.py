@@ -977,6 +977,8 @@ class PurchasePlanResultExportRequest(RequestModel):
     empty_subitem_no: bool = False
     status: PurchasePlanStatus | list[PurchasePlanStatus] | None = None
     category: str | None = Field(default=None, max_length=64)
+    sort_by: PurchasePlanResultColumn | None = None
+    sort_order: Literal["asc", "desc"] = "asc"
 
     @field_validator("columns")
     @classmethod
@@ -1205,6 +1207,8 @@ class PurchaseRecordResultExportRequest(RequestModel):
     salesperson: str | None = Field(default=None, max_length=128)
     status: str | None = Field(default=None, max_length=128)
     empty_status: bool = False
+    sort_by: PurchaseRecordResultColumn | None = None
+    sort_order: Literal["asc", "desc"] = "asc"
 
     @field_validator("columns")
     @classmethod
