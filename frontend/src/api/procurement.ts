@@ -29,6 +29,8 @@ export interface PurchaseMaterialListQuery extends PagedQueryParams {
   empty_subitem_no?: boolean
   category?: string
   status?: PurchasePlanStatus[]
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
 }
 
 /** 申购记录列表查询（records 与导出共享筛选字段） */
@@ -42,6 +44,8 @@ export interface PurchaseRecordListQuery extends PagedQueryParams {
   salesperson?: string
   status?: string
   empty_status?: boolean
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
 }
 
 /** 未编码物资查询（uncodedMaterials 内部追加 coded:false） */

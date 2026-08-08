@@ -4,7 +4,15 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
-from app.api.deps import OrSearch, OrSearch128, OrSearch255, PageNo, PageSize, StatusFilter
+from app.api.deps import (
+    OrSearch,
+    OrSearch128,
+    OrSearch255,
+    PageNo,
+    PageSize,
+    SortOrder,
+    StatusFilter,
+)
 from app.core.constants import EXPORT_ROW_LIMIT
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter
@@ -14,6 +22,7 @@ from app.schemas import (
     PurchaseMaterialRead,
     PurchaseRecordFilterOptions,
     PurchaseRecordRead,
+    PurchaseRecordResultColumn,
     PurchaseRecordResultExportRequest,
     PurchaseRecordUpdate,
 )
@@ -91,6 +100,8 @@ async def purchase_records(
     purchase_responsible: OrSearch128 = None,
     salesperson: OrSearch128 = None,
     ai_expand: bool = False,
+    sort_by: PurchaseRecordResultColumn | None = None,
+    sort_order: SortOrder = "asc",
 ) -> Page[PurchaseRecordRead]:
     if ai_expand:
         keyword = await ai_search_service.expand_search_value(session, keyword)
@@ -114,6 +125,8 @@ async def purchase_records(
         salesperson=salesperson,
         page=page,
         page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     return Page(
         items=[service.purchase_record_read(item) for item in items],
@@ -166,6 +179,8 @@ async def export_purchase_record_results(
         salesperson=data.salesperson,
         page=1,
         page_size=EXPORT_ROW_LIMIT + 1,
+        sort_by=data.sort_by,
+        sort_order=data.sort_order,
     )
     if total > EXPORT_ROW_LIMIT:
         raise AppError(

@@ -4,9 +4,10 @@
 不抛业务错误、不组装 read、不自建 session。业务校验与 read 组装留在 service 层。
 """
 
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, asc, cast, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.enums import PurchasePlanStatus
@@ -17,6 +18,24 @@ from app.models import (
     StockOperationLine,
 )
 from app.services.common import contains_any
+
+# 申购计划列表可排序列白名单：sort_by 参数经此映射到 ORM 列（防止任意属性注入）。
+PURCHASE_MATERIAL_SORT_COLUMNS = {
+    "plan_no": PurchaseMaterial.plan_no,
+    "plan_date": PurchaseMaterial.plan_date,
+    "material_code": PurchaseMaterial.material_code,
+    "category": PurchaseMaterial.category,
+    "urgency": PurchaseMaterial.urgency,
+    "demand_department": PurchaseMaterial.demand_department,
+    "name": PurchaseMaterial.name,
+    "model_spec": PurchaseMaterial.model_spec,
+    "unit_name": PurchaseMaterial.unit_name,
+    "planned_qty": PurchaseMaterial.planned_qty,
+    "actual_demand_person": PurchaseMaterial.actual_demand_person,
+    "purchase_responsible": PurchaseMaterial.purchase_responsible,
+    "subitem_no": PurchaseMaterial.subitem_no,
+    "usage": PurchaseMaterial.usage,
+}
 
 
 async def get_stock_material(session: AsyncSession, material_id: int) -> StockMaterial | None:
@@ -119,6 +138,8 @@ async def search_purchase_materials(
     moved: bool | None,
     page: int,
     page_size: int,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
 ) -> tuple[list[PurchaseMaterial], int]:
     query = select(PurchaseMaterial)
     keyword_condition = contains_any(
@@ -204,12 +225,19 @@ async def search_purchase_materials(
         )
         query = query.where(record_exists if moved else ~record_exists)
     count = await session.scalar(select(func.count()).select_from(query.subquery()))
+    direction = asc if sort_order == "asc" else desc
+    order_terms: list[Any] = (
+        [
+            direction(PURCHASE_MATERIAL_SORT_COLUMNS[sort_by]),
+            PurchaseMaterial.id.desc(),
+        ]
+        if sort_by and sort_by in PURCHASE_MATERIAL_SORT_COLUMNS
+        else [PurchaseMaterial.id.desc()]
+    )
     items = list(
         (
             await session.scalars(
-                query.order_by(PurchaseMaterial.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
+                query.order_by(*order_terms).offset((page - 1) * page_size).limit(page_size)
             )
         )
         .unique()

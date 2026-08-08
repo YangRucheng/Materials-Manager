@@ -4,11 +4,36 @@
 不抛业务错误、不组装 read、不自建 session。业务校验与 read 组装留在 service 层。
 """
 
-from sqlalchemy import String, cast, func, or_, select
+from typing import Any
+
+from sqlalchemy import String, asc, cast, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
 from app.services.common import contains_any
+
+# 申购记录列表可排序列白名单：sort_by 参数经此映射到对应表的 ORM 列（防止任意属性注入）。
+# 记录查询 join 三表，各列须落在正确表上。
+PURCHASE_RECORD_SORT_COLUMNS = {
+    "plan_date": PurchaseMaterial.plan_date,
+    "category": PurchaseMaterial.category,
+    "demand_department": PurchaseMaterial.demand_department,
+    "material_name": PurchaseMaterial.name,
+    "actual_demand_person": PurchaseMaterial.actual_demand_person,
+    "purchase_responsible": PurchaseMaterial.purchase_responsible,
+    "purchase_date": PurchaseRequest.purchase_date,
+    "purchase_order_no": PurchaseRequest.purchase_order_no,
+    "contract_no": PurchaseRequest.contract_no,
+    "vessel_no": PurchaseRequest.vessel_no,
+    "consolidation_date": PurchaseRequest.consolidation_date,
+    "consolidation_port": PurchaseRequest.consolidation_port,
+    "sailing_date": PurchaseRequest.sailing_date,
+    "trace_no": PurchaseRequestLine.trace_no,
+    "purchase_qty": PurchaseRequestLine.purchase_qty,
+    "usage": PurchaseRequestLine.usage,
+    "salesperson": PurchaseRequestLine.salesperson,
+    "status": PurchaseRequestLine.status,
+}
 
 
 async def get_purchase_record(
@@ -39,6 +64,8 @@ async def search_purchase_records(
     salesperson: str | None,
     page: int,
     page_size: int,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
 ) -> tuple[list[PurchaseRequestLine], int]:
     query = (
         select(PurchaseRequestLine)
@@ -129,24 +156,31 @@ async def search_purchase_records(
         if condition is not None:
             query = query.where(condition)
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
+    direction = asc if sort_order == "asc" else desc
+    if sort_by and sort_by in PURCHASE_RECORD_SORT_COLUMNS:
+        order_terms: list[Any] = [
+            direction(PURCHASE_RECORD_SORT_COLUMNS[sort_by]),
+            PurchaseRequestLine.id.desc(),
+        ]
+    else:
+        # 默认序：申购单号 → 追溯号 空值置后降序，再按行 id 倒序（稳定分页）。
+        order_terms = [
+            or_(
+                PurchaseRequest.purchase_order_no.is_(None),
+                func.trim(PurchaseRequest.purchase_order_no) == "",
+            ),
+            PurchaseRequest.purchase_order_no.desc(),
+            or_(
+                PurchaseRequestLine.trace_no.is_(None),
+                func.trim(PurchaseRequestLine.trace_no) == "",
+            ),
+            PurchaseRequestLine.trace_no.desc(),
+            PurchaseRequestLine.id.desc(),
+        ]
     items = list(
         (
             await session.scalars(
-                query.order_by(
-                    or_(
-                        PurchaseRequest.purchase_order_no.is_(None),
-                        func.trim(PurchaseRequest.purchase_order_no) == "",
-                    ),
-                    PurchaseRequest.purchase_order_no.desc(),
-                    or_(
-                        PurchaseRequestLine.trace_no.is_(None),
-                        func.trim(PurchaseRequestLine.trace_no) == "",
-                    ),
-                    PurchaseRequestLine.trace_no.desc(),
-                    PurchaseRequestLine.id.desc(),
-                )
-                .offset((page - 1) * page_size)
-                .limit(page_size)
+                query.order_by(*order_terms).offset((page - 1) * page_size).limit(page_size)
             )
         )
         .unique()

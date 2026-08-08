@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
-from app.api.deps import OrSearch, OrSearch128, OrSearch255, PageNo, PageSize
+from app.api.deps import OrSearch, OrSearch128, OrSearch255, PageNo, PageSize, SortOrder
 from app.core.constants import EXPORT_ROW_LIMIT
 from app.core.errors import AppError
 from app.core.permissions import (
@@ -28,6 +28,7 @@ from app.schemas import (
     PurchaseMaterialRead,
     PurchaseMaterialUpdate,
     PurchasePlanExportRequest,
+    PurchasePlanResultColumn,
     PurchasePlanResultExportRequest,
     PurchaseRecordRead,
 )
@@ -96,6 +97,8 @@ async def list_materials(
     coded: bool | None = None,
     moved: bool | None = None,
     ai_expand: bool = False,
+    sort_by: PurchasePlanResultColumn | None = None,
+    sort_order: SortOrder = "asc",
 ) -> Page[PurchaseMaterialRead]:
     if user.role != Role.SUPER_ADMIN:
         if status and PurchasePlanStatus.ARCHIVED in status:
@@ -128,6 +131,8 @@ async def list_materials(
         moved=moved,
         page=page,
         page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     moved_ids = await material_service.purchase_material_ids_moved_to_record(
         session, [item.id for item in items]
@@ -205,6 +210,8 @@ async def export_material_results(
         moved=False,
         page=1,
         page_size=EXPORT_ROW_LIMIT + 1,
+        sort_by=data.sort_by,
+        sort_order=data.sort_order,
     )
     if total > EXPORT_ROW_LIMIT:
         raise AppError(

@@ -2224,6 +2224,14 @@ export interface components {
             status?: components["schemas"]["PurchasePlanStatus"] | components["schemas"]["PurchasePlanStatus"][] | null;
             /** Category */
             category?: string | null;
+            /** Sort By */
+            sort_by?: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage") | null;
+            /**
+             * Sort Order
+             * @default asc
+             * @enum {string}
+             */
+            sort_order: "asc" | "desc";
         };
         /**
          * PurchasePlanStatus
@@ -2357,6 +2365,14 @@ export interface components {
              * @default false
              */
             empty_status: boolean;
+            /** Sort By */
+            sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
+            /**
+             * Sort Order
+             * @default asc
+             * @enum {string}
+             */
+            sort_order: "asc" | "desc";
         };
         /** PurchaseRecordUpdate */
         PurchaseRecordUpdate: {
@@ -6191,6 +6207,8 @@ export interface operations {
                 coded?: boolean | null;
                 moved?: boolean | null;
                 ai_expand?: boolean;
+                sort_by?: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage") | null;
+                sort_order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -7108,6 +7126,8 @@ export interface operations {
                 /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
                 salesperson?: string | null;
                 ai_expand?: boolean;
+                sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
+                sort_order?: "asc" | "desc";
             };
             header?: never;
             path?: never;

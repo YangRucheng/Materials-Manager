@@ -5,6 +5,7 @@ import {
   useMessage,
   type DataTableBaseColumn,
   type DataTableColumns,
+  type DataTableSortState,
   type FormInst,
   type FormRules,
 } from 'naive-ui'
@@ -74,7 +75,27 @@ type PurchaseFilters = {
   subitem_no: string | null
   category: string | null
   status: PurchasePlanStatus[]
+  sort_by: PlanColumnKey | null
+  sort_order: 'asc' | 'desc' | null
 }
+// fromQuery 在 usePagedTable setup 期同步执行，早于 availableColumns 定义，
+// 需在 hook 调用前声明运行时值用于校验 URL 恢复的 sort_by 合法性。
+const PLAN_SORTABLE_KEYS: readonly PlanColumnKey[] = [
+  'plan_no',
+  'plan_date',
+  'material_code',
+  'category',
+  'urgency',
+  'demand_department',
+  'name',
+  'model_spec',
+  'unit_name',
+  'planned_qty',
+  'actual_demand_person',
+  'purchase_responsible',
+  'subitem_no',
+  'usage',
+]
 const {
   items,
   total,
@@ -106,6 +127,8 @@ const {
       empty_subitem_no: f.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
       category: f.category || undefined,
       status: f.status.length ? f.status : undefined,
+      sort_by: f.sort_by || undefined,
+      sort_order: f.sort_order || undefined,
     }),
   initialFilters: () => ({
     name: '',
@@ -114,6 +137,8 @@ const {
     subitem_no: null,
     category: null,
     status: [defaultPurchasePlanStatus],
+    sort_by: null,
+    sort_order: null,
   }),
   onLoaded: () => {
     checkedRowKeys.value = []
@@ -127,6 +152,8 @@ const {
         .filter((value): value is PurchasePlanStatus =>
           purchasePlanStatusOptions.some((option) => option.value === value),
         )
+      const sortBy = routeQueryString(route.query.sort_by)
+      const sortOrder = routeQueryString(route.query.sort_order)
       return {
         name: routeQueryString(route.query.name),
         model_spec: routeQueryString(route.query.model_spec),
@@ -138,6 +165,10 @@ const {
             .length > 0
             ? routeStatuses.filter((status) => canViewArchivedPlans.value || status !== '已归档')
             : [defaultPurchasePlanStatus],
+        sort_by: PLAN_SORTABLE_KEYS.includes(sortBy as PlanColumnKey)
+          ? (sortBy as PlanColumnKey)
+          : null,
+        sort_order: sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder : null,
       }
     },
     toQuery: (f) => ({
@@ -150,6 +181,8 @@ const {
         f.status.length === 1 && f.status[0] === defaultPurchasePlanStatus
           ? undefined
           : f.status.join(','),
+      sort_by: f.sort_by || undefined,
+      sort_order: f.sort_order || undefined,
     }),
   },
 })
@@ -457,9 +490,32 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
     },
     ...availableColumns
       .filter((item) => visibleColumnKeys.value.includes(item.key))
-      .map((item) => item.column),
+      .map((item) => ({
+        ...item.column,
+        sorter: true,
+        // 首次点击升序（Naive UI 默认首击为降序，此处覆盖）
+        customNextSortOrder: (order: 'ascend' | 'descend' | false) =>
+          order === false ? 'ascend' : order === 'ascend' ? 'descend' : false,
+        // 每列都注入 sortOrder 使表格进入受控排序模式，保证 3 击循环正确
+        sortOrder: (filters.sort_by === item.key
+          ? filters.sort_order === 'desc'
+            ? 'descend'
+            : 'ascend'
+          : false) as 'ascend' | 'descend' | false,
+      })),
   ]),
 )
+function handleSorterChange(sortState: DataTableSortState | DataTableSortState[] | null) {
+  const state = Array.isArray(sortState) ? (sortState[0] ?? null) : sortState
+  if (!state?.order) {
+    filters.sort_by = null
+    filters.sort_order = null
+  } else {
+    filters.sort_by = state.columnKey as PlanColumnKey
+    filters.sort_order = state.order === 'descend' ? 'desc' : 'asc'
+  }
+  void query()
+}
 const tableScrollX = computed(() => getTableScrollX(columns.value))
 useShiftWheelHorizontalScroll(tableAreaRef)
 function setVisibleColumnKeys(value: string[]) {
@@ -549,6 +605,8 @@ async function exportResults() {
       empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER,
       category: filters.category || undefined,
       status: filters.status.length ? filters.status : undefined,
+      sort_by: filters.sort_by || undefined,
+      sort_order: filters.sort_order || 'asc',
     })
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
     downloadBlob(content, `申购计划导出_${date}.xlsx`)
@@ -988,9 +1046,11 @@ onBeforeUnmount(() => {
           :columns="columns"
           :data="items"
           :loading="loading"
+          :remote="true"
           :row-props="rowProps"
           :row-key="(r: PurchaseMaterial) => r.id"
           :scroll-x="tableScrollX"
+          @update:sorter="handleSorterChange"
         />
         <div class="pagination-bar">
           <n-pagination

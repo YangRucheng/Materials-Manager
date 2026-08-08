@@ -493,6 +493,137 @@ async def test_purchase_records_default_to_purchase_and_trace_number_order(
 
 
 @pytest.mark.asyncio
+async def test_purchase_plan_list_supports_arbitrary_column_sorting(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    zebra = await create_purchase_plan(
+        client, headers, "Zebra", code="SORT-Z-01", actual_demand_person="甲"
+    )
+    alpha = await create_purchase_plan(
+        client, headers, "Alpha", code="SORT-A-02", actual_demand_person="乙"
+    )
+    bravo = await create_purchase_plan(
+        client, headers, "Bravo", code="SORT-B-03", actual_demand_person="丙"
+    )
+
+    asc_response = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"sort_by": "name", "sort_order": "asc", "moved": False},
+    )
+    assert asc_response.status_code == 200, asc_response.text
+    assert [item["name"] for item in asc_response.json()["items"]] == [
+        "Alpha",
+        "Bravo",
+        "Zebra",
+    ]
+
+    desc_response = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"sort_by": "name", "sort_order": "desc", "moved": False},
+    )
+    assert desc_response.status_code == 200, desc_response.text
+    assert [item["name"] for item in desc_response.json()["items"]] == [
+        "Zebra",
+        "Bravo",
+        "Alpha",
+    ]
+
+    default_response = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"moved": False},
+    )
+    assert default_response.status_code == 200, default_response.text
+    # 未传 sort_by 时保持默认 id 倒序
+    assert [item["id"] for item in default_response.json()["items"]] == [
+        bravo["id"],
+        alpha["id"],
+        zebra["id"],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_purchase_record_list_supports_arbitrary_column_sorting(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(client, headers, "排序物料甲", code="REC-SORT-01")
+    second = await create_purchase_plan(client, headers, "排序物料乙", code="REC-SORT-02")
+    third = await create_purchase_plan(client, headers, "排序物料丙", code="REC-SORT-03")
+    await move_to_record(
+        client,
+        headers,
+        int(first["id"]),
+        purchase_order_no="SG-SORT-001",
+        trace_no="ZS-SORT-001",
+        salesperson="王业务",
+    )
+    await move_to_record(
+        client,
+        headers,
+        int(second["id"]),
+        purchase_order_no="SG-SORT-003",
+        trace_no="ZS-SORT-003",
+        salesperson="张业务",
+    )
+    await move_to_record(
+        client,
+        headers,
+        int(third["id"]),
+        purchase_order_no="SG-SORT-002",
+        trace_no="ZS-SORT-002",
+        salesperson="李业务",
+    )
+
+    desc_response = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"sort_by": "purchase_order_no", "sort_order": "desc"},
+    )
+    assert desc_response.status_code == 200, desc_response.text
+    assert [item["purchase_order_no"] for item in desc_response.json()["items"]] == [
+        "SG-SORT-003",
+        "SG-SORT-002",
+        "SG-SORT-001",
+    ]
+
+    name_asc = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"sort_by": "purchase_order_no", "sort_order": "asc"},
+    )
+    assert name_asc.status_code == 200, name_asc.text
+    assert [item["purchase_order_no"] for item in name_asc.json()["items"]] == [
+        "SG-SORT-001",
+        "SG-SORT-002",
+        "SG-SORT-003",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_purchase_list_sort_by_whitelist_rejects_unknown_column(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    plan_response = await client.get(
+        "/api/v1/purchase-materials",
+        headers=headers,
+        params={"sort_by": "not_a_column", "moved": False},
+    )
+    assert plan_response.status_code == 422, plan_response.text
+
+    record_response = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"sort_by": "not_a_column"},
+    )
+    assert record_response.status_code == 422, record_response.text
+
+
+@pytest.mark.asyncio
 async def test_purchase_search_supports_or_delimiters_and_keeps_filters_anded(
     client: AsyncClient,
 ) -> None:

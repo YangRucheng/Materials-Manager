@@ -453,6 +453,8 @@ async def search_purchase_materials(
     moved: bool | None,
     page: int,
     page_size: int,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
 ) -> tuple[list[PurchaseMaterial], int]:
     return await material_repository.search_purchase_materials(
         session,
@@ -472,6 +474,8 @@ async def search_purchase_materials(
         moved=moved,
         page=page,
         page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
 
