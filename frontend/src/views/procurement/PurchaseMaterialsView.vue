@@ -493,9 +493,6 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
       .map((item) => ({
         ...item.column,
         sorter: true,
-        // 首次点击升序（Naive UI 默认首击为降序，此处覆盖）
-        customNextSortOrder: (order: 'ascend' | 'descend' | false) =>
-          order === false ? 'ascend' : order === 'ascend' ? 'descend' : false,
         // 每列都注入 sortOrder 使表格进入受控排序模式，保证 3 击循环正确
         sortOrder: (filters.sort_by === item.key
           ? filters.sort_order === 'desc'
@@ -507,12 +504,19 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
 )
 function handleSorterChange(sortState: DataTableSortState | DataTableSortState[] | null) {
   const state = Array.isArray(sortState) ? (sortState[0] ?? null) : sortState
-  if (!state?.order) {
-    filters.sort_by = null
-    filters.sort_order = null
+  const columnKey = state?.columnKey as PlanColumnKey | undefined
+  // Naive UI 首击固定为降序且忽略 customNextSortOrder，这里用本地状态推导
+  // 完整循环：升序 → 降序 → 清除（首次点击该列即升序）。
+  if (!columnKey || filters.sort_by !== columnKey) {
+    filters.sort_by = columnKey ?? null
+    filters.sort_order = columnKey ? 'asc' : null
   } else {
-    filters.sort_by = state.columnKey as PlanColumnKey
-    filters.sort_order = state.order === 'descend' ? 'desc' : 'asc'
+    if (filters.sort_order === 'asc') {
+      filters.sort_order = 'desc'
+    } else if (filters.sort_order === 'desc') {
+      filters.sort_by = null
+      filters.sort_order = null
+    }
   }
   void query()
 }
