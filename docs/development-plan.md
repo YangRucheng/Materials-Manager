@@ -1,6 +1,6 @@
 # 电气车间备件管理系统——开发方案
 
-系统 Logo 统一使用 `https://cdn.micono.eu.org/icon/logo.png`。
+系统 Logo 统一使用同域名静态资源 `/qrcode.png`（`frontend/public/qrcode.png`），供页面 `branding.ts LOGO_URL` 与 `index.html` favicon/og:image 引用。
 
 ## 1. 项目目标
 
