@@ -59,5 +59,6 @@ declare module 'vue' {
     ReverseOperationDialog: typeof import('./src/components/ReverseOperationDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SortableHeader: typeof import('./src/components/SortableHeader.vue')['default']
   }
 }

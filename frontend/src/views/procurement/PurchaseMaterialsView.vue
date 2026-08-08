@@ -5,7 +5,6 @@ import {
   useMessage,
   type DataTableBaseColumn,
   type DataTableColumns,
-  type DataTableSortState,
   type FormInst,
   type FormRules,
 } from 'naive-ui'
@@ -28,6 +27,7 @@ import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import SortableHeader, { type SortOptionKey } from '@/components/SortableHeader.vue'
 import type { ExportOption } from '@/types/export'
 import {
   getTableScrollX,
@@ -482,8 +482,10 @@ const availableColumns: Array<{
 ]
 const visibleColumnKeys = ref<PlanColumnKey[]>(availableColumns.map((item) => item.key))
 const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
-const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
-  preventTableColumnCompression([
+const columns = computed<DataTableColumns<PurchaseMaterial>>(() => {
+  const sortBy = filters.sort_by
+  const sortOrder = filters.sort_order
+  return preventTableColumnCompression([
     {
       type: 'selection',
       disabled: () => !auth.can('purchase:write'),
@@ -492,31 +494,25 @@ const columns = computed<DataTableColumns<PurchaseMaterial>>(() =>
       .filter((item) => visibleColumnKeys.value.includes(item.key))
       .map((item) => ({
         ...item.column,
-        sorter: true,
-        // 每列都注入 sortOrder 使表格进入受控排序模式，保证 3 击循环正确
-        sortOrder: (filters.sort_by === item.key
-          ? filters.sort_order === 'desc'
-            ? 'descend'
-            : 'ascend'
-          : false) as 'ascend' | 'descend' | false,
+        // 列头改为下拉菜单（默认/升序/降序），不再用 Naive UI 的内置点击循环
+        title: () =>
+          h(SortableHeader, {
+            label: item.label,
+            sortByKey: item.key,
+            sortBy,
+            sortOrder,
+            onSelect: (order) => handleSortSelect(item.key, order),
+          }),
       })),
-  ]),
-)
-function handleSorterChange(sortState: DataTableSortState | DataTableSortState[] | null) {
-  const state = Array.isArray(sortState) ? (sortState[0] ?? null) : sortState
-  const columnKey = state?.columnKey as PlanColumnKey | undefined
-  // Naive UI 首击固定为降序且忽略 customNextSortOrder，这里用本地状态推导
-  // 完整循环：升序 → 降序 → 清除（首次点击该列即升序）。
-  if (!columnKey || filters.sort_by !== columnKey) {
-    filters.sort_by = columnKey ?? null
-    filters.sort_order = columnKey ? 'asc' : null
+  ])
+})
+function handleSortSelect(key: PlanColumnKey, order: SortOptionKey) {
+  if (order === 'default') {
+    filters.sort_by = null
+    filters.sort_order = null
   } else {
-    if (filters.sort_order === 'asc') {
-      filters.sort_order = 'desc'
-    } else if (filters.sort_order === 'desc') {
-      filters.sort_by = null
-      filters.sort_order = null
-    }
+    filters.sort_by = key
+    filters.sort_order = order
   }
   void query()
 }
@@ -1054,7 +1050,6 @@ onBeforeUnmount(() => {
           :row-props="rowProps"
           :row-key="(r: PurchaseMaterial) => r.id"
           :scroll-x="tableScrollX"
-          @update:sorter="handleSorterChange"
         />
         <div class="pagination-bar">
           <n-pagination
