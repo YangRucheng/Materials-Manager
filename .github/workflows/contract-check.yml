@@ -3,7 +3,17 @@ name: 契约一致性校验
 on:
   push:
     branches: ["**"]
+    paths:
+      - "backend/**"
+      - "docs/**"
+      - "frontend/**"
+      - ".github/workflows/contract-check.yml"
   pull_request:
+    paths:
+      - "backend/**"
+      - "docs/**"
+      - "frontend/**"
+      - ".github/workflows/contract-check.yml"
 
 permissions:
   contents: read
