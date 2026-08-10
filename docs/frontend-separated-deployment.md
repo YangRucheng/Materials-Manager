@@ -90,3 +90,24 @@ APP_CORS_MAX_AGE=86400
 | 生产 | `https://api.example.com`      | `https://img.example.com`      |
 
 每套环境生成独立的 `dist` 产物，避免同一个静态包跨环境复用导致请求到错误的后端。
+
+## EdgeOne Pages 部署
+
+项目使用 EdgeOne Pages（Makers）托管前端静态站，部署配置位于 `frontend/edgeone.json`：
+
+```json
+{
+  "outputDirectory": "dist",
+  "headers": [
+    { "source": "/yangrucheng-assets/*", "headers": [{ "key": "Cache-Control", "value": "max-age=1209600" }] },
+    { "source": "/*.png", "headers": [{ "key": "Cache-Control", "value": "max-age=1209600" }] },
+    { "source": "/*.jpg", "headers": [{ "key": "Cache-Control", "value": "max-age=1209600" }] }
+  ]
+}
+```
+
+- 该文件放在 `frontend/`（EdgeOne Pages 项目的根目录），`outputDirectory: "dist"` 指向构建产物。
+- Vite 通过 `build.assetsDir: 'yangrucheng-assets'` 把带内容 hash 的 JS/CSS 产物输出到 `dist/yangrucheng-assets/`，这些文件名带 hash、内容不可变，适合长期缓存。
+- 图片（`logo.png`、`qrcode.png` 等）位于 `dist/` 根目录（来自 `public/`），因此 png/jpg 缓存规则用全站后缀匹配 `/*.png`、`/*.jpg` 而非限定在 `yangrucheng-assets/` 内。
+- `edgeone.json` 的 `source` 是 URL 通配符（以 `/` 开头、最多一个 `*`），非文件系统路径。14 天 = `max-age=1209600`。
+
