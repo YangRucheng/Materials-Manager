@@ -20,3 +20,7 @@ frontend/.env.local
 .env
 backend/.env
 backend/*.db
+
+# other
+outputs/
+*.log
