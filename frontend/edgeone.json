@@ -1,0 +1,17 @@
+{
+  "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/yangrucheng-assets/*",
+      "headers": [{ "key": "Cache-Control", "value": "max-age=1209600" }]
+    },
+    {
+      "source": "/*.png",
+      "headers": [{ "key": "Cache-Control", "value": "max-age=1209600" }]
+    },
+    {
+      "source": "/*.jpg",
+      "headers": [{ "key": "Cache-Control", "value": "max-age=1209600" }]
+    }
+  ]
+}
