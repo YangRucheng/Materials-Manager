@@ -8,18 +8,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.constants import SHANGHAI
 from app.core.errors import AppError, not_found
 from app.domain.enums import PurchasePlanStatus
-from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
+from app.models import (
+    FileObject,
+    PurchaseMaterial,
+    PurchaseMaterialImage,
+    PurchaseRequest,
+    PurchaseRequestLine,
+    PurchaseRequestLineImage,
+)
 from app.repositories import purchase_request_repository
 from app.schemas import (
     BatchMovePurchasePlansRequest,
     BatchUpdatePurchaseRecordsRequest,
     MovePurchasePlanRequest,
-    PurchaseMaterialUpdate,
     PurchaseRecordRead,
     PurchaseRecordUpdate,
 )
 from app.services.common import file_read, utc_aware, validate_version
-from app.services.material_service import next_purchase_plan_no, update_purchase_material
+from app.services.material_service import next_purchase_plan_no
 
 
 def default_purchase_order_no() -> str:
@@ -29,13 +35,12 @@ def default_purchase_order_no() -> str:
 
 def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
     request = line.request
-    material = line.purchase_material
     return PurchaseRecordRead(
         line_id=line.id,
         purchase_request_id=request.id,
-        purchase_material_id=material.id,
-        plan_no=material.plan_no,
-        plan_date=material.plan_date,
+        purchase_material_id=line.purchase_material_id,
+        plan_no=line.plan_no_snapshot,
+        plan_date=line.plan_date_snapshot,
         purchase_order_no=request.purchase_order_no,
         trace_no=line.trace_no,
         contract_no=request.contract_no,
@@ -44,25 +49,25 @@ def purchase_record_read(line: PurchaseRequestLine) -> PurchaseRecordRead:
         consolidation_port=request.consolidation_port,
         sailing_date=request.sailing_date,
         status=line.status,
-        material_code=material.material_code,
-        category=material.category,
-        demand_department=material.demand_department,
-        material_name=material.name,
-        model_spec=material.model_spec,
-        unit_name=material.unit_name,
+        material_code=line.material_code_snapshot,
+        category=line.category_snapshot,
+        demand_department=line.demand_department_snapshot,
+        material_name=line.material_name_snapshot,
+        model_spec=line.model_spec_snapshot,
+        unit_name=line.unit_name_snapshot,
         purchase_qty=line.purchase_qty,
-        actual_demand_person=material.actual_demand_person,
-        purchase_responsible=material.purchase_responsible,
+        actual_demand_person=line.actual_demand_person_snapshot,
+        purchase_responsible=line.purchase_responsible_snapshot,
         salesperson=line.salesperson,
-        plan_remark=material.remark,
+        plan_remark=line.plan_remark_snapshot,
         record_remark=request.remark,
         usage=line.usage,
         subitem_no=line.subitem_no,
-        images=[file_read(link.file) for link in material.images],
-        stock_material_id=material.stock_material_id,
+        images=[file_read(link.file) for link in line.images],
+        stock_material_id=line.stock_material_id_snapshot,
         purchase_date=request.purchase_date,
         created_at=utc_aware(request.created_at),
-        updated_at=utc_aware(max(request.updated_at, material.updated_at)),
+        updated_at=utc_aware(max(request.updated_at, line.updated_at)),
         version=request.version,
     )
 
@@ -132,13 +137,11 @@ async def move_plans_to_record(
             if "purchase_order_no" in data.model_fields_set
             else default_purchase_order_no()
         ),
-        trace_no=data.trace_no or None,
         contract_no=data.contract_no or None,
         vessel_no=data.vessel_no or None,
         consolidation_date=data.consolidation_date,
         consolidation_port=data.consolidation_port or None,
         sailing_date=data.sailing_date,
-        salesperson=data.salesperson,
         remark=data.record_remark,
         purchase_date=data.purchase_date,
         lines=[],
@@ -147,16 +150,25 @@ async def move_plans_to_record(
         PurchaseRequestLine(
             purchase_material_id=material.id,
             purchase_material=material,
+            plan_no_snapshot=material.plan_no,
+            plan_date_snapshot=material.plan_date,
             material_code_snapshot=material.material_code,
+            category_snapshot=material.category,
+            demand_department_snapshot=material.demand_department,
             material_name_snapshot=material.name,
             model_spec_snapshot=material.model_spec,
             unit_name_snapshot=material.unit_name,
+            actual_demand_person_snapshot=material.actual_demand_person,
+            purchase_responsible_snapshot=material.purchase_responsible,
+            plan_remark_snapshot=material.remark,
+            stock_material_id_snapshot=material.stock_material_id,
             purchase_qty=material.planned_qty,
             status=data.status,
             usage=material.usage,
             subitem_no=material.subitem_no,
             trace_no=data.trace_no or None,
             salesperson=data.salesperson,
+            images=_line_images([link.file for link in material.images]),
         )
         for material in materials
     ]
@@ -176,38 +188,34 @@ async def get_purchase_record(
     return line
 
 
+async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject]:
+    if not image_ids:
+        return []
+    files = list(
+        (await session.scalars(select(FileObject).where(FileObject.id.in_(image_ids)))).all()
+    )
+    by_id = {item.id: item for item in files}
+    missing = [item_id for item_id in image_ids if item_id not in by_id]
+    if missing:
+        raise AppError("INVALID_IMAGE_ID", "图片不存在", details={"file_ids": missing})
+    return [by_id[item_id] for item_id in image_ids]
+
+
+def _line_images(files: list[FileObject]) -> list[PurchaseRequestLineImage]:
+    return [
+        PurchaseRequestLineImage(file_id=file.id, file=file, sort_order=index)
+        for index, file in enumerate(files)
+    ]
+
+
 async def update_purchase_record(
     session: AsyncSession,
     line: PurchaseRequestLine,
     data: PurchaseRecordUpdate,
 ) -> PurchaseRequestLine:
     request = line.request
-    material = line.purchase_material
     validate_version(data.version, request.version)
-    await update_purchase_material(
-        session,
-        material,
-        PurchaseMaterialUpdate(
-            plan_date=data.plan_date,
-            material_code=data.material_code,
-            category=data.category,
-            urgency=material.urgency,
-            demand_department=data.demand_department,
-            name=data.material_name,
-            model_spec=data.model_spec,
-            unit_name=data.unit_name,
-            actual_demand_person=data.actual_demand_person,
-            purchase_responsible=data.purchase_responsible,
-            planned_qty=data.purchase_qty,
-            usage=data.usage,
-            subitem_no=data.subitem_no,
-            remark=data.plan_remark,
-            stock_material_id=data.stock_material_id,
-            image_ids=data.image_ids,
-            status=material.status,
-            version=material.version,
-        ),
-    )
+    files = await _files(session, data.image_ids)
     request.purchase_order_no = data.purchase_order_no or None
     line.trace_no = data.trace_no or None
     request.contract_no = data.contract_no or None
@@ -219,14 +227,22 @@ async def update_purchase_record(
     line.salesperson = data.salesperson
     request.remark = data.record_remark
     request.version += 1
-    line.material_code_snapshot = material.material_code
-    line.material_name_snapshot = material.name
-    line.model_spec_snapshot = material.model_spec
-    line.unit_name_snapshot = material.unit_name
+    line.plan_date_snapshot = data.plan_date
+    line.material_code_snapshot = data.material_code
+    line.category_snapshot = data.category
+    line.demand_department_snapshot = data.demand_department
+    line.material_name_snapshot = data.material_name
+    line.model_spec_snapshot = data.model_spec
+    line.unit_name_snapshot = data.unit_name
+    line.actual_demand_person_snapshot = data.actual_demand_person
+    line.purchase_responsible_snapshot = data.purchase_responsible
+    line.plan_remark_snapshot = data.plan_remark
+    line.stock_material_id_snapshot = data.stock_material_id
     line.purchase_qty = data.purchase_qty
     line.status = data.status
     line.usage = data.usage
     line.subitem_no = data.subitem_no
+    line.images = _line_images(files)
     line.version += 1
     await session.flush()
     return line
@@ -265,20 +281,6 @@ async def batch_update_purchase_records(
     )
     requests_by_id = {request.id: request for request in requests}
 
-    material_ids = {line.purchase_material_id for line in lines}
-    materials = list(
-        (
-            await session.scalars(
-                select(PurchaseMaterial)
-                .where(PurchaseMaterial.id.in_(material_ids))
-                .with_for_update()
-            )
-        )
-        .unique()
-        .all()
-    )
-    materials_by_id = {material.id: material for material in materials}
-
     for reference in data.records:
         line = lines_by_id[reference.line_id]
         validate_version(reference.version, requests_by_id[line.purchase_request_id].version)
@@ -303,11 +305,9 @@ async def batch_update_purchase_records(
             value = getattr(data, source_field)
             if source_field in {
                 "purchase_order_no",
-                "trace_no",
                 "contract_no",
                 "vessel_no",
                 "consolidation_port",
-                "salesperson",
             }:
                 value = value or None
             setattr(request, request_field_map[source_field], value)
@@ -316,24 +316,22 @@ async def batch_update_purchase_records(
     updated: list[PurchaseRequestLine] = []
     for reference in data.records:
         line = lines_by_id[reference.line_id]
-        material = materials_by_id[line.purchase_material_id]
-        material_changed = False
-        if "plan_date" in update_fields and data.plan_date != material.plan_date:
+        if "plan_date" in update_fields:
             assert data.plan_date is not None
-            material.plan_no = await next_purchase_plan_no(session, data.plan_date)
-            material.plan_date = data.plan_date
-            await session.flush()
-            material_changed = True
+            if data.plan_date != line.plan_date_snapshot:
+                line.plan_no_snapshot = await next_purchase_plan_no(session, data.plan_date)
+                line.plan_date_snapshot = data.plan_date
+                line.version += 1
+                # flush 让下一条 next_purchase_plan_no 能看到本行新快照号
+                await session.flush()
         if "actual_demand_person" in update_fields:
             assert data.actual_demand_person is not None
-            material.actual_demand_person = data.actual_demand_person
-            material_changed = True
+            line.actual_demand_person_snapshot = data.actual_demand_person
+            line.version += 1
         if "purchase_responsible" in update_fields:
             assert data.purchase_responsible is not None
-            material.purchase_responsible = data.purchase_responsible
-            material_changed = True
-        if material_changed:
-            material.version += 1
+            line.purchase_responsible_snapshot = data.purchase_responsible
+            line.version += 1
         if "status" in update_fields:
             assert data.status is not None
             line.status = data.status
@@ -365,8 +363,37 @@ async def restore_purchase_record_to_plan(
     validate_version(version, request.version)
 
     material = line.purchase_material
-    material.status = PurchasePlanStatus.NORMAL
-    material.version += 1
+    if material is None:
+        # 原计划已被定时任务清理：从快照重建全新计划，保留原计划号。
+        material = PurchaseMaterial(
+            plan_no=line.plan_no_snapshot,
+            plan_date=line.plan_date_snapshot,
+            material_code=line.material_code_snapshot,
+            category=line.category_snapshot,
+            urgency="正常",
+            demand_department=line.demand_department_snapshot,
+            name=line.material_name_snapshot,
+            model_spec=line.model_spec_snapshot,
+            unit_name=line.unit_name_snapshot,
+            actual_demand_person=line.actual_demand_person_snapshot,
+            purchase_responsible=line.purchase_responsible_snapshot,
+            planned_qty=line.purchase_qty,
+            usage=line.usage,
+            subitem_no=line.subitem_no,
+            remark=line.plan_remark_snapshot,
+            stock_material_id=line.stock_material_id_snapshot,
+            status=PurchasePlanStatus.NORMAL,
+            images=[
+                PurchaseMaterialImage(
+                    file_id=link.file_id, file=link.file, sort_order=link.sort_order
+                )
+                for link in line.images
+            ],
+        )
+        session.add(material)
+    else:
+        material.status = PurchasePlanStatus.NORMAL
+        material.version += 1
 
     other_line_id = await session.scalar(
         select(PurchaseRequestLine.id)
@@ -434,3 +461,9 @@ async def purchase_salesperson_options(session: AsyncSession) -> list[str]:
 
 async def purchase_status_options(session: AsyncSession) -> list[str]:
     return await purchase_request_repository.purchase_status_options(session)
+
+
+async def purchase_record_filter_options(
+    session: AsyncSession,
+) -> tuple[list[str], list[str], list[str], list[str]]:
+    return await purchase_request_repository.purchase_record_filter_options(session)
