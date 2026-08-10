@@ -2,6 +2,7 @@
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   NTag,
+  useDialog,
   useMessage,
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -24,6 +25,7 @@ import { useAuthStore } from '@/stores/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
+import PurchaseRecordHistoryDialog from '@/components/PurchaseRecordHistoryDialog.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportButton from '@/components/ExportButton.vue'
@@ -59,6 +61,7 @@ import { renderTwoLineText } from '@/utils/tableText'
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
 const rowClickGuard = createTableRowClickGuard()
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
@@ -195,6 +198,8 @@ const editing = ref<PurchaseMaterial | null>(null)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
+const showHistory = ref(false)
 const batchMoving = ref(false)
 const batchUpdating = ref(false)
 const batchExporting = ref(false)
@@ -527,6 +532,15 @@ function rowProps(row: PurchaseMaterial) {
     onMousedown: rowClickGuard.onMouseDown,
     onClick: (event: MouseEvent) => {
       if (rowClickGuard.shouldIgnore(event)) return
+      // Ctrl/Meta+点击在新标签页打开详情页
+      if (event.ctrlKey || event.metaKey) {
+        const href = router.resolve({
+          name: 'purchase-material-detail',
+          params: { id: String(row.id) },
+        }).href
+        window.open(href, '_blank')
+        return
+      }
       // 点击行直接打开编辑弹窗（与「新建」共用同一弹窗）
       openEdit(row)
     },
@@ -712,6 +726,40 @@ function openInNewPage() {
   show.value = false
   editing.value = null
   void router.push(`/procurement/materials/${target.id}`)
+}
+async function deletePlan() {
+  const target = editing.value
+  if (!target) return
+  deleting.value = true
+  try {
+    await procurementApi.deleteMaterial(target.id, target.version)
+    message.success('申购计划已删除')
+    show.value = false
+    editing.value = null
+    // 防空页：删除的是当前页最后一条且非第一页时回退一页
+    if (items.value.length === 1 && page.value > 1) page.value -= 1
+    await Promise.all([load(), loadFilterOptions()])
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '删除失败')
+  } finally {
+    deleting.value = false
+  }
+}
+function confirmDelete() {
+  const target = editing.value
+  if (!target) return
+  if (target.moved_to_record) {
+    message.warning('已转入申购记录的计划不能删除')
+    return
+  }
+  dialog.warning({
+    draggable: true,
+    title: '删除申购计划',
+    content: `确认删除“${target.name}”的这条申购计划吗？删除后不可恢复。`,
+    positiveText: '确认删除',
+    negativeText: '取消',
+    onPositiveClick: deletePlan,
+  })
 }
 function openBatchMove() {
   if (!selectedPlans.value.length) {
@@ -1292,7 +1340,13 @@ onBeforeUnmount(() => {
             />
           </n-form-item>
           <n-form-item label="名称" path="name">
-            <n-input v-model:value="form.name" maxlength="128" />
+            <n-input v-model:value="form.name" maxlength="128">
+              <template #suffix>
+                <n-button text type="primary" size="tiny" @click="showHistory = true"
+                  >查历史</n-button
+                >
+              </template>
+            </n-input>
           </n-form-item>
           <n-form-item label="型号规格" path="model_spec">
             <n-input v-model:value="form.model_spec" maxlength="255" />
@@ -1368,13 +1422,20 @@ onBeforeUnmount(() => {
         <n-form-item label="图片附件"><ImageUploader v-model:files="images" /></n-form-item></n-form
       ><template #footer
         ><n-space justify="space-between"
-          ><n-button
-            v-if="editing"
-            text
-            type="primary"
-            class="open-new-page-btn"
-            @click="openInNewPage"
-            >在新页面查看</n-button
+          ><template v-if="editing"
+            ><n-space justify="start"
+              ><n-button
+                v-if="auth.can('purchase:write')"
+                type="error"
+                text
+                :loading="deleting"
+                :disabled="editing.moved_to_record"
+                @click="confirmDelete"
+                >删除</n-button
+              ><n-button text type="primary" class="open-new-page-btn" @click="openInNewPage"
+                >在新页面查看</n-button
+              ></n-space
+            ></template
           ><span v-else></span
           ><n-space justify="end"
             ><n-button @click="show = false">取消</n-button
@@ -1383,6 +1444,7 @@ onBeforeUnmount(() => {
         ></template
       ></n-modal
     >
+    <PurchaseRecordHistoryDialog v-model:show="showHistory" :initial-name="form.name" />
   </div>
 </template>
 
