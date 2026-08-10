@@ -532,6 +532,15 @@ function rowProps(row: PurchaseMaterial) {
     onMousedown: rowClickGuard.onMouseDown,
     onClick: (event: MouseEvent) => {
       if (rowClickGuard.shouldIgnore(event)) return
+      // Ctrl/Meta+点击在新标签页打开详情页
+      if (event.ctrlKey || event.metaKey) {
+        const href = router.resolve({
+          name: 'purchase-material-detail',
+          params: { id: String(row.id) },
+        }).href
+        window.open(href, '_blank')
+        return
+      }
       // 点击行直接打开编辑弹窗（与「新建」共用同一弹窗）
       openEdit(row)
     },
