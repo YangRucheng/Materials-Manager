@@ -2,6 +2,7 @@
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   NTag,
+  useDialog,
   useMessage,
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -60,6 +61,7 @@ import { renderTwoLineText } from '@/utils/tableText'
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
 const rowClickGuard = createTableRowClickGuard()
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
@@ -196,6 +198,7 @@ const editing = ref<PurchaseMaterial | null>(null)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
 const showHistory = ref(false)
 const batchMoving = ref(false)
 const batchUpdating = ref(false)
@@ -714,6 +717,40 @@ function openInNewPage() {
   show.value = false
   editing.value = null
   void router.push(`/procurement/materials/${target.id}`)
+}
+async function deletePlan() {
+  const target = editing.value
+  if (!target) return
+  deleting.value = true
+  try {
+    await procurementApi.deleteMaterial(target.id, target.version)
+    message.success('申购计划已删除')
+    show.value = false
+    editing.value = null
+    // 防空页：删除的是当前页最后一条且非第一页时回退一页
+    if (items.value.length === 1 && page.value > 1) page.value -= 1
+    await Promise.all([load(), loadFilterOptions()])
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '删除失败')
+  } finally {
+    deleting.value = false
+  }
+}
+function confirmDelete() {
+  const target = editing.value
+  if (!target) return
+  if (target.moved_to_record) {
+    message.warning('已转入申购记录的计划不能删除')
+    return
+  }
+  dialog.warning({
+    draggable: true,
+    title: '删除申购计划',
+    content: `确认删除“${target.name}”的这条申购计划吗？删除后不可恢复。`,
+    positiveText: '确认删除',
+    negativeText: '取消',
+    onPositiveClick: deletePlan,
+  })
 }
 function openBatchMove() {
   if (!selectedPlans.value.length) {
@@ -1376,13 +1413,20 @@ onBeforeUnmount(() => {
         <n-form-item label="图片附件"><ImageUploader v-model:files="images" /></n-form-item></n-form
       ><template #footer
         ><n-space justify="space-between"
-          ><n-button
-            v-if="editing"
-            text
-            type="primary"
-            class="open-new-page-btn"
-            @click="openInNewPage"
-            >在新页面查看</n-button
+          ><template v-if="editing"
+            ><n-space justify="start"
+              ><n-button
+                v-if="auth.can('purchase:write')"
+                type="error"
+                text
+                :loading="deleting"
+                :disabled="editing.moved_to_record"
+                @click="confirmDelete"
+                >删除</n-button
+              ><n-button text type="primary" class="open-new-page-btn" @click="openInNewPage"
+                >在新页面查看</n-button
+              ></n-space
+            ></template
           ><span v-else></span
           ><n-space justify="end"
             ><n-button @click="show = false">取消</n-button
