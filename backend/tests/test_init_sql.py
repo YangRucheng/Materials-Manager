@@ -68,7 +68,7 @@ def test_init_sql_matches_current_model_schema() -> None:
             (column, target_table, target_column, (on_delete or "").upper() or None)
             for column, target_table, target_column, on_delete in re.findall(
                 r"FOREIGN KEY \(`([^`]+)`\) REFERENCES `([^`]+)` \(`([^`]+)`\)"
-                r"(?: ON DELETE ([A-Z]+))?",
+                r"(?: ON DELETE ([A-Z]+(?: [A-Z]+)?))?",
                 block,
             )
         }

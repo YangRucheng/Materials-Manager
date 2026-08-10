@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -240,13 +240,19 @@ async def _validate_stock_link(
 
 async def next_purchase_plan_no(session: AsyncSession, plan_date: date) -> str:
     prefix = f"PLAN-{plan_date:%Y%m%d}-"
-    previous = await session.scalar(
-        select(PurchaseMaterial.plan_no)
-        .where(PurchaseMaterial.plan_date == plan_date)
-        .order_by(PurchaseMaterial.plan_no.desc())
-        .limit(1)
-        .with_for_update()
+    # 计划号同时存在于 purchase_material 与记录行快照 plan_no_snapshot，
+    # 取两者最大值，保证新建计划号与已清理计划留下的快照号不冲突。
+    material_max = await session.scalar(
+        select(func.max(PurchaseMaterial.plan_no)).where(
+            PurchaseMaterial.plan_no.like(prefix + "%")
+        )
     )
+    snapshot_max = await session.scalar(
+        select(func.max(PurchaseRequestLine.plan_no_snapshot)).where(
+            PurchaseRequestLine.plan_no_snapshot.like(prefix + "%")
+        )
+    )
+    previous = max((value for value in (material_max, snapshot_max) if value), default=None)
     index = int(previous.rsplit("-", 1)[-1]) + 1 if previous else 1
     if index > 999:
         raise AppError(
@@ -282,7 +288,6 @@ async def create_purchase_material(
         subitem_no=data.subitem_no,
         remark=data.remark,
         stock_material_id=data.stock_material_id,
-        identity_hash=identity_hash(data.name, data.model_spec, data.unit_name),
         status=data.status,
         images=[
             PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
@@ -326,7 +331,6 @@ async def update_purchase_material(
     if "status" in data.model_fields_set:
         item.status = data.status
     item.purchase_responsible = responsible
-    item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_name)
     item.stock_material = stock
     item.images = [
         PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)

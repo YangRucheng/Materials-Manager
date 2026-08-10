@@ -16,7 +16,11 @@ from app.core.exception_handlers import error_response, register_exception_handl
 from app.core.logging import configure_logging
 from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware, request_context
 from app.mcp_server import bind_application, mcp, mcp_http_app
-from app.services import ai_search_service, webhook_service
+from app.services import (
+    ai_search_service,
+    purchase_plan_cleanup_service,
+    webhook_service,
+)
 
 logger = logging.getLogger("spare_parts.api")
 
@@ -35,6 +39,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         webhook_service.run_delivery_worker(webhook_stop_event),
         name="webhook-delivery-worker",
     )
+    cleanup_stop_event = asyncio.Event()
+    cleanup_worker: asyncio.Task[None] | None = None
+    if settings.purchase_plan_cleanup_enabled:
+        cleanup_worker = asyncio.create_task(
+            purchase_plan_cleanup_service.run_cleanup_worker(cleanup_stop_event),
+            name="purchase-plan-cleanup-worker",
+        )
     try:
         async with mcp.session_manager.run():
             yield
@@ -42,6 +53,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         webhook_stop_event.set()
         await webhook_worker
         await webhook_service.close_client()
+        cleanup_stop_event.set()
+        if cleanup_worker is not None:
+            await cleanup_worker
         await ai_search_service.close_client()
 
 
