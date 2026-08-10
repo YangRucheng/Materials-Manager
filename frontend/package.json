@@ -14,7 +14,6 @@
     "generate:api": "openapi-typescript ../docs/openapi.yaml -o src/api/generated.raw.ts"
   },
   "dependencies": {
-    "@vicons/ionicons5": "^0.13.0",
     "@vueuse/core": "^13.5.0",
     "axios": "^1.10.0",
     "naive-ui": "^2.42.0",
