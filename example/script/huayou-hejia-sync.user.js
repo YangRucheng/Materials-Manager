@@ -4,6 +4,8 @@
 // @version      1.1.0
 // @description  查询华友何佳“物资状态查询”，自动补全业务员、状态、合同和发运信息。
 // @match        https://materials-manager.qcloud.19890605.xyz/*
+// @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
+// @downloadURL  https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-hejia-sync.user.js
 // @connect      materials-manager.qcloud.19890605.xyz
 // @connect      quick-hejia.qcloud.19890605.xyz
 // @grant        GM_xmlhttpRequest
