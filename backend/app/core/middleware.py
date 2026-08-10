@@ -76,7 +76,7 @@ class RefererCORSMiddleware:
     """Allow cross-origin requests using Referer first, then Origin as fallback."""
 
     _allow_methods = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
-    _expose_headers = "Content-Disposition, X-Request-ID"
+    _expose_headers = "Content-Disposition, X-Request-ID, X-Response-Time"
 
     def __init__(
         self,
@@ -158,19 +158,21 @@ class RealIPMiddleware:
 
 
 async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
-    """为每个请求注入 request_id 并记录访问日志。"""
+    """为每个请求注入 request_id、耗时响应头并记录访问日志。"""
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))[:128]
     request.state.request_id = request_id
     started = time.perf_counter()
     response = await call_next(request)
+    elapsed_ms = (time.perf_counter() - started) * 1000
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-Response-Time"] = f"{elapsed_ms:.2f}"
     client_ip = request.client.host if request.client else "unknown"
     logger.info(
         "HTTP %s %s -> %s | %.2f ms | client_ip=%s | user=%s | request_id=%s",
         request.method,
         request.url.path,
         response.status_code,
-        (time.perf_counter() - started) * 1000,
+        elapsed_ms,
         client_ip,
         getattr(request.state, "username", "anonymous"),
         request_id,

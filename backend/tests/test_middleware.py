@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pytest
+from httpx import AsyncClient
 from starlette.types import Message, Receive, Scope, Send
 
 from app.core.middleware import RealIPMiddleware
@@ -87,3 +89,15 @@ async def test_real_ip_keeps_original_client_without_valid_proxy_header() -> Non
     )
 
     assert client == ("10.0.0.2", 1234)
+
+
+@pytest.mark.asyncio
+async def test_request_context_adds_response_time_header(client: AsyncClient) -> None:
+    """每个响应都带 X-Response-Time（毫秒，非负数字）与 X-Request-ID。"""
+    response = await client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"]
+    response_time = response.headers["X-Response-Time"]
+    assert re.fullmatch(r"\d+(\.\d+)?", response_time)
+    assert float(response_time) >= 0
