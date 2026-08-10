@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [vue(), Components({ resolvers: [NaiveUiResolver()] })],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    build: { assetsDir: 'yangrucheng-assets' },
     server: {
       port: 5173,
       proxy:
