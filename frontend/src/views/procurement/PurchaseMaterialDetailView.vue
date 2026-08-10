@@ -20,6 +20,7 @@ import {
 } from '@/constants/purchase'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
+import PurchaseRecordHistoryDialog from '@/components/PurchaseRecordHistoryDialog.vue'
 import { dateToTimestamp, formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
@@ -34,6 +35,7 @@ const material = ref<PurchaseMaterial | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const deleting = ref(false)
+const showHistory = ref(false)
 const advancedSections = ref<string[]>([])
 const showMove = ref(false)
 const moving = ref(false)
@@ -251,7 +253,13 @@ onMounted(() => void load())
             />
           </n-form-item>
           <n-form-item label="名称" required>
-            <n-input v-model:value="form.name" maxlength="128" />
+            <n-input v-model:value="form.name" maxlength="128">
+              <template #suffix>
+                <n-button text type="primary" size="tiny" @click="showHistory = true"
+                  >查历史</n-button
+                >
+              </template>
+            </n-input>
           </n-form-item>
           <n-form-item label="型号规格" required>
             <n-input v-model:value="form.model_spec" maxlength="255" />
@@ -410,6 +418,7 @@ onMounted(() => void load())
         ></template
       >
     </n-modal>
+    <PurchaseRecordHistoryDialog v-model:show="showHistory" :initial-name="form.name" />
   </div>
 </template>
 
