@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
+import PurchaseRecordHistoryDialog from '@/components/PurchaseRecordHistoryDialog.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportButton from '@/components/ExportButton.vue'
@@ -195,6 +196,7 @@ const editing = ref<PurchaseMaterial | null>(null)
 const showBatch = ref(false)
 const showBatchEdit = ref(false)
 const saving = ref(false)
+const showHistory = ref(false)
 const batchMoving = ref(false)
 const batchUpdating = ref(false)
 const batchExporting = ref(false)
@@ -1292,7 +1294,13 @@ onBeforeUnmount(() => {
             />
           </n-form-item>
           <n-form-item label="名称" path="name">
-            <n-input v-model:value="form.name" maxlength="128" />
+            <n-input v-model:value="form.name" maxlength="128">
+              <template #suffix>
+                <n-button text type="primary" size="tiny" @click="showHistory = true"
+                  >查历史</n-button
+                >
+              </template>
+            </n-input>
           </n-form-item>
           <n-form-item label="型号规格" path="model_spec">
             <n-input v-model:value="form.model_spec" maxlength="255" />
@@ -1383,6 +1391,7 @@ onBeforeUnmount(() => {
         ></template
       ></n-modal
     >
+    <PurchaseRecordHistoryDialog v-model:show="showHistory" :initial-name="form.name" />
   </div>
 </template>
 
