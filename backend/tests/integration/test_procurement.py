@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 from openpyxl import load_workbook
 from PIL import Image
+from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -810,6 +811,14 @@ async def test_record_keeps_purchase_plan_attachments(client: AsyncClient) -> No
     assert detail.status_code == 200, detail.text
     assert [image["id"] for image in detail.json()["images"]] == [file_id]
 
+    from app.services import purchase_plan_cleanup_service
+
+    deleted = await purchase_plan_cleanup_service.cleanup_moved_plans_once()
+    assert deleted == 1
+    detail = await client.get(f"/api/v1/purchase-records/{record['line_id']}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert [image["id"] for image in detail.json()["images"]] == [file_id]
+
 
 @pytest.mark.asyncio
 async def test_uncoded_plan_must_be_coded_before_moving_to_record(client: AsyncClient) -> None:
@@ -935,6 +944,44 @@ async def test_purchase_record_can_restore_to_purchase_plan(client: AsyncClient)
     async with SessionLocal() as session:
         request = await session.get(PurchaseRequest, int(record["purchase_request_id"]))
         assert request is None
+
+
+@pytest.mark.asyncio
+async def test_restore_rebuilds_plan_after_cleanup(client: AsyncClient) -> None:
+    """计划被定时清理后，恢复为申购计划从快照重建新计划但保留原计划号。"""
+    from app.services import purchase_plan_cleanup_service
+
+    headers = await auth_headers(client, "purchase")
+    plan = await create_purchase_plan(
+        client, headers, "已清理后恢复", code="DQ-RESTORE-CLEANED", category="工具"
+    )
+    record = await move_to_record(client, headers, int(plan["id"]))
+
+    deleted = await purchase_plan_cleanup_service.cleanup_moved_plans_once()
+    assert deleted == 1
+    async with SessionLocal() as session:
+        # 清理后记录行已解绑外键（指向已删计划）
+        line = await session.get(PurchaseRequestLine, int(record["line_id"]))
+        assert line is not None
+        assert line.purchase_material_id is None
+
+    restored = await client.post(
+        f"/api/v1/purchase-records/{record['line_id']}/restore-to-plan",
+        headers={**headers, "If-Match": str(record["version"])},
+    )
+    assert restored.status_code == 200, restored.text
+    restored_plan = restored.json()
+    assert restored_plan["plan_no"] == plan["plan_no"]  # 保留原计划号
+    assert restored_plan["category"] == "工具"
+    assert restored_plan["status"] == "正常"
+    assert restored_plan["moved_to_record"] is False
+    async with SessionLocal() as session:
+        # 恢复后重建出独立存在的计划，保留原计划号
+        rebuilt = await session.scalar(
+            select(PurchaseMaterial).where(PurchaseMaterial.plan_no == plan["plan_no"])
+        )
+        assert rebuilt is not None
+        assert rebuilt.id == int(restored_plan["id"])
 
 
 @pytest.mark.asyncio
@@ -1245,6 +1292,14 @@ async def test_purchase_record_supports_full_edit_and_free_text_status(
     assert changed.json()["record_remark"] == "仅用于整理统计"
     assert "received_qty" not in changed.json()
     assert "remaining_qty" not in changed.json()
+
+    async with SessionLocal() as session:
+        material = await session.get(PurchaseMaterial, int(first["id"]))
+        assert material is not None
+        # 编辑记录不再回写计划：计划的名称/型号/数量保持转入时原样
+        assert material.name == "负责人一"
+        assert material.model_spec == "M60-2P 5A"
+        assert str(material.planned_qty) == "5.0"
 
     filtered = await client.get(
         "/api/v1/purchase-records",

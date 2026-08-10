@@ -156,15 +156,14 @@ const purchaseRecord = (
   request: (typeof purchaseRequests)[number],
   line: (typeof purchaseRequests)[number]['lines'][number],
 ) => {
-  const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
   return {
     line_id: line.id,
     purchase_request_id: request.id,
     purchase_material_id: line.purchase_material_id,
-    plan_no: material.plan_no,
-    plan_date: material.plan_date,
+    plan_no: line.plan_no_snapshot,
+    plan_date: line.plan_date_snapshot,
     purchase_order_no: request.purchase_order_no,
-    trace_no: request.trace_no,
+    trace_no: line.trace_no,
     contract_no: request.contract_no,
     vessel_no: request.vessel_no,
     consolidation_date: request.consolidation_date,
@@ -172,24 +171,24 @@ const purchaseRecord = (
     sailing_date: request.sailing_date,
     status: line.status,
     material_code: line.material_code_snapshot,
-    category: material.category,
-    demand_department: material.demand_department,
+    category: line.category_snapshot,
+    demand_department: line.demand_department_snapshot,
     material_name: line.material_name_snapshot,
     model_spec: line.model_spec_snapshot,
     unit_name: line.unit_name_snapshot,
     purchase_qty: line.purchase_qty,
-    actual_demand_person: material.actual_demand_person,
-    purchase_responsible: material.purchase_responsible,
-    salesperson: request.salesperson,
-    plan_remark: material.remark,
+    actual_demand_person: line.actual_demand_person_snapshot,
+    purchase_responsible: line.purchase_responsible_snapshot,
+    salesperson: line.salesperson,
+    plan_remark: line.plan_remark_snapshot,
     record_remark: request.record_remark,
     usage: line.usage,
     subitem_no: line.subitem_no,
-    images: material.images,
-    stock_material_id: material.stock_material_id,
+    images: line.images,
+    stock_material_id: line.stock_material_id_snapshot,
     purchase_date: request.purchase_date,
     created_at: request.created_at,
-    updated_at: material.updated_at,
+    updated_at: request.updated_at,
     version: request.version,
   }
 }
@@ -197,14 +196,25 @@ const movePlansToRecords = (materials: typeof purchaseMaterials, body: MovePurch
   const lines = materials.map((material) => ({
     id: nextIds.requestLine++,
     purchase_material_id: material.id,
+    plan_no_snapshot: material.plan_no,
+    plan_date_snapshot: material.plan_date,
     material_code_snapshot: material.material_code,
+    category_snapshot: material.category,
+    demand_department_snapshot: material.demand_department,
     material_name_snapshot: material.name,
     model_spec_snapshot: material.model_spec,
     unit_name_snapshot: material.unit_name,
+    actual_demand_person_snapshot: material.actual_demand_person,
+    purchase_responsible_snapshot: material.purchase_responsible,
+    plan_remark_snapshot: material.remark,
+    stock_material_id_snapshot: material.stock_material_id,
     purchase_qty: material.planned_qty,
     status: body.status,
     usage: material.usage,
     subitem_no: material.subitem_no,
+    trace_no: body.trace_no,
+    salesperson: body.salesperson,
+    images: material.images,
   }))
   const purchaseRequest: (typeof purchaseRequests)[number] = {
     id: nextIds.request++,
@@ -214,6 +224,7 @@ const movePlansToRecords = (materials: typeof purchaseMaterials, body: MovePurch
     record_remark: body.record_remark,
     purchase_date: body.purchase_date,
     created_at: now(),
+    updated_at: now(),
     version: 1,
     lines,
   }
@@ -1140,31 +1151,24 @@ export const handlers = [
     }
 
     for (const item of selected) {
-      const material = purchaseMaterials.find(
-        (candidate) => candidate.id === item.line!.purchase_material_id,
-      )!
-      if (body.plan_date !== undefined && body.plan_date !== material.plan_date) {
-        material.plan_date = body.plan_date
-        const planIndex = purchaseMaterials.filter(
-          (candidate) => candidate.id !== material.id && candidate.plan_date === body.plan_date,
-        ).length
-        material.plan_no = `PLAN-${body.plan_date.replace(/-/g, '')}-${String(planIndex + 1).padStart(3, '0')}`
+      const line = item.line!
+      if (body.plan_date !== undefined && body.plan_date !== line.plan_date_snapshot) {
+        line.plan_date_snapshot = body.plan_date
+        const planIndex = purchaseRequests
+          .flatMap((request) => request.lines)
+          .filter(
+            (candidate) =>
+              candidate.id !== line.id && candidate.plan_date_snapshot === body.plan_date,
+          ).length
+        line.plan_no_snapshot = `PLAN-${body.plan_date.replace(/-/g, '')}-${String(planIndex + 1).padStart(3, '0')}`
       }
       if (body.actual_demand_person !== undefined) {
-        material.actual_demand_person = body.actual_demand_person
+        line.actual_demand_person_snapshot = body.actual_demand_person
       }
       if (body.purchase_responsible !== undefined) {
-        material.purchase_responsible = body.purchase_responsible
+        line.purchase_responsible_snapshot = body.purchase_responsible
       }
-      if (
-        body.plan_date !== undefined ||
-        body.actual_demand_person !== undefined ||
-        body.purchase_responsible !== undefined
-      ) {
-        material.updated_at = now()
-        material.version += 1
-      }
-      if (body.status !== undefined) item.line!.status = body.status
+      if (body.status !== undefined) line.status = body.status
     }
 
     return HttpResponse.json(
@@ -1190,13 +1194,45 @@ export const handlers = [
       const [line] = purchaseRequest.lines.splice(lineIndex, 1)
       if (!purchaseRequest.lines.length) purchaseRequests.splice(requestIndex, 1)
       else purchaseRequest.version += 1
-      const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
-      Object.assign(material, {
-        moved_to_record: false,
-        status: '正常',
-        updated_at: now(),
-        version: material.version + 1,
-      })
+      const existing = purchaseMaterials.find((item) => item.id === line.purchase_material_id)
+      let material: PurchaseMaterial
+      if (existing) {
+        material = existing
+        Object.assign(material, {
+          moved_to_record: false,
+          status: '正常',
+          updated_at: now(),
+          version: material.version + 1,
+        })
+      } else {
+        // 计划已被清理：从快照重建，保留原计划号
+        material = {
+          id: nextIds.purchase++,
+          plan_no: line.plan_no_snapshot,
+          plan_date: line.plan_date_snapshot,
+          material_code: line.material_code_snapshot,
+          category: line.category_snapshot ?? null,
+          urgency: '正常',
+          demand_department: line.demand_department_snapshot,
+          name: line.material_name_snapshot,
+          model_spec: line.model_spec_snapshot,
+          unit_name: line.unit_name_snapshot,
+          actual_demand_person: line.actual_demand_person_snapshot,
+          purchase_responsible: line.purchase_responsible_snapshot,
+          planned_qty: line.purchase_qty,
+          usage: line.usage,
+          subitem_no: line.subitem_no ?? null,
+          remark: line.plan_remark_snapshot,
+          stock_material_id: line.stock_material_id_snapshot ?? null,
+          status: '正常',
+          moved_to_record: false,
+          images: line.images,
+          created_at: now(),
+          updated_at: now(),
+          version: 1,
+        }
+        purchaseMaterials.unshift(material)
+      }
       return HttpResponse.json(material)
     }
     return error(400, 'NOT_FOUND', '申购记录不存在')
@@ -1206,23 +1242,27 @@ export const handlers = [
       const line = purchaseRequest.lines.find((item) => item.id === Number(params.id))
       if (!line) continue
       const body = (await request.json()) as PurchaseRecordWrite
-      const material = purchaseMaterials.find((item) => item.id === line.purchase_material_id)!
-      Object.assign(material, {
-        plan_date: body.plan_date,
-        material_code: body.material_code,
-        name: body.material_name,
-        model_spec: body.model_spec,
-        unit_name: body.unit_name.trim(),
-        actual_demand_person: body.actual_demand_person,
-        purchase_responsible: body.purchase_responsible,
-        planned_qty: body.purchase_qty,
+      Object.assign(line, {
+        plan_date_snapshot: body.plan_date,
+        material_code_snapshot: body.material_code,
+        category_snapshot: body.category,
+        demand_department_snapshot: body.demand_department,
+        material_name_snapshot: body.material_name,
+        model_spec_snapshot: body.model_spec,
+        unit_name_snapshot: body.unit_name.trim(),
+        actual_demand_person_snapshot: body.actual_demand_person,
+        purchase_responsible_snapshot: body.purchase_responsible,
+        plan_remark_snapshot: body.plan_remark,
+        stock_material_id_snapshot: body.stock_material_id,
+        purchase_qty: body.purchase_qty,
+        status: body.status,
         usage: body.usage,
         subitem_no: body.subitem_no,
-        remark: body.plan_remark,
-        stock_material_id: body.stock_material_id,
+        trace_no: body.trace_no,
+        salesperson: body.salesperson,
         images: body.image_ids.map(
           (id) =>
-            material.images.find((image) => image.id === id) || {
+            line.images.find((image) => image.id === id) || {
               id,
               original_name: '申购附件.png',
               mime_type: 'image/png' as const,
@@ -1231,29 +1271,15 @@ export const handlers = [
               height: 600,
             },
         ),
-        updated_at: now(),
-        version: material.version + 1,
-      })
-      Object.assign(line, {
-        material_code_snapshot: material.material_code,
-        material_name_snapshot: material.name,
-        model_spec_snapshot: material.model_spec,
-        unit_name_snapshot: material.unit_name,
-        purchase_qty: body.purchase_qty,
-        status: body.status,
-        usage: body.usage,
-        subitem_no: body.subitem_no,
       })
       Object.assign(purchaseRequest, {
         purchase_order_no: body.purchase_order_no,
-        trace_no: body.trace_no,
         contract_no: body.contract_no,
         vessel_no: body.vessel_no,
         consolidation_date: body.consolidation_date,
         consolidation_port: body.consolidation_port,
         sailing_date: body.sailing_date,
         purchase_date: body.purchase_date,
-        salesperson: body.salesperson,
         record_remark: body.record_remark,
         version: purchaseRequest.version + 1,
       })

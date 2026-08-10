@@ -242,7 +242,6 @@ class PurchaseMaterial(AuditMixin, Base):
     stock_material_id: Mapped[int | None] = mapped_column(
         BIGINT_ID, ForeignKey("stock_material.id"), index=True
     )
-    identity_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     status: Mapped[PurchasePlanStatus] = mapped_column(
         SAEnum(PurchasePlanStatus),
         nullable=False,
@@ -276,13 +275,11 @@ class PurchaseRequest(AuditMixin, Base):
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     purchase_order_no: Mapped[str | None] = mapped_column(String(128), index=True)
-    trace_no: Mapped[str | None] = mapped_column(String(128), index=True)
     contract_no: Mapped[str | None] = mapped_column(String(128), index=True)
     vessel_no: Mapped[str | None] = mapped_column(String(128), index=True)
     consolidation_date: Mapped[date | None] = mapped_column(Date, index=True)
     consolidation_port: Mapped[str | None] = mapped_column(String(128), index=True)
     sailing_date: Mapped[date | None] = mapped_column(Date, index=True)
-    salesperson: Mapped[str | None] = mapped_column(String(128))
     remark: Mapped[str | None] = mapped_column(String(1000))
     purchase_date: Mapped[date | None] = mapped_column(Date)
 
@@ -305,13 +302,22 @@ class PurchaseRequestLine(AuditMixin, Base):
     purchase_request_id: Mapped[int] = mapped_column(
         BIGINT_ID, ForeignKey("purchase_request.id", ondelete="CASCADE"), nullable=False
     )
-    purchase_material_id: Mapped[int] = mapped_column(
-        BIGINT_ID, ForeignKey("purchase_material.id"), nullable=False
+    purchase_material_id: Mapped[int | None] = mapped_column(
+        BIGINT_ID, ForeignKey("purchase_material.id", ondelete="SET NULL")
     )
+    # 记录自包含快照：转入时从计划复制，读路径不再依赖 purchase_material（清理计划后仍可读）
+    plan_no_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
+    plan_date_snapshot: Mapped[date] = mapped_column(Date, nullable=False)
     material_code_snapshot: Mapped[str | None] = mapped_column(String(64))
+    category_snapshot: Mapped[str | None] = mapped_column(String(64))
+    demand_department_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
     material_name_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
     model_spec_snapshot: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_name_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
+    actual_demand_person_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
+    purchase_responsible_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
+    plan_remark_snapshot: Mapped[str | None] = mapped_column(String(1000))
+    stock_material_id_snapshot: Mapped[int | None] = mapped_column(BIGINT_ID)
     purchase_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     status: Mapped[str] = mapped_column(String(128), nullable=False, default="已申购")
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -320,7 +326,25 @@ class PurchaseRequestLine(AuditMixin, Base):
     salesperson: Mapped[str | None] = mapped_column(String(128))
 
     request: Mapped[PurchaseRequest] = relationship(back_populates="lines", lazy="selectin")
-    purchase_material: Mapped[PurchaseMaterial] = relationship(lazy="selectin")
+    purchase_material: Mapped[PurchaseMaterial | None] = relationship(lazy="selectin")
+    images: Mapped[list[PurchaseRequestLineImage]] = relationship(
+        back_populates="line",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        order_by="PurchaseRequestLineImage.sort_order",
+    )
+
+
+class PurchaseRequestLineImage(Base):
+    __tablename__ = "purchase_request_line_image"
+
+    line_id: Mapped[int] = mapped_column(
+        BIGINT_ID, ForeignKey("purchase_request_line.id", ondelete="CASCADE"), primary_key=True
+    )
+    file_id: Mapped[str] = mapped_column(String(36), ForeignKey("file_object.id"), primary_key=True)
+    sort_order: Mapped[int] = mapped_column(UTINYINT, nullable=False, default=0)
+    line: Mapped[PurchaseRequestLine] = relationship(back_populates="images")
+    file: Mapped[FileObject] = relationship(lazy="selectin")
 
 
 class StockOperation(AuditMixin, Base):
@@ -458,6 +482,7 @@ __all__ = [
     "PurchaseMaterialImage",
     "PurchaseRequest",
     "PurchaseRequestLine",
+    "PurchaseRequestLineImage",
     "StockBalance",
     "StockMaterial",
     "StockMaterialImage",

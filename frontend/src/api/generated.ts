@@ -318,15 +318,26 @@ export interface PurchaseRecordWrite {
 /** 申购记录行（前端从 PurchaseRequest 展开的视图模型） */
 export interface PurchaseRequestLine {
   id: number
-  purchase_material_id: number
+  purchase_material_id: number | null
+  plan_no_snapshot: string
+  plan_date_snapshot: string
   material_code_snapshot?: string | null
+  category_snapshot?: string | null
+  demand_department_snapshot: string
   material_name_snapshot: string
   model_spec_snapshot: string
   unit_name_snapshot: string
+  actual_demand_person_snapshot: string
+  purchase_responsible_snapshot: string
+  plan_remark_snapshot?: string | null
+  stock_material_id_snapshot?: number | null
   purchase_qty: string
   status: string
   usage: string
   subitem_no?: string | null
+  trace_no?: string | null
+  salesperson?: string | null
+  images: FileObject[]
 }
 
 /** 申购记录单头（前端视图模型，聚合多条行） */
@@ -343,6 +354,7 @@ export interface PurchaseRequest {
   record_remark?: string
   purchase_date?: string
   created_at: string
+  updated_at: string
   version: number
   lines: PurchaseRequestLine[]
 }

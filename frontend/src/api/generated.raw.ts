@@ -2267,7 +2267,7 @@ export interface components {
             /** Purchase Request Id */
             purchase_request_id: number;
             /** Purchase Material Id */
-            purchase_material_id: number;
+            purchase_material_id: number | null;
             /** Plan No */
             plan_no: string;
             /**

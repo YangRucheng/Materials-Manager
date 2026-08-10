@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     cors_allow_credentials: bool = True
     cors_max_age: int = Field(default=86400, ge=0)
+    # 每日凌晨2点定时清理已转入申购记录的计划（记录自包含快照后删除计划是安全的）
+    purchase_plan_cleanup_enabled: bool = True
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -1140,7 +1140,7 @@ class BatchUpdatePurchaseRecordsRequest(RequestModel):
 class PurchaseRecordRead(ReadModel):
     line_id: int
     purchase_request_id: int
-    purchase_material_id: int
+    purchase_material_id: int | None
     plan_no: str
     plan_date: date
     purchase_order_no: str | None = None

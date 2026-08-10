@@ -131,20 +131,17 @@ CREATE TABLE IF NOT EXISTS `material_code_library` (
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_order_no` VARCHAR(128) NULL,
-  `trace_no` VARCHAR(128) NULL,
   `contract_no` VARCHAR(128) NULL,
   `vessel_no` VARCHAR(128) NULL,
   `consolidation_date` DATE NULL,
   `consolidation_port` VARCHAR(128) NULL,
   `sailing_date` DATE NULL,
-  `salesperson` VARCHAR(128) NULL,
   `remark` VARCHAR(1000) NULL,
   `purchase_date` DATE NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_purchase_request` PRIMARY KEY (`id`),
-  INDEX `ix_purchase_request_trace_no` (`trace_no`),
   INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`),
   INDEX `ix_purchase_request_contract_no` (`contract_no`),
   INDEX `ix_purchase_request_vessel_no` (`vessel_no`),
@@ -220,7 +217,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   `subitem_no` VARCHAR(64) NULL,
   `remark` VARCHAR(1000) NULL,
   `stock_material_id` BIGINT UNSIGNED NULL,
-  `identity_hash` VARCHAR(64) NOT NULL,
   `status` ENUM('NORMAL', 'DEFERRED', 'ARCHIVED') NOT NULL DEFAULT 'NORMAL',
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -229,7 +225,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   CONSTRAINT `uq_purchase_material_plan_no` UNIQUE (`plan_no`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
-  INDEX `ix_purchase_material_identity_hash` (`identity_hash`),
   INDEX `ix_purchase_material_plan_date` (`plan_date`),
   INDEX `ix_purchase_material_material_code` (`material_code`),
   INDEX `ix_purchase_material_category` (`category`),
@@ -289,11 +284,19 @@ CREATE TABLE IF NOT EXISTS `purchase_material_image` (
 CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_request_id` BIGINT UNSIGNED NOT NULL,
-  `purchase_material_id` BIGINT UNSIGNED NOT NULL,
+  `purchase_material_id` BIGINT UNSIGNED NULL,
+  `plan_no_snapshot` VARCHAR(32) NOT NULL,
+  `plan_date_snapshot` DATE NOT NULL,
   `material_code_snapshot` VARCHAR(64) NULL,
+  `category_snapshot` VARCHAR(64) NULL,
+  `demand_department_snapshot` VARCHAR(128) NOT NULL,
   `material_name_snapshot` VARCHAR(128) NOT NULL,
   `model_spec_snapshot` VARCHAR(255) NOT NULL,
   `unit_name_snapshot` VARCHAR(32) NOT NULL,
+  `actual_demand_person_snapshot` VARCHAR(128) NOT NULL,
+  `purchase_responsible_snapshot` VARCHAR(128) NOT NULL,
+  `plan_remark_snapshot` VARCHAR(1000) NULL,
+  `stock_material_id_snapshot` BIGINT UNSIGNED NULL,
   `purchase_qty` DECIMAL(18, 1) NOT NULL,
   `status` VARCHAR(128) NOT NULL DEFAULT '已申购',
   `usage` VARCHAR(500) NOT NULL,
@@ -310,8 +313,19 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   CONSTRAINT `fk_purchase_request_line_purchase_request_id_purchase_request`
     FOREIGN KEY (`purchase_request_id`) REFERENCES `purchase_request` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_purchase_request_line_purchase_material_id_purchase_material`
-    FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`),
+    FOREIGN KEY (`purchase_material_id`) REFERENCES `purchase_material` (`id`) ON DELETE SET NULL,
   INDEX `ix_purchase_request_line_trace_no` (`trace_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `purchase_request_line_image` (
+  `line_id` BIGINT UNSIGNED NOT NULL,
+  `file_id` VARCHAR(36) NOT NULL,
+  `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  CONSTRAINT `pk_purchase_request_line_image` PRIMARY KEY (`line_id`, `file_id`),
+  CONSTRAINT `fk_purchase_request_line_image_line_id_purchase_request_line`
+    FOREIGN KEY (`line_id`) REFERENCES `purchase_request_line` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_purchase_request_line_image_file_id_file_object`
+    FOREIGN KEY (`file_id`) REFERENCES `file_object` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_operation_line` (

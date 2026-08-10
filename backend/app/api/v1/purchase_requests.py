@@ -145,7 +145,7 @@ async def purchase_record_filter_options(
         purchase_responsibles,
         subitem_nos,
         categories,
-    ) = await material_service.purchase_filter_options(session, moved=True, status=None)
+    ) = await service.purchase_record_filter_options(session)
     return PurchaseRecordFilterOptions(
         actual_demand_persons=actual_demand_persons,
         purchase_responsibles=purchase_responsibles,
