@@ -80,4 +80,8 @@
       </view>
     </view>
   </t-popup>
+
+  <button class="share-fab" open-type="share" aria-label="{{i18n.shareApp}}">
+    <t-icon name="share" size="52rpx" color="#ffffff" />
+  </button>
 </view>

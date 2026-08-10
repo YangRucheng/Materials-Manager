@@ -1,7 +1,10 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { extractMaterialUuid } = require('../../utils/material');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
+const { apiBaseUrl } = require('../../config/index');
 const Toast = toastModule.default || toastModule;
+
+const SHARE_IMAGE_URL = `${apiBaseUrl.replace(/\/api\/v1\/?$/, '')}/logo.png`;
 
 function formatDateTime(value) {
   const date = new Date(value);
@@ -59,6 +62,7 @@ Page({
     return {
       title: t('shareHome'),
       path: '/pages/home/home',
+      imageUrl: SHARE_IMAGE_URL,
     };
   },
 

@@ -1,1 +1,1 @@
-export const LOGO_URL = '/qrcode.png'
+export const LOGO_URL = '/logo.png'

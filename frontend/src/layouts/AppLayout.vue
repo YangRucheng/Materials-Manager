@@ -5,13 +5,11 @@ import type { MenuOption } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import { roleLabels } from '@/types/navigation'
 import { LOGO_URL } from '@/constants/branding'
-import { ShareSocial } from '@vicons/ionicons5'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const collapsed = ref(false)
-const showModal = ref(false)
 const link = (label: string, name: string) => ({
   label: () => h(RouterLink, { to: { name } }, { default: () => label }),
   key: name,
@@ -117,17 +115,6 @@ function logout() {
       </n-layout-content>
     </n-layout>
   </n-layout>
-  <n-button circle type="primary" class="fab-btn" @click="showModal = true">
-    <template #icon>
-      <n-icon><ShareSocial /></n-icon>
-    </template>
-  </n-button>
-  <n-modal v-model:show="showModal" title="小程序码" preset="card" style="width: 400px">
-    <div class="qrcode-modal-body">
-      <img src="/qrcode.png" class="qrcode-img" alt="小程序码" />
-      <p class="qrcode-hint">微信扫码打开小程序</p>
-    </div>
-  </n-modal>
 </template>
 
 <style scoped>
@@ -215,25 +202,5 @@ function logout() {
 .app-content {
   background:
     radial-gradient(circle at 100% 0%, rgb(63 99 216 / 4%), transparent 28%), var(--color-bg);
-}
-.fab-btn {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  z-index: 1000;
-}
-.qrcode-modal-body {
-  text-align: center;
-}
-.qrcode-img {
-  max-width: 360px;
-  width: 100%;
-  display: block;
-  margin: 0 auto;
-}
-.qrcode-hint {
-  margin-top: 16px;
-  color: #666;
-  font-size: 14px;
 }
 </style>
