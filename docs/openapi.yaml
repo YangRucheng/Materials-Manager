@@ -7294,7 +7294,9 @@ components:
           type: integer
           title: Purchase Request Id
         purchase_material_id:
-          type: integer
+          anyOf:
+          - type: integer
+          - type: 'null'
           title: Purchase Material Id
         plan_no:
           type: string
