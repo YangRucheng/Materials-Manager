@@ -102,13 +102,7 @@ async def list_purchase_plans(
         ),
     )
     keyword_condition = contains_any(
-        (
-            PurchaseMaterial.plan_no,
-            PurchaseMaterial.name,
-            PurchaseMaterial.model_spec,
-            PurchaseMaterial.material_code,
-            PurchaseMaterial.purchase_responsible,
-        ),
+        (PurchaseMaterial.name, PurchaseMaterial.model_spec),
         keyword,
     )
     if keyword_condition is not None:
