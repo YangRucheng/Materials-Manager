@@ -27,8 +27,7 @@
   const defaults = {
     hejiaUsername: "hync",
     hejiaPassword: "",
-    adminUsername: "admin",
-    adminPassword: "",
+    apiToken: "",
     intervalMinutes: 10,
     batchSize: 50,
     autoEnabled: false,
@@ -153,99 +152,45 @@
       throw new Error(`接口返回的不是有效 JSON：${text.slice(0, 200)}`);
     }
   }
-  async function db(sql, parameters = {}, maxRows = 1000) {
+  async function apiRequest(options) {
     const result = await json({
-      method: "POST",
-      url: `${MATERIALS_API}/agent/database/execute`,
+      ...options,
       headers: {
         "Content-Type": "application/json",
-        "X-Agent-Username": config.adminUsername,
-        "X-Agent-Password": config.adminPassword,
+        "X-API-Token": config.apiToken,
+        ...(options.headers || {}),
       },
-      data: JSON.stringify({ sql, parameters, max_rows: maxRows }),
     });
     if (result?.code && result?.message) throw new Error(result.message);
     return result;
   }
   async function targets() {
     const limit = int(config.batchSize, 50, 1, 200);
-    const result = await db(
-      `SELECT pr.trace_no, COUNT(*) AS target_count
-FROM purchase_request pr
-JOIN purchase_request_line prl ON prl.purchase_request_id = pr.id
-WHERE pr.trace_no IS NOT NULL AND TRIM(pr.trace_no) <> ''
-  AND (
-    pr.salesperson IS NULL OR TRIM(pr.salesperson) = ''
-    OR pr.contract_no IS NULL OR TRIM(pr.contract_no) = ''
-    OR pr.vessel_no IS NULL OR TRIM(pr.vessel_no) = ''
-    OR pr.consolidation_date IS NULL
-    OR pr.consolidation_port IS NULL OR TRIM(pr.consolidation_port) = ''
-    OR pr.sailing_date IS NULL
-  )
-GROUP BY pr.trace_no
-ORDER BY MAX(prl.id) DESC
-LIMIT ${limit}`,
-      {},
-      limit,
-    );
-    return Array.isArray(result.rows) ? result.rows : [];
+    const result = await apiRequest({
+      method: "GET",
+      url: `${MATERIALS_API}/purchase-record-sync/targets?limit=${limit}&fields=salesperson,contract_no,vessel_no,consolidation_date,consolidation_port,sailing_date`,
+    });
+    return Array.isArray(result.items) ? result.items : [];
   }
   async function updateTarget(traceNo, result) {
-    const requestSet = [];
-    const lineSet = [];
-    const parameters = { trace_no: traceNo };
-    const optionalTextFields = [
-      ["salesperson", "salesperson"],
-      ["contract_no", "contractNo"],
-      ["vessel_no", "vesselNo"],
-      ["consolidation_port", "consolidationPort"],
-    ];
-    optionalTextFields.forEach(([column, key]) => {
-      if (!result[key]) return;
-      requestSet.push(
-        `pr.${column} = CASE WHEN pr.${column} IS NULL OR TRIM(pr.${column}) = '' THEN :${column} ELSE pr.${column} END`,
-      );
-      parameters[column] = result[key];
+    const payload = {};
+    for (const [key, value] of [
+      ["salesperson", result.salesperson],
+      ["contract_no", result.contractNo],
+      ["vessel_no", result.vesselNo],
+      ["consolidation_port", result.consolidationPort],
+      ["consolidation_date", result.consolidationDate],
+      ["sailing_date", result.sailingDate],
+      ["status", result.status],
+    ]) {
+      if (value) payload[key] = value;
+    }
+    if (!Object.keys(payload).length) return { affected_headers: 0, affected_lines: 0 };
+    return apiRequest({
+      method: "POST",
+      url: `${MATERIALS_API}/purchase-record-sync/trace/${encodeURIComponent(traceNo)}`,
+      data: JSON.stringify(payload),
     });
-    [["consolidation_date", "consolidationDate"], ["sailing_date", "sailingDate"]].forEach(
-      ([column, key]) => {
-        if (!result[key]) return;
-        requestSet.push(`pr.${column} = COALESCE(pr.${column}, :${column})`);
-        parameters[column] = result[key];
-      },
-    );
-    if (requestSet.length) {
-      requestSet.push(
-        "pr.version = pr.version + 1",
-        "pr.updated_at = CURRENT_TIMESTAMP(6)",
-      );
-    }
-    if (result.status) {
-      lineSet.push(
-        "prl.status = :status",
-        "prl.version = prl.version + 1",
-        "prl.updated_at = CURRENT_TIMESTAMP(6)",
-      );
-      parameters.status = result.status;
-    }
-    const set = [...requestSet, ...lineSet];
-    if (!set.length) return { affected_rows: 0 };
-    return db(
-      `UPDATE purchase_request pr
-JOIN purchase_request_line prl ON prl.purchase_request_id = pr.id
-SET ${set.join(", ")}
-WHERE pr.trace_no = :trace_no
-  AND (
-    pr.salesperson IS NULL OR TRIM(pr.salesperson) = ''
-    OR pr.contract_no IS NULL OR TRIM(pr.contract_no) = ''
-    OR pr.vessel_no IS NULL OR TRIM(pr.vessel_no) = ''
-    OR pr.consolidation_date IS NULL
-    OR pr.consolidation_port IS NULL OR TRIM(pr.consolidation_port) = ''
-    OR pr.sailing_date IS NULL
-  )`,
-      parameters,
-      1,
-    );
   }
 
   async function loginHejia() {
@@ -484,8 +429,7 @@ WHERE pr.trace_no = :trace_no
     const missing = [];
     if (!config.hejiaUsername) missing.push("何佳账号");
     if (!config.hejiaPassword) missing.push("何佳密码");
-    if (!config.adminUsername) missing.push("超管账号");
-    if (!config.adminPassword) missing.push("超管密码");
+    if (!config.apiToken) missing.push("接口令牌");
     if (missing.length)
       throw new Error(`请先填写并保存：${missing.join("、")}`);
   }
@@ -555,7 +499,7 @@ WHERE pr.trace_no = :trace_no
               log(`${traceNo}：演练模式，${summary}`);
             } else {
               const updated = await updateTarget(traceNo, result);
-              if (Number(updated.affected_rows || 0) > 0) {
+              if (Number(updated.affected_lines || 0) + Number(updated.affected_headers || 0) > 0) {
                 stats.updated += 1;
                 log(`${traceNo}：已更新，${summary}`, "success");
               } else {
@@ -606,8 +550,7 @@ WHERE pr.trace_no = :trace_no
     return {
       hejiaUsername: ui.hejiaUsername.value.trim(),
       hejiaPassword: ui.hejiaPassword.value,
-      adminUsername: ui.adminUsername.value.trim(),
-      adminPassword: ui.adminPassword.value,
+      apiToken: ui.apiToken.value.trim(),
       intervalMinutes: int(ui.interval.value, 10, 1, 1440),
       batchSize: int(ui.batch.value, 50, 1, 200),
       dryRun: ui.dryRun.checked,
@@ -617,8 +560,7 @@ WHERE pr.trace_no = :trace_no
   function fillForm() {
     ui.hejiaUsername.value = config.hejiaUsername;
     ui.hejiaPassword.value = config.hejiaPassword;
-    ui.adminUsername.value = config.adminUsername;
-    ui.adminPassword.value = config.adminPassword;
+    ui.apiToken.value = config.apiToken;
     ui.interval.value = config.intervalMinutes;
     ui.batch.value = config.batchSize;
     ui.dryRun.checked = config.dryRun;
@@ -666,7 +608,7 @@ WHERE pr.trace_no = :trace_no
 <style>
 :host{all:initial;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2937}*{box-sizing:border-box}.panel{width:380px;overflow:hidden;border:1px solid #cbd5e1;border-radius:14px;background:#fff;box-shadow:0 18px 45px #0f172a38}.head{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 14px;color:#fff;background:linear-gradient(135deg,#0f766e,#2563eb);cursor:move;user-select:none}.title{flex:1;font-size:14px;font-weight:700}.status{max-width:170px;overflow:hidden;padding:3px 8px;border-radius:999px;background:#ffffff2e;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.status[data-kind=success]{background:#10b98155}.status[data-kind=warn]{background:#f59e0b66}.status[data-kind=error]{background:#ef444466}.mini{width:28px;height:28px;border:0;border-radius:8px;color:#fff;background:#ffffff22;cursor:pointer}.body{padding:12px}:host([data-minimized=true]) .body{display:none}:host([data-minimized=true]) .panel{width:260px}.toolbar{display:flex;align-items:center;gap:9px}.run,.save{height:34px;border-radius:9px;padding:0 14px;font-weight:650;cursor:pointer}.run{border:0;color:#fff;background:#2563eb}.save{border:1px solid #cbd5e1;color:#334155;background:#fff}.switch{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#475569}.switch input,.check input{accent-color:#2563eb}.stats{margin:10px 0;padding:8px 10px;border-radius:9px;color:#475569;background:#f1f5f9;font-size:12px}details{border:1px solid #e2e8f0;border-radius:10px}summary{padding:9px 10px;font-size:12px;font-weight:650;cursor:pointer}.settings{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 10px 10px}label{display:grid;gap:4px;color:#64748b;font-size:11px}input[type=text],input[type=password],input[type=number]{width:100%;height:31px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.full{grid-column:1/-1}.check{display:flex;align-items:center;gap:6px}.notice{grid-column:1/-1;color:#92400e;font-size:11px;line-height:1.5}.logs{height:170px;margin-top:10px;overflow:auto;border-radius:9px;padding:8px;color:#cbd5e1;background:#0f172a;font:11px/1.55 Consolas,"Microsoft YaHei",monospace}.logs div{margin-bottom:2px;overflow-wrap:anywhere}.logs .success{color:#6ee7b7}.logs .warn{color:#fcd34d}.logs .error{color:#fca5a5}button:disabled{opacity:.55;cursor:wait}
 </style>
-<section class="panel"><header class="head"><div class="title">华友何佳同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>何佳账号<input class="hejia-user" type="text"></label><label>何佳密码<input class="hejia-pass" type="password"></label><label>超管账号<input class="admin-user" type="text"></label><label>超管密码<input class="admin-pass" type="password"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">密码保存在油猴脚本私有存储中。自动模式默认关闭，仅处理存在待补齐字段且追溯号不为空的记录。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
+<section class="panel"><header class="head"><div class="title">华友何佳同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>何佳账号<input class="hejia-user" type="text"></label><label>何佳密码<input class="hejia-pass" type="password"></label><label>接口令牌<input class="api-token" type="password" placeholder="管理端 API Token"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">密码保存在油猴脚本私有存储中。自动模式默认关闭，仅处理存在待补齐字段且追溯号不为空的记录。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
     document.documentElement.append(host);
     ui = {
       status: shadow.querySelector(".status"),
@@ -677,8 +619,7 @@ WHERE pr.trace_no = :trace_no
       logs: shadow.querySelector(".logs"),
       hejiaUsername: shadow.querySelector(".hejia-user"),
       hejiaPassword: shadow.querySelector(".hejia-pass"),
-      adminUsername: shadow.querySelector(".admin-user"),
-      adminPassword: shadow.querySelector(".admin-pass"),
+      apiToken: shadow.querySelector(".api-token"),
       interval: shadow.querySelector(".interval"),
       batch: shadow.querySelector(".batch"),
       dryRun: shadow.querySelector(".dry-run"),
@@ -724,5 +665,5 @@ WHERE pr.trace_no = :trace_no
   });
 
   createPanel();
-  log("脚本已加载；首次使用请填写何佳密码和超管密码");
+  log("脚本已加载；首次使用请填写何佳密码和接口令牌");
 })();

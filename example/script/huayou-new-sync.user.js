@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         备件管理系统 - 华兴物料申购跟踪同步
+// @name         华友新物资系统同步脚本
 // @namespace    https://materials-manager.qcloud.19890605.xyz/
-// @version      1.0.0
-// @description  从华兴帆软“物料申购跟踪”同步采购人、状态、合同号和船名。
+// @version      2.0.0
+// @description  从华兴帆软“物料申购跟踪”同步采购人、状态、合同号和船名到申购记录。
 // @match        https://materials-manager.qcloud.19890605.xyz/*
 // @match        http://43.154.152.157:8080/webroot/decision/*
 // @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-new-sync.user.js
@@ -37,12 +37,11 @@
   const defaults = {
     platformUsername: "huaxing_jianxiu",
     platformPassword: "",
-    adminUsername: "admin",
-    adminPassword: "",
+    apiToken: "",
     intervalMinutes: 10,
     batchSize: 50,
     autoEnabled: false,
-    dryRun: true,
+    dryRun: false,
     minimized: false,
     panelRight: 20,
     panelBottom: 20,
@@ -304,16 +303,14 @@
   const logs = [];
   let stats = { scanned: 0, found: 0, updated: 0, skipped: 0, failed: 0 };
 
-  async function db(sql, parameters = {}, maxRows = 1000) {
+  async function apiRequest(options) {
     const result = await json({
-      method: "POST",
-      url: `${MATERIALS_API}/agent/database/execute`,
+      ...options,
       headers: {
         "Content-Type": "application/json",
-        "X-Agent-Username": config.adminUsername,
-        "X-Agent-Password": config.adminPassword,
+        "X-API-Token": config.apiToken,
+        ...(options.headers || {}),
       },
-      data: JSON.stringify({ sql, parameters, max_rows: maxRows }),
     });
     if (result?.code && result?.message) throw new Error(result.message);
     return result;
@@ -321,25 +318,11 @@
   async function targets() {
     const limit = int(config.batchSize, 50, 1, 200);
     const cursor = Number(GM_getValue(key("cursor"), 0)) || 0;
-    const result = await db(
-      `SELECT prl.trace_no, COUNT(*) AS target_count, MAX(prl.id) AS cursor_id
-FROM purchase_request_line prl
-JOIN purchase_request pr ON pr.id = prl.purchase_request_id
-WHERE prl.trace_no IS NOT NULL AND TRIM(prl.trace_no) <> ''
-  AND (:cursor = 0 OR prl.id < :cursor)
-  AND (
-    prl.salesperson IS NULL OR TRIM(prl.salesperson) = ''
-    OR pr.contract_no IS NULL OR TRIM(pr.contract_no) = ''
-    OR pr.vessel_no IS NULL OR TRIM(pr.vessel_no) = ''
-    OR prl.status IN ('已申购', '已采购', '部分入库')
-  )
-GROUP BY prl.trace_no
-ORDER BY MAX(prl.id) DESC
-LIMIT ${limit}`,
-      { cursor },
-      limit,
-    );
-    const rows = Array.isArray(result.rows) ? result.rows : [];
+    const result = await apiRequest({
+      method: "GET",
+      url: `${MATERIALS_API}/purchase-record-sync/targets?limit=${limit}&cursor=${cursor}&fields=contract_no,vessel_no,salesperson,status`,
+    });
+    const rows = Array.isArray(result.items) ? result.items : [];
     if (!rows.length && cursor > 0) {
       GM_setValue(key("cursor"), 0);
       return targets();
@@ -347,48 +330,21 @@ LIMIT ${limit}`,
     return rows;
   }
   async function updateTarget(traceNo, result) {
-    const requestSet = [];
-    const lineSet = [];
-    const parameters = { trace_no: traceNo };
-    for (const [column, resultKey] of [
-      ["contract_no", "contractNo"],
-      ["vessel_no", "vesselNo"],
+    const payload = {};
+    for (const [key, value] of [
+      ["contract_no", result.contractNo],
+      ["vessel_no", result.vesselNo],
+      ["salesperson", result.salesperson],
+      ["status", result.status],
     ]) {
-      if (!result[resultKey]) continue;
-      requestSet.push(
-        `pr.${column} = CASE WHEN pr.${column} IS NULL OR TRIM(pr.${column}) = '' THEN :${column} ELSE pr.${column} END`,
-      );
-      parameters[column] = result[resultKey];
+      if (value) payload[key] = value;
     }
-    if (result.salesperson) {
-      lineSet.push(
-        "prl.salesperson = CASE WHEN prl.salesperson IS NULL OR TRIM(prl.salesperson) = '' THEN :salesperson ELSE prl.salesperson END",
-      );
-      parameters.salesperson = result.salesperson;
-    }
-    if (result.status) {
-      lineSet.push(`prl.status = CASE
-  WHEN :status = '已入库' AND prl.status IN ('已申购', '已采购', '部分入库', '已入库') THEN :status
-  WHEN :status = '部分入库' AND prl.status IN ('已申购', '已采购', '部分入库') THEN :status
-  WHEN :status = '已采购' AND prl.status IN ('已申购', '已采购') THEN :status
-  ELSE prl.status END`);
-      parameters.status = result.status;
-    }
-    if (requestSet.length) {
-      requestSet.push("pr.version = pr.version + 1", "pr.updated_at = CURRENT_TIMESTAMP(6)");
-    }
-    if (lineSet.length) {
-      lineSet.push("prl.version = prl.version + 1", "prl.updated_at = CURRENT_TIMESTAMP(6)");
-    }
-    if (!requestSet.length && !lineSet.length) return { affected_rows: 0 };
-    return db(
-      `UPDATE purchase_request_line prl
-JOIN purchase_request pr ON pr.id = prl.purchase_request_id
-SET ${[...requestSet, ...lineSet].join(", ")}
-WHERE prl.trace_no = :trace_no`,
-      parameters,
-      1,
-    );
+    if (!Object.keys(payload).length) return { affected_headers: 0, affected_lines: 0 };
+    return apiRequest({
+      method: "POST",
+      url: `${MATERIALS_API}/purchase-record-sync/trace/${encodeURIComponent(traceNo)}`,
+      data: JSON.stringify(payload),
+    });
   }
   async function loginPlatform() {
     const result = await json({
@@ -481,8 +437,7 @@ WHERE prl.trace_no = :trace_no`,
     const missing = [];
     if (!config.platformUsername) missing.push("物资平台账号");
     if (!config.platformPassword) missing.push("物资平台密码");
-    if (!config.adminUsername) missing.push("超管账号");
-    if (!config.adminPassword) missing.push("超管密码");
+    if (!config.apiToken) missing.push("接口令牌");
     if (missing.length) throw new Error(`请先填写并保存：${missing.join("、")}`);
   }
   async function run(trigger = "manual") {
@@ -531,7 +486,7 @@ WHERE prl.trace_no = :trace_no`,
               log(`${traceNo}：演练模式，${summary}`);
             } else {
               const updated = await updateTarget(traceNo, result);
-              if (Number(updated.affected_rows || 0) > 0) {
+              if (Number(updated.affected_lines || 0) + Number(updated.affected_headers || 0) > 0) {
                 stats.updated += 1;
                 log(`${traceNo}：已更新，${summary}`, "success");
               } else {
@@ -576,8 +531,7 @@ WHERE prl.trace_no = :trace_no`,
     return {
       platformUsername: ui.platformUsername.value.trim(),
       platformPassword: ui.platformPassword.value,
-      adminUsername: ui.adminUsername.value.trim(),
-      adminPassword: ui.adminPassword.value,
+      apiToken: ui.apiToken.value.trim(),
       intervalMinutes: int(ui.interval.value, 10, 1, 1440),
       batchSize: int(ui.batch.value, 50, 1, 200),
       dryRun: ui.dryRun.checked,
@@ -587,8 +541,7 @@ WHERE prl.trace_no = :trace_no`,
   function fillForm() {
     ui.platformUsername.value = config.platformUsername;
     ui.platformPassword.value = config.platformPassword;
-    ui.adminUsername.value = config.adminUsername;
-    ui.adminPassword.value = config.adminPassword;
+    ui.apiToken.value = config.apiToken;
     ui.interval.value = config.intervalMinutes;
     ui.batch.value = config.batchSize;
     ui.dryRun.checked = config.dryRun;
@@ -638,7 +591,7 @@ WHERE prl.trace_no = :trace_no`,
 <style>
 :host{all:initial;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2937}*{box-sizing:border-box}.panel{width:380px;overflow:hidden;border:1px solid #cbd5e1;border-radius:8px;background:#fff;box-shadow:0 18px 45px #0f172a38}.head{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 14px;color:#fff;background:#176b5b;cursor:move;user-select:none}.title{flex:1;font-size:14px;font-weight:700}.status{max-width:170px;overflow:hidden;padding:3px 8px;border-radius:4px;background:#ffffff2e;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.status[data-kind=success]{background:#10b98155}.status[data-kind=warn]{background:#f59e0b66}.status[data-kind=error]{background:#ef444466}.mini{width:28px;height:28px;border:0;border-radius:4px;color:#fff;background:#ffffff22;cursor:pointer}.body{padding:12px}:host([data-minimized=true]) .body{display:none}:host([data-minimized=true]) .panel{width:260px}.toolbar{display:flex;align-items:center;gap:9px}.run,.save{height:34px;border-radius:4px;padding:0 14px;font-weight:650;cursor:pointer}.run{border:0;color:#fff;background:#176b5b}.save{border:1px solid #cbd5e1;color:#334155;background:#fff}.switch{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#475569}.switch input,.check input{accent-color:#176b5b}.stats{margin:10px 0;padding:8px 10px;border-radius:4px;color:#475569;background:#f1f5f9;font-size:12px}details{border:1px solid #e2e8f0;border-radius:4px}summary{padding:9px 10px;font-size:12px;font-weight:650;cursor:pointer}.settings{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 10px 10px}label{display:grid;gap:4px;color:#64748b;font-size:11px}input[type=text],input[type=password],input[type=number]{width:100%;height:31px;border:1px solid #cbd5e1;border-radius:4px;padding:0 8px}.full{grid-column:1/-1}.check{display:flex;align-items:center;gap:6px}.notice{grid-column:1/-1;color:#92400e;font-size:11px;line-height:1.5}.logs{height:170px;margin-top:10px;overflow:auto;border-radius:4px;padding:8px;color:#cbd5e1;background:#20252b;font:11px/1.55 Consolas,"Microsoft YaHei",monospace}.logs div{margin-bottom:2px;overflow-wrap:anywhere}.logs .success{color:#6ee7b7}.logs .warn{color:#fcd34d}.logs .error{color:#fca5a5}button:disabled{opacity:.55;cursor:wait}
 </style>
-<section class="panel"><header class="head"><div class="title">华兴物料跟踪同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>物资平台账号<input class="platform-user" type="text"></label><label>物资平台密码<input class="platform-pass" type="password"></label><label>超管账号<input class="admin-user" type="text"></label><label>超管密码<input class="admin-pass" type="password"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">密码仅保存在油猴脚本私有存储中。首次使用保留演练模式，确认日志字段后再正式写入。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
+<section class="panel"><header class="head"><div class="title">华友新物资系统同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>物资平台账号<input class="platform-user" type="text"></label><label>物资平台密码<input class="platform-pass" type="password"></label><label>接口令牌<input class="api-token" type="password" placeholder="管理端 API Token"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">凭据仅保存在油猴脚本私有存储中。接口令牌在管理端个人资料页生成。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
     document.documentElement.append(host);
     ui = {
       status: shadow.querySelector(".status"),
@@ -649,8 +602,7 @@ WHERE prl.trace_no = :trace_no`,
       logs: shadow.querySelector(".logs"),
       platformUsername: shadow.querySelector(".platform-user"),
       platformPassword: shadow.querySelector(".platform-pass"),
-      adminUsername: shadow.querySelector(".admin-user"),
-      adminPassword: shadow.querySelector(".admin-pass"),
+      apiToken: shadow.querySelector(".api-token"),
       interval: shadow.querySelector(".interval"),
       batch: shadow.querySelector(".batch"),
       dryRun: shadow.querySelector(".dry-run"),
@@ -696,5 +648,5 @@ WHERE prl.trace_no = :trace_no`,
   });
 
   createPanel();
-  log("脚本已加载；首次使用请填写物资平台密码和超管密码");
+  log("脚本已加载；首次使用请填写物资平台密码和接口令牌");
 })();

@@ -937,6 +937,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-record-sync/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sync Targets */
+        get: operations["sync_targets_api_v1_purchase_record_sync_targets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-record-sync/trace/{trace_no}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Trace */
+        post: operations["sync_trace_api_v1_purchase_record_sync_trace__trace_no__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/purchase-records": {
         parameters: {
             query?: never;
@@ -2404,6 +2438,51 @@ export interface components {
              * @enum {string}
              */
             sort_order: "asc" | "desc";
+        };
+        /** PurchaseRecordSyncResultRead */
+        PurchaseRecordSyncResultRead: {
+            /** Affected Headers */
+            affected_headers: number;
+            /** Affected Lines */
+            affected_lines: number;
+        };
+        /** PurchaseRecordSyncTargetRead */
+        PurchaseRecordSyncTargetRead: {
+            /** Trace No */
+            trace_no: string;
+            /** Target Count */
+            target_count: number;
+            /** Cursor Id */
+            cursor_id: number;
+        };
+        /** PurchaseRecordSyncTargetsRead */
+        PurchaseRecordSyncTargetsRead: {
+            /** Items */
+            items: components["schemas"]["PurchaseRecordSyncTargetRead"][];
+            /** Has More */
+            has_more: boolean;
+            /**
+             * Next Cursor
+             * @default 0
+             */
+            next_cursor: number;
+        };
+        /** PurchaseRecordSyncTraceUpdate */
+        PurchaseRecordSyncTraceUpdate: {
+            /** Salesperson */
+            salesperson?: string | null;
+            /** Contract No */
+            contract_no?: string | null;
+            /** Vessel No */
+            vessel_no?: string | null;
+            /** Consolidation Port */
+            consolidation_port?: string | null;
+            /** Consolidation Date */
+            consolidation_date?: string | null;
+            /** Sailing Date */
+            sailing_date?: string | null;
+            /** Status */
+            status?: string | null;
         };
         /** PurchaseRecordUpdate */
         PurchaseRecordUpdate: {
@@ -7148,6 +7227,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseRecordRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    sync_targets_api_v1_purchase_record_sync_targets_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: number;
+                /** @description 逗号分隔的需要补全的同步字段；省略表示全部字段 */
+                fields?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRecordSyncTargetsRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    sync_trace_api_v1_purchase_record_sync_trace__trace_no__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trace_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseRecordSyncTraceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRecordSyncResultRead"];
                 };
             };
             /** @description 业务校验失败 */

@@ -3827,6 +3827,139 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-record-sync/targets:
+    get:
+      tags:
+      - 申购记录同步
+      summary: Sync Targets
+      operationId: sync_targets_api_v1_purchase_record_sync_targets_get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Cursor
+      - name: fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 逗号分隔的需要补全的同步字段；省略表示全部字段
+          title: Fields
+        description: 逗号分隔的需要补全的同步字段；省略表示全部字段
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseRecordSyncTargetsRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/purchase-record-sync/trace/{trace_no}:
+    post:
+      tags:
+      - 申购记录同步
+      summary: Sync Trace
+      operationId: sync_trace_api_v1_purchase_record_sync_trace__trace_no__post
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: trace_no
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Trace No
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRecordSyncTraceUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseRecordSyncResultRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/purchase-records:
     get:
       tags:
@@ -7672,6 +7805,102 @@ components:
       required:
       - columns
       title: PurchaseRecordResultExportRequest
+    PurchaseRecordSyncResultRead:
+      properties:
+        affected_headers:
+          type: integer
+          title: Affected Headers
+        affected_lines:
+          type: integer
+          title: Affected Lines
+      type: object
+      required:
+      - affected_headers
+      - affected_lines
+      title: PurchaseRecordSyncResultRead
+    PurchaseRecordSyncTargetRead:
+      properties:
+        trace_no:
+          type: string
+          title: Trace No
+        target_count:
+          type: integer
+          title: Target Count
+        cursor_id:
+          type: integer
+          title: Cursor Id
+      type: object
+      required:
+      - trace_no
+      - target_count
+      - cursor_id
+      title: PurchaseRecordSyncTargetRead
+    PurchaseRecordSyncTargetsRead:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PurchaseRecordSyncTargetRead'
+          type: array
+          title: Items
+        has_more:
+          type: boolean
+          title: Has More
+        next_cursor:
+          type: integer
+          title: Next Cursor
+          default: 0
+      type: object
+      required:
+      - items
+      - has_more
+      title: PurchaseRecordSyncTargetsRead
+    PurchaseRecordSyncTraceUpdate:
+      properties:
+        salesperson:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Salesperson
+        contract_no:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Contract No
+        vessel_no:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Vessel No
+        consolidation_port:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Consolidation Port
+        consolidation_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Consolidation Date
+        sailing_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Sailing Date
+        status:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Status
+      additionalProperties: false
+      type: object
+      title: PurchaseRecordSyncTraceUpdate
     PurchaseRecordUpdate:
       properties:
         plan_date:
