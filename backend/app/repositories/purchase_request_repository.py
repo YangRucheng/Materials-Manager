@@ -20,6 +20,8 @@ PURCHASE_RECORD_SORT_COLUMNS = {
     "category": PurchaseRequestLine.category_snapshot,
     "demand_department": PurchaseRequestLine.demand_department_snapshot,
     "material_name": PurchaseRequestLine.material_name_snapshot,
+    "model_spec": PurchaseRequestLine.model_spec_snapshot,
+    "material_code": PurchaseRequestLine.material_code_snapshot,
     "actual_demand_person": PurchaseRequestLine.actual_demand_person_snapshot,
     "purchase_responsible": PurchaseRequestLine.purchase_responsible_snapshot,
     "purchase_date": PurchaseRequest.purchase_date,

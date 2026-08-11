@@ -2372,7 +2372,7 @@ export interface components {
         /** PurchaseRecordResultExportRequest */
         PurchaseRecordResultExportRequest: {
             /** Columns */
-            columns: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date")[];
+            columns: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date")[];
             /** Purchase Order No */
             purchase_order_no?: string | null;
             /** Trace No */
@@ -2397,7 +2397,7 @@ export interface components {
              */
             empty_status: boolean;
             /** Sort By */
-            sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
+            sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
             /**
              * Sort Order
              * @default asc
@@ -7225,7 +7225,7 @@ export interface operations {
                 /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
                 salesperson?: string | null;
                 ai_expand?: boolean;
-                sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
+                sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
                 sort_order?: "asc" | "desc";
             };
             header?: never;

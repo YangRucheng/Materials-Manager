@@ -1549,7 +1549,14 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
         "/api/v1/purchase-records/export-results",
         headers=headers,
         json={
-            "columns": ["material_name", "purchase_qty", "usage", "status"],
+            "columns": [
+                "material_name",
+                "model_spec",
+                "material_code",
+                "purchase_qty",
+                "usage",
+                "status",
+            ],
             "name": "导出电机",
             "actual_demand_person": record["actual_demand_person"],
             "status": "已申购",
@@ -1560,18 +1567,22 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
         record_export.headers["content-disposition"]
     )
     record_sheet = load_workbook(BytesIO(record_export.content)).active
-    assert [record_sheet.cell(1, column).value for column in range(1, 5)] == [
-        "物资",
+    assert [record_sheet.cell(1, column).value for column in range(1, 7)] == [
+        "物资名称",
+        "物资型号",
+        "物料编码",
         "申购数量",
         "用途",
         "状态",
     ]
-    assert record_sheet.max_column == 4
+    assert record_sheet.max_column == 6
     assert record_sheet.max_row == 2
-    assert record["material_name"] in record_sheet["A2"].value
-    assert record_sheet["B2"].value == f"{record['purchase_qty']} {record['unit_name']}"
-    assert record_sheet["C2"].value == record["usage"]
-    assert record_sheet["D2"].value == "已申购"
+    assert record_sheet["A2"].value == record["material_name"]
+    assert record_sheet["B2"].value == record["model_spec"]
+    assert record_sheet["C2"].value == record["material_code"]
+    assert record_sheet["D2"].value == f"{record['purchase_qty']} {record['unit_name']}"
+    assert record_sheet["E2"].value == record["usage"]
+    assert record_sheet["F2"].value == "已申购"
 
 
 @pytest.mark.asyncio

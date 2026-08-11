@@ -66,7 +66,9 @@ RECORD_RESULT_HEADERS = {
     "sailing_date": "发船日期",
     "category": "类别",
     "demand_department": "需求部门",
-    "material_name": "物资",
+    "material_name": "物资名称",
+    "model_spec": "物资型号",
+    "material_code": "物料编码",
     "actual_demand_person": "实际需求人",
     "usage": "用途",
     "purchase_responsible": "申购负责人",
@@ -192,11 +194,6 @@ async def export_purchase_record_results(
     rows = []
     for item in items:
         record = service.purchase_record_read(item)
-        material_details = [record.material_name]
-        if record.material_code:
-            material_details.append(f"物料编码：{record.material_code}")
-        if record.model_spec:
-            material_details.append(f"型号规格：{record.model_spec}")
         rows.append(
             {
                 "purchase_qty": f"{_quantity_text(record.purchase_qty)} {record.unit_name}",
@@ -210,7 +207,9 @@ async def export_purchase_record_results(
                 "sailing_date": record.sailing_date,
                 "category": record.category,
                 "demand_department": record.demand_department,
-                "material_name": "\n".join(material_details),
+                "material_name": record.material_name,
+                "model_spec": record.model_spec,
+                "material_code": record.material_code,
                 "actual_demand_person": record.actual_demand_person,
                 "usage": record.usage,
                 "purchase_responsible": record.purchase_responsible,
