@@ -16,8 +16,8 @@
 安装与使用：
 
 1. 在 Tampermonkey 或 Violentmonkey 中新建脚本，粘贴 `huayou-new-sync.user.js` 的完整内容并保存。
-2. 打开 `https://materials-manager.qcloud.19890605.xyz`。
-3. 在右下角悬浮窗中填写物资平台密码、本系统接口令牌（管理端 API Token）并保存。物资平台账号默认是 `huaxing_jianxiu`。
+2. 打开华兴帆软站点 `http://43.154.152.157:8080/`（悬浮窗在该网站右下角出现）。
+3. 在悬浮窗中填写物资平台密码、本系统接口令牌（管理端 API Token）并保存。物资平台账号默认是 `huaxing_jianxiu`。
 4. 关闭“演练模式”后正式写入（默认已关闭演练模式）。
 
 密码只保存在用户脚本管理器的私有存储中，不写入仓库源码或网页 `localStorage`。查询时脚本会在后台短暂打开参数化报表页，得到结果后自动关闭。
