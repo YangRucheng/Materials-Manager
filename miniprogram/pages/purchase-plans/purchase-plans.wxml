@@ -14,7 +14,7 @@
     <t-loading theme="circular" size="48rpx" text="{{i18n.loadingPurchasePlans}}" />
   </view>
   <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
-    <t-empty icon="file" description="{{i18n.purchasePlansEmpty}}" />
+    <t-empty icon="file" description="{{keyword ? i18n.purchasePlansEmptyFiltered : i18n.purchasePlansEmpty}}" />
   </view>
   <view wx:else class="plan-list">
     <view

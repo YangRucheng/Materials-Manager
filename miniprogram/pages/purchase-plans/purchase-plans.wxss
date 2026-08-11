@@ -7,13 +7,8 @@
 .list-header .page-title { font-size: 44rpx; }
 
 .list-tools {
-  overflow: hidden;
   margin-bottom: 20rpx;
-  padding: 12rpx;
-  border: 2rpx solid #edf0f5;
-  border-radius: 28rpx;
-  background: #ffffff;
-  box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.04);
+  padding: 4rpx 0;
 }
 
 .result-count { margin: 0 8rpx 14rpx; color: #7d8798; font-size: 23rpx; }
