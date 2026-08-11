@@ -281,8 +281,12 @@ async def test_wechat_profile_registration_scan_and_outbound_flow(
     )
     assert reason_options.status_code == 200, reason_options.text
     assert reason_options.json() == {
-        "personal_reasons": ["现场检修领用"],
-        "system_reasons": ["全员用途四", "全员用途三", "全员用途二"],
+        "personal_reasons": [{"subitem_no": "01-01", "reason": "现场检修领用"}],
+        "system_reasons": [
+            {"subitem_no": None, "reason": "全员用途四"},
+            {"subitem_no": None, "reason": "全员用途三"},
+            {"subitem_no": None, "reason": "全员用途二"},
+        ],
     }
 
     # 按姓名匹配查询出入库记录（此时用户仍是「扫码出库员」）

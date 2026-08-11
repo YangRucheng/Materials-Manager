@@ -42,14 +42,15 @@
           <view class="reason-tags">
             <t-tag
               wx:for="{{recentReasons}}"
-              wx:key="*this"
+              wx:key="key"
               theme="primary"
               variant="light"
               size="small"
-              max-width="300rpx"
-              data-reason="{{item}}"
+              max-width="360rpx"
+              data-reason="{{item.reason}}"
+              data-subitem-no="{{item.subitemNo}}"
               bind:click="selectReason"
-            >{{item}}</t-tag>
+            >{{item.display}}</t-tag>
           </view>
         </scroll-view>
       </view>

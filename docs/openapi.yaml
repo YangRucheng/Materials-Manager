@@ -5986,16 +5986,30 @@ components:
       - receiver_name
       - executed_by
       title: MiniProgramOutboundRead
+    MiniProgramOutboundReason:
+      properties:
+        subitem_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No
+        reason:
+          type: string
+          title: Reason
+      type: object
+      required:
+      - reason
+      title: MiniProgramOutboundReason
     MiniProgramOutboundReasonOptions:
       properties:
         personal_reasons:
           items:
-            type: string
+            $ref: '#/components/schemas/MiniProgramOutboundReason'
           type: array
           title: Personal Reasons
         system_reasons:
           items:
-            type: string
+            $ref: '#/components/schemas/MiniProgramOutboundReason'
           type: array
           title: System Reasons
       type: object

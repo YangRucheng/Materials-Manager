@@ -39,6 +39,7 @@ from app.schemas import (
     MiniProgramOperationRead,
     MiniProgramOutboundCreate,
     MiniProgramOutboundRead,
+    MiniProgramOutboundReason,
     MiniProgramPurchasePlanDetailRead,
     MiniProgramPurchasePlanItemRead,
     MiniProgramUserMergeRequest,
@@ -102,13 +103,7 @@ async def list_purchase_plans(
         ),
     )
     keyword_condition = contains_any(
-        (
-            PurchaseMaterial.plan_no,
-            PurchaseMaterial.name,
-            PurchaseMaterial.model_spec,
-            PurchaseMaterial.material_code,
-            PurchaseMaterial.purchase_responsible,
-        ),
+        (PurchaseMaterial.name, PurchaseMaterial.model_spec),
         keyword,
     )
     if keyword_condition is not None:
@@ -656,23 +651,27 @@ def _outbound_read(
 
 async def recent_outbound_reasons(
     session: AsyncSession, user: MiniProgramUser
-) -> tuple[list[str], list[str]]:
-    async def list_reasons(user_name: str | None = None) -> list[str]:
+) -> tuple[list[MiniProgramOutboundReason], list[MiniProgramOutboundReason]]:
+    async def list_reasons(user_name: str | None = None) -> list[MiniProgramOutboundReason]:
         last_used_at = func.max(StockOperation.occurred_at)
         last_operation_id = func.max(StockOperation.id)
         query = (
-            select(StockOperation.business_reason)
+            select(StockOperation.subitem_no, StockOperation.business_reason)
             .where(
                 StockOperation.operation_type == OperationType.OUTBOUND,
                 StockOperation.business_reason != "",
             )
-            .group_by(StockOperation.business_reason)
+            .group_by(StockOperation.subitem_no, StockOperation.business_reason)
             .order_by(last_used_at.desc(), last_operation_id.desc())
             .limit(3)
         )
         if user_name is not None:
             query = query.where(StockOperation.mini_program_user_name_snapshot == user_name)
-        return list((await session.scalars(query)).all())
+        rows = (await session.execute(query)).all()
+        return [
+            MiniProgramOutboundReason(subitem_no=subitem_no, reason=reason)
+            for subitem_no, reason in rows
+        ]
 
     personal_reasons = await list_reasons(user.display_name)
     system_reasons = await list_reasons()
