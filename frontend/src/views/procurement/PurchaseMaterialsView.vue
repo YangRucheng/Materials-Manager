@@ -724,9 +724,11 @@ async function save() {
 function openInNewPage() {
   const target = editing.value
   if (!target) return
-  show.value = false
-  editing.value = null
-  void router.push(`/procurement/materials/${target.id}`)
+  const href = router.resolve({
+    name: 'purchase-material-detail',
+    params: { id: String(target.id) },
+  }).href
+  window.open(href, '_blank')
 }
 async function deletePlan() {
   const target = editing.value
@@ -1428,13 +1430,13 @@ onBeforeUnmount(() => {
               ><n-button
                 v-if="auth.can('purchase:write')"
                 type="error"
-                text
+                ghost
                 :loading="deleting"
                 :disabled="editing.moved_to_record"
                 @click="confirmDelete"
                 >删除</n-button
-              ><n-button text type="primary" class="open-new-page-btn" @click="openInNewPage"
-                >在新页面查看</n-button
+              ><n-button type="primary" secondary class="open-new-page-btn" @click="openInNewPage"
+                >在新页面打开</n-button
               ></n-space
             ></template
           ><span v-else></span
