@@ -1,3 +1,10 @@
+<script setup lang="ts">
+import { buildTime } from '@/config/env'
+import { formatShanghaiTime } from '@/utils/time'
+
+const buildTimeLabel = formatShanghaiTime(buildTime)
+</script>
+
 <template>
   <div class="page">
     <div class="page-header">
@@ -57,6 +64,7 @@
             </a>
             所有。
           </p>
+          <p>前端构建时间：{{ buildTimeLabel }}</p>
         </div>
       </section>
     </n-card>

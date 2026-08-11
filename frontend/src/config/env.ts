@@ -40,3 +40,4 @@ export function resolveMcpUrl(
 
 export const apiBaseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 export const imageBaseUrl = resolveImageBaseUrl(import.meta.env.VITE_IMAGE_BASE_URL, apiBaseUrl)
+export const buildTime = __BUILD_TIME__
