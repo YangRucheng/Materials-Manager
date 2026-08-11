@@ -16,6 +16,9 @@ const emit = defineEmits<{
 
 const message = useMessage()
 const searchName = ref('')
+const searchModelSpec = ref('')
+const defaultName = ref('')
+const defaultModelSpec = ref('')
 const items = ref<PurchaseRecord[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -87,6 +90,7 @@ async function load() {
   try {
     const result = await procurementApi.records({
       name: searchName.value.trim() || undefined,
+      model_spec: searchModelSpec.value.trim() || undefined,
       page: page.value,
       page_size: pageSize.value,
     })
@@ -100,14 +104,32 @@ async function load() {
 }
 
 function open() {
-  searchName.value = props.initialName?.trim() || ''
+  defaultName.value = props.initialName?.trim() || ''
+  defaultModelSpec.value = ''
+  restoreFilters()
   page.value = 1
   void load()
+}
+
+function restoreFilters() {
+  searchName.value = defaultName.value
+  searchModelSpec.value = defaultModelSpec.value
 }
 
 function search() {
   page.value = 1
   void load()
+}
+
+function clearSearch() {
+  searchName.value = ''
+  searchModelSpec.value = ''
+  search()
+}
+
+function resetSearch() {
+  restoreFilters()
+  search()
 }
 
 function changePageSize(value: number) {
@@ -147,7 +169,20 @@ watch(page, () => void load())
           @keyup.enter="search"
         />
       </label>
-      <n-button type="primary" :loading="loading" @click="search">查询</n-button>
+      <label class="filter-field">
+        <span>型号</span>
+        <n-input
+          v-model:value="searchModelSpec"
+          clearable
+          placeholder="输入型号"
+          @keyup.enter="search"
+        />
+      </label>
+      <div class="history-search-actions">
+        <n-button @click="clearSearch">清空</n-button>
+        <n-button @click="resetSearch">重置</n-button>
+        <n-button type="primary" :loading="loading" @click="search">查询</n-button>
+      </div>
     </div>
     <n-data-table
       remote
@@ -198,5 +233,14 @@ watch(page, () => void load())
 .filter-field :deep(.n-input) {
   width: 100%;
   background-color: rgb(255 255 255 / 88%);
+}
+
+.history-search-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.history-search-actions :deep(.n-button) {
+  min-width: 88px;
 }
 </style>
