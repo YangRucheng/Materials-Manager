@@ -1658,12 +1658,19 @@ export interface components {
             /** Executed By */
             executed_by: string;
         };
+        /** MiniProgramOutboundReason */
+        MiniProgramOutboundReason: {
+            /** Subitem No */
+            subitem_no?: string | null;
+            /** Reason */
+            reason: string;
+        };
         /** MiniProgramOutboundReasonOptions */
         MiniProgramOutboundReasonOptions: {
             /** Personal Reasons */
-            personal_reasons: string[];
+            personal_reasons: components["schemas"]["MiniProgramOutboundReason"][];
             /** System Reasons */
-            system_reasons: string[];
+            system_reasons: components["schemas"]["MiniProgramOutboundReason"][];
         };
         /** MiniProgramProfileUpdate */
         MiniProgramProfileUpdate: {

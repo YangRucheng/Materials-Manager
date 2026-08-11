@@ -28,6 +28,7 @@ Page({
     loading: true,
     loadingMore: false,
     resultCount: '',
+    backTopVisible: false,
     i18n: getMessages(),
   },
 
@@ -43,7 +44,6 @@ Page({
         return;
       }
       const displayName = session.user?.display_name || '';
-      this.setData({ actualDemandPerson: displayName });
       await this.loadFilterOptions(displayName);
       await this.loadPlans(true);
     } catch (error) {
@@ -63,6 +63,19 @@ Page({
 
   onReachBottom() {
     if (this.data.hasMore && !this.data.loadingMore) void this.loadPlans(false);
+  },
+
+  onPageScroll(event) {
+    const scrollTop = event.scrollTop || 0;
+    if (scrollTop > 400 && !this.data.backTopVisible) {
+      this.setData({ backTopVisible: true });
+    } else if (scrollTop <= 400 && this.data.backTopVisible) {
+      this.setData({ backTopVisible: false });
+    }
+  },
+
+  scrollToTop() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
 
   onSearchChange(event) {
@@ -99,13 +112,19 @@ Page({
         theme: 'warning',
       });
     }
-    if (displayName && !persons.includes(displayName)) {
+    // 当前用户固定置顶，方便快速切换到自己
+    if (displayName) {
+      persons = persons.filter((value) => value !== displayName);
       persons.unshift(displayName);
     }
+    const currentUserSuffix = t('currentUserSuffix');
     this.setData({
       actualDemandPersonOptions: [
         { label: t('allActualDemandPersons'), value: '' },
-        ...persons.map((value) => ({ label: value, value })),
+        ...persons.map((value) => ({
+          label: value === displayName ? `${value}${currentUserSuffix}` : value,
+          value,
+        })),
       ],
       subitemNoOptions: [
         { label: t('allSubitemNos'), value: '' },

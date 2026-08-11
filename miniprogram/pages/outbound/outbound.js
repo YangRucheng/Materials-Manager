@@ -70,11 +70,23 @@ Page({
   async loadReasonOptions() {
     try {
       const options = await request({ url: '/mini-program/outbound-reasons' });
-      const personalReasons = options.personal_reasons || [];
-      const systemReasons = options.system_reasons || [];
-      this.setData({
-        recentReasons: [...new Set([...personalReasons, ...systemReasons])],
-      });
+      const combos = [...(options.personal_reasons || []), ...(options.system_reasons || [])];
+      const seen = new Set();
+      const recentReasons = [];
+      for (const combo of combos) {
+        const subitemNo = String(combo.subitem_no || '');
+        const reason = String(combo.reason || '');
+        const key = `${subitemNo}|${reason}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        recentReasons.push({
+          key,
+          subitemNo,
+          reason,
+          display: subitemNo ? `${subitemNo} · ${reason}` : reason,
+        });
+      }
+      this.setData({ recentReasons });
     } catch (_error) {
       this.setData({ recentReasons: [] });
     }
@@ -124,7 +136,12 @@ Page({
   },
 
   selectReason(event) {
-    this.setData({ 'form.businessReason': event.currentTarget.dataset.reason });
+    const { reason, subitemNo } = event.currentTarget.dataset;
+    const patch = { 'form.businessReason': reason };
+    if (subitemNo) {
+      patch['form.subitemNo'] = subitemNo;
+    }
+    this.setData(patch);
   },
 
   validateForm() {

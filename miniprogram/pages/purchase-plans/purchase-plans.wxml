@@ -68,4 +68,12 @@
   </view>
   <view wx:elif="{{items.length && !hasMore}}" class="load-finished">{{i18n.noMore}}</view>
   <t-toast id="purchase-plans-toast" />
+  <button
+    wx:if="{{backTopVisible}}"
+    class="back-top-fab"
+    aria-label="{{i18n.backToTop}}"
+    bind:tap="scrollToTop"
+  >
+    <t-icon name="backtop" size="52rpx" color="#ffffff" />
+  </button>
 </view>

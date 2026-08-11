@@ -704,9 +704,14 @@ class MiniProgramOutboundRead(ReadModel):
     executed_by: str
 
 
+class MiniProgramOutboundReason(ReadModel):
+    subitem_no: str | None = None
+    reason: str
+
+
 class MiniProgramOutboundReasonOptions(ReadModel):
-    personal_reasons: list[str]
-    system_reasons: list[str]
+    personal_reasons: list[MiniProgramOutboundReason]
+    system_reasons: list[MiniProgramOutboundReason]
 
 
 class MiniProgramOperationRead(ReadModel):
