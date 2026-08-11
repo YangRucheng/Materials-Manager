@@ -4,7 +4,7 @@
 // @version      2.0.0
 // @description  从华兴帆软“物料申购跟踪”同步采购人、状态、合同号和船名到申购记录。
 // @match        https://materials-manager.qcloud.19890605.xyz/*
-// @match        http://43.154.152.157:8080/webroot/decision/*
+// @match        http://43.154.152.157:8080/*
 // @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-new-sync.user.js
 // @downloadURL  https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-new-sync.user.js
 // @connect      materials-manager.qcloud.19890605.xyz
@@ -290,8 +290,8 @@
   }
 
   const workerTaskId = new URLSearchParams(location.search).get(WORKER_PARAM);
-  if (location.origin === PLATFORM_ORIGIN) {
-    if (workerTaskId) runWorker(workerTaskId);
+  if (workerTaskId && location.origin === PLATFORM_ORIGIN) {
+    runWorker(workerTaskId);
     return;
   }
 
