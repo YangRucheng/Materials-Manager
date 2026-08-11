@@ -9,6 +9,7 @@ from app.api.v1 import (
     material_code_library,
     mini_program,
     purchase_materials,
+    purchase_record_sync,
     purchase_requests,
     stock_materials,
     system_settings,
@@ -33,6 +34,7 @@ router.include_router(material_code_library.router)
 router.include_router(mini_program.management_router)
 router.include_router(mini_program.mini_router)
 router.include_router(purchase_materials.router)
+router.include_router(purchase_record_sync.router)
 router.include_router(purchase_requests.router)
 router.include_router(dictionaries.router)
 router.include_router(files.router)
