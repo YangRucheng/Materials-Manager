@@ -84,25 +84,34 @@ Page({
   },
 
   async loadFilterOptions(displayName) {
+    let persons = [];
+    let subitemNos = [];
     try {
       const result = await request({ url: '/mini-program/purchase-plans/filter-options' });
-      const persons = (result.actual_demand_persons || []).filter(Boolean);
-      if (displayName && !persons.includes(displayName)) {
-        persons.unshift(displayName);
-      }
-      this.setData({
-        actualDemandPersonOptions: [
-          { label: t('allActualDemandPersons'), value: '' },
-          ...persons.map((value) => ({ label: value, value })),
-        ],
-        subitemNoOptions: [
-          { label: t('allSubitemNos'), value: '' },
-          ...(result.subitem_nos || []).map((value) => ({ label: value, value })),
-        ],
-      });
+      persons = (result.actual_demand_persons || []).filter(Boolean);
+      subitemNos = (result.subitem_nos || []).filter(Boolean);
     } catch (error) {
-      /* 筛选选项加载失败不阻塞列表 */
+      // 选项加载失败不阻塞列表，但提示用户，并至少保留「全部」选项
+      Toast({
+        context: this,
+        selector: '#purchase-plans-toast',
+        message: t('purchasePlanFilterOptionsLoadFailed'),
+        theme: 'warning',
+      });
     }
+    if (displayName && !persons.includes(displayName)) {
+      persons.unshift(displayName);
+    }
+    this.setData({
+      actualDemandPersonOptions: [
+        { label: t('allActualDemandPersons'), value: '' },
+        ...persons.map((value) => ({ label: value, value })),
+      ],
+      subitemNoOptions: [
+        { label: t('allSubitemNos'), value: '' },
+        ...subitemNos.map((value) => ({ label: value, value })),
+      ],
+    });
   },
 
   async loadPlans(reset) {

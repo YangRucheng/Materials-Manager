@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NTag, useMessage, type DataTableBaseColumn, type DataTableColumns } from 'naive-ui'
+import {
+  NTag,
+  useDialog,
+  useMessage,
+  type DataTableBaseColumn,
+  type DataTableColumns,
+} from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type {
   FileObject,
@@ -37,6 +43,7 @@ import { purchaseCategoryOptions } from '@/constants/purchase'
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
 const rowClickGuard = createTableRowClickGuard()
 const EMPTY_STATUS_FILTER = '__empty_status__'
 type RecordFilters = {
@@ -200,6 +207,26 @@ const editForm = reactive<PurchaseRecordWrite>({
   status: '',
   record_remark: '',
   version: 1,
+})
+// 「转为申购计划」
+const restoring = ref(false)
+// 「再次申购」：以记录快照预填新申购计划
+const showReapply = ref(false)
+const reapplySaving = ref(false)
+const reapplyPlanDate = ref<number | null>(null)
+const reapplyForm = reactive({
+  material_code: '',
+  category: null as string | null,
+  name: '',
+  model_spec: '',
+  unit_name: '',
+  planned_qty: '',
+  actual_demand_person: '',
+  purchase_responsible: '',
+  demand_department: '',
+  usage: '',
+  subitem_no: '',
+  plan_remark: '',
 })
 const filterOptions = ref<PurchaseRecordFilterOptions>({
   actual_demand_persons: [],
@@ -542,6 +569,15 @@ function rowProps(row: PurchaseRecord) {
     onMousedown: rowClickGuard.onMouseDown,
     onClick: (event: MouseEvent) => {
       if (rowClickGuard.shouldIgnore(event)) return
+      // Ctrl/Meta+点击在新标签页打开详情页
+      if (event.ctrlKey || event.metaKey) {
+        const href = router.resolve({
+          name: 'purchase-record-detail',
+          params: { id: String(row.line_id) },
+        }).href
+        window.open(href, '_blank')
+        return
+      }
       // 点击行直接打开编辑弹窗（与申购计划一致）
       openEditRecord(row)
     },
@@ -665,9 +701,106 @@ function openEditRecord(row: PurchaseRecord) {
 function openRecordInNewPage() {
   const target = editing.value
   if (!target) return
-  showEdit.value = false
-  editing.value = null
-  void router.push(`/procurement/records/${target.line_id}`)
+  const href = router.resolve({
+    name: 'purchase-record-detail',
+    params: { id: String(target.line_id) },
+  }).href
+  window.open(href, '_blank')
+}
+
+function confirmRestorePlan() {
+  const target = editing.value
+  if (!target) return
+  dialog.warning({
+    title: '转为申购计划',
+    content: '确定将该申购记录转为申购计划吗？转为计划后记录将消失，部分记录专属字段会丢失。',
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: () => restoreToPlan(),
+  })
+}
+
+async function restoreToPlan() {
+  const target = editing.value
+  if (!target) return
+  restoring.value = true
+  try {
+    const plan = await procurementApi.restoreRecordToPlan(target.line_id, target.version)
+    message.success('已转为申购计划')
+    showEdit.value = false
+    editing.value = null
+    await load()
+    void router.push({ name: 'purchase-material-detail', params: { id: plan.id } })
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '转为申购计划失败')
+  } finally {
+    restoring.value = false
+  }
+}
+
+function openReapply() {
+  const target = editing.value
+  if (!target) return
+  reapplyPlanDate.value = target.plan_date ? dateToTimestamp(target.plan_date) : Date.now()
+  Object.assign(reapplyForm, {
+    material_code: '',
+    category: target.category || null,
+    name: target.material_name,
+    model_spec: target.model_spec,
+    unit_name: target.unit_name,
+    planned_qty: '',
+    actual_demand_person: target.actual_demand_person,
+    purchase_responsible: target.purchase_responsible,
+    demand_department: target.demand_department,
+    usage: target.usage,
+    subitem_no: target.subitem_no || '',
+    plan_remark: target.plan_remark || '',
+  })
+  showReapply.value = true
+}
+
+async function submitReapply() {
+  const target = editing.value
+  if (!target || !reapplyPlanDate.value) {
+    message.error('请选择需求日期')
+    return
+  }
+  if (
+    !reapplyForm.name.trim() ||
+    !reapplyForm.model_spec.trim() ||
+    !reapplyForm.unit_name.trim() ||
+    !reapplyForm.planned_qty ||
+    !reapplyForm.usage.trim()
+  ) {
+    message.error('请完整填写名称、型号、单位、申购数量和用途')
+    return
+  }
+  reapplySaving.value = true
+  try {
+    const created = await procurementApi.createMaterial({
+      plan_date: toShanghaiDate(reapplyPlanDate.value),
+      material_code: reapplyForm.material_code.trim() || undefined,
+      category: reapplyForm.category || undefined,
+      name: reapplyForm.name.trim(),
+      model_spec: reapplyForm.model_spec.trim(),
+      unit_name: reapplyForm.unit_name.trim(),
+      planned_qty: reapplyForm.planned_qty,
+      actual_demand_person: reapplyForm.actual_demand_person.trim(),
+      purchase_responsible: reapplyForm.purchase_responsible.trim(),
+      demand_department: reapplyForm.demand_department.trim(),
+      usage: reapplyForm.usage.trim(),
+      subitem_no: reapplyForm.subitem_no.trim() || undefined,
+      remark: reapplyForm.plan_remark.trim() || undefined,
+      image_ids: target.images.map((image) => image.id),
+    })
+    message.success('已创建新的申购计划')
+    showReapply.value = false
+    void router.push({ name: 'purchase-material-detail', params: { id: created.id } })
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '再次申购失败')
+  } finally {
+    reapplySaving.value = false
+  }
 }
 
 async function saveEditRecord() {
@@ -1400,19 +1533,113 @@ onMounted(() => {
       </n-scrollbar>
       <template #footer>
         <n-space justify="space-between">
-          <n-button
-            v-if="editing"
-            text
-            type="primary"
-            class="open-new-page-btn"
-            @click="openRecordInNewPage"
-            >在新页面查看</n-button
-          >
+          <n-space v-if="editing" justify="start">
+            <n-button
+              v-if="auth.can('purchase:write')"
+              type="primary"
+              secondary
+              :loading="restoring"
+              @click="confirmRestorePlan"
+              >转为申购计划</n-button
+            >
+            <n-button
+              v-if="auth.can('purchase:write')"
+              type="primary"
+              secondary
+              @click="openReapply"
+              >再次申购</n-button
+            >
+            <n-button
+              type="primary"
+              secondary
+              class="open-new-page-btn"
+              @click="openRecordInNewPage"
+            >
+              在新页面打开
+            </n-button>
+          </n-space>
           <span v-else></span>
           <n-space justify="end">
             <n-button @click="showEdit = false">取消</n-button>
             <n-button type="primary" :loading="editSaving" @click="saveEditRecord">保存</n-button>
           </n-space>
+        </n-space>
+      </template>
+    </n-modal>
+    <n-modal
+      v-model:show="showReapply"
+      preset="card"
+      draggable
+      title="再次申购"
+      style="width: 760px; max-width: calc(100vw - 32px)"
+      :mask-closable="false"
+    >
+      <n-scrollbar style="max-height: 70vh" content-style="padding-right: 12px">
+        <n-form label-placement="top">
+          <div class="form-grid">
+            <n-form-item label="需求日期" required>
+              <n-date-picker v-model:value="reapplyPlanDate" type="date" class="full-width" />
+            </n-form-item>
+            <n-form-item label="名称" required>
+              <n-input v-model:value="reapplyForm.name" maxlength="256" />
+            </n-form-item>
+            <n-form-item label="型号规格" required>
+              <n-input v-model:value="reapplyForm.model_spec" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="单位" required>
+              <n-input v-model:value="reapplyForm.unit_name" maxlength="32" />
+            </n-form-item>
+            <n-form-item label="申购数量" required>
+              <QuantityInput v-model:value="reapplyForm.planned_qty" />
+            </n-form-item>
+            <n-form-item label="物料编码">
+              <n-input
+                v-model:value="reapplyForm.material_code"
+                maxlength="64"
+                placeholder="留空"
+              />
+            </n-form-item>
+            <n-form-item label="类别">
+              <n-select
+                v-model:value="reapplyForm.category"
+                :options="purchaseCategoryOptions"
+                filterable
+                clearable
+                placeholder="选择类别"
+              />
+            </n-form-item>
+            <n-form-item label="用途" required>
+              <n-input v-model:value="reapplyForm.usage" maxlength="500" />
+            </n-form-item>
+            <n-form-item label="需求部门">
+              <n-input v-model:value="reapplyForm.demand_department" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="实际需求人">
+              <n-input v-model:value="reapplyForm.actual_demand_person" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="申购负责人">
+              <n-input v-model:value="reapplyForm.purchase_responsible" maxlength="128" />
+            </n-form-item>
+            <n-form-item label="子项号">
+              <n-input v-model:value="reapplyForm.subitem_no" maxlength="64" placeholder="选填" />
+            </n-form-item>
+            <n-form-item label="备注">
+              <n-input
+                v-model:value="reapplyForm.plan_remark"
+                type="textarea"
+                maxlength="1000"
+                show-count
+              />
+            </n-form-item>
+          </div>
+        </n-form>
+      </n-scrollbar>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showReapply = false">取消</n-button>
+          <n-button type="primary" :loading="reapplySaving" @click="submitReapply">
+            创建申购计划
+          </n-button>
         </n-space>
       </template>
     </n-modal>
