@@ -11,6 +11,16 @@
   padding: 4rpx 0;
 }
 
+.filter-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.filter-select {
+  flex: 1;
+}
+
 .result-count { margin: 0 8rpx 14rpx; color: #7d8798; font-size: 23rpx; }
 .plan-list { display: flex; flex-direction: column; gap: 16rpx; }
 
