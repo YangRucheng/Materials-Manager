@@ -650,6 +650,7 @@ function openCreate() {
     stock_material_id: undefined,
     remark: '',
     image_ids: [],
+    version: undefined,
   })
   images.value = []
   createPlanDate.value = Date.now()
