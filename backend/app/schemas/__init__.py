@@ -1196,6 +1196,8 @@ PurchaseRecordResultColumn = Literal[
     "category",
     "demand_department",
     "material_name",
+    "model_spec",
+    "material_code",
     "actual_demand_person",
     "usage",
     "purchase_responsible",
@@ -1206,7 +1208,7 @@ PurchaseRecordResultColumn = Literal[
 
 
 class PurchaseRecordResultExportRequest(RequestModel):
-    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=18)
+    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=20)
     purchase_order_no: str | None = Field(default=None, max_length=255)
     trace_no: str | None = Field(default=None, max_length=255)
     category: str | None = Field(default=None, max_length=64)

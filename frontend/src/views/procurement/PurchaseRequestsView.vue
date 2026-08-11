@@ -302,6 +302,8 @@ type RecordColumnKey =
   | 'category'
   | 'demand_department'
   | 'material_name'
+  | 'model_spec'
+  | 'material_code'
   | 'purchase_qty'
   | 'usage'
   | 'actual_demand_person'
@@ -619,7 +621,10 @@ async function aiQuery() {
 async function exportResults() {
   const exportColumns = availableColumns
     .filter((item) => visibleColumnKeys.value.includes(item.key))
-    .map((item) => item.key)
+    .flatMap((item): RecordColumnKey[] => {
+      if (item.key === 'material_name') return ['material_name', 'model_spec', 'material_code']
+      return [item.key]
+    })
   if (!exportColumns.length) {
     message.warning('请至少显示一个字段')
     return
