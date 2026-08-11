@@ -2554,6 +2554,26 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Keyword
+      - name: actual_demand_person
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
+          title: Actual Demand Person
+        description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
+      - name: subitem_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Subitem No
       responses:
         '200':
           description: Successful Response
@@ -2591,6 +2611,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/purchase-plans/filter-options:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Purchase Plan Filter Options
+      operationId: mini_program_purchase_plan_filter_options_api_v1_mini_program_purchase_plans_filter_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramPurchasePlanFilterOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/mini-program/purchase-plans/{material_id}:
     get:
       tags:
@@ -6041,6 +6106,23 @@ components:
       - demand_department
       - usage
       title: MiniProgramPurchasePlanDetailRead
+    MiniProgramPurchasePlanFilterOptions:
+      properties:
+        actual_demand_persons:
+          items:
+            type: string
+          type: array
+          title: Actual Demand Persons
+        subitem_nos:
+          items:
+            type: string
+          type: array
+          title: Subitem Nos
+      type: object
+      required:
+      - actual_demand_persons
+      - subitem_nos
+      title: MiniProgramPurchasePlanFilterOptions
     MiniProgramPurchasePlanItemRead:
       properties:
         id:

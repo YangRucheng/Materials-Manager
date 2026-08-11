@@ -17,6 +17,10 @@ Page({
   data: {
     items: [],
     keyword: '',
+    actualDemandPerson: '',
+    subitemNo: '',
+    actualDemandPersonOptions: [],
+    subitemNoOptions: [],
     page: 1,
     pageSize: 15,
     total: 0,
@@ -38,6 +42,9 @@ Page({
         wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
+      const displayName = session.user?.display_name || '';
+      this.setData({ actualDemandPerson: displayName });
+      await this.loadFilterOptions(displayName);
       await this.loadPlans(true);
     } catch (error) {
       this.setData({ loading: false });
@@ -64,6 +71,34 @@ Page({
     this.searchTimer = setTimeout(() => void this.loadPlans(true), 350);
   },
 
+  onActualDemandPersonChange(event) {
+    const value = event.detail.value || '';
+    this.setData({ actualDemandPerson: value });
+    void this.loadPlans(true);
+  },
+
+  onSubitemNoChange(event) {
+    const value = event.detail.value || '';
+    this.setData({ subitemNo: value });
+    void this.loadPlans(true);
+  },
+
+  async loadFilterOptions(displayName) {
+    try {
+      const result = await request({ url: '/mini-program/purchase-plans/filter-options' });
+      const persons = (result.actual_demand_persons || []).filter(Boolean);
+      if (displayName && !persons.includes(displayName)) {
+        persons.unshift(displayName);
+      }
+      this.setData({
+        actualDemandPersonOptions: persons.map((value) => ({ label: value, value })),
+        subitemNoOptions: (result.subitem_nos || []).map((value) => ({ label: value, value })),
+      });
+    } catch (error) {
+      /* 筛选选项加载失败不阻塞列表 */
+    }
+  },
+
   async loadPlans(reset) {
     if (!reset && (this.data.loading || this.data.loadingMore || !this.data.hasMore)) return;
     const requestId = (this.requestId || 0) + 1;
@@ -74,6 +109,10 @@ Page({
       const data = { page, page_size: this.data.pageSize };
       const keyword = this.data.keyword.trim();
       if (keyword) data.keyword = keyword;
+      const actualDemandPerson = this.data.actualDemandPerson.trim();
+      if (actualDemandPerson) data.actual_demand_person = actualDemandPerson;
+      const subitemNo = this.data.subitemNo.trim();
+      if (subitemNo) data.subitem_no = subitemNo;
       const result = await request({ url: '/mini-program/purchase-plans', data });
       if (requestId !== this.requestId) return;
       const incoming = (result.items || []).map(decoratePlan);

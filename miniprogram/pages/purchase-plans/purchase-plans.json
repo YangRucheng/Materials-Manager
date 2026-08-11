@@ -7,6 +7,7 @@
     "t-icon": "tdesign-miniprogram/icon/icon",
     "t-loading": "tdesign-miniprogram/loading/loading",
     "t-search": "tdesign-miniprogram/search/search",
+    "t-select": "tdesign-miniprogram/select/select",
     "t-tag": "tdesign-miniprogram/tag/tag",
     "t-toast": "tdesign-miniprogram/toast/toast"
   }

@@ -658,6 +658,11 @@ class MiniProgramPurchasePlanDetailRead(MiniProgramPurchasePlanItemRead):
     next_id: int | None = None
 
 
+class MiniProgramPurchasePlanFilterOptions(ReadModel):
+    actual_demand_persons: list[str]
+    subitem_nos: list[str]
+
+
 class MiniProgramOutboundCreate(RequestModel):
     client_request_id: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
