@@ -1532,7 +1532,7 @@ onMounted(() => {
 }
 
 .edit-advanced-fields :deep(.n-collapse-item__content-inner) {
-  padding: 4px 12px 14px;
+  padding: 12px;
 }
 
 .advanced-header {
