@@ -4033,6 +4033,8 @@ paths:
             - category
             - demand_department
             - material_name
+            - model_spec
+            - material_code
             - actual_demand_person
             - usage
             - purchase_responsible
@@ -7562,6 +7564,8 @@ components:
             - category
             - demand_department
             - material_name
+            - model_spec
+            - material_code
             - actual_demand_person
             - usage
             - purchase_responsible
@@ -7569,7 +7573,7 @@ components:
             - status
             - purchase_date
           type: array
-          maxItems: 18
+          maxItems: 20
           minItems: 1
           title: Columns
         purchase_order_no:
@@ -7646,6 +7650,8 @@ components:
             - category
             - demand_department
             - material_name
+            - model_spec
+            - material_code
             - actual_demand_person
             - usage
             - purchase_responsible
