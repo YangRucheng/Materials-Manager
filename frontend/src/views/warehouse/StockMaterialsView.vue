@@ -144,6 +144,7 @@ function resetForm() {
     unit_name: '',
     remark: '',
     image_ids: [],
+    version: undefined,
   })
   Object.assign(policy, { minimum_qty: '0', enabled: true, version: undefined })
   images.value = []
