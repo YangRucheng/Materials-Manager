@@ -1232,6 +1232,43 @@ class PurchaseRecordResultExportRequest(RequestModel):
         return value
 
 
+class PurchaseRecordSyncTargetRead(ReadModel):
+    trace_no: str
+    target_count: int
+    cursor_id: int
+
+
+class PurchaseRecordSyncTargetsRead(ReadModel):
+    items: list[PurchaseRecordSyncTargetRead]
+    has_more: bool
+    next_cursor: int = 0
+
+
+class PurchaseRecordSyncTraceUpdate(RequestModel):
+    salesperson: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    contract_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    vessel_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    consolidation_port: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+    consolidation_date: date | None = None
+    sailing_date: date | None = None
+    status: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=128)] | None
+    ) = None
+
+
+class PurchaseRecordSyncResultRead(ReadModel):
+    affected_headers: int
+    affected_lines: int
+
+
 class ReplenishmentDraftCreate(RequestModel):
     planned_qty: PositiveQuantity
     demand_date: date | None = None

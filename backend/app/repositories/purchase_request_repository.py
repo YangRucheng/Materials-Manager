@@ -49,6 +49,62 @@ async def get_purchase_record(
     return result if result is not None else None
 
 
+async def list_sync_targets(
+    session: AsyncSession, *, limit: int, cursor: int, fields: set[str] | None = None
+) -> list[tuple[str, int, int]]:
+    """按追溯号分组的待同步目标（trace_no 非空且存在缺失字段或未完成状态）。
+
+    返回 (trace_no, target_count, cursor_id) 三元组；cursor 按 line.id 在分组前过滤，
+    排序取每组的最大 line.id 倒序。limit 应传 limit+1 由调用方截断判定 has_more。
+    fields 为空时覆盖全部同步字段；仅包含调用方实际关心的字段（如新脚本只需
+    salesperson/contract_no/vessel_no/status），避免“补不完的字段”长期占用目标。
+    """
+    condition_map = {
+        "salesperson": or_(
+            PurchaseRequestLine.salesperson.is_(None),
+            func.trim(PurchaseRequestLine.salesperson) == "",
+        ),
+        "contract_no": or_(
+            PurchaseRequest.contract_no.is_(None),
+            func.trim(PurchaseRequest.contract_no) == "",
+        ),
+        "vessel_no": or_(
+            PurchaseRequest.vessel_no.is_(None),
+            func.trim(PurchaseRequest.vessel_no) == "",
+        ),
+        "consolidation_date": PurchaseRequest.consolidation_date.is_(None),
+        "consolidation_port": or_(
+            PurchaseRequest.consolidation_port.is_(None),
+            func.trim(PurchaseRequest.consolidation_port) == "",
+        ),
+        "sailing_date": PurchaseRequest.sailing_date.is_(None),
+    }
+    active_fields = fields or set(condition_map)
+    conditions = [condition_map[key] for key in condition_map if key in active_fields]
+    if "status" in active_fields:
+        conditions.append(PurchaseRequestLine.status.in_(("已申购", "已采购", "部分入库")))
+
+    query = (
+        select(
+            PurchaseRequestLine.trace_no,
+            func.count().label("target_count"),
+            func.max(PurchaseRequestLine.id).label("cursor_id"),
+        )
+        .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
+        .where(
+            PurchaseRequestLine.trace_no.is_not(None),
+            func.trim(PurchaseRequestLine.trace_no) != "",
+            or_(*conditions),
+        )
+        .group_by(PurchaseRequestLine.trace_no)
+        .order_by(func.max(PurchaseRequestLine.id).desc(), PurchaseRequestLine.trace_no)
+    )
+    if cursor:
+        query = query.where(PurchaseRequestLine.id < cursor)
+    rows = (await session.execute(query.limit(limit + 1))).all()
+    return [(row.trace_no, int(row.target_count), int(row.cursor_id)) for row in rows]
+
+
 async def search_purchase_records(
     session: AsyncSession,
     *,
