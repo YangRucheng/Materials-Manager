@@ -8,13 +8,31 @@
       confirm-type="search"
       bind:change="onSearchChange"
     />
+    <view class="filter-row">
+      <t-select
+        class="filter-select"
+        value="{{actualDemandPerson}}"
+        options="{{actualDemandPersonOptions}}"
+        placeholder="{{i18n.allActualDemandPersons}}"
+        clearable
+        bind:change="onActualDemandPersonChange"
+      />
+      <t-select
+        class="filter-select"
+        value="{{subitemNo}}"
+        options="{{subitemNoOptions}}"
+        placeholder="{{i18n.allSubitemNos}}"
+        clearable
+        bind:change="onSubitemNoChange"
+      />
+    </view>
   </view>
   <view wx:if="{{!loading || items.length}}" class="result-count">{{resultCount}}</view>
   <view wx:if="{{loading && !items.length}}" class="state-panel">
     <t-loading theme="circular" size="48rpx" text="{{i18n.loadingPurchasePlans}}" />
   </view>
   <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
-    <t-empty icon="file" description="{{keyword ? i18n.purchasePlansEmptyFiltered : i18n.purchasePlansEmpty}}" />
+    <t-empty icon="file" description="{{keyword || actualDemandPerson || subitemNo ? i18n.purchasePlansEmptyFiltered : i18n.purchasePlansEmpty}}" />
   </view>
   <view wx:else class="plan-list">
     <view

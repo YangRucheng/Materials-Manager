@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Header, Query, status
 
-from app.api.deps import PageNo, PageSize
+from app.api.deps import OrSearch128, PageNo, PageSize
 from app.core.permissions import (
     CurrentMiniProgramUser,
     DbSession,
@@ -26,6 +26,7 @@ from app.schemas import (
     MiniProgramOutboundReasonOptions,
     MiniProgramProfileUpdate,
     MiniProgramPurchasePlanDetailRead,
+    MiniProgramPurchasePlanFilterOptions,
     MiniProgramPurchasePlanItemRead,
     MiniProgramUserMergeRequest,
     MiniProgramUserRead,
@@ -178,15 +179,38 @@ async def mini_program_purchase_plans(
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: Annotated[str | None, Query(max_length=255)] = None,
+    actual_demand_person: OrSearch128 = None,
+    subitem_no: Annotated[str | None, Query(max_length=64)] = None,
 ) -> Page[MiniProgramPurchasePlanItemRead]:
     items, total = await mini_program_service.list_purchase_plans(
-        session, keyword, page, page_size
+        session,
+        keyword,
+        page,
+        page_size,
+        actual_demand_person,
+        subitem_no,
     )
     return Page(
         items=[mini_program_service.purchase_plan_item_read(item) for item in items],
         page=page,
         page_size=page_size,
         total=total,
+    )
+
+
+@mini_router.get(
+    "/purchase-plans/filter-options", response_model=MiniProgramPurchasePlanFilterOptions
+)
+async def mini_program_purchase_plan_filter_options(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> MiniProgramPurchasePlanFilterOptions:
+    actual_demand_persons, subitem_nos = (
+        await mini_program_service.list_purchase_plan_filter_options(session)
+    )
+    return MiniProgramPurchasePlanFilterOptions(
+        actual_demand_persons=actual_demand_persons,
+        subitem_nos=subitem_nos,
     )
 
 

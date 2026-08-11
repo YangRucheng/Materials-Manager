@@ -90,6 +90,8 @@ async def list_purchase_plans(
     keyword: str | None,
     page: int,
     page_size: int,
+    actual_demand_person: str | None = None,
+    subitem_no: str | None = None,
 ) -> tuple[list[PurchaseMaterial], int]:
     query = select(PurchaseMaterial).where(
         PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
@@ -105,14 +107,20 @@ async def list_purchase_plans(
             PurchaseMaterial.name,
             PurchaseMaterial.model_spec,
             PurchaseMaterial.material_code,
-            PurchaseMaterial.actual_demand_person,
             PurchaseMaterial.purchase_responsible,
-            PurchaseMaterial.subitem_no,
         ),
         keyword,
     )
     if keyword_condition is not None:
         query = query.where(keyword_condition)
+    if actual_demand_person:
+        person_condition = contains_any(
+            (PurchaseMaterial.actual_demand_person,), actual_demand_person
+        )
+        if person_condition is not None:
+            query = query.where(person_condition)
+    if subitem_no:
+        query = query.where(func.trim(PurchaseMaterial.subitem_no) == subitem_no.strip())
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
     items = list(
         (
@@ -124,6 +132,41 @@ async def list_purchase_plans(
         ).all()
     )
     return items, total
+
+
+async def list_purchase_plan_filter_options(
+    session: AsyncSession,
+) -> tuple[list[str], list[str]]:
+    record_exists = (
+        select(PurchaseRequestLine.id)
+        .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+        .exists()
+    )
+    active = ~record_exists
+    actual_demand_query = select(PurchaseMaterial.actual_demand_person).where(
+        PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
+        active,
+        func.trim(PurchaseMaterial.actual_demand_person) != "",
+    )
+    subitem_query = select(PurchaseMaterial.subitem_no).where(
+        PurchaseMaterial.status == PurchasePlanStatus.NORMAL,
+        active,
+        PurchaseMaterial.subitem_no.is_not(None),
+        func.trim(PurchaseMaterial.subitem_no) != "",
+    )
+    actual_demand_persons = list(
+        await session.scalars(
+            actual_demand_query.distinct().order_by(PurchaseMaterial.actual_demand_person)
+        )
+    )
+    subitem_nos = [
+        value
+        for value in await session.scalars(
+            subitem_query.distinct().order_by(PurchaseMaterial.subitem_no)
+        )
+        if value is not None
+    ]
+    return actual_demand_persons, subitem_nos
 
 
 def purchase_plan_item_read(item: PurchaseMaterial) -> MiniProgramPurchasePlanItemRead:

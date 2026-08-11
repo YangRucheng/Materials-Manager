@@ -656,6 +656,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mini-program/purchase-plans/filter-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Purchase Plan Filter Options */
+        get: operations["mini_program_purchase_plan_filter_options_api_v1_mini_program_purchase_plans_filter_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program/purchase-plans/{material_id}": {
         parameters: {
             query?: never;
@@ -1696,6 +1713,13 @@ export interface components {
             images?: components["schemas"]["FileObjectRead"][];
             /** Next Id */
             next_id?: number | null;
+        };
+        /** MiniProgramPurchasePlanFilterOptions */
+        MiniProgramPurchasePlanFilterOptions: {
+            /** Actual Demand Persons */
+            actual_demand_persons: string[];
+            /** Subitem Nos */
+            subitem_nos: string[];
         };
         /** MiniProgramPurchasePlanItemRead */
         MiniProgramPurchasePlanItemRead: {
@@ -5782,6 +5806,9 @@ export interface operations {
                 page?: number;
                 page_size?: number;
                 keyword?: string | null;
+                /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
+                actual_demand_person?: string | null;
+                subitem_no?: string | null;
             };
             header?: never;
             path?: never;
@@ -5796,6 +5823,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_MiniProgramPurchasePlanItemRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_purchase_plan_filter_options_api_v1_mini_program_purchase_plans_filter_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MiniProgramPurchasePlanFilterOptions"];
                 };
             };
             /** @description 业务校验失败 */
