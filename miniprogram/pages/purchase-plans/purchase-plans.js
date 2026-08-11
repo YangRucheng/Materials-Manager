@@ -43,7 +43,6 @@ Page({
         return;
       }
       const displayName = session.user?.display_name || '';
-      this.setData({ actualDemandPerson: displayName });
       await this.loadFilterOptions(displayName);
       await this.loadPlans(true);
     } catch (error) {
@@ -99,13 +98,19 @@ Page({
         theme: 'warning',
       });
     }
-    if (displayName && !persons.includes(displayName)) {
+    // 当前用户固定置顶，方便快速切换到自己
+    if (displayName) {
+      persons = persons.filter((value) => value !== displayName);
       persons.unshift(displayName);
     }
+    const currentUserSuffix = t('currentUserSuffix');
     this.setData({
       actualDemandPersonOptions: [
         { label: t('allActualDemandPersons'), value: '' },
-        ...persons.map((value) => ({ label: value, value })),
+        ...persons.map((value) => ({
+          label: value === displayName ? `${value}${currentUserSuffix}` : value,
+          value,
+        })),
       ],
       subitemNoOptions: [
         { label: t('allSubitemNos'), value: '' },
