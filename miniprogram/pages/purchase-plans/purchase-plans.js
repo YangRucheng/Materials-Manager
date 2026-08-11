@@ -28,6 +28,7 @@ Page({
     loading: true,
     loadingMore: false,
     resultCount: '',
+    backTopVisible: false,
     i18n: getMessages(),
   },
 
@@ -62,6 +63,19 @@ Page({
 
   onReachBottom() {
     if (this.data.hasMore && !this.data.loadingMore) void this.loadPlans(false);
+  },
+
+  onPageScroll(event) {
+    const scrollTop = event.scrollTop || 0;
+    if (scrollTop > 400 && !this.data.backTopVisible) {
+      this.setData({ backTopVisible: true });
+    } else if (scrollTop <= 400 && this.data.backTopVisible) {
+      this.setData({ backTopVisible: false });
+    }
+  },
+
+  scrollToTop() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
 
   onSearchChange(event) {
