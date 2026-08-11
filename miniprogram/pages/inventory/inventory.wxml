@@ -31,7 +31,7 @@
   </view>
 
   <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
-    <t-empty icon="search" description="{{i18n.inventoryEmpty}}" />
+    <t-empty icon="search" description="{{keyword || stockStatus !== 'all' ? i18n.inventoryEmptyFiltered : i18n.inventoryEmpty}}" />
   </view>
 
   <view wx:else class="inventory-list">
