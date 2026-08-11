@@ -6,3 +6,5 @@ interface ImportMetaEnv {
   readonly VITE_IMAGE_BASE_URL?: string
   readonly VITE_API_PROXY?: string
 }
+
+declare const __BUILD_TIME__: string

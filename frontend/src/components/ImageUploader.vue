@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMessage } from 'naive-ui'
+import { markEventEffectPerformed } from 'naive-ui/es/_utils/event/index'
 import { fileApi } from '@/api/files'
 import type { FileObject } from '@/api/generated'
 import { imagePreviewUrl, imageUrl, validateImageSelection } from '@/utils/image'
@@ -13,6 +14,17 @@ const emit = defineEmits<{ 'update:files': [files: FileObject[]] }>()
 const input = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const message = useMessage()
+
+// n-image 内置预览与 n-modal 的 ESC 监听都挂在 document bubble 阶段；预览关闭自身时不会标记事件，
+// 导致按一次 ESC 预览和弹窗同时关闭。这里用 capture 阶段监听，在预览打开时把 ESC 标记为已被内层消费，
+// 让 n-modal 的 eventEffectNotPerformed 短路，实现一次只关一层。
+function handleEscapeCapture(event: KeyboardEvent) {
+  if (event.code === 'Escape' && document.querySelector('.n-image-preview-container')) {
+    markEventEffectPerformed(event)
+  }
+}
+onMounted(() => document.addEventListener('keydown', handleEscapeCapture, true))
+onBeforeUnmount(() => document.removeEventListener('keydown', handleEscapeCapture, true))
 
 async function uploadSelected(selected: File[]) {
   if (!selected.length || uploading.value) return
