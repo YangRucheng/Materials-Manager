@@ -4,7 +4,7 @@ const LOCALE_ID_ID = 'id-ID';
 const dictionaries = {
   [LOCALE_ZH_CN]: {
     appTitle: '备件管理',
-    inventoryTitle: '全库库存',
+    inventoryTitle: '二级库库存',
     materialDetailTitle: '物资详情',
     purchasePlansTitle: '申购计划',
     purchasePlanDetailTitle: '申购计划详情',
@@ -128,7 +128,7 @@ const dictionaries = {
     invalidToken: '登录凭证无效或已过期',
     forbidden: '没有执行此操作的权限',
     shareHome: '电气车间备件管理',
-    shareInventory: '全库库存查询',
+    shareInventory: '二级库库存查询',
     shareMaterial: '查看物资详情',
     shareOutbound: '扫码出库',
     sharePurchasePlans: '申购计划',
@@ -145,7 +145,7 @@ const dictionaries = {
   },
   [LOCALE_ID_ID]: {
     appTitle: 'Manajemen Suku Cadang',
-    inventoryTitle: 'Stok Gudang',
+    inventoryTitle: 'Stok Gudang Tingkat 2',
     materialDetailTitle: 'Detail Material',
     purchasePlansTitle: 'Rencana Pengadaan',
     purchasePlanDetailTitle: 'Detail Rencana Pengadaan',
@@ -269,7 +269,7 @@ const dictionaries = {
     invalidToken: 'Sesi login tidak valid atau telah kedaluwarsa',
     forbidden: 'Anda tidak memiliki izin untuk melakukan operasi ini',
     shareHome: 'Manajemen Suku Cadang Bengkel Listrik',
-    shareInventory: 'Cek Stok Gudang',
+    shareInventory: 'Cek Stok Gudang Tingkat 2',
     shareMaterial: 'Lihat Detail Material',
     shareOutbound: 'Pengeluaran Barang',
     sharePurchasePlans: 'Rencana Pengadaan',

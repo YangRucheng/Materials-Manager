@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "全库库存",
+  "navigationBarTitleText": "二级库库存",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
