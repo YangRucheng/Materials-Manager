@@ -13,6 +13,13 @@
 
 .filter-menu {
   margin-top: 16rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  --td-dropdown-menu-height: 88rpx;
+  --td-dropdown-menu-bg-color: #ffffff;
+  --td-dropdown-menu-border-width: 0;
+  --td-dropdown-menu-color: #4b5565;
+  --td-dropdown-menu-active-color: #3f63d8;
 }
 
 .result-count { margin: 0 8rpx 14rpx; color: #7d8798; font-size: 23rpx; }
