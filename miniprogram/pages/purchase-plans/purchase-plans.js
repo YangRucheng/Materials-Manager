@@ -91,8 +91,14 @@ Page({
         persons.unshift(displayName);
       }
       this.setData({
-        actualDemandPersonOptions: persons.map((value) => ({ label: value, value })),
-        subitemNoOptions: (result.subitem_nos || []).map((value) => ({ label: value, value })),
+        actualDemandPersonOptions: [
+          { label: t('allActualDemandPersons'), value: '' },
+          ...persons.map((value) => ({ label: value, value })),
+        ],
+        subitemNoOptions: [
+          { label: t('allSubitemNos'), value: '' },
+          ...(result.subitem_nos || []).map((value) => ({ label: value, value })),
+        ],
       });
     } catch (error) {
       /* 筛选选项加载失败不阻塞列表 */
