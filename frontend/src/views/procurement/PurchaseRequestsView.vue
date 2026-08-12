@@ -18,7 +18,9 @@ import type {
 import { procurementApi } from '@/api/procurement'
 import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import ExportLoadingOverlay from '@/components/ExportLoadingOverlay.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import ImageThumbnails from '@/components/ImageThumbnails.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
@@ -311,6 +313,7 @@ type RecordColumnKey =
   | 'salesperson'
   | 'status'
   | 'purchase_date'
+  | 'images'
 
 const availableColumns: Array<{
   key: RecordColumnKey
@@ -510,6 +513,16 @@ const availableColumns: Array<{
       key: 'status',
       width: tableColumnWidths.status,
       render: (row) => h(NTag, null, { default: () => row.status || '\\' }),
+    },
+  },
+  {
+    key: 'images',
+    label: '图片',
+    column: {
+      title: '图片',
+      key: 'images',
+      width: 140,
+      render: (row) => h(ImageThumbnails, { images: row.images }),
     },
   },
 ]
@@ -1000,6 +1013,7 @@ onMounted(() => {
 
 <template>
   <div class="page purchase-records-page">
+    <ExportLoadingOverlay :show="resultExporting" />
     <div class="page-header">
       <div>
         <h1 class="page-title">申购记录</h1>
@@ -1105,7 +1119,7 @@ onMounted(() => {
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
-          storage-key="procurement.purchase-records.visible-columns.v2"
+          storage-key="procurement.purchase-records.visible-columns.v3"
           @update:value="setVisibleColumnKeys"
         />
         <div class="filter-action-buttons">

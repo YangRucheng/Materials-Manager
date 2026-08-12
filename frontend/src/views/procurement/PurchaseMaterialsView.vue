@@ -28,6 +28,8 @@ import MaterialSelector from '@/components/MaterialSelector.vue'
 import PurchaseRecordHistoryDialog from '@/components/PurchaseRecordHistoryDialog.vue'
 import QuantityInput from '@/components/QuantityInput.vue'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
+import ExportLoadingOverlay from '@/components/ExportLoadingOverlay.vue'
+import ImageThumbnails from '@/components/ImageThumbnails.vue'
 import ExportButton from '@/components/ExportButton.vue'
 import SortableHeader, { type SortOptionKey } from '@/components/SortableHeader.vue'
 import type { ExportOption } from '@/types/export'
@@ -341,6 +343,7 @@ type PlanColumnKey =
   | 'purchase_responsible'
   | 'subitem_no'
   | 'usage'
+  | 'images'
 
 const availableColumns: Array<{
   key: PlanColumnKey
@@ -482,6 +485,16 @@ const availableColumns: Array<{
       key: 'usage',
       width: tableColumnWidths.text,
       render: (row) => renderTwoLineText(row.usage),
+    },
+  },
+  {
+    key: 'images',
+    label: '图片',
+    column: {
+      title: '图片',
+      key: 'images',
+      width: 140,
+      render: (row) => h(ImageThumbnails, { images: row.images }),
     },
   },
 ]
@@ -965,6 +978,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page">
+    <ExportLoadingOverlay :show="exportLoading" />
     <div class="page-header">
       <div>
         <h1 class="page-title">申购计划</h1>
@@ -1054,7 +1068,7 @@ onBeforeUnmount(() => {
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
-          storage-key="procurement.purchase-materials.visible-columns.v3"
+          storage-key="procurement.purchase-materials.visible-columns.v4"
           @update:value="setVisibleColumnKeys"
         />
         <div class="filter-action-buttons">
