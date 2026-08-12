@@ -1,0 +1,46 @@
+<view class="page-shell material-codes-page">
+  <view class="list-header"><view class="page-title">{{i18n.materialCodesTitle}}</view></view>
+  <view class="list-tools">
+    <t-search
+      value="{{keyword}}"
+      placeholder="{{i18n.materialCodeSearchPlaceholder}}"
+      shape="round"
+      confirm-type="search"
+      bind:change="onSearchChange"
+    />
+  </view>
+  <view wx:if="{{!loading || items.length}}" class="result-count">{{resultCount}}</view>
+  <view wx:if="{{loading && !items.length}}" class="state-panel">
+    <t-loading theme="circular" size="48rpx" text="{{i18n.loadingMaterialCodes}}" />
+  </view>
+  <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
+    <t-empty icon="search" description="{{keyword ? i18n.materialCodesEmptyFiltered : i18n.materialCodesEmpty}}" />
+  </view>
+  <view wx:else class="code-list">
+    <view wx:for="{{items}}" wx:key="id" class="code-card">
+      <view class="code-value">{{item.material_code}}</view>
+      <view class="code-name">{{item.name || i18n.notSet}}</view>
+      <view wx:if="{{item.model_spec}}" class="code-spec">{{item.model_spec}}</view>
+      <view class="card-divider"></view>
+      <view class="code-meta">
+        <view class="meta-item">
+          <view class="meta-label">{{i18n.materialCodeUnit}}</view>
+          <view class="meta-value">{{item.unit_name}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{loadingMore}}" class="load-more">
+    <t-loading theme="circular" size="36rpx" text="{{i18n.loadMore}}" />
+  </view>
+  <view wx:elif="{{items.length && !hasMore}}" class="load-finished">{{i18n.noMore}}</view>
+  <t-toast id="material-codes-toast" />
+  <button
+    wx:if="{{backTopVisible}}"
+    class="back-top-fab"
+    aria-label="{{i18n.backToTop}}"
+    bind:tap="scrollToTop"
+  >
+    <t-icon name="backtop" size="52rpx" color="#ffffff" />
+  </button>
+</view>

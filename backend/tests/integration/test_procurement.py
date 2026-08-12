@@ -1586,6 +1586,45 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
 
 
 @pytest.mark.asyncio
+async def test_result_exports_embed_original_images(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+
+    source = BytesIO()
+    Image.new("RGB", (64, 40), "orange").save(source, format="PNG")
+    uploaded = await client.post(
+        "/api/v1/files/images",
+        headers=headers,
+        files={"file": ("export.png", source.getvalue(), "image/png")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    file_id = uploaded.json()["id"]
+
+    motor = await create_purchase_plan(
+        client, headers, "带图导出电机", code="DQ-EXPORT-IMG", image_ids=[file_id]
+    )
+
+    plan_export = await client.post(
+        "/api/v1/purchase-materials/export-results",
+        headers=headers,
+        json={"columns": ["name", "images"], "name": "带图导出电机"},
+    )
+    assert plan_export.status_code == 200, plan_export.text
+    plan_sheet = load_workbook(BytesIO(plan_export.content)).active
+    assert len(plan_sheet._images) == 1
+
+    await move_to_record(client, headers, int(motor["id"]))
+
+    record_export = await client.post(
+        "/api/v1/purchase-records/export-results",
+        headers=headers,
+        json={"columns": ["material_name", "images"], "name": "带图导出电机"},
+    )
+    assert record_export.status_code == 200, record_export.text
+    record_sheet = load_workbook(BytesIO(record_export.content)).active
+    assert len(record_sheet._images) == 1
+
+
+@pytest.mark.asyncio
 async def test_missing_excel_template_returns_readable_400(
     client: AsyncClient, monkeypatch, tmp_path
 ) -> None:

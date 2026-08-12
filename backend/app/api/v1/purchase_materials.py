@@ -35,6 +35,7 @@ from app.schemas import (
 from app.services import (
     ai_search_service,
     excel_export_service,
+    file_service,
     material_service,
     purchase_request_service,
 )
@@ -73,6 +74,7 @@ PLAN_RESULT_HEADERS = {
     "purchase_responsible": "申购负责人",
     "subitem_no": "子项号",
     "usage": "用途",
+    "images": "图片",
 }
 
 
@@ -236,6 +238,11 @@ async def export_material_results(
             "purchase_responsible": item.purchase_responsible,
             "subitem_no": item.subitem_no,
             "usage": item.usage,
+            "images": [
+                file_service.file_path(link.file.id)
+                for link in item.images
+                if link.file is not None and file_service.file_path(link.file.id).is_file()
+            ],
         }
         for item in items
     ]

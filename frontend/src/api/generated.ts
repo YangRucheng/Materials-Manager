@@ -208,6 +208,7 @@ export type PurchasePlanResultColumn =
   | 'purchase_responsible'
   | 'subitem_no'
   | 'usage'
+  | 'images'
 
 /** 申购记录导出列（前端 UI 用 Literal） */
 export type PurchaseRecordResultColumn =
@@ -231,6 +232,7 @@ export type PurchaseRecordResultColumn =
   | 'salesperson'
   | 'status'
   | 'purchase_date'
+  | 'images'
 
 /** 申购计划批量更新 */
 export interface PurchaseMaterialBatchUpdate {

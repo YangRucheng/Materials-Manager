@@ -36,6 +36,7 @@ from app.models import (
 from app.repositories import purchase_request_repository
 from app.schemas import (
     MiniProgramInventoryItemRead,
+    MiniProgramMaterialCodeRead,
     MiniProgramMaterialRead,
     MiniProgramOperationRead,
     MiniProgramOutboundCreate,
@@ -49,7 +50,12 @@ from app.schemas import (
     OperationCreate,
     OperationLineWrite,
 )
-from app.services import ai_search_service, inventory_service, webhook_service
+from app.services import (
+    ai_search_service,
+    inventory_service,
+    material_code_library_service,
+    webhook_service,
+)
 from app.services.common import contains_any, file_read, utc_aware, validate_version
 
 _wechat_access_tokens: dict[str, tuple[str, float]] = {}
@@ -185,6 +191,27 @@ async def list_purchase_records(
 
 async def list_purchase_record_filter_options(session: AsyncSession) -> list[str]:
     return await purchase_request_repository.purchase_status_options(session)
+
+
+async def list_material_codes(
+    session: AsyncSession, *, keyword: str | None, page: int, page_size: int
+) -> tuple[list[MiniProgramMaterialCodeRead], int]:
+    items, total = await material_code_library_service.search_material_codes(
+        session, keyword=keyword, page=page, page_size=page_size
+    )
+    return (
+        [
+            MiniProgramMaterialCodeRead(
+                id=item.id,
+                material_code=item.material_code,
+                name=item.name,
+                model_spec=item.model_spec,
+                unit_name=item.unit_name,
+            )
+            for item in items
+        ],
+        total,
+    )
 
 
 def purchase_record_item_read(line: PurchaseRequestLine) -> MiniProgramPurchaseRecordItemRead:

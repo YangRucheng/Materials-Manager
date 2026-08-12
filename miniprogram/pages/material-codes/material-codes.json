@@ -1,0 +1,12 @@
+{
+  "navigationBarTitleText": "物料编码查询",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-icon": "tdesign-miniprogram/icon/icon",
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-search": "tdesign-miniprogram/search/search",
+    "t-toast": "tdesign-miniprogram/toast/toast"
+  }
+}

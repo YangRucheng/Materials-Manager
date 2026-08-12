@@ -50,54 +50,57 @@
 
 .action-grid {
   display: grid;
-  gap: 22rpx;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
 }
 
 .action-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20rpx;
-  padding: 26rpx;
+  gap: 12rpx;
+  padding: 22rpx 16rpx 20rpx;
   border: 2rpx solid #dce5ff;
-  border-radius: 26rpx;
+  border-radius: 22rpx;
   background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
-  box-shadow: 0 12rpx 32rpx rgba(63, 99, 216, 0.09);
+  box-shadow: 0 12rpx 28rpx rgba(63, 99, 216, 0.08);
   transition: transform 120ms ease;
 }
 
 .action-icon {
   display: flex;
   flex: none;
-  width: 80rpx;
-  height: 80rpx;
+  width: 56rpx;
+  height: 56rpx;
   align-items: center;
   justify-content: center;
-  border-radius: 22rpx;
+  border-radius: 18rpx;
   background: #3f63d8;
   color: #ffffff;
 }
 
-.purchase-card {
-  border-color: #dce5ff;
-  background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
-}
-
-.purchase-icon {
-  background: #3f63d8;
-}
-
 .action-content {
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
 .action-title {
   color: #243765;
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: 650;
+  text-align: center;
 }
 
-.action-description,
+.action-description {
+  margin-top: 4rpx;
+  overflow: hidden;
+  color: #7180a5;
+  font-size: 20rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .scan-description {
   margin-top: 6rpx;
   color: #7180a5;
