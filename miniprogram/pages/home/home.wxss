@@ -55,6 +55,7 @@
 }
 
 .action-card {
+  box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -111,7 +112,8 @@
 }
 
 .scan-card {
-  grid-column: 1 / -1;
+  box-sizing: border-box;
+  margin-top: 18rpx;
   padding: 42rpx 32rpx 34rpx;
   border-color: #dce5ff;
   text-align: center;
