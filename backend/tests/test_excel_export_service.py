@@ -93,3 +93,15 @@ def test_result_excel_embeds_images_and_skips_missing_files(tmp_path: Path) -> N
     assert sheet.row_dimensions[3].height == 30
     # 图片列放宽
     assert sheet.column_dimensions["B"].width >= 20
+
+
+def test_result_excel_handles_empty_image_list() -> None:
+    content, _ = excel_export_service.render_result_excel(
+        "申购计划导出",
+        [("name", "名称"), ("images", "图片")],
+        [{"name": "电机", "images": []}],
+    )
+
+    sheet = load_workbook(BytesIO(content)).active
+    assert sheet["B2"].value in (None, "")
+    assert len(sheet._images) == 0
