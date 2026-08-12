@@ -6,11 +6,17 @@ import unicodedata
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
-from typing import Any
+from pathlib import Path
+from typing import Any, TypeGuard
 from urllib.parse import quote
 
 from fastapi.responses import Response
 from openpyxl import Workbook  # type: ignore[import-untyped]
+from openpyxl.drawing.image import Image as XLImage  # type: ignore[import-untyped]
+from openpyxl.drawing.spreadsheet_drawing import (  # type: ignore[import-untyped]
+    AnchorMarker,
+    OneCellAnchor,
+)
 from openpyxl.formatting.rule import FormulaRule  # type: ignore[import-untyped]
 from openpyxl.styles import (  # type: ignore[import-untyped]
     Alignment,
@@ -20,6 +26,7 @@ from openpyxl.styles import (  # type: ignore[import-untyped]
     Side,
 )
 from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
+from openpyxl.utils.units import pixels_to_EMU  # type: ignore[import-untyped]
 from openpyxl.worksheet.datavalidation import (  # type: ignore[import-untyped]
     DataValidation,
 )
@@ -29,6 +36,11 @@ from app.core.errors import AppError
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
+
+# 导出图片：嵌入原始 PNG，显示尺寸统一约 96px（等比缩放），横向 96+8px 一槽位
+_IMAGE_DISPLAY = 96
+_IMAGE_GAP_PX = 8
+_IMAGE_ROW_HEIGHT = 74
 
 
 def excel_response(content: bytes, filename: str) -> Response:
@@ -250,6 +262,45 @@ def _result_cell_value(value: object) -> object:
     return value
 
 
+def _is_image_list(value: object) -> TypeGuard[list[Path]]:
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(item, Path) for item in value)
+    )
+
+
+def _embed_row_images(
+    sheet: Any, row_index: int, col_index: int, paths: list[Path]
+) -> int:
+    """把一行的一张或多张原图按固定显示尺寸嵌入到指定单元格，返回成功嵌入数量。"""
+    x = added = 0
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            image = XLImage(str(path))
+        except Exception:
+            continue
+        scale = min(_IMAGE_DISPLAY / image.width, _IMAGE_DISPLAY / image.height, 1.0)
+        image.width = max(1, round(image.width * scale))
+        image.height = max(1, round(image.height * scale))
+        anchor = OneCellAnchor()
+        anchor._from = AnchorMarker(
+            col=col_index - 1,
+            row=row_index - 1,
+            colOff=pixels_to_EMU(x),
+            rowOff=0,
+        )
+        anchor.ext.width = pixels_to_EMU(image.width)
+        anchor.ext.height = pixels_to_EMU(image.height)
+        image.anchor = anchor
+        sheet.add_image(image)
+        x += _IMAGE_DISPLAY + _IMAGE_GAP_PX
+        added += 1
+    return added
+
+
 def render_result_excel(
     filename_prefix: str,
     columns: list[tuple[str, str]],
@@ -281,17 +332,30 @@ def render_result_excel(
     sheet.row_dimensions[1].height = 32
 
     widths = [_display_width(label) for _, label in columns]
+    image_columns: set[int] = set()
+    image_slots: dict[int, int] = {}
     for row_index, row in enumerate(rows, start=2):
+        row_height = 30
         for column_index, (key, _) in enumerate(columns, start=1):
-            value = _result_cell_value(row.get(key))
-            cell = sheet.cell(row=row_index, column=column_index, value=value)
+            cell = sheet.cell(row=row_index, column=column_index)
             cell.font = Font(name="等线", size=11, color="FF344054")
             cell.border = cell_border
             cell.alignment = Alignment(vertical="center", wrap_text=True)
             if row_index % 2 == 0:
                 cell.fill = alternate_fill
+            raw_value = row.get(key)
+            if _is_image_list(raw_value):
+                image_columns.add(column_index)
+                image_slots[column_index] = max(
+                    image_slots.get(column_index, 0), len(raw_value)
+                )
+                if _embed_row_images(sheet, row_index, column_index, raw_value):
+                    row_height = max(row_height, _IMAGE_ROW_HEIGHT)
+                continue
+            value = _result_cell_value(raw_value)
+            cell.value = value
             widths[column_index - 1] = max(widths[column_index - 1], _display_width(value))
-        sheet.row_dimensions[row_index].height = 30
+        sheet.row_dimensions[row_index].height = row_height
 
     last_column = get_column_letter(len(columns))
     last_row = max(1, len(rows) + 1)
@@ -302,7 +366,15 @@ def render_result_excel(
     sheet.page_setup.fitToHeight = 0
 
     for column_index, width in enumerate(widths, start=1):
-        sheet.column_dimensions[get_column_letter(column_index)].width = min(max(width + 4, 14), 42)
+        cap = 255 if column_index in image_columns else 42
+        if column_index in image_columns:
+            width = max(
+                width,
+                image_slots[column_index] * (_IMAGE_DISPLAY + _IMAGE_GAP_PX) // 7 + 2,
+            )
+        sheet.column_dimensions[get_column_letter(column_index)].width = min(
+            max(width + 4, 14), cap
+        )
 
     output = BytesIO()
     workbook.save(output)

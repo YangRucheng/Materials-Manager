@@ -1090,6 +1090,86 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
 
 
 @pytest.mark.asyncio
+async def test_mini_program_material_codes_search_and_pagination(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.integration.test_material_code_library import build_workbook
+
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"material-code-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    purchase_headers = await auth_headers(client, "purchase")
+    login = await client.post("/api/v1/mini-program/auth/wx-login", json={"code": "viewer"})
+    profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+        json={
+            "display_name": "编码查看人",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
+
+    imported = await client.post(
+        "/api/v1/material-code-library/import",
+        headers=purchase_headers,
+        files={
+            "file": (
+                "codes.xlsx",
+                build_workbook(
+                    [
+                        ["生效", "DQ-0001", "交流接触器", "个", "CJX2-2510", "忽略"],
+                        ["生效", "DQ-0002", "控制电缆", "米", "KVV 4×1.5", "忽略"],
+                    ]
+                ),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert imported.status_code == 200, imported.text
+
+    all_codes = await client.get("/api/v1/mini-program/material-codes", headers=mini_headers)
+    assert all_codes.status_code == 200, all_codes.text
+    assert all_codes.json()["total"] == 2
+
+    by_code = await client.get(
+        "/api/v1/mini-program/material-codes",
+        headers=mini_headers,
+        params={"keyword": "DQ-0001"},
+    )
+    assert [item["material_code"] for item in by_code.json()["items"]] == ["DQ-0001"]
+    by_name = await client.get(
+        "/api/v1/mini-program/material-codes",
+        headers=mini_headers,
+        params={"keyword": "接触器"},
+    )
+    assert [item["material_code"] for item in by_name.json()["items"]] == ["DQ-0001"]
+    by_spec = await client.get(
+        "/api/v1/mini-program/material-codes",
+        headers=mini_headers,
+        params={"keyword": "KVV"},
+    )
+    assert [item["material_code"] for item in by_spec.json()["items"]] == ["DQ-0002"]
+
+    page1 = await client.get(
+        "/api/v1/mini-program/material-codes",
+        headers=mini_headers,
+        params={"page": 1, "page_size": 1},
+    )
+    assert len(page1.json()["items"]) == 1
+
+    denied = await client.get("/api/v1/mini-program/material-codes", headers=purchase_headers)
+    assert denied.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_advanced_setting_can_close_new_mini_program_bindings(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -62,6 +62,10 @@ Page({
     wx.navigateTo({ url: '/pages/purchase-records/purchase-records' });
   },
 
+  openMaterialCodes() {
+    wx.navigateTo({ url: '/pages/material-codes/material-codes' });
+  },
+
   onShareAppMessage() {
     return {
       title: t('shareHome'),

@@ -68,3 +68,28 @@ def test_result_excel_uses_visible_columns_and_readable_layout() -> None:
     assert sheet["B2"].alignment.wrap_text is True
     assert sheet.column_dimensions["A"].width >= 14
     assert sheet.column_dimensions["B"].width >= 14
+
+
+def test_result_excel_embeds_images_and_skips_missing_files(tmp_path: Path) -> None:
+    from PIL import Image
+
+    image_path = tmp_path / "sample.png"
+    Image.new("RGB", (32, 20), "green").save(image_path, format="PNG")
+    missing = tmp_path / "missing.png"
+
+    content, _ = excel_export_service.render_result_excel(
+        "申购计划导出",
+        [("name", "名称"), ("images", "图片")],
+        [
+            {"name": "电机", "images": [image_path]},
+            {"name": "水泵", "images": [missing]},
+        ],
+    )
+
+    sheet = load_workbook(BytesIO(content)).active
+    assert len(sheet._images) == 1
+    # 有图行加高，缺图行保持默认行高
+    assert sheet.row_dimensions[2].height == 74
+    assert sheet.row_dimensions[3].height == 30
+    # 图片列放宽
+    assert sheet.column_dimensions["B"].width >= 20

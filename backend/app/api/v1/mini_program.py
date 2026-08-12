@@ -19,6 +19,7 @@ from app.domain.enums import MiniProgramStockStatus
 from app.schemas import (
     MiniProgramInventoryItemRead,
     MiniProgramLoginResponse,
+    MiniProgramMaterialCodeRead,
     MiniProgramMaterialRead,
     MiniProgramOperationRead,
     MiniProgramOutboundCreate,
@@ -246,6 +247,20 @@ async def mini_program_purchase_record_filter_options(
 ) -> MiniProgramPurchaseRecordFilterOptions:
     statuses = await mini_program_service.list_purchase_record_filter_options(session)
     return MiniProgramPurchaseRecordFilterOptions(statuses=statuses)
+
+
+@mini_router.get("/material-codes", response_model=Page[MiniProgramMaterialCodeRead])
+async def mini_program_material_codes(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    keyword: Annotated[str | None, Query(max_length=255)] = None,
+) -> Page[MiniProgramMaterialCodeRead]:
+    items, total = await mini_program_service.list_material_codes(
+        session, keyword=keyword, page=page, page_size=page_size
+    )
+    return Page(items=items, page=page, page_size=page_size, total=total)
 
 
 @mini_router.get(
