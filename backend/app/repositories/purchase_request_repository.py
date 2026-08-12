@@ -261,6 +261,46 @@ async def search_purchase_records(
     return items, total
 
 
+async def search_mini_program_purchase_records(
+    session: AsyncSession,
+    *,
+    keyword: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 15,
+) -> tuple[list[PurchaseRequestLine], int]:
+    """小程序申购记录列表：keyword 仅 OR 匹配 名称/型号/追溯号/申购单号。"""
+    query = select(PurchaseRequestLine).join(
+        PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id
+    )
+    keyword_condition = contains_any(
+        (
+            PurchaseRequestLine.material_name_snapshot,
+            PurchaseRequestLine.model_spec_snapshot,
+            PurchaseRequestLine.trace_no,
+            PurchaseRequest.purchase_order_no,
+        ),
+        keyword,
+    )
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
+    if status:
+        query = query.where(func.trim(PurchaseRequestLine.status) == status.strip())
+    total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
+    items = list(
+        (
+            await session.scalars(
+                query.order_by(PurchaseRequestLine.id.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        )
+        .unique()
+        .all()
+    )
+    return items, total
+
+
 async def purchase_salesperson_options(session: AsyncSession) -> list[str]:
     salesperson = func.trim(PurchaseRequestLine.salesperson)
     return list(
