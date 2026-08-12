@@ -3,7 +3,6 @@
 // @namespace    https://materials-manager.qcloud.19890605.xyz/
 // @version      2.0.0
 // @description  从华兴帆软“物料申购跟踪”同步采购人、状态、合同号和船名到申购记录。
-// @match        https://materials-manager.qcloud.19890605.xyz/*
 // @match        http://43.154.152.157:8080/*
 // @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-new-sync.user.js
 // @downloadURL  https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-new-sync.user.js
@@ -40,6 +39,7 @@
     apiToken: "",
     intervalMinutes: 10,
     batchSize: 50,
+    minPurchaseOrderNo: "P05SG0300",
     autoEnabled: false,
     dryRun: false,
     minimized: false,
@@ -318,10 +318,10 @@
   async function targets() {
     const limit = int(config.batchSize, 50, 1, 200);
     const cursor = Number(GM_getValue(key("cursor"), 0)) || 0;
-    const result = await apiRequest({
-      method: "GET",
-      url: `${MATERIALS_API}/purchase-record-sync/targets?limit=${limit}&cursor=${cursor}&fields=contract_no,vessel_no,salesperson,status`,
-    });
+    const minPoNo = clean(config.minPurchaseOrderNo);
+    const base = `${MATERIALS_API}/purchase-record-sync/targets?limit=${limit}&cursor=${cursor}&fields=contract_no,vessel_no,salesperson,status`;
+    const url = minPoNo ? `${base}&min_purchase_order_no=${encodeURIComponent(minPoNo)}` : base;
+    const result = await apiRequest({ method: "GET", url });
     const rows = Array.isArray(result.items) ? result.items : [];
     if (!rows.length && cursor > 0) {
       GM_setValue(key("cursor"), 0);
@@ -534,6 +534,7 @@
       apiToken: ui.apiToken.value.trim(),
       intervalMinutes: int(ui.interval.value, 10, 1, 1440),
       batchSize: int(ui.batch.value, 50, 1, 200),
+      minPurchaseOrderNo: ui.minPurchaseOrderNo.value.trim(),
       dryRun: ui.dryRun.checked,
       autoEnabled: ui.auto.checked,
     };
@@ -544,6 +545,7 @@
     ui.apiToken.value = config.apiToken;
     ui.interval.value = config.intervalMinutes;
     ui.batch.value = config.batchSize;
+    ui.minPurchaseOrderNo.value = config.minPurchaseOrderNo;
     ui.dryRun.checked = config.dryRun;
     ui.auto.checked = config.autoEnabled;
   }
@@ -591,7 +593,7 @@
 <style>
 :host{all:initial;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2937}*{box-sizing:border-box}.panel{width:380px;overflow:hidden;border:1px solid #cbd5e1;border-radius:8px;background:#fff;box-shadow:0 18px 45px #0f172a38}.head{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 14px;color:#fff;background:#176b5b;cursor:move;user-select:none}.title{flex:1;font-size:14px;font-weight:700}.status{max-width:170px;overflow:hidden;padding:3px 8px;border-radius:4px;background:#ffffff2e;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.status[data-kind=success]{background:#10b98155}.status[data-kind=warn]{background:#f59e0b66}.status[data-kind=error]{background:#ef444466}.mini{width:28px;height:28px;border:0;border-radius:4px;color:#fff;background:#ffffff22;cursor:pointer}.body{padding:12px}:host([data-minimized=true]) .body{display:none}:host([data-minimized=true]) .panel{width:260px}.toolbar{display:flex;align-items:center;gap:9px}.run,.save{height:34px;border-radius:4px;padding:0 14px;font-weight:650;cursor:pointer}.run{border:0;color:#fff;background:#176b5b}.save{border:1px solid #cbd5e1;color:#334155;background:#fff}.switch{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#475569}.switch input,.check input{accent-color:#176b5b}.stats{margin:10px 0;padding:8px 10px;border-radius:4px;color:#475569;background:#f1f5f9;font-size:12px}details{border:1px solid #e2e8f0;border-radius:4px}summary{padding:9px 10px;font-size:12px;font-weight:650;cursor:pointer}.settings{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 10px 10px}label{display:grid;gap:4px;color:#64748b;font-size:11px}input[type=text],input[type=password],input[type=number]{width:100%;height:31px;border:1px solid #cbd5e1;border-radius:4px;padding:0 8px}.full{grid-column:1/-1}.check{display:flex;align-items:center;gap:6px}.notice{grid-column:1/-1;color:#92400e;font-size:11px;line-height:1.5}.logs{height:170px;margin-top:10px;overflow:auto;border-radius:4px;padding:8px;color:#cbd5e1;background:#20252b;font:11px/1.55 Consolas,"Microsoft YaHei",monospace}.logs div{margin-bottom:2px;overflow-wrap:anywhere}.logs .success{color:#6ee7b7}.logs .warn{color:#fcd34d}.logs .error{color:#fca5a5}button:disabled{opacity:.55;cursor:wait}
 </style>
-<section class="panel"><header class="head"><div class="title">华友新物资系统同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>物资平台账号<input class="platform-user" type="text"></label><label>物资平台密码<input class="platform-pass" type="password"></label><label>接口令牌<input class="api-token" type="password" placeholder="管理端 API Token"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">凭据仅保存在油猴脚本私有存储中。接口令牌在管理端个人资料页生成。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
+<section class="panel"><header class="head"><div class="title">华友新物资系统同步</div><div class="status">待机</div><button class="mini" title="最小化">—</button></header><div class="body"><div class="toolbar"><button class="run">同步一次</button><label class="switch"><input class="auto" type="checkbox">自动模式</label></div><div class="stats">扫描 0 · 命中 0 · 更新 0 · 跳过 0 · 失败 0</div><details><summary>连接与同步设置</summary><div class="settings"><label>物资平台账号<input class="platform-user" type="text"></label><label>物资平台密码<input class="platform-pass" type="password"></label><label>接口令牌<input class="api-token" type="password" placeholder="管理端 API Token"></label><label>自动间隔（分钟）<input class="interval" type="number" min="1" max="1440"></label><label>单次数量<input class="batch" type="number" min="1" max="200"></label><label>申购单号起始（含）<input class="min-po-no" type="text" placeholder="如 P05SG0300"></label><label class="check full"><input class="dry-run" type="checkbox">演练模式（只查询不写库）</label><div class="notice">凭据仅保存在油猴脚本私有存储中。接口令牌在管理端个人资料页生成。</div><button class="save full">保存设置</button></div></details><div class="logs"></div></div></section>`;
     document.documentElement.append(host);
     ui = {
       status: shadow.querySelector(".status"),
@@ -605,6 +607,7 @@
       apiToken: shadow.querySelector(".api-token"),
       interval: shadow.querySelector(".interval"),
       batch: shadow.querySelector(".batch"),
+      minPurchaseOrderNo: shadow.querySelector(".min-po-no"),
       dryRun: shadow.querySelector(".dry-run"),
       save: shadow.querySelector(".save"),
     };
