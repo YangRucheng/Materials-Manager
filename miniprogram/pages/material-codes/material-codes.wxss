@@ -15,9 +15,7 @@
 .code-list { display: flex; flex-direction: column; gap: 16rpx; }
 
 .code-card {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
+  display: block;
   padding: 22rpx 24rpx;
   border: 2rpx solid #eef1f6;
   border-radius: 20rpx;
@@ -26,16 +24,11 @@
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.code-value {
-  flex: none;
-  max-width: 55%;
-  overflow: hidden;
-  color: #2b4fc4;
-  font-size: 30rpx;
-  font-weight: 750;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.code-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  min-width: 0;
 }
 
 .code-name {
@@ -43,18 +36,35 @@
   min-width: 0;
   overflow: hidden;
   color: #172033;
-  font-size: 26rpx;
-  font-weight: 550;
+  font-size: 28rpx;
+  font-weight: 650;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.code-unit {
+.code-model {
   flex: none;
+  max-width: 55%;
   overflow: hidden;
   color: #8a94a5;
+  font-size: 22rpx;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-divider {
+  height: 2rpx;
+  margin: 16rpx 0 14rpx;
+  background: #f0f2f6;
+}
+
+.code-value {
+  overflow: hidden;
+  color: #2b4fc4;
   font-size: 24rpx;
+  font-weight: 550;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;

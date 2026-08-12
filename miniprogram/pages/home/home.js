@@ -2,6 +2,7 @@ const toastModule = require('tdesign-miniprogram/toast/index');
 const { extractMaterialUuid } = require('../../utils/material');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const { apiBaseUrl } = require('../../config/index');
+const { uploadTime: buildUploadTime } = require('../../config/build-info');
 const Toast = toastModule.default || toastModule;
 
 const SHARE_IMAGE_URL = `${apiBaseUrl.replace(/\/api\/v1\/?$/, '')}/logo.png`;
@@ -20,6 +21,7 @@ Page({
     user: null,
     scanning: false,
     userProfileVisible: false,
+    miniProgramUpdatedAt: buildUploadTime || t('unknown'),
     i18n: getMessages(),
   },
 
