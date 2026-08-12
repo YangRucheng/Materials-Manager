@@ -61,7 +61,7 @@
   flex-direction: row;
   align-items: center;
   gap: 12rpx;
-  padding: 22rpx 16rpx;
+  padding: 26rpx 18rpx;
   border: 2rpx solid #dce5ff;
   border-radius: 22rpx;
   background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
@@ -72,11 +72,11 @@
 .action-icon {
   display: flex;
   flex: none;
-  width: 56rpx;
-  height: 56rpx;
+  width: 72rpx;
+  height: 72rpx;
   align-items: center;
   justify-content: center;
-  border-radius: 18rpx;
+  border-radius: 22rpx;
   background: #3f63d8;
   color: #ffffff;
 }
@@ -97,12 +97,14 @@
 }
 
 .action-description {
-  margin-top: 4rpx;
+  margin-top: 6rpx;
+  display: -webkit-box;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: #7180a5;
   font-size: 20rpx;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
   text-align: left;
 }
 
