@@ -679,6 +679,14 @@ class MiniProgramPurchaseRecordFilterOptions(ReadModel):
     statuses: list[str]
 
 
+class MiniProgramMaterialCodeRead(ReadModel):
+    id: int
+    material_code: str
+    name: str | None = None
+    model_spec: str | None = None
+    unit_name: str
+
+
 class MiniProgramOutboundCreate(RequestModel):
     client_request_id: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
@@ -990,11 +998,12 @@ PurchasePlanResultColumn = Literal[
     "purchase_responsible",
     "subitem_no",
     "usage",
+    "images",
 ]
 
 
 class PurchasePlanResultExportRequest(RequestModel):
-    columns: list[PurchasePlanResultColumn] = Field(min_length=1, max_length=14)
+    columns: list[PurchasePlanResultColumn] = Field(min_length=1, max_length=15)
     name: str | None = Field(default=None, max_length=128)
     model_spec: str | None = Field(default=None, max_length=255)
     actual_demand_person: str | None = Field(default=None, max_length=128)
@@ -1220,11 +1229,12 @@ PurchaseRecordResultColumn = Literal[
     "salesperson",
     "status",
     "purchase_date",
+    "images",
 ]
 
 
 class PurchaseRecordResultExportRequest(RequestModel):
-    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=20)
+    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=21)
     purchase_order_no: str | None = Field(default=None, max_length=255)
     trace_no: str | None = Field(default=None, max_length=255)
     category: str | None = Field(default=None, max_length=64)

@@ -26,7 +26,12 @@ from app.schemas import (
     PurchaseRecordResultExportRequest,
     PurchaseRecordUpdate,
 )
-from app.services import ai_search_service, excel_export_service, material_service
+from app.services import (
+    ai_search_service,
+    excel_export_service,
+    file_service,
+    material_service,
+)
 from app.services import purchase_request_service as service
 
 router = APIRouter(tags=["申购记录"])
@@ -75,6 +80,7 @@ RECORD_RESULT_HEADERS = {
     "salesperson": "业务员",
     "status": "状态",
     "purchase_date": "申购日期",
+    "images": "图片",
 }
 
 
@@ -216,6 +222,11 @@ async def export_purchase_record_results(
                 "salesperson": record.salesperson,
                 "status": record.status,
                 "purchase_date": record.purchase_date,
+                "images": [
+                    file_service.file_path(image.id)
+                    for image in record.images
+                    if file_service.file_path(image.id).is_file()
+                ],
             }
         )
     columns = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]

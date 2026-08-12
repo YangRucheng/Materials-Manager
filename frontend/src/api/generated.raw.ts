@@ -707,6 +707,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mini-program/material-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Material Codes */
+        get: operations["mini_program_material_codes_api_v1_mini_program_material_codes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program/purchase-plans/{material_id}": {
         parameters: {
             query?: never;
@@ -1618,6 +1635,19 @@ export interface components {
             /** Requires Profile */
             requires_profile: boolean;
         };
+        /** MiniProgramMaterialCodeRead */
+        MiniProgramMaterialCodeRead: {
+            /** Id */
+            id: number;
+            /** Material Code */
+            material_code: string;
+            /** Name */
+            name?: string | null;
+            /** Model Spec */
+            model_spec?: string | null;
+            /** Unit Name */
+            unit_name: string;
+        };
         /** MiniProgramMaterialRead */
         MiniProgramMaterialRead: {
             /**
@@ -2095,6 +2125,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[MiniProgramMaterialCodeRead] */
+        Page_MiniProgramMaterialCodeRead_: {
+            /** Items */
+            items: components["schemas"]["MiniProgramMaterialCodeRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[MiniProgramOperationRead] */
         Page_MiniProgramOperationRead_: {
             /** Items */
@@ -2360,7 +2401,7 @@ export interface components {
         /** PurchasePlanResultExportRequest */
         PurchasePlanResultExportRequest: {
             /** Columns */
-            columns: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage")[];
+            columns: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage" | "images")[];
             /** Name */
             name?: string | null;
             /** Model Spec */
@@ -2384,7 +2425,7 @@ export interface components {
             /** Category */
             category?: string | null;
             /** Sort By */
-            sort_by?: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage") | null;
+            sort_by?: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage" | "images") | null;
             /**
              * Sort Order
              * @default asc
@@ -2500,7 +2541,7 @@ export interface components {
         /** PurchaseRecordResultExportRequest */
         PurchaseRecordResultExportRequest: {
             /** Columns */
-            columns: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date")[];
+            columns: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date" | "images")[];
             /** Purchase Order No */
             purchase_order_no?: string | null;
             /** Trace No */
@@ -2525,7 +2566,7 @@ export interface components {
              */
             empty_status: boolean;
             /** Sort By */
-            sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
+            sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date" | "images") | null;
             /**
              * Sort Order
              * @default asc
@@ -6263,6 +6304,75 @@ export interface operations {
             };
         };
     };
+    mini_program_material_codes_api_v1_mini_program_material_codes_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MiniProgramMaterialCodeRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     mini_program_purchase_plan_detail_api_v1_mini_program_purchase_plans__material_id__get: {
         parameters: {
             query?: never;
@@ -6625,7 +6735,7 @@ export interface operations {
                 coded?: boolean | null;
                 moved?: boolean | null;
                 ai_expand?: boolean;
-                sort_by?: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage") | null;
+                sort_by?: ("plan_no" | "plan_date" | "material_code" | "category" | "urgency" | "demand_department" | "name" | "model_spec" | "planned_qty" | "unit_name" | "actual_demand_person" | "purchase_responsible" | "subitem_no" | "usage" | "images") | null;
                 sort_order?: "asc" | "desc";
             };
             header?: never;
@@ -7687,7 +7797,7 @@ export interface operations {
                 /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
                 salesperson?: string | null;
                 ai_expand?: boolean;
-                sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date") | null;
+                sort_by?: ("purchase_qty" | "plan_date" | "purchase_order_no" | "trace_no" | "contract_no" | "vessel_no" | "consolidation_date" | "consolidation_port" | "sailing_date" | "category" | "demand_department" | "material_name" | "model_spec" | "material_code" | "actual_demand_person" | "usage" | "purchase_responsible" | "salesperson" | "status" | "purchase_date" | "images") | null;
                 sort_order?: "asc" | "desc";
             };
             header?: never;
