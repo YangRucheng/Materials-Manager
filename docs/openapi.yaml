@@ -3864,6 +3864,17 @@ paths:
           description: 逗号分隔的需要补全的同步字段；省略表示全部字段
           title: Fields
         description: 逗号分隔的需要补全的同步字段；省略表示全部字段
+      - name: min_purchase_order_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: 只返回申购单号（purchase_order_no）>= 该值的记录（含该值）
+          title: Min Purchase Order No
+        description: 只返回申购单号（purchase_order_no）>= 该值的记录（含该值）
       responses:
         '200':
           description: Successful Response
@@ -5080,6 +5091,50 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/version:
+    get:
+      tags:
+      - 版本信息
+      summary: 应用版本与后端构建信息
+      description: 返回应用名、版本号、git 提交与后端镜像构建时间（供前端关于页展示）。
+      operationId: version_info_api_v1_version_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionInfoRead'
         '400':
           description: 业务校验失败
           content:
@@ -8697,6 +8752,29 @@ components:
       required:
       - version
       title: UserUpdate
+    VersionInfoRead:
+      properties:
+        app_name:
+          type: string
+          title: App Name
+        version:
+          type: string
+          title: Version
+        commit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Commit
+        build_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Build Time
+      type: object
+      required:
+      - app_name
+      - version
+      title: VersionInfoRead
     WebhookChannelRead:
       properties:
         platform:

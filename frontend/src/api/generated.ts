@@ -56,6 +56,7 @@ export type PurchaseRecordResultExportRequest =
   components['schemas']['PurchaseRecordResultExportRequest']
 export type PurchaseMaterial = components['schemas']['PurchaseMaterialRead']
 export type PurchaseRecord = components['schemas']['PurchaseRecordRead']
+export type VersionInfo = components['schemas']['VersionInfoRead']
 
 /* ===== 前端自建视图模型 / 泛型 / Literal（openapi 无对应 schema，手写保留） ===== */
 

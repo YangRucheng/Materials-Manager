@@ -1,8 +1,19 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { versionApi } from '@/api/version'
 import { buildTime } from '@/config/env'
 import { formatShanghaiTime } from '@/utils/time'
 
 const buildTimeLabel = formatShanghaiTime(buildTime)
+const backendBuildTimeLabel = ref('—')
+onMounted(async () => {
+  try {
+    const info = await versionApi.get()
+    backendBuildTimeLabel.value = formatShanghaiTime(info.build_time ?? undefined)
+  } catch {
+    backendBuildTimeLabel.value = '—'
+  }
+})
 </script>
 
 <template>
@@ -65,6 +76,7 @@ const buildTimeLabel = formatShanghaiTime(buildTime)
             所有。
           </p>
           <p>前端构建时间：{{ buildTimeLabel }}</p>
+          <p>后端构建时间：{{ backendBuildTimeLabel }}</p>
         </div>
       </section>
     </n-card>
