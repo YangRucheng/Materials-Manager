@@ -52,6 +52,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18rpx;
+  margin-bottom: 18rpx;
 }
 
 .action-card {
@@ -113,7 +114,6 @@
 
 .scan-card {
   box-sizing: border-box;
-  margin-top: 18rpx;
   padding: 42rpx 32rpx 34rpx;
   border-color: #dce5ff;
   text-align: center;
