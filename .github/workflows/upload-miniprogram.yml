@@ -79,6 +79,10 @@ jobs:
           echo "MINIPROGRAM_VERSION=${UPLOAD_INFO%%|*}" >> "$GITHUB_ENV"
           echo "MINIPROGRAM_DESC=${UPLOAD_INFO#*|}" >> "$GITHUB_ENV"
 
+      - name: 写入小程序构建时间
+        run: |
+          echo "module.exports = { uploadTime: '$(date -u --date='+8 hours' '+%Y/%m/%d %H:%M:%S')' };" > config/build-info.js
+
       - name: 上传第一个微信小程序代码
         run: npm run upload
 

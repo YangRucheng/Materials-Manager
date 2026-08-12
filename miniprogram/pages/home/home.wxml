@@ -84,6 +84,10 @@
           <view class="user-profile-label">{{i18n.registeredAt}}</view>
           <view class="user-profile-value">{{user.registered_at}}</view>
         </view>
+        <view class="user-profile-row">
+          <view class="user-profile-label">{{i18n.miniProgramUpdatedAt}}</view>
+          <view class="user-profile-value">{{miniProgramUpdatedAt}}</view>
+        </view>
       </view>
       <view class="user-profile-records" hover-class="user-profile-records-active" bind:tap="openRecords">
         <view class="records-entry">

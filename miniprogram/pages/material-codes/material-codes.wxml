@@ -18,9 +18,12 @@
   </view>
   <view wx:else class="code-list">
     <view wx:for="{{items}}" wx:key="id" class="code-card">
+      <view class="code-head">
+        <text class="code-name">{{item.name || i18n.notSet}}</text>
+        <text wx:if="{{item.model_spec}}" class="code-model">{{item.model_spec}}</text>
+      </view>
+      <view class="card-divider"></view>
       <view class="code-value">{{item.material_code}}</view>
-      <view class="code-name">{{item.name || i18n.notSet}}</view>
-      <view wx:if="{{item.unit_name}}" class="code-unit">{{item.unit_name}}</view>
     </view>
   </view>
   <view wx:if="{{loadingMore}}" class="load-more">
