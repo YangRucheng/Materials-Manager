@@ -7,6 +7,7 @@
     "pages/material-detail/material-detail",
     "pages/purchase-plans/purchase-plans",
     "pages/purchase-records/purchase-records",
+    "pages/material-codes/material-codes",
     "pages/purchase-plan-detail/purchase-plan-detail",
     "pages/records/records",
     "pages/bind/bind",
