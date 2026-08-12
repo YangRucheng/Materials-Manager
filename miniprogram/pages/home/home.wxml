@@ -42,22 +42,22 @@
         <view class="action-description">{{i18n.materialCodesDescription}}</view>
       </view>
     </view>
+  </view>
 
-    <view class="section-card scan-card">
-      <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
-      <view class="scan-title">{{i18n.scanMaterialCode}}</view>
-      <view class="scan-description">{{i18n.scanDescription}}</view>
-      <t-button
-        class="scan-action"
-        theme="primary"
-        size="large"
-        block
-        loading="{{scanning}}"
-        disabled="{{scanning}}"
-        icon="scan"
-        bind:tap="scanMaterial"
-      >{{i18n.startScan}}</t-button>
-    </view>
+  <view class="section-card scan-card">
+    <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
+    <view class="scan-title">{{i18n.scanMaterialCode}}</view>
+    <view class="scan-description">{{i18n.scanDescription}}</view>
+    <t-button
+      class="scan-action"
+      theme="primary"
+      size="large"
+      block
+      loading="{{scanning}}"
+      disabled="{{scanning}}"
+      icon="scan"
+      bind:tap="scanMaterial"
+    >{{i18n.startScan}}</t-button>
   </view>
 
   <t-toast id="home-toast" />
