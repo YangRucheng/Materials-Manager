@@ -12,12 +12,12 @@ from tests.integration.test_procurement import create_purchase_plan
 pytestmark = pytest.mark.asyncio
 
 
-async def _move_plan(client, headers, plan_id, trace_no):
+async def _move_plan(client, headers, plan_id, trace_no, *, purchase_order_no="SYNC-PO"):
     response = await client.post(
         f"/api/v1/purchase-materials/{plan_id}/move-to-record",
         headers=headers,
         json={
-            "purchase_order_no": "SYNC-PO",
+            "purchase_order_no": purchase_order_no,
             "trace_no": trace_no,
             "contract_no": None,
             "vessel_no": None,
@@ -121,6 +121,22 @@ async def test_sync_only_fills_empty_and_advances_status(client) -> None:
     # 但按全部字段（含集港/发运）筛选时，因集港/发运仍为空，仍视为目标
     targets_all = await _targets(client, headers)
     assert any(item["trace_no"] == "SYNC-002" for item in targets_all["items"])
+
+
+async def test_sync_targets_min_purchase_order_no(client) -> None:
+    headers = await auth_headers(client, "purchase")
+    for name, code, po, trace in [
+        ("同步电机P1", "SYNC-P1", "P05SG0299", "SYNC-P1"),
+        ("同步电机P2", "SYNC-P2", "P05SG0300", "SYNC-P2"),
+    ]:
+        motor = await create_purchase_plan(client, headers, name, code=code)
+        await _move_plan(client, headers, int(motor["id"]), trace, purchase_order_no=po)
+
+    both = await _targets(client, headers)
+    assert {item["trace_no"] for item in both["items"]} == {"SYNC-P1", "SYNC-P2"}
+
+    filtered = await _targets(client, headers, min_purchase_order_no="P05SG0300")
+    assert [item["trace_no"] for item in filtered["items"]] == ["SYNC-P2"]
 
 
 async def test_sync_targets_invalid_fields(client) -> None:

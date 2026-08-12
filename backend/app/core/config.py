@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     cors_max_age: int = Field(default=86400, ge=0)
     # 每日凌晨2点定时清理已转入申购记录的计划（记录自包含快照后删除计划是安全的）
     purchase_plan_cleanup_enabled: bool = True
+    # 构建期注入的版本信息（Docker ARG/ENV，见 backend/Dockerfile 与 CI build-images.yml）
+    build_time: str | None = None
+    git_sha: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -46,7 +46,12 @@ def _is_blank(value: str | None) -> bool:
 
 
 async def list_sync_targets(
-    session: AsyncSession, *, limit: int, cursor: int, fields: str | None = None
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: int,
+    fields: str | None = None,
+    min_purchase_order_no: str | None = None,
 ) -> PurchaseRecordSyncTargetsRead:
     active_fields: set[str] | None = None
     if fields:
@@ -59,8 +64,17 @@ async def list_sync_targets(
                 status_code=422,
             )
         active_fields = parsed
+    cutoff: str | None = None
+    if min_purchase_order_no:
+        cutoff = min_purchase_order_no.strip()
+        if len(cutoff) > 128:
+            raise AppError("VALIDATION_ERROR", "申购单号起始值过长", status_code=422)
     rows = await purchase_request_repository.list_sync_targets(
-        session, limit=limit, cursor=cursor, fields=active_fields
+        session,
+        limit=limit,
+        cursor=cursor,
+        fields=active_fields,
+        min_purchase_order_no=cutoff,
     )
     has_more = len(rows) > limit
     items = [

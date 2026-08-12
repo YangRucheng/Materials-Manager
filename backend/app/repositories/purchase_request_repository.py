@@ -50,7 +50,12 @@ async def get_purchase_record(
 
 
 async def list_sync_targets(
-    session: AsyncSession, *, limit: int, cursor: int, fields: set[str] | None = None
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: int,
+    fields: set[str] | None = None,
+    min_purchase_order_no: str | None = None,
 ) -> list[tuple[str, int, int]]:
     """按追溯号分组的待同步目标（trace_no 非空且存在缺失字段或未完成状态）。
 
@@ -58,6 +63,7 @@ async def list_sync_targets(
     排序取每组的最大 line.id 倒序。limit 应传 limit+1 由调用方截断判定 has_more。
     fields 为空时覆盖全部同步字段；仅包含调用方实际关心的字段（如新脚本只需
     salesperson/contract_no/vessel_no/status），避免“补不完的字段”长期占用目标。
+    min_purchase_order_no 非空时仅保留申购单号 >= 该值的记录（含该值）。
     """
     condition_map = {
         "salesperson": or_(
@@ -84,6 +90,16 @@ async def list_sync_targets(
     if "status" in active_fields:
         conditions.append(PurchaseRequestLine.status.in_(("已申购", "已采购", "部分入库")))
 
+    where_clauses = [
+        PurchaseRequestLine.trace_no.is_not(None),
+        func.trim(PurchaseRequestLine.trace_no) != "",
+        or_(*conditions),
+    ]
+    if min_purchase_order_no:
+        where_clauses.append(
+            func.trim(PurchaseRequest.purchase_order_no) >= min_purchase_order_no
+        )
+
     query = (
         select(
             PurchaseRequestLine.trace_no,
@@ -91,11 +107,7 @@ async def list_sync_targets(
             func.max(PurchaseRequestLine.id).label("cursor_id"),
         )
         .join(PurchaseRequest, PurchaseRequest.id == PurchaseRequestLine.purchase_request_id)
-        .where(
-            PurchaseRequestLine.trace_no.is_not(None),
-            func.trim(PurchaseRequestLine.trace_no) != "",
-            or_(*conditions),
-        )
+        .where(*where_clauses)
         .group_by(PurchaseRequestLine.trace_no)
         .order_by(func.max(PurchaseRequestLine.id).desc(), PurchaseRequestLine.trace_no)
     )
