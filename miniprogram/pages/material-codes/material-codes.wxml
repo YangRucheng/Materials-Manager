@@ -20,14 +20,7 @@
     <view wx:for="{{items}}" wx:key="id" class="code-card">
       <view class="code-value">{{item.material_code}}</view>
       <view class="code-name">{{item.name || i18n.notSet}}</view>
-      <view wx:if="{{item.model_spec}}" class="code-spec">{{item.model_spec}}</view>
-      <view class="card-divider"></view>
-      <view class="code-meta">
-        <view class="meta-item">
-          <view class="meta-label">{{i18n.materialCodeUnit}}</view>
-          <view class="meta-value">{{item.unit_name}}</view>
-        </view>
-      </view>
+      <view wx:if="{{item.unit_name}}" class="code-unit">{{item.unit_name}}</view>
     </view>
   </view>
   <view wx:if="{{loadingMore}}" class="load-more">
