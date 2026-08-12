@@ -15,44 +15,51 @@
 .code-list { display: flex; flex-direction: column; gap: 16rpx; }
 
 .code-card {
-  padding: 28rpx 28rpx 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 22rpx 24rpx;
   border: 2rpx solid #eef1f6;
-  border-radius: 28rpx;
+  border-radius: 20rpx;
   background: #ffffff;
-  box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.05);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
 .code-value {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
   color: #2b4fc4;
-  font-size: 34rpx;
+  font-size: 30rpx;
   font-weight: 750;
   line-height: 1.3;
-  word-break: break-all;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .code-name {
-  margin-top: 8rpx;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   color: #172033;
-  font-size: 28rpx;
-  font-weight: 650;
+  font-size: 26rpx;
+  font-weight: 550;
   line-height: 1.4;
-  word-break: break-all;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.code-spec {
-  margin-top: 6rpx;
-  color: #7d8798;
+.code-unit {
+  flex: none;
+  overflow: hidden;
+  color: #8a94a5;
   font-size: 24rpx;
-  line-height: 1.45;
-  word-break: break-all;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.card-divider { height: 2rpx; margin: 22rpx 0 18rpx; background: #f0f2f6; }
-.code-meta { display: flex; align-items: center; }
-.meta-item { min-width: 190rpx; }
-.meta-label { color: #8a94a5; font-size: 21rpx; }
-.meta-value { margin-top: 4rpx; color: #4b5565; font-size: 25rpx; font-weight: 550; }
 .state-panel { display: flex; min-height: 420rpx; align-items: center; justify-content: center; }
 .empty-panel { box-sizing: border-box; padding-top: 40rpx; }
 .load-more, .load-finished { padding: 28rpx 0 8rpx; color: #a1a9b7; font-size: 22rpx; text-align: center; }
