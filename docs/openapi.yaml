@@ -2656,6 +2656,132 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/mini-program/purchase-records:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Purchase Records
+      operationId: mini_program_purchase_records_api_v1_mini_program_purchase_records_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Keyword
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_MiniProgramPurchaseRecordItemRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/purchase-records/filter-options:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Purchase Record Filter Options
+      operationId: mini_program_purchase_record_filter_options_api_v1_mini_program_purchase_records_filter_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramPurchaseRecordFilterOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/mini-program/purchase-plans/{material_id}:
     get:
       tags:
@@ -6374,6 +6500,62 @@ components:
       - purchase_responsible
       - urgency
       title: MiniProgramPurchasePlanItemRead
+    MiniProgramPurchaseRecordFilterOptions:
+      properties:
+        statuses:
+          items:
+            type: string
+          type: array
+          title: Statuses
+      type: object
+      required:
+      - statuses
+      title: MiniProgramPurchaseRecordFilterOptions
+    MiniProgramPurchaseRecordItemRead:
+      properties:
+        line_id:
+          type: integer
+          title: Line Id
+        material_name:
+          type: string
+          title: Material Name
+        model_spec:
+          type: string
+          title: Model Spec
+        purchase_order_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Purchase Order No
+        trace_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trace No
+        status:
+          type: string
+          title: Status
+        unit_name:
+          type: string
+          title: Unit Name
+        purchase_qty:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Purchase Qty
+        plan_date:
+          type: string
+          format: date
+          title: Plan Date
+      type: object
+      required:
+      - line_id
+      - material_name
+      - model_spec
+      - status
+      - unit_name
+      - purchase_qty
+      - plan_date
+      title: MiniProgramPurchaseRecordItemRead
     MiniProgramStockStatus:
       type: string
       enum:
@@ -6886,6 +7068,29 @@ components:
       - page_size
       - total
       title: Page[MiniProgramPurchasePlanItemRead]
+    Page_MiniProgramPurchaseRecordItemRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MiniProgramPurchaseRecordItemRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[MiniProgramPurchaseRecordItemRead]
     Page_MiniProgramUserRead_:
       properties:
         items:

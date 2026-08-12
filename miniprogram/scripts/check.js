@@ -8,6 +8,7 @@ const pages = [
   'inventory/inventory',
   'material-detail/material-detail',
   'purchase-plans/purchase-plans',
+  'purchase-records/purchase-records',
   'purchase-plan-detail/purchase-plan-detail',
   'bind/bind',
   'disabled/disabled',

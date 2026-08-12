@@ -663,6 +663,22 @@ class MiniProgramPurchasePlanFilterOptions(ReadModel):
     subitem_nos: list[str]
 
 
+class MiniProgramPurchaseRecordItemRead(ReadModel):
+    line_id: int
+    material_name: str
+    model_spec: str
+    purchase_order_no: str | None = None
+    trace_no: str | None = None
+    status: str
+    unit_name: str
+    purchase_qty: Decimal
+    plan_date: date
+
+
+class MiniProgramPurchaseRecordFilterOptions(ReadModel):
+    statuses: list[str]
+
+
 class MiniProgramOutboundCreate(RequestModel):
     client_request_id: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)

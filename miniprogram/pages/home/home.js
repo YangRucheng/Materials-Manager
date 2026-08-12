@@ -58,6 +58,10 @@ Page({
     wx.navigateTo({ url: '/pages/purchase-plans/purchase-plans' });
   },
 
+  openPurchaseRecords() {
+    wx.navigateTo({ url: '/pages/purchase-records/purchase-records' });
+  },
+
   onShareAppMessage() {
     return {
       title: t('shareHome'),

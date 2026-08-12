@@ -673,6 +673,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mini-program/purchase-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Purchase Records */
+        get: operations["mini_program_purchase_records_api_v1_mini_program_purchase_records_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mini-program/purchase-records/filter-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Purchase Record Filter Options */
+        get: operations["mini_program_purchase_record_filter_options_api_v1_mini_program_purchase_records_filter_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program/purchase-plans/{material_id}": {
         parameters: {
             query?: never;
@@ -1808,6 +1842,35 @@ export interface components {
             /** Urgency */
             urgency: string;
         };
+        /** MiniProgramPurchaseRecordFilterOptions */
+        MiniProgramPurchaseRecordFilterOptions: {
+            /** Statuses */
+            statuses: string[];
+        };
+        /** MiniProgramPurchaseRecordItemRead */
+        MiniProgramPurchaseRecordItemRead: {
+            /** Line Id */
+            line_id: number;
+            /** Material Name */
+            material_name: string;
+            /** Model Spec */
+            model_spec: string;
+            /** Purchase Order No */
+            purchase_order_no?: string | null;
+            /** Trace No */
+            trace_no?: string | null;
+            /** Status */
+            status: string;
+            /** Unit Name */
+            unit_name: string;
+            /** Purchase Qty */
+            purchase_qty: string;
+            /**
+             * Plan Date
+             * Format: date
+             */
+            plan_date: string;
+        };
         /**
          * MiniProgramStockStatus
          * @enum {string}
@@ -2047,6 +2110,17 @@ export interface components {
         Page_MiniProgramPurchasePlanItemRead_: {
             /** Items */
             items: components["schemas"]["MiniProgramPurchasePlanItemRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[MiniProgramPurchaseRecordItemRead] */
+        Page_MiniProgramPurchaseRecordItemRead_: {
+            /** Items */
+            items: components["schemas"]["MiniProgramPurchaseRecordItemRead"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -6005,6 +6079,141 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MiniProgramPurchasePlanFilterOptions"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_purchase_records_api_v1_mini_program_purchase_records_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MiniProgramPurchaseRecordItemRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_purchase_record_filter_options_api_v1_mini_program_purchase_records_filter_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MiniProgramPurchaseRecordFilterOptions"];
                 };
             };
             /** @description 业务校验失败 */

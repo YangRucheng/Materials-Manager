@@ -913,6 +913,183 @@ async def test_mini_program_purchase_plans_exclude_plans_moved_to_record(
 
 
 @pytest.mark.asyncio
+async def test_mini_program_purchase_records_search_status_and_pagination(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"purchase-record-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    purchase_headers = await auth_headers(client, "purchase")
+    login = await client.post("/api/v1/mini-program/auth/wx-login", json={"code": "viewer"})
+    profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+        json={
+            "display_name": "申购记录查看人",
+            "department_name": "华星检修维护部电气车间",
+        },
+    )
+    mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
+
+    async def create_plan(name: str, code: str) -> dict[str, object]:
+        response = await client.post(
+            "/api/v1/purchase-materials",
+            headers=purchase_headers,
+            json={
+                "plan_date": "2026-08-04",
+                "material_code": code,
+                "category": "备品备件",
+                "name": name,
+                "model_spec": f"MODEL-{name}",
+                "unit_name": "个",
+                "actual_demand_person": "张三",
+                "purchase_responsible": "李工",
+                "planned_qty": "3",
+                "usage": "检修备用",
+                "subitem_no": "01-01",
+                "remark": "申购记录测试",
+                "image_ids": [],
+            },
+        )
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    async def move(
+        plan: dict[str, object],
+        purchase_order_no: str,
+        trace_no: str,
+        status: str,
+    ) -> dict[str, object]:
+        response = await client.post(
+            f"/api/v1/purchase-materials/{plan['id']}/move-to-record",
+            headers=purchase_headers,
+            json={
+                "purchase_order_no": purchase_order_no,
+                "trace_no": trace_no,
+                "purchase_date": "2026-08-02",
+                "salesperson": "赵经理",
+                "status": status,
+                "record_remark": "申购记录测试",
+            },
+        )
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    plan_a = await create_plan("记录电机A", "DQ-REC-A")
+    plan_b = await create_plan("记录电机B", "DQ-REC-B")
+    record_a = await move(plan_a, "SG-2026-100", "ZS-2026-100", "已申购")
+    record_b = await move(plan_b, "SG-2026-200", "ZS-2026-200", "已采购")
+
+    # 列表 + 倒序 + 序列化（数量为字符串、日期为日期串）
+    records = await client.get("/api/v1/mini-program/purchase-records", headers=mini_headers)
+    assert records.status_code == 200, records.text
+    body = records.json()
+    assert body["total"] == 2
+    assert [item["line_id"] for item in body["items"]] == [
+        record_b["line_id"],
+        record_a["line_id"],
+    ]
+    item = body["items"][0]
+    assert set(item.keys()) == {
+        "line_id",
+        "material_name",
+        "model_spec",
+        "purchase_order_no",
+        "trace_no",
+        "status",
+        "unit_name",
+        "purchase_qty",
+        "plan_date",
+    }
+    assert item["purchase_qty"] == "3"
+    assert item["plan_date"] == "2026-08-04"
+
+    # keyword 分别命中名称/型号/追溯号/申购单号
+    by_name = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"keyword": "记录电机A"},
+    )
+    assert [i["line_id"] for i in by_name.json()["items"]] == [record_a["line_id"]]
+    by_spec = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"keyword": "MODEL-记录电机B"},
+    )
+    assert [i["line_id"] for i in by_spec.json()["items"]] == [record_b["line_id"]]
+    by_trace = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"keyword": "ZS-2026-200"},
+    )
+    assert [i["line_id"] for i in by_trace.json()["items"]] == [record_b["line_id"]]
+    by_po = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"keyword": "SG-2026-100"},
+    )
+    assert [i["line_id"] for i in by_po.json()["items"]] == [record_a["line_id"]]
+
+    # | OR 命中两条
+    by_or = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"keyword": "ZS-2026-100|SG-2026-200"},
+    )
+    assert by_or.json()["total"] == 2
+
+    # status 筛选
+    by_status = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"status": "已采购"},
+    )
+    assert [i["line_id"] for i in by_status.json()["items"]] == [record_b["line_id"]]
+    none_status = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"status": "已入库"},
+    )
+    assert none_status.json()["total"] == 0
+    assert none_status.json()["items"] == []
+
+    # 分页
+    page1 = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"page": 1, "page_size": 1},
+    )
+    assert [i["line_id"] for i in page1.json()["items"]] == [record_b["line_id"]]
+    page2 = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"page": 2, "page_size": 1},
+    )
+    assert [i["line_id"] for i in page2.json()["items"]] == [record_a["line_id"]]
+
+    # filter-options
+    options = await client.get(
+        "/api/v1/mini-program/purchase-records/filter-options", headers=mini_headers
+    )
+    assert options.status_code == 200, options.text
+    assert "已申购" in options.json()["statuses"]
+    assert "已采购" in options.json()["statuses"]
+
+    # 管理端 token 调用小程序接口 → 401
+    denied = await client.get(
+        "/api/v1/mini-program/purchase-records", headers=purchase_headers
+    )
+    assert denied.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_advanced_setting_can_close_new_mini_program_bindings(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
