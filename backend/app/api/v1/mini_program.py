@@ -28,6 +28,8 @@ from app.schemas import (
     MiniProgramPurchasePlanDetailRead,
     MiniProgramPurchasePlanFilterOptions,
     MiniProgramPurchasePlanItemRead,
+    MiniProgramPurchaseRecordFilterOptions,
+    MiniProgramPurchaseRecordItemRead,
     MiniProgramUserMergeRequest,
     MiniProgramUserRead,
     MiniProgramUserUpdate,
@@ -212,6 +214,38 @@ async def mini_program_purchase_plan_filter_options(
         actual_demand_persons=actual_demand_persons,
         subitem_nos=subitem_nos,
     )
+
+
+@mini_router.get("/purchase-records", response_model=Page[MiniProgramPurchaseRecordItemRead])
+async def mini_program_purchase_records(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    keyword: Annotated[str | None, Query(max_length=255)] = None,
+    status: Annotated[str | None, Query(max_length=128)] = None,
+) -> Page[MiniProgramPurchaseRecordItemRead]:
+    items, total = await mini_program_service.list_purchase_records(
+        session, keyword=keyword, status=status, page=page, page_size=page_size
+    )
+    return Page(
+        items=[mini_program_service.purchase_record_item_read(item) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@mini_router.get(
+    "/purchase-records/filter-options",
+    response_model=MiniProgramPurchaseRecordFilterOptions,
+)
+async def mini_program_purchase_record_filter_options(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> MiniProgramPurchaseRecordFilterOptions:
+    statuses = await mini_program_service.list_purchase_record_filter_options(session)
+    return MiniProgramPurchaseRecordFilterOptions(statuses=statuses)
 
 
 @mini_router.get(

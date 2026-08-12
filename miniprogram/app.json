@@ -6,6 +6,7 @@
     "pages/inventory/inventory",
     "pages/material-detail/material-detail",
     "pages/purchase-plans/purchase-plans",
+    "pages/purchase-records/purchase-records",
     "pages/purchase-plan-detail/purchase-plan-detail",
     "pages/records/records",
     "pages/bind/bind",

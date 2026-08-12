@@ -33,6 +33,7 @@ from app.models import (
     StockOperation,
     StockReplenishmentPolicy,
 )
+from app.repositories import purchase_request_repository
 from app.schemas import (
     MiniProgramInventoryItemRead,
     MiniProgramMaterialRead,
@@ -42,6 +43,7 @@ from app.schemas import (
     MiniProgramOutboundReason,
     MiniProgramPurchasePlanDetailRead,
     MiniProgramPurchasePlanItemRead,
+    MiniProgramPurchaseRecordItemRead,
     MiniProgramUserMergeRequest,
     MiniProgramUserUpdate,
     OperationCreate,
@@ -166,6 +168,38 @@ async def list_purchase_plan_filter_options(
 
 def purchase_plan_item_read(item: PurchaseMaterial) -> MiniProgramPurchasePlanItemRead:
     return MiniProgramPurchasePlanItemRead.model_validate(item)
+
+
+async def list_purchase_records(
+    session: AsyncSession,
+    *,
+    keyword: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 15,
+) -> tuple[list[PurchaseRequestLine], int]:
+    return await purchase_request_repository.search_mini_program_purchase_records(
+        session, keyword=keyword, status=status, page=page, page_size=page_size
+    )
+
+
+async def list_purchase_record_filter_options(session: AsyncSession) -> list[str]:
+    return await purchase_request_repository.purchase_status_options(session)
+
+
+def purchase_record_item_read(line: PurchaseRequestLine) -> MiniProgramPurchaseRecordItemRead:
+    request = line.request
+    return MiniProgramPurchaseRecordItemRead(
+        line_id=line.id,
+        material_name=line.material_name_snapshot,
+        model_spec=line.model_spec_snapshot,
+        purchase_order_no=request.purchase_order_no,
+        trace_no=line.trace_no,
+        status=line.status,
+        unit_name=line.unit_name_snapshot,
+        purchase_qty=line.purchase_qty,
+        plan_date=line.plan_date_snapshot,
+    )
 
 
 async def purchase_plan_detail(
