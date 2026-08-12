@@ -96,7 +96,10 @@ jobs:
           if [ "${{ matrix.component }}" = "backend" ]; then
             echo "context=." >> "$GITHUB_OUTPUT"
             echo "dockerfile=./backend/Dockerfile" >> "$GITHUB_OUTPUT"
-            echo "build_args=BUILD_TIME=${{ steps.buildinfo.outputs.build_time }} GIT_SHA=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "build_args<<EOF" >> "$GITHUB_OUTPUT"
+            echo "BUILD_TIME=${{ steps.buildinfo.outputs.build_time }}" >> "$GITHUB_OUTPUT"
+            echo "GIT_SHA=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
           elif [ "${{ matrix.component }}" = "frontend" ]; then
             echo "context=./frontend" >> "$GITHUB_OUTPUT"
             echo "dockerfile=./frontend/Dockerfile" >> "$GITHUB_OUTPUT"
