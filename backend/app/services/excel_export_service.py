@@ -259,13 +259,15 @@ def _result_cell_value(value: object) -> object:
         value = ILLEGAL_EXCEL_CHARACTERS.sub("", value)
         if value.startswith(("=", "+", "-", "@")):
             return f"'{value}"
+    if isinstance(value, list):
+        # 非图片列表（如无图片时的空列表）→ 空单元格；其余列表合并为文本
+        return "" if not value else ", ".join(str(item) for item in value)
     return value
 
 
 def _is_image_list(value: object) -> TypeGuard[list[Path]]:
     return (
         isinstance(value, list)
-        and bool(value)
         and all(isinstance(item, Path) for item in value)
     )
 
