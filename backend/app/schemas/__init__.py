@@ -1269,6 +1269,13 @@ class PurchaseRecordSyncResultRead(ReadModel):
     affected_lines: int
 
 
+class VersionInfoRead(ReadModel):
+    app_name: str
+    version: str
+    commit: str | None = None
+    build_time: str | None = None
+
+
 class ReplenishmentDraftCreate(RequestModel):
     planned_qty: PositiveQuantity
     demand_date: date | None = None

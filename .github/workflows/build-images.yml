@@ -86,12 +86,17 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
+      - name: 生成构建信息
+        id: buildinfo
+        run: echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: 设置组件构建参数
         id: settings
         run: |
           if [ "${{ matrix.component }}" = "backend" ]; then
             echo "context=." >> "$GITHUB_OUTPUT"
             echo "dockerfile=./backend/Dockerfile" >> "$GITHUB_OUTPUT"
+            echo "build_args=BUILD_TIME=${{ steps.buildinfo.outputs.build_time }} GIT_SHA=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ matrix.component }}" = "frontend" ]; then
             echo "context=./frontend" >> "$GITHUB_OUTPUT"
             echo "dockerfile=./frontend/Dockerfile" >> "$GITHUB_OUTPUT"
@@ -123,6 +128,7 @@ jobs:
         with:
           context: ${{ steps.settings.outputs.context }}
           file: ${{ steps.settings.outputs.dockerfile }}
+          build-args: ${{ steps.settings.outputs.build_args }}
           push: ${{ env.SHOULD_PUSH_IMAGE == 'true' }}
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}

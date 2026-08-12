@@ -13,6 +13,7 @@ from app.api.v1 import (
     purchase_requests,
     stock_materials,
     system_settings,
+    version,
 )
 from app.schemas import ApiError
 
@@ -38,3 +39,4 @@ router.include_router(purchase_record_sync.router)
 router.include_router(purchase_requests.router)
 router.include_router(dictionaries.router)
 router.include_router(files.router)
+router.include_router(version.router)

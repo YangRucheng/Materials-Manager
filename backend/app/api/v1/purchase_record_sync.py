@@ -21,8 +21,16 @@ async def sync_targets(
         default=None,
         description="逗号分隔的需要补全的同步字段；省略表示全部字段",
     ),
+    min_purchase_order_no: str | None = Query(
+        default=None,
+        max_length=128,
+        description="只返回申购单号（purchase_order_no）>= 该值的记录（含该值）",
+    ),
 ) -> PurchaseRecordSyncTargetsRead:
-    return await service.list_sync_targets(session, limit=limit, cursor=cursor, fields=fields)
+    return await service.list_sync_targets(
+        session, limit=limit, cursor=cursor, fields=fields,
+        min_purchase_order_no=min_purchase_order_no,
+    )
 
 
 @router.post(
