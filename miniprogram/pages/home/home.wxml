@@ -29,6 +29,15 @@
       <t-icon name="chevron-right" size="36rpx" color="#3f63d8" />
     </view>
 
+    <view class="action-card purchase-card" hover-class="action-card-active" bind:tap="openPurchaseRecords">
+      <view class="action-icon purchase-icon"><t-icon name="file-copy" size="48rpx" /></view>
+      <view class="action-content">
+        <view class="action-title">{{i18n.purchaseRecordsTitle}}</view>
+        <view class="action-description">{{i18n.purchaseRecordsDescription}}</view>
+      </view>
+      <t-icon name="chevron-right" size="36rpx" color="#3f63d8" />
+    </view>
+
     <view class="section-card scan-card">
       <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
       <view class="scan-title">{{i18n.scanMaterialCode}}</view>
