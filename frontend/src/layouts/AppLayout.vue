@@ -22,12 +22,12 @@ const menuOptions = computed<MenuOption[]>(() => {
     key: 'warehouse-group',
     children: [
       link('库存查询', 'stock'),
-      link('华星库存', 'hua-xing-stock'),
       link('物资档案', 'stock-materials'),
       link('操作记录', 'operations'),
       ...(auth.can('warehouse:write') ? [link('入库', 'inbound'), link('出库', 'outbound')] : []),
     ],
   })
+  items.push(link('华星总库存', 'hua-xing-stock'))
   items.push({
     label: '申购管理',
     key: 'procurement-group',

@@ -792,6 +792,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mini-program/huaxing-inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Huaxing Inventory */
+        get: operations["mini_program_huaxing_inventory_api_v1_mini_program_huaxing_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program/purchase-plans/{material_id}": {
         parameters: {
             query?: never;
@@ -1709,6 +1726,31 @@ export interface components {
          * @enum {string}
          */
         MiniProgramCodeEnv: "trial" | "release";
+        /** MiniProgramHuaXingInventoryRead */
+        MiniProgramHuaXingInventoryRead: {
+            /** Id */
+            id: number;
+            /** First Inbound Date */
+            first_inbound_date?: string | null;
+            /** Warehouse */
+            warehouse?: string | null;
+            /** Material Code */
+            material_code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Model Spec */
+            model_spec?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+            /** Unit Name */
+            unit_name?: string | null;
+            /** Purchaser */
+            purchaser?: string | null;
+            /** Purchase Department */
+            purchase_department?: string | null;
+            /** Subitem No Name */
+            subitem_no_name?: string | null;
+        };
         /** MiniProgramIdentityRead */
         MiniProgramIdentityRead: {
             /** Id */
@@ -2239,6 +2281,17 @@ export interface components {
         Page_MaterialCodeLibraryRead_: {
             /** Items */
             items: components["schemas"]["MaterialCodeLibraryRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[MiniProgramHuaXingInventoryRead] */
+        Page_MiniProgramHuaXingInventoryRead_: {
+            /** Items */
+            items: components["schemas"]["MiniProgramHuaXingInventoryRead"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -6730,6 +6783,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_MiniProgramMaterialCodeRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_huaxing_inventory_api_v1_mini_program_huaxing_inventory_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MiniProgramHuaXingInventoryRead_"];
                 };
             };
             /** @description 业务校验失败 */

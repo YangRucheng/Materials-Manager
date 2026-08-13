@@ -35,6 +35,7 @@ from app.models import (
 )
 from app.repositories import purchase_request_repository
 from app.schemas import (
+    MiniProgramHuaXingInventoryRead,
     MiniProgramInventoryItemRead,
     MiniProgramMaterialCodeRead,
     MiniProgramMaterialRead,
@@ -52,6 +53,7 @@ from app.schemas import (
 )
 from app.services import (
     ai_search_service,
+    huaxing_inventory_service,
     inventory_service,
     material_code_library_service,
     webhook_service,
@@ -207,6 +209,38 @@ async def list_material_codes(
                 name=item.name,
                 model_spec=item.model_spec,
                 unit_name=item.unit_name,
+            )
+            for item in items
+        ],
+        total,
+    )
+
+
+async def list_huaxing_inventory(
+    session: AsyncSession, *, keyword: str | None, page: int, page_size: int
+) -> tuple[list[MiniProgramHuaXingInventoryRead], int]:
+    items, total = await huaxing_inventory_service.search_huaxing_inventory(
+        session,
+        keyword=keyword,
+        warehouse=None,
+        purchase_department=None,
+        page=page,
+        page_size=page_size,
+    )
+    return (
+        [
+            MiniProgramHuaXingInventoryRead(
+                id=item.id,
+                first_inbound_date=item.first_inbound_date,
+                warehouse=item.warehouse,
+                material_code=item.material_code,
+                name=item.name,
+                model_spec=item.model_spec,
+                quantity=item.quantity,
+                unit_name=item.unit_name,
+                purchaser=item.purchaser,
+                purchase_department=item.purchase_department,
+                subitem_no_name=item.subitem_no_name,
             )
             for item in items
         ],

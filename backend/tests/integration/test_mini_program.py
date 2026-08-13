@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import io
+from datetime import date
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
 from PIL import Image
 
+from app.core.database import SessionLocal
 from app.domain.enums import MiniProgramCodeEnv
+from app.models import HuaXingInventory
 from app.services import ai_search_service, mini_program_service
 from tests.conftest import auth_headers
 
@@ -1177,6 +1181,97 @@ async def test_mini_program_material_codes_search_and_pagination(
     assert len(page1.json()["items"]) == 1
 
     denied = await client.get("/api/v1/mini-program/material-codes", headers=purchase_headers)
+    assert denied.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_mini_program_huaxing_inventory_search_and_pagination(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_exchange_wechat_code(
+        code: str, app_id: str | None = None
+    ) -> tuple[str, str]:
+        return app_id or "wx-test-primary", f"huaxing-{code}"
+
+    monkeypatch.setattr(
+        mini_program_service,
+        "exchange_wechat_code",
+        fake_exchange_wechat_code,
+    )
+    async with SessionLocal() as session:
+        session.add_all(
+            [
+                HuaXingInventory(
+                    first_inbound_date=date(2022, 10, 28),
+                    warehouse="P05综合仓",
+                    material_code="L012-05048",
+                    name="内丝三通",
+                    model_spec="DN15",
+                    quantity=Decimal("25"),
+                    unit_name="个",
+                    purchaser="吴冰",
+                    purchase_department="生产调度中心",
+                    subitem_no_name="201-冶炼主厂房",
+                ),
+                HuaXingInventory(
+                    first_inbound_date=date(2025, 11, 16),
+                    warehouse="P06综合仓",
+                    material_code="W004-00003",
+                    name="稀释剂",
+                    model_spec="20L",
+                    quantity=Decimal("3"),
+                    unit_name="桶",
+                    purchaser="夏军",
+                    purchase_department="HXNI冶炼厂",
+                    subitem_no_name="201-冶炼主厂房 Smelting Plant",
+                ),
+            ]
+        )
+        await session.commit()
+
+    login = await client.post("/api/v1/mini-program/auth/wx-login", json={"code": "viewer"})
+    profile = await client.post(
+        "/api/v1/mini-program/profile",
+        headers={"Authorization": f"Bearer {login.json()['registration_token']}"},
+        json={"display_name": "库存查看人", "department_name": "华星检修维护部电气车间"},
+    )
+    mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
+
+    all_items = await client.get("/api/v1/mini-program/huaxing-inventory", headers=mini_headers)
+    assert all_items.status_code == 200, all_items.text
+    assert all_items.json()["total"] == 2
+
+    by_name = await client.get(
+        "/api/v1/mini-program/huaxing-inventory",
+        headers=mini_headers,
+        params={"keyword": "内丝三通"},
+    )
+    assert by_name.json()["total"] == 1
+    item = by_name.json()["items"][0]
+    assert item["material_code"] == "L012-05048"
+    assert item["warehouse"] == "P05综合仓"
+    assert item["quantity"] == "25"
+    assert item["first_inbound_date"] == "2022-10-28"
+
+    by_code = await client.get(
+        "/api/v1/mini-program/huaxing-inventory",
+        headers=mini_headers,
+        params={"keyword": "W004"},
+    )
+    assert by_code.json()["total"] == 1
+    assert by_code.json()["items"][0]["material_code"] == "W004-00003"
+
+    page1 = await client.get(
+        "/api/v1/mini-program/huaxing-inventory",
+        headers=mini_headers,
+        params={"page": 1, "page_size": 1},
+    )
+    assert len(page1.json()["items"]) == 1
+
+    denied = await client.get(
+        "/api/v1/mini-program/huaxing-inventory",
+        headers=await auth_headers(client, "purchase"),
+    )
     assert denied.status_code == 401
 
 

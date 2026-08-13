@@ -1,0 +1,129 @@
+.huaxing-inventory-page {
+  padding: 24rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.list-header { margin: 4rpx 4rpx 24rpx; }
+.list-header .page-title { font-size: 44rpx; }
+
+.list-tools {
+  margin-bottom: 20rpx;
+  padding: 4rpx 0;
+}
+
+.result-count { margin: 0 8rpx 14rpx; color: #7d8798; font-size: 23rpx; }
+.code-list { display: flex; flex-direction: column; gap: 16rpx; }
+
+.code-card {
+  display: block;
+  padding: 22rpx 24rpx;
+  border: 2rpx solid #eef1f6;
+  border-radius: 20rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.05);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.code-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.code-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #172033;
+  font-size: 28rpx;
+  font-weight: 650;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-model {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  color: #8a94a5;
+  font-size: 22rpx;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8rpx 16rpx;
+  margin-top: 12rpx;
+}
+
+.meta-warehouse {
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: #eef2fb;
+  color: #2b4fc4;
+  font-size: 22rpx;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.meta-quantity {
+  color: #172033;
+  font-size: 24rpx;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.meta-date {
+  color: #8a94a5;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.card-divider {
+  height: 2rpx;
+  margin: 16rpx 0 14rpx;
+  background: #f0f2f6;
+}
+
+.code-value {
+  overflow: hidden;
+  color: #2b4fc4;
+  font-size: 24rpx;
+  font-weight: 550;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-panel { display: flex; min-height: 420rpx; align-items: center; justify-content: center; }
+.empty-panel { box-sizing: border-box; padding-top: 40rpx; }
+.load-more, .load-finished { padding: 28rpx 0 8rpx; color: #a1a9b7; font-size: 22rpx; text-align: center; }
+
+.back-top-fab {
+  position: fixed;
+  left: 32rpx;
+  right: auto;
+  bottom: calc(48rpx + env(safe-area-inset-bottom));
+  z-index: 100;
+  display: flex;
+  width: 96rpx;
+  height: 96rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #3f63d8;
+  box-shadow: 0 12rpx 28rpx rgba(63, 99, 216, 0.35);
+  line-height: 1;
+}
+
+.back-top-fab::after {
+  border: 0;
+}

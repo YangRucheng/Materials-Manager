@@ -8,6 +8,7 @@
     "pages/purchase-plans/purchase-plans",
     "pages/purchase-records/purchase-records",
     "pages/material-codes/material-codes",
+    "pages/huaxing-inventory/huaxing-inventory",
     "pages/purchase-plan-detail/purchase-plan-detail",
     "pages/records/records",
     "pages/bind/bind",

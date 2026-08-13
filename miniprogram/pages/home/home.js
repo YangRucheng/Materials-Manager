@@ -56,6 +56,10 @@ Page({
     wx.navigateTo({ url: '/pages/inventory/inventory' });
   },
 
+  openHuaXingInventory() {
+    wx.navigateTo({ url: '/pages/huaxing-inventory/huaxing-inventory' });
+  },
+
   openPurchasePlans() {
     wx.navigateTo({ url: '/pages/purchase-plans/purchase-plans' });
   },

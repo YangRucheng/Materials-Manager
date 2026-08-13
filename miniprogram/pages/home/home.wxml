@@ -19,6 +19,14 @@
       </view>
     </view>
 
+    <view class="action-card" hover-class="action-card-active" bind:tap="openHuaXingInventory">
+      <view class="action-icon"><t-icon name="layers" size="48rpx" /></view>
+      <view class="action-content">
+        <view class="action-title">{{i18n.huaxingInventoryTitle}}</view>
+        <view class="action-description">{{i18n.huaxingInventoryDescription}}</view>
+      </view>
+    </view>
+
     <view class="action-card" hover-class="action-card-active" bind:tap="openPurchasePlans">
       <view class="action-icon"><t-icon name="file-attachment" size="48rpx" /></view>
       <view class="action-content">
