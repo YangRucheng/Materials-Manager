@@ -17,6 +17,7 @@ from app.core.security import (
 )
 from app.domain.enums import MiniProgramStockStatus
 from app.schemas import (
+    MiniProgramHuaXingInventoryRead,
     MiniProgramInventoryItemRead,
     MiniProgramLoginResponse,
     MiniProgramMaterialCodeRead,
@@ -258,6 +259,20 @@ async def mini_program_material_codes(
     keyword: Annotated[str | None, Query(max_length=255)] = None,
 ) -> Page[MiniProgramMaterialCodeRead]:
     items, total = await mini_program_service.list_material_codes(
+        session, keyword=keyword, page=page, page_size=page_size
+    )
+    return Page(items=items, page=page, page_size=page_size, total=total)
+
+
+@mini_router.get("/huaxing-inventory", response_model=Page[MiniProgramHuaXingInventoryRead])
+async def mini_program_huaxing_inventory(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    keyword: Annotated[str | None, Query(max_length=255)] = None,
+) -> Page[MiniProgramHuaXingInventoryRead]:
+    items, total = await mini_program_service.list_huaxing_inventory(
         session, keyword=keyword, page=page, page_size=page_size
     )
     return Page(items=items, page=page, page_size=page_size, total=total)
