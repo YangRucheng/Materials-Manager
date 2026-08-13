@@ -6341,9 +6341,14 @@ components:
           - type: string
           - type: 'null'
           title: Subitem No Name
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
       type: object
       required:
       - id
+      - created_at
       title: HuaXingInventoryRead
     ImageAccelerationSettingsRead:
       properties:
@@ -6479,6 +6484,10 @@ components:
         unit_name:
           type: string
           title: Unit Name
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
       type: object
       required:
       - id
@@ -6486,6 +6495,7 @@ components:
       - name
       - model_spec
       - unit_name
+      - created_at
       title: MaterialCodeLibraryRead
     MiniProgramCodeEnv:
       type: string
@@ -6550,9 +6560,14 @@ components:
           - type: string
           - type: 'null'
           title: Subitem No Name
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
       type: object
       required:
       - id
+      - created_at
       title: MiniProgramHuaXingInventoryRead
     MiniProgramIdentityRead:
       properties:
@@ -6655,11 +6670,16 @@ components:
         unit_name:
           type: string
           title: Unit Name
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
       type: object
       required:
       - id
       - material_code
       - unit_name
+      - created_at
       title: MiniProgramMaterialCodeRead
     MiniProgramMaterialRead:
       properties:

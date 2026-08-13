@@ -4,6 +4,14 @@ const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 Page({
   data: {
     items: [],
@@ -83,7 +91,10 @@ Page({
       if (keyword) data.keyword = keyword;
       const result = await request({ url: '/mini-program/material-codes', data });
       if (requestId !== this.requestId) return;
-      const incoming = result.items || [];
+      const incoming = (result.items || []).map((item) => ({
+        ...item,
+        created_at_label: formatDateTime(item.created_at),
+      }));
       const items = reset ? incoming : [...this.data.items, ...incoming];
       this.setData({
         items,

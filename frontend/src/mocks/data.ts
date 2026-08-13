@@ -447,6 +447,7 @@ export const huaXingInventory: HuaXingInventory[] = [
     purchaser: '吴冰',
     purchase_department: '生产调度中心',
     subitem_no_name: '201-冶炼主厂房',
+    created_at: '2026-08-13T00:00:00Z',
   },
   {
     id: 2,
@@ -460,6 +461,7 @@ export const huaXingInventory: HuaXingInventory[] = [
     purchaser: '夏军',
     purchase_department: 'HXNI冶炼厂',
     subitem_no_name: '201-冶炼主厂房 Smelting Plant',
+    created_at: '2026-08-13T00:00:00Z',
   },
 ]
 

@@ -1648,6 +1648,11 @@ export interface components {
             purchase_department?: string | null;
             /** Subitem No Name */
             subitem_no_name?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ImageAccelerationSettingsRead */
         ImageAccelerationSettingsRead: {
@@ -1720,6 +1725,11 @@ export interface components {
             model_spec: string | null;
             /** Unit Name */
             unit_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /**
          * MiniProgramCodeEnv
@@ -1750,6 +1760,11 @@ export interface components {
             purchase_department?: string | null;
             /** Subitem No Name */
             subitem_no_name?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** MiniProgramIdentityRead */
         MiniProgramIdentityRead: {
@@ -1810,6 +1825,11 @@ export interface components {
             model_spec?: string | null;
             /** Unit Name */
             unit_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** MiniProgramMaterialRead */
         MiniProgramMaterialRead: {
