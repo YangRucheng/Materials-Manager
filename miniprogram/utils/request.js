@@ -1,5 +1,6 @@
 const { apiBaseUrl } = require('../config/index');
 const { getLocale, t } = require('./i18n');
+const { buildRedirectQuery, getCurrentPageUrl } = require('./navigation');
 
 const errorMessageKeys = {
   ACCOUNT_DISABLED: 'accountDisabled',
@@ -32,6 +33,14 @@ function request(options) {
         refreshPromise = loginSilently()
           .then((session) => {
             refreshPromise = null;
+            // 静默重登后发现账号未绑定：跳绑定页，绑定后回跳原页面。
+            if (session && session.requires_profile) {
+              const currentPageUrl = getCurrentPageUrl();
+              const redirect = currentPageUrl ? buildRedirectQuery(currentPageUrl) : '';
+              wx.reLaunch({
+                url: redirect ? `/pages/bind/bind?redirect=${redirect}` : '/pages/bind/bind',
+              });
+            }
             return session;
           })
           .catch((error) => {
@@ -97,7 +106,17 @@ function request(options) {
           ) {
             options._retried = true;
             refreshSessionAndRetry()
-              .then(doRequest)
+              .then((session) => {
+                // 重登发现未绑定：已跳绑定页，不再重试，避免弹「请先登录」干扰跳转。
+                if (session && session.requires_profile) {
+                  const error = new Error(t('loginRequired'));
+                  error.code = 'UNAUTHORIZED';
+                  error.statusCode = 401;
+                  reject(error);
+                  return;
+                }
+                doRequest();
+              })
               .catch(reject);
             return;
           }
