@@ -1,5 +1,6 @@
 <view class="page-shell material-codes-page">
   <view class="list-header"><view class="page-title">{{i18n.materialCodesTitle}}</view></view>
+  <view wx:if="{{lastImportAtLabel}}" class="import-time">{{i18n.importTimeLabel}}：{{lastImportAtLabel}}</view>
   <view class="list-tools">
     <t-search
       value="{{keyword}}"
@@ -66,10 +67,6 @@
         <view class="detail-row">
           <view class="detail-label">{{i18n.unitLabel}}</view>
           <view class="detail-value">{{detailItem.unit_name || '—'}}</view>
-        </view>
-        <view class="detail-row">
-          <view class="detail-label">{{i18n.importTimeLabel}}</view>
-          <view class="detail-value">{{detailItem.created_at_label || '—'}}</view>
         </view>
       </view>
       <button class="copy-btn" bind:tap="copyMaterialCode">{{i18n.copyMaterialCode}}</button>

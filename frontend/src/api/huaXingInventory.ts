@@ -1,5 +1,11 @@
 import { apiClient } from './client'
-import type { ExcelImportJob, HuaXingInventory, Page, PagedQueryParams } from './generated'
+import type {
+  ExcelImportJob,
+  HuaXingInventory,
+  LastImport,
+  Page,
+  PagedQueryParams,
+} from './generated'
 
 /** 华星库存列表查询 */
 export interface HuaXingInventoryListQuery extends PagedQueryParams {
@@ -20,4 +26,5 @@ export const huaXingInventoryApi = {
   },
   importJob: (jobId: number) =>
     apiClient.get<ExcelImportJob>(`/huaxing-inventory/import-jobs/${jobId}`).then((r) => r.data),
+  lastImport: () => apiClient.get<LastImport>('/huaxing-inventory/last-import').then((r) => r.data),
 }

@@ -19,7 +19,6 @@ function decorateItem(item) {
     qtyDisplay: quantity
       ? `${quantity}${item.unit_name ? ' ' + item.unit_name : ''}`
       : '',
-    created_at_label: formatDateTime(item.created_at),
   };
 }
 
@@ -37,6 +36,7 @@ Page({
     backTopVisible: false,
     detailVisible: false,
     detailItem: null,
+    lastImportAtLabel: '',
     i18n: getMessages(),
   },
 
@@ -51,6 +51,7 @@ Page({
         wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
+      this.loadLastImport();
       await this.loadInventory(true);
     } catch (error) {
       this.setData({ loading: false });
@@ -115,6 +116,15 @@ Page({
       if (requestId === this.requestId) this.showError(error);
     } finally {
       if (requestId === this.requestId) this.setData({ loading: false, loadingMore: false });
+    }
+  },
+
+  async loadLastImport() {
+    try {
+      const result = await request({ url: '/mini-program/huaxing-inventory/last-import' });
+      this.setData({ lastImportAtLabel: formatDateTime(result.last_import_at) });
+    } catch (error) {
+      // 导入时间非关键，加载失败静默
     }
   },
 

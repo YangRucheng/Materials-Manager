@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { useDialog, useMessage } from 'naive-ui'
 import type { HuaXingInventory } from '@/api/generated'
@@ -52,6 +52,16 @@ const importJob = useImportJob({
   poll: (jobId) => huaXingInventoryApi.importJob(jobId),
 })
 const importing = computed(() => importJob.running.value)
+const lastImportAt = ref('')
+async function loadLastImport() {
+  try {
+    const result = await huaXingInventoryApi.lastImport()
+    lastImportAt.value = formatShanghaiTime(result.last_import_at ?? undefined)
+  } catch {
+    lastImportAt.value = '—'
+  }
+}
+onMounted(() => void loadLastImport())
 const activeFilterCount = computed(
   () =>
     [filters.keyword.trim(), filters.warehouse.trim(), filters.purchaseDepartment.trim()].filter(
@@ -104,12 +114,6 @@ const columns: DataTableColumns<HuaXingInventory> = preventTableColumnCompressio
     ellipsis: { tooltip: true },
     render: (row) => row.subitem_no_name || '—',
   },
-  {
-    title: '导入时间',
-    key: 'created_at',
-    width: tableColumnWidths.datetime,
-    render: (row) => formatShanghaiTime(row.created_at),
-  },
 ])
 const tableScrollX = getTableScrollX(columns)
 
@@ -124,6 +128,7 @@ function showImportSummary(result: Record<string, unknown> | null) {
     title: '导入完成',
     content: `已全量更新 ${importedCount.toLocaleString()} 条华星总库存数据。`,
     positiveText: '知道了',
+    positiveButtonProps: { type: 'primary' },
   })
 }
 
@@ -152,6 +157,7 @@ function onFileChange(event: Event) {
     content: `确认导入“${file.name}”吗？现有华星总库存将被全部删除，并由该文件完整替换。`,
     positiveText: '确认全量更新',
     negativeText: '取消',
+    positiveButtonProps: { type: 'primary' },
     onPositiveClick: () => importFile(file),
   })
 }
@@ -215,7 +221,9 @@ function onFileChange(event: Event) {
         </label>
       </div>
       <div class="filter-actions">
-        <span class="muted">共 {{ total.toLocaleString() }} 条</span>
+        <span class="muted"
+          >共 {{ total.toLocaleString() }} 条 · 上次导入：{{ lastImportAt || '—' }}</span
+        >
         <div class="filter-action-buttons">
           <n-button @click="resetFilters">重置</n-button>
           <n-button type="primary" :loading="loading" @click="query">查询</n-button>

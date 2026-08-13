@@ -1926,6 +1926,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/material-code-library/last-import:
+    get:
+      tags:
+      - 物料编码库
+      summary: Last Import
+      operationId: last_import_api_v1_material_code_library_last_import_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LastImportRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/material-code-library/import:
     post:
       tags:
@@ -2123,6 +2169,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/huaxing-inventory/last-import:
+    get:
+      tags:
+      - 华星库存
+      summary: Last Import
+      operationId: last_import_api_v1_huaxing_inventory_last_import_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LastImportRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/huaxing-inventory/import:
     post:
       tags:
@@ -3177,6 +3269,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/material-codes/last-import:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Material Codes Last Import
+      operationId: mini_program_material_codes_last_import_api_v1_mini_program_material_codes_last_import_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LastImportRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+  /api/v1/mini-program/huaxing-inventory/last-import:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Huaxing Inventory Last Import
+      operationId: mini_program_huaxing_inventory_last_import_api_v1_mini_program_huaxing_inventory_last_import_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LastImportRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
   /api/v1/mini-program/purchase-plans/{material_id}:
     get:
       tags:
@@ -6341,14 +6523,9 @@ components:
           - type: string
           - type: 'null'
           title: Subitem No Name
-        created_at:
-          type: string
-          format: date-time
-          title: Created At
       type: object
       required:
       - id
-      - created_at
       title: HuaXingInventoryRead
     ImageAccelerationSettingsRead:
       properties:
@@ -6410,6 +6587,16 @@ components:
       - suggested_purchase_qty
       - updated_at
       title: InventoryBalanceRead
+    LastImportRead:
+      properties:
+        last_import_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Import At
+      type: object
+      title: LastImportRead
     LinkStockMaterialRequest:
       properties:
         stock_material_id:
@@ -6484,10 +6671,6 @@ components:
         unit_name:
           type: string
           title: Unit Name
-        created_at:
-          type: string
-          format: date-time
-          title: Created At
       type: object
       required:
       - id
@@ -6495,7 +6678,6 @@ components:
       - name
       - model_spec
       - unit_name
-      - created_at
       title: MaterialCodeLibraryRead
     MiniProgramCodeEnv:
       type: string
@@ -6560,14 +6742,9 @@ components:
           - type: string
           - type: 'null'
           title: Subitem No Name
-        created_at:
-          type: string
-          format: date-time
-          title: Created At
       type: object
       required:
       - id
-      - created_at
       title: MiniProgramHuaXingInventoryRead
     MiniProgramIdentityRead:
       properties:
@@ -6670,16 +6847,11 @@ components:
         unit_name:
           type: string
           title: Unit Name
-        created_at:
-          type: string
-          format: date-time
-          title: Created At
       type: object
       required:
       - id
       - material_code
       - unit_name
-      - created_at
       title: MiniProgramMaterialCodeRead
     MiniProgramMaterialRead:
       properties:
