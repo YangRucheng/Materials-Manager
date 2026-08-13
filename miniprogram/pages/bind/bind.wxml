@@ -43,7 +43,7 @@
     loading="{{loading}}"
     disabled="{{loading}}"
     bind:tap="submitProfile"
-  >{{i18n.enterOutbound}}</t-button>
+  >{{i18n[buttonLabel]}}</t-button>
   <view class="binding-warning">{{i18n.bindingWarning}}</view>
   <t-toast id="profile-toast" />
 </view>
