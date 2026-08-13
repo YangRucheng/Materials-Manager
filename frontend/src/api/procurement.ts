@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type {
   ExcelImportJob,
+  LastImport,
   MaterialCodeLibrary,
   Page,
   PagedQueryParams,
@@ -83,6 +84,8 @@ export const procurementApi = {
     apiClient
       .get<ExcelImportJob>(`/material-code-library/import-jobs/${jobId}`)
       .then((r) => r.data),
+  materialCodeLastImport: () =>
+    apiClient.get<LastImport>('/material-code-library/last-import').then((r) => r.data),
   materials: (params?: PurchaseMaterialListQuery) =>
     apiClient.get<Page<PurchaseMaterial>>('/purchase-materials', { params }).then((r) => r.data),
   materialFilterOptions: (params?: MaterialFilterOptionsQuery) =>

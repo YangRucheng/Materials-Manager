@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -138,6 +139,21 @@ async def get_import_job(
     if job is None:
         raise AppError("NOT_FOUND", "导入任务不存在")
     return ExcelImportJobRead.model_validate(job)
+
+
+async def latest_import_finished_at(
+    session: AsyncSession, *, import_type: str
+) -> datetime | None:
+    """该导入类型最近一次成功导入的完成时间（从未成功返回 None）。"""
+    return await session.scalar(
+        select(ExcelImportJob.finished_at)
+        .where(
+            ExcelImportJob.import_type == import_type,
+            ExcelImportJob.status == ExcelImportJobStatus.SUCCEEDED,
+        )
+        .order_by(ExcelImportJob.finished_at.desc())
+        .limit(1)
+    )
 
 
 async def mark_stale_jobs_failed() -> int:

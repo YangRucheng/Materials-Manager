@@ -208,7 +208,6 @@ async def search_material_codes(
             name=item.name,
             model_spec=item.model_spec,
             unit_name=item.unit_name,
-            created_at=item.created_at,
         )
         for item in result.all()
     ]

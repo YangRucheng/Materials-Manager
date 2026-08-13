@@ -6,6 +6,8 @@
 .list-header { margin: 4rpx 4rpx 24rpx; }
 .list-header .page-title { font-size: 44rpx; }
 
+.import-time { margin: -12rpx 8rpx 20rpx; color: #8a94a5; font-size: 22rpx; }
+
 .list-tools {
   margin-bottom: 20rpx;
   padding: 4rpx 0;

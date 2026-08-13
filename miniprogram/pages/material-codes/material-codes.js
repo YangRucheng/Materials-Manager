@@ -26,6 +26,7 @@ Page({
     backTopVisible: false,
     detailVisible: false,
     detailItem: null,
+    lastImportAtLabel: '',
     i18n: getMessages(),
   },
 
@@ -40,6 +41,7 @@ Page({
         wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
+      this.loadLastImport();
       await this.loadCodes(true);
     } catch (error) {
       this.setData({ loading: false });
@@ -91,10 +93,7 @@ Page({
       if (keyword) data.keyword = keyword;
       const result = await request({ url: '/mini-program/material-codes', data });
       if (requestId !== this.requestId) return;
-      const incoming = (result.items || []).map((item) => ({
-        ...item,
-        created_at_label: formatDateTime(item.created_at),
-      }));
+      const incoming = result.items || [];
       const items = reset ? incoming : [...this.data.items, ...incoming];
       this.setData({
         items,
@@ -107,6 +106,15 @@ Page({
       if (requestId === this.requestId) this.showError(error);
     } finally {
       if (requestId === this.requestId) this.setData({ loading: false, loadingMore: false });
+    }
+  },
+
+  async loadLastImport() {
+    try {
+      const result = await request({ url: '/mini-program/material-codes/last-import' });
+      this.setData({ lastImportAtLabel: formatDateTime(result.last_import_at) });
+    } catch (error) {
+      // 导入时间非关键，加载失败静默
     }
   },
 

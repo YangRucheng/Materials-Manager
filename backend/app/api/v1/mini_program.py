@@ -17,6 +17,7 @@ from app.core.security import (
 )
 from app.domain.enums import MiniProgramStockStatus
 from app.schemas import (
+    LastImportRead,
     MiniProgramHuaXingInventoryRead,
     MiniProgramInventoryItemRead,
     MiniProgramLoginResponse,
@@ -38,7 +39,7 @@ from app.schemas import (
     MiniProgramWechatLoginRequest,
     Page,
 )
-from app.services import mini_program_service
+from app.services import import_job_service, mini_program_service
 
 management_router = APIRouter(prefix="/mini-program-users", tags=["小程序用户管理"])
 mini_router = APIRouter(prefix="/mini-program", tags=["小程序"])
@@ -276,6 +277,28 @@ async def mini_program_huaxing_inventory(
         session, keyword=keyword, page=page, page_size=page_size
     )
     return Page(items=items, page=page, page_size=page_size, total=total)
+
+
+@mini_router.get("/material-codes/last-import", response_model=LastImportRead)
+async def mini_program_material_codes_last_import(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> LastImportRead:
+    last_import_at = await import_job_service.latest_import_finished_at(
+        session, import_type="MATERIAL_CODE_LIBRARY"
+    )
+    return LastImportRead(last_import_at=last_import_at)
+
+
+@mini_router.get("/huaxing-inventory/last-import", response_model=LastImportRead)
+async def mini_program_huaxing_inventory_last_import(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> LastImportRead:
+    last_import_at = await import_job_service.latest_import_finished_at(
+        session, import_type="HUAXING_INVENTORY"
+    )
+    return LastImportRead(last_import_at=last_import_at)
 
 
 @mini_router.get(
