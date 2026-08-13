@@ -45,6 +45,11 @@ let aiSettings: AiSearchSettings = {
   mini_program_registration_enabled: true,
   mini_program_new_user_enabled: true,
   image_acceleration_server_url: '',
+  inventory_mode: 'read_write',
+  huaxing_inventory_mode: 'query_only',
+  purchase_plans_mode: 'query_only',
+  purchase_records_mode: 'query_only',
+  material_codes_mode: 'query_only',
   updated_at: new Date().toISOString(),
   version: 1,
 }
@@ -426,6 +431,11 @@ export const handlers = [
       mini_program_registration_enabled: body.mini_program_registration_enabled,
       mini_program_new_user_enabled: body.mini_program_new_user_enabled,
       image_acceleration_server_url: body.image_acceleration_server_url,
+      inventory_mode: body.inventory_mode,
+      huaxing_inventory_mode: body.huaxing_inventory_mode,
+      purchase_plans_mode: body.purchase_plans_mode,
+      purchase_records_mode: body.purchase_records_mode,
+      material_codes_mode: body.material_codes_mode,
       updated_at: now(),
       version: aiSettings.version + 1,
     }

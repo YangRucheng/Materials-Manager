@@ -141,6 +141,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-settings/mini-program-features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Features */
+        get: operations["mini_program_features_api_v1_system_settings_mini_program_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-settings/webhooks": {
         parameters: {
             query?: never;
@@ -1441,6 +1458,11 @@ export interface components {
             mini_program_new_user_enabled: boolean;
             /** Image Acceleration Server Url */
             image_acceleration_server_url: string;
+            inventory_mode: components["schemas"]["MiniProgramFeatureMode"];
+            huaxing_inventory_mode: components["schemas"]["MiniProgramFeatureMode"];
+            purchase_plans_mode: components["schemas"]["MiniProgramFeatureMode"];
+            purchase_records_mode: components["schemas"]["MiniProgramFeatureMode"];
+            material_codes_mode: components["schemas"]["MiniProgramFeatureMode"];
             /** Updated At */
             updated_at?: string | null;
             /** Version */
@@ -1490,6 +1512,16 @@ export interface components {
              * @default
              */
             image_acceleration_server_url: string;
+            /** @default read_write */
+            inventory_mode: components["schemas"]["MiniProgramFeatureMode"];
+            /** @default query_only */
+            huaxing_inventory_mode: components["schemas"]["MiniProgramFeatureMode"];
+            /** @default query_only */
+            purchase_plans_mode: components["schemas"]["MiniProgramFeatureMode"];
+            /** @default query_only */
+            purchase_records_mode: components["schemas"]["MiniProgramFeatureMode"];
+            /** @default query_only */
+            material_codes_mode: components["schemas"]["MiniProgramFeatureMode"];
             /** Version */
             version: number;
         };
@@ -1799,6 +1831,19 @@ export interface components {
          * @enum {string}
          */
         MiniProgramCodeEnv: "trial" | "release";
+        /**
+         * MiniProgramFeatureMode
+         * @enum {string}
+         */
+        MiniProgramFeatureMode: "disabled" | "query_only" | "read_write";
+        /** MiniProgramFeaturesRead */
+        MiniProgramFeaturesRead: {
+            inventory_mode: components["schemas"]["MiniProgramFeatureMode"];
+            huaxing_inventory_mode: components["schemas"]["MiniProgramFeatureMode"];
+            purchase_plans_mode: components["schemas"]["MiniProgramFeatureMode"];
+            purchase_records_mode: components["schemas"]["MiniProgramFeatureMode"];
+            material_codes_mode: components["schemas"]["MiniProgramFeatureMode"];
+        };
         /** MiniProgramHuaXingInventoryRead */
         MiniProgramHuaXingInventoryRead: {
             /** Id */
@@ -3892,6 +3937,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImageAccelerationSettingsRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_features_api_v1_system_settings_mini_program_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MiniProgramFeaturesRead"];
                 };
             };
             /** @description 业务校验失败 */

@@ -19,6 +19,7 @@ from pydantic import (
 from app.domain.enums import (
     ExcelImportJobStatus,
     MiniProgramCodeEnv,
+    MiniProgramFeatureMode,
     MiniProgramStockStatus,
     OperationType,
     PurchasePlanStatus,
@@ -246,6 +247,11 @@ class AiSearchSettingsRead(ReadModel):
     mini_program_registration_enabled: bool
     mini_program_new_user_enabled: bool
     image_acceleration_server_url: str
+    inventory_mode: MiniProgramFeatureMode
+    huaxing_inventory_mode: MiniProgramFeatureMode
+    purchase_plans_mode: MiniProgramFeatureMode
+    purchase_records_mode: MiniProgramFeatureMode
+    material_codes_mode: MiniProgramFeatureMode
     updated_at: datetime | None = None
     version: int
 
@@ -260,6 +266,11 @@ class AiSearchSettingsUpdate(RequestModel):
     mini_program_registration_enabled: bool = True
     mini_program_new_user_enabled: bool = True
     image_acceleration_server_url: str = Field(default="", max_length=500)
+    inventory_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.READ_WRITE
+    huaxing_inventory_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
+    purchase_plans_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
+    purchase_records_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
+    material_codes_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
     version: int = Field(ge=0)
 
     @field_validator("endpoint")
@@ -341,6 +352,14 @@ class AiSearchStatusRead(BaseModel):
 
 class ImageAccelerationSettingsRead(BaseModel):
     image_acceleration_server_url: str
+
+
+class MiniProgramFeaturesRead(BaseModel):
+    inventory_mode: MiniProgramFeatureMode
+    huaxing_inventory_mode: MiniProgramFeatureMode
+    purchase_plans_mode: MiniProgramFeatureMode
+    purchase_records_mode: MiniProgramFeatureMode
+    material_codes_mode: MiniProgramFeatureMode
 
 
 class AiSearchExpandRequest(RequestModel):
