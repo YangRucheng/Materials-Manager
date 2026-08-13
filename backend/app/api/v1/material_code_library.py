@@ -10,7 +10,7 @@ from fastapi import Path as FPath
 from app.api.deps import PageNo, PageSize
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
-from app.schemas import ExcelImportJobRead, MaterialCodeLibraryRead, Page
+from app.schemas import ExcelImportJobRead, LastImportRead, MaterialCodeLibraryRead, Page
 from app.services import import_job_service, material_code_library_service
 
 router = APIRouter(prefix="/material-code-library", tags=["物料编码库"])
@@ -39,6 +39,17 @@ async def list_material_codes(
         page_size=page_size,
     )
     return Page(items=items, page=page, page_size=page_size, total=total)
+
+
+@router.get("/last-import", response_model=LastImportRead)
+async def last_import(
+    session: DbSession,
+    user: CurrentUser,
+) -> LastImportRead:
+    last_import_at = await import_job_service.latest_import_finished_at(
+        session, import_type=JOB_TYPE
+    )
+    return LastImportRead(last_import_at=last_import_at)
 
 
 @router.post("/import", response_model=ExcelImportJobRead, status_code=202)

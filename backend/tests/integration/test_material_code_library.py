@@ -82,7 +82,6 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
     assert by_name.json()["items"][0]["name"] == "交流接触器"
     assert by_name.json()["items"][0]["model_spec"] == "CJX2-2510"
     assert by_name.json()["items"][0]["unit_name"] == "个"
-    assert by_name.json()["items"][0]["created_at"]
 
     by_model = await client.get(
         "/api/v1/material-code-library",
