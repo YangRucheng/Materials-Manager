@@ -9,32 +9,30 @@ from fastapi import Path as FPath
 
 from app.api.deps import PageNo, PageSize
 from app.core.errors import AppError
-from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
-from app.schemas import ExcelImportJobRead, MaterialCodeLibraryRead, Page
-from app.services import import_job_service, material_code_library_service
+from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
+from app.schemas import ExcelImportJobRead, HuaXingInventoryRead, Page
+from app.services import huaxing_inventory_service, import_job_service
 
-router = APIRouter(prefix="/material-code-library", tags=["物料编码库"])
+router = APIRouter(prefix="/huaxing-inventory", tags=["华星库存"])
 
-JOB_TYPE = "MATERIAL_CODE_LIBRARY"
+JOB_TYPE = "HUAXING_INVENTORY"
 
 
-@router.get("", response_model=Page[MaterialCodeLibraryRead])
-async def list_material_codes(
+@router.get("", response_model=Page[HuaXingInventoryRead])
+async def list_huaxing_inventory(
     session: DbSession,
     user: CurrentUser,
     page: PageNo = 1,
     page_size: PageSize = 20,
     keyword: Annotated[str | None, Query(max_length=255)] = None,
-    name: Annotated[str | None, Query(max_length=128)] = None,
-    model_spec: Annotated[str | None, Query(max_length=255)] = None,
-    material_code: Annotated[str | None, Query(max_length=64)] = None,
-) -> Page[MaterialCodeLibraryRead]:
-    items, total = await material_code_library_service.search_material_codes(
+    warehouse: Annotated[str | None, Query(max_length=128)] = None,
+    purchase_department: Annotated[str | None, Query(max_length=128)] = None,
+) -> Page[HuaXingInventoryRead]:
+    items, total = await huaxing_inventory_service.search_huaxing_inventory(
         session,
         keyword=keyword,
-        name=name,
-        model_spec=model_spec,
-        material_code=material_code,
+        warehouse=warehouse,
+        purchase_department=purchase_department,
         page=page,
         page_size=page_size,
     )
@@ -42,9 +40,9 @@ async def list_material_codes(
 
 
 @router.post("/import", response_model=ExcelImportJobRead, status_code=202)
-async def import_material_codes(
+async def import_huaxing_inventory(
     file: Annotated[UploadFile, File(...)],
-    user: PurchaseWriter,
+    user: WarehouseWriter,
 ) -> ExcelImportJobRead:
     filename = (file.filename or "").lower()
     if not filename.endswith((".xlsx", ".xlsm")):
@@ -52,13 +50,13 @@ async def import_material_codes(
     file_path: Path | None = None
     try:
         file_path = await import_job_service.save_upload(
-            file, max_bytes=material_code_library_service.MAX_IMPORT_BYTES
+            file, max_bytes=huaxing_inventory_service.MAX_IMPORT_BYTES
         )
         return await import_job_service.enqueue_import(
             import_type=JOB_TYPE,
             original_filename=file.filename or "import.xlsx",
             file_path=file_path,
-            processor=material_code_library_service.process_import_file,
+            processor=huaxing_inventory_service.process_import_file,
             created_by=user.id,
         )
     except BaseException:

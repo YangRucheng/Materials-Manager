@@ -53,3 +53,10 @@ class WebhookDeliveryStatus(StrEnum):
     SENDING = "SENDING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
+
+
+class ExcelImportJobStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"

@@ -10,6 +10,8 @@ declare module 'vue' {
   export interface GlobalComponents {
     ColumnVisibilityPicker: typeof import('./src/components/ColumnVisibilityPicker.vue')['default']
     ExportButton: typeof import('./src/components/ExportButton.vue')['default']
+    ExportLoadingOverlay: typeof import('./src/components/ExportLoadingOverlay.vue')['default']
+    ImageThumbnails: typeof import('./src/components/ImageThumbnails.vue')['default']
     ImageUploader: typeof import('./src/components/ImageUploader.vue')['default']
     MaterialCodeSelector: typeof import('./src/components/MaterialCodeSelector.vue')['default']
     MaterialSelector: typeof import('./src/components/MaterialSelector.vue')['default']
@@ -50,6 +52,7 @@ declare module 'vue' {
     NScrollbar: typeof import('naive-ui')['NScrollbar']
     NSelect: typeof import('naive-ui')['NSelect']
     NSpace: typeof import('naive-ui')['NSpace']
+    NSpin: typeof import('naive-ui')['NSpin']
     NSwitch: typeof import('naive-ui')['NSwitch']
     NTable: typeof import('naive-ui')['NTable']
     NTag: typeof import('naive-ui')['NTag']

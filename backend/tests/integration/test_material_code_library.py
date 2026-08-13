@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from io import BytesIO
 
 import pytest
@@ -21,28 +22,51 @@ def build_workbook(rows: list[list[object]]) -> bytes:
     return content.getvalue()
 
 
+async def _submit_import(
+    client: AsyncClient, headers: dict[str, str], filename: str, content: bytes
+):
+    return await client.post(
+        "/api/v1/material-code-library/import",
+        headers=headers,
+        files={"file": (filename, content, "application/octet-stream")},
+    )
+
+
+async def _wait_job(client: AsyncClient, headers: dict[str, str], job_id: int) -> dict[str, object]:
+    """轮询导入任务直到终态（SUCCEEDED/FAILED），容忍后台任务占用连接期间的瞬时失败。"""
+    for _ in range(200):
+        response = await client.get(
+            f"/api/v1/material-code-library/import-jobs/{job_id}", headers=headers
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data["status"] in ("SUCCEEDED", "FAILED"):
+                return data
+        await asyncio.sleep(0.05)
+    raise AssertionError("import job did not reach terminal state in time")
+
+
 @pytest.mark.asyncio
 async def test_import_replaces_and_searches_material_code_library(client: AsyncClient) -> None:
     purchase_headers = await auth_headers(client, "purchase")
-    first_import = await client.post(
-        "/api/v1/material-code-library/import",
-        headers=purchase_headers,
-        files={
-            "file": (
-                "codes.xlsx",
-                build_workbook(
-                    [
-                        ["生效", "Y001", "交流接触器", "个", "CJX2-2510", "忽略"],
-                        ["生效", "Y002", "控制电缆", "米", "KVV 4×1.5", "忽略"],
-                        ["生效", "Y003", "", "箱", "", "忽略"],
-                    ]
-                ),
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-        },
+    first_import = await _submit_import(
+        client,
+        purchase_headers,
+        "codes.xlsx",
+        build_workbook(
+            [
+                ["生效", "Y001", "交流接触器", "个", "CJX2-2510", "忽略"],
+                ["生效", "Y002", "控制电缆", "米", "KVV 4×1.5", "忽略"],
+                ["生效", "Y003", "", "箱", "", "忽略"],
+            ]
+        ),
     )
-    assert first_import.status_code == 200, first_import.text
-    assert first_import.json() == {
+    assert first_import.status_code == 202, first_import.text
+    job = first_import.json()
+    assert job["status"] in ("PENDING", "RUNNING")
+    done = await _wait_job(client, purchase_headers, job["id"])
+    assert done["status"] == "SUCCEEDED", done
+    assert done["result"] == {
         "imported_count": 3,
         "blank_name_count": 1,
         "blank_model_spec_count": 1,
@@ -127,18 +151,15 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
     assert no_combined_match.status_code == 200, no_combined_match.text
     assert no_combined_match.json()["items"] == []
 
-    replacement = await client.post(
-        "/api/v1/material-code-library/import",
-        headers=purchase_headers,
-        files={
-            "file": (
-                "replacement.xlsx",
-                build_workbook([["生效", "Y999", "按钮", "个", "LA38", "忽略"]]),
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-        },
+    replacement = await _submit_import(
+        client,
+        purchase_headers,
+        "replacement.xlsx",
+        build_workbook([["生效", "Y999", "按钮", "个", "LA38", "忽略"]]),
     )
-    assert replacement.status_code == 200, replacement.text
+    assert replacement.status_code == 202, replacement.text
+    replacement_job = await _wait_job(client, purchase_headers, replacement.json()["id"])
+    assert replacement_job["status"] == "SUCCEEDED", replacement_job
     all_items = await client.get(
         "/api/v1/material-code-library", headers=purchase_headers, params={"page_size": 200}
     )
@@ -150,24 +171,22 @@ async def test_import_replaces_and_searches_material_code_library(client: AsyncC
 async def test_invalid_import_does_not_delete_existing_codes(client: AsyncClient) -> None:
     purchase_headers = await auth_headers(client, "purchase")
     initial = build_workbook([["生效", "Y001", "交流接触器", "个", "CJX2", ""]])
-    await client.post(
-        "/api/v1/material-code-library/import",
-        headers=purchase_headers,
-        files={"file": ("codes.xlsx", initial, "application/octet-stream")},
-    )
+    response = await _submit_import(client, purchase_headers, "codes.xlsx", initial)
+    assert response.status_code == 202, response.text
+    await _wait_job(client, purchase_headers, response.json()["id"])
+
     duplicate = build_workbook(
         [
             ["生效", "Y002", "按钮", "个", "LA38", ""],
             ["生效", "Y002", "按钮", "个", "LA38", ""],
         ]
     )
-    response = await client.post(
-        "/api/v1/material-code-library/import",
-        headers=purchase_headers,
-        files={"file": ("duplicate.xlsx", duplicate, "application/octet-stream")},
-    )
-    assert response.status_code == 400
-    assert response.json()["code"] == "MATERIAL_CODE_IMPORT_DUPLICATE"
+    bad_response = await _submit_import(client, purchase_headers, "duplicate.xlsx", duplicate)
+    assert bad_response.status_code == 202, bad_response.text
+    bad_job = await _wait_job(client, purchase_headers, bad_response.json()["id"])
+    assert bad_job["status"] == "FAILED"
+    assert bad_job["error_code"] == "MATERIAL_CODE_IMPORT_DUPLICATE"
+
     items = await client.get("/api/v1/material-code-library", headers=purchase_headers)
     assert items.json()["total"] == 1
     assert items.json()["items"][0]["material_code"] == "Y001"
@@ -176,56 +195,45 @@ async def test_invalid_import_does_not_delete_existing_codes(client: AsyncClient
 @pytest.mark.asyncio
 async def test_material_code_import_requires_purchase_permission(client: AsyncClient) -> None:
     readonly_headers = await auth_headers(client, "readonly")
-    response = await client.post(
-        "/api/v1/material-code-library/import",
-        headers=readonly_headers,
-        files={
-            "file": (
-                "codes.xlsx",
-                build_workbook([["生效", "Y001", "按钮", "个", "LA38", ""]]),
-                "application/octet-stream",
-            )
-        },
+    response = await _submit_import(
+        client,
+        readonly_headers,
+        "codes.xlsx",
+        build_workbook([["生效", "Y001", "按钮", "个", "LA38", ""]]),
     )
     assert response.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_import_rejects_corrupted_file(client: AsyncClient) -> None:
+async def test_import_rejects_unsupported_extension(client: AsyncClient) -> None:
     purchase_headers = await auth_headers(client, "purchase")
-    response = await client.post(
-        "/api/v1/material-code-library/import",
-        headers=purchase_headers,
-        files={
-            "file": (
-                "corrupted.xlsx",
-                b"this is not a valid excel file",
-                "application/octet-stream",
-            )
-        },
+    response = await _submit_import(
+        client, purchase_headers, "codes.txt", b"not excel content"
     )
     assert response.status_code == 400
-    assert response.json()["code"] == "INVALID_EXCEL_FILE"
+    assert response.json()["code"] == "UNSUPPORTED_EXCEL_FILE"
+
+
+@pytest.mark.asyncio
+async def test_import_corrupted_file_marks_job_failed(client: AsyncClient) -> None:
+    purchase_headers = await auth_headers(client, "purchase")
+    response = await _submit_import(
+        client, purchase_headers, "corrupted.xlsx", b"this is not a valid excel file"
+    )
+    assert response.status_code == 202, response.text
+    bad_job = await _wait_job(client, purchase_headers, response.json()["id"])
+    assert bad_job["status"] == "FAILED"
+    assert bad_job["error_code"] == "INVALID_EXCEL_FILE"
 
 
 @pytest.mark.asyncio
 async def test_import_large_file_succeeds(client: AsyncClient) -> None:
     purchase_headers = await auth_headers(client, "purchase")
     rows = [["生效", f"Y{i:04d}", f"物料{i}", "个", f"型号{i}", "忽略"] for i in range(500)]
-    file_content = build_workbook(rows)
-    response = await client.post(
-        "/api/v1/material-code-library/import",
-        headers=purchase_headers,
-        files={
-            "file": (
-                "large.xlsx",
-                file_content,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-        },
-    )
-    assert response.status_code == 200, response.text
-    data = response.json()
-    assert data["imported_count"] == 500
-    assert data["blank_name_count"] == 0
-    assert data["blank_model_spec_count"] == 0
+    response = await _submit_import(client, purchase_headers, "large.xlsx", build_workbook(rows))
+    assert response.status_code == 202, response.text
+    job = await _wait_job(client, purchase_headers, response.json()["id"])
+    assert job["status"] == "SUCCEEDED", job
+    assert job["result"]["imported_count"] == 500
+    assert job["result"]["blank_name_count"] == 0
+    assert job["result"]["blank_model_spec_count"] == 0

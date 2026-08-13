@@ -1,0 +1,23 @@
+import { apiClient } from './client'
+import type { ExcelImportJob, HuaXingInventory, Page, PagedQueryParams } from './generated'
+
+/** 华星库存列表查询 */
+export interface HuaXingInventoryListQuery extends PagedQueryParams {
+  keyword?: string
+  warehouse?: string
+  purchase_department?: string
+}
+
+export const huaXingInventoryApi = {
+  list: (params?: HuaXingInventoryListQuery) =>
+    apiClient.get<Page<HuaXingInventory>>('/huaxing-inventory', { params }).then((r) => r.data),
+  import: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient
+      .post<ExcelImportJob>('/huaxing-inventory/import', formData, { timeout: 120_000 })
+      .then((r) => r.data)
+  },
+  importJob: (jobId: number) =>
+    apiClient.get<ExcelImportJob>(`/huaxing-inventory/import-jobs/${jobId}`).then((r) => r.data),
+}

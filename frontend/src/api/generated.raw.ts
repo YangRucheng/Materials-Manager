@@ -502,6 +502,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/material-code-library/import-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Import Job */
+        get: operations["get_import_job_api_v1_material_code_library_import_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/huaxing-inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Huaxing Inventory */
+        get: operations["list_huaxing_inventory_api_v1_huaxing_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/huaxing-inventory/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Huaxing Inventory */
+        post: operations["import_huaxing_inventory_api_v1_huaxing_inventory_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/huaxing-inventory/import-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Import Job */
+        get: operations["get_import_job_api_v1_huaxing_inventory_import_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program-users": {
         parameters: {
             query?: never;
@@ -1462,6 +1530,11 @@ export interface components {
             /** Record Remark */
             record_remark?: string | null;
         };
+        /** Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post */
+        Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post: {
+            /** File */
+            file: string;
+        };
         /** Body_import_material_codes_api_v1_material_code_library_import_post */
         Body_import_material_codes_api_v1_material_code_library_import_post: {
             /** File */
@@ -1483,6 +1556,38 @@ export interface components {
             /** Purchase Record Count */
             purchase_record_count: number;
         };
+        /** ExcelImportJobRead */
+        ExcelImportJobRead: {
+            /** Id */
+            id: number;
+            /** Import Type */
+            import_type: string;
+            status: components["schemas"]["ExcelImportJobStatus"];
+            /** Original Filename */
+            original_filename: string;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /**
+         * ExcelImportJobStatus
+         * @enum {string}
+         */
+        ExcelImportJobStatus: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
         /** FileObjectRead */
         FileObjectRead: {
             /** Id */
@@ -1501,6 +1606,31 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+        };
+        /** HuaXingInventoryRead */
+        HuaXingInventoryRead: {
+            /** Id */
+            id: number;
+            /** First Inbound Date */
+            first_inbound_date?: string | null;
+            /** Warehouse */
+            warehouse?: string | null;
+            /** Material Code */
+            material_code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Model Spec */
+            model_spec?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+            /** Unit Name */
+            unit_name?: string | null;
+            /** Purchaser */
+            purchaser?: string | null;
+            /** Purchase Department */
+            purchase_department?: string | null;
+            /** Subitem No Name */
+            subitem_no_name?: string | null;
         };
         /** ImageAccelerationSettingsRead */
         ImageAccelerationSettingsRead: {
@@ -1560,15 +1690,6 @@ export interface components {
              */
             token_type: "bearer";
             user: components["schemas"]["UserRead"];
-        };
-        /** MaterialCodeLibraryImportRead */
-        MaterialCodeLibraryImportRead: {
-            /** Imported Count */
-            imported_count: number;
-            /** Blank Name Count */
-            blank_name_count: number;
-            /** Blank Model Spec Count */
-            blank_model_spec_count: number;
         };
         /** MaterialCodeLibraryRead */
         MaterialCodeLibraryRead: {
@@ -2091,6 +2212,17 @@ export interface components {
             untracked_file_names: string[];
             /** Missing File Ids */
             missing_file_ids: string[];
+        };
+        /** Page[HuaXingInventoryRead] */
+        Page_HuaXingInventoryRead_: {
+            /** Items */
+            items: components["schemas"]["HuaXingInventoryRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
         };
         /** Page[InventoryBalanceRead] */
         Page_InventoryBalanceRead_: {
@@ -5355,12 +5487,286 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExcelImportJobRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    get_import_job_api_v1_material_code_library_import_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MaterialCodeLibraryImportRead"];
+                    "application/json": components["schemas"]["ExcelImportJobRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_huaxing_inventory_api_v1_huaxing_inventory_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+                warehouse?: string | null;
+                purchase_department?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_HuaXingInventoryRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    import_huaxing_inventory_api_v1_huaxing_inventory_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExcelImportJobRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    get_import_job_api_v1_huaxing_inventory_import_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExcelImportJobRead"];
                 };
             };
             /** @description 业务校验失败 */
