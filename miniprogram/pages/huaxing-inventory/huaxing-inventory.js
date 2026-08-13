@@ -26,6 +26,8 @@ Page({
     loadingMore: false,
     resultCount: '',
     backTopVisible: false,
+    detailVisible: false,
+    detailItem: null,
     i18n: getMessages(),
   },
 
@@ -112,6 +114,33 @@ Page({
       title: t('shareHuaxingInventory'),
       path: '/pages/huaxing-inventory/huaxing-inventory',
     };
+  },
+
+  openDetail(event) {
+    const item = this.data.items[event.currentTarget.dataset.index];
+    if (!item) return;
+    this.setData({ detailItem: item, detailVisible: true });
+  },
+
+  onDetailVisibleChange(event) {
+    this.setData({ detailVisible: event.detail.visible });
+  },
+
+  copyNameAndCode() {
+    const item = this.data.detailItem;
+    if (!item) return;
+    wx.setClipboardData({
+      data: `${item.name || ''} ${item.material_code || ''}`.trim(),
+      success: () => {
+        Toast({
+          context: this,
+          selector: '#huaxing-inventory-toast',
+          message: t('copied'),
+          theme: 'success',
+          direction: 'column',
+        });
+      },
+    });
   },
 
   showError(error) {

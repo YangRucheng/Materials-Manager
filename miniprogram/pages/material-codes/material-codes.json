@@ -6,6 +6,7 @@
     "t-empty": "tdesign-miniprogram/empty/empty",
     "t-icon": "tdesign-miniprogram/icon/icon",
     "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-popup": "tdesign-miniprogram/popup/popup",
     "t-search": "tdesign-miniprogram/search/search",
     "t-toast": "tdesign-miniprogram/toast/toast"
   }

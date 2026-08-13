@@ -16,6 +16,8 @@ Page({
     loadingMore: false,
     resultCount: '',
     backTopVisible: false,
+    detailVisible: false,
+    detailItem: null,
     i18n: getMessages(),
   },
 
@@ -102,6 +104,33 @@ Page({
       title: t('shareMaterialCodes'),
       path: '/pages/material-codes/material-codes',
     };
+  },
+
+  openDetail(event) {
+    const item = this.data.items[event.currentTarget.dataset.index];
+    if (!item) return;
+    this.setData({ detailItem: item, detailVisible: true });
+  },
+
+  onDetailVisibleChange(event) {
+    this.setData({ detailVisible: event.detail.visible });
+  },
+
+  copyMaterialCode() {
+    const item = this.data.detailItem;
+    if (!item) return;
+    wx.setClipboardData({
+      data: item.material_code || '',
+      success: () => {
+        Toast({
+          context: this,
+          selector: '#material-codes-toast',
+          message: t('copied'),
+          theme: 'success',
+          direction: 'column',
+        });
+      },
+    });
   },
 
   showError(error) {
