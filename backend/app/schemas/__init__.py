@@ -686,6 +686,7 @@ class MiniProgramMaterialCodeRead(ReadModel):
     name: str | None = None
     model_spec: str | None = None
     unit_name: str
+    created_at: UtcDateTime
 
 
 class MiniProgramHuaXingInventoryRead(ReadModel):
@@ -700,6 +701,7 @@ class MiniProgramHuaXingInventoryRead(ReadModel):
     purchaser: str | None = None
     purchase_department: str | None = None
     subitem_no_name: str | None = None
+    created_at: UtcDateTime
 
 
 class MiniProgramOutboundCreate(RequestModel):
@@ -840,6 +842,7 @@ class MaterialCodeLibraryRead(ReadModel):
     name: str | None
     model_spec: str | None
     unit_name: str
+    created_at: UtcDateTime
 
 
 class MaterialCodeLibraryImportRead(ReadModel):
@@ -873,6 +876,7 @@ class HuaXingInventoryRead(ReadModel):
     purchaser: str | None = None
     purchase_department: str | None = None
     subitem_no_name: str | None = None
+    created_at: UtcDateTime
 
 
 class PurchasePlanVersion(RequestModel):

@@ -218,6 +218,7 @@ async def search_huaxing_inventory(
             purchaser=item.purchaser,
             purchase_department=item.purchase_department,
             subitem_no_name=item.subitem_no_name,
+            created_at=item.created_at,
         )
         for item in result.all()
     ]

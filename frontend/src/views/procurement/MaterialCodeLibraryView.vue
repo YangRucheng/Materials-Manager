@@ -12,6 +12,7 @@ import {
 } from '@/constants/table'
 import { useImportJob } from '@/composables/useImportJob'
 import { usePagedTable } from '@/composables/usePagedTable'
+import { formatShanghaiTime } from '@/utils/time'
 
 const auth = useAuthStore()
 const dialog = useDialog()
@@ -79,6 +80,12 @@ const columns: DataTableColumns<MaterialCodeLibrary> = preventTableColumnCompres
     render: (row) => row.model_spec || '—',
   },
   { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
+  {
+    title: '导入时间',
+    key: 'created_at',
+    width: tableColumnWidths.datetime,
+    render: (row) => formatShanghaiTime(row.created_at),
+  },
 ])
 const tableScrollX = getTableScrollX(columns)
 
