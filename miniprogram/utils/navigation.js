@@ -35,9 +35,25 @@ function extractRedirect(options = {}) {
   }
 }
 
+/**
+ * 获取当前页面完整路径（含 query），用于 401 重登发现未绑定时回跳原页面。
+ * @returns {string} 形如 "/pages/material-detail/material-detail?uuid=..."；无页面时返回空串。
+ */
+function getCurrentPageUrl() {
+  const pages = getCurrentPages();
+  const page = pages.length ? pages[pages.length - 1] : null;
+  if (!page || !page.route) return '';
+  const options = page.options || {};
+  const query = Object.keys(options)
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(options[key]))}`)
+    .join('&');
+  return `/${page.route}${query ? `?${query}` : ''}`;
+}
+
 module.exports = {
   REDIRECT_KEY,
   buildRedirectQuery,
   extractRedirect,
   takeRedirect,
+  getCurrentPageUrl,
 };
