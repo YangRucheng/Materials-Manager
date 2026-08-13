@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { aiSearchApi } from '@/api/aiSearch'
 import { systemSettingsApi } from '@/api/systemSettings'
-import type { WebhookEventType, WebhookPlatform } from '@/api/generated'
+import type { MiniProgramFeatureMode, WebhookEventType, WebhookPlatform } from '@/api/generated'
 
 const message = useMessage()
 const loading = ref(false)
@@ -20,6 +20,15 @@ const codeEnvOptions = [
   { label: '体验版', value: 'trial' },
   { label: '正式版', value: 'release' },
 ]
+const inventoryModeOptions: Array<{ label: string; value: MiniProgramFeatureMode }> = [
+  { label: '禁用', value: 'disabled' },
+  { label: '仅查询', value: 'query_only' },
+  { label: '可读写', value: 'read_write' },
+]
+const readOnlyModeOptions: Array<{ label: string; value: MiniProgramFeatureMode }> = [
+  { label: '禁用', value: 'disabled' },
+  { label: '仅查询', value: 'query_only' },
+]
 const form = reactive({
   endpoint: '',
   api_key: '',
@@ -31,6 +40,11 @@ const form = reactive({
   mini_program_registration_enabled: true,
   mini_program_new_user_enabled: true,
   image_acceleration_server_url: '',
+  inventory_mode: 'read_write' as MiniProgramFeatureMode,
+  huaxing_inventory_mode: 'query_only' as MiniProgramFeatureMode,
+  purchase_plans_mode: 'query_only' as MiniProgramFeatureMode,
+  purchase_records_mode: 'query_only' as MiniProgramFeatureMode,
+  material_codes_mode: 'query_only' as MiniProgramFeatureMode,
   version: 0,
 })
 const miniProgramAppOptions = computed(() =>
@@ -119,6 +133,11 @@ async function save() {
       mini_program_registration_enabled: form.mini_program_registration_enabled,
       mini_program_new_user_enabled: form.mini_program_new_user_enabled,
       image_acceleration_server_url: form.image_acceleration_server_url.trim(),
+      inventory_mode: form.inventory_mode,
+      huaxing_inventory_mode: form.huaxing_inventory_mode,
+      purchase_plans_mode: form.purchase_plans_mode,
+      purchase_records_mode: form.purchase_records_mode,
+      material_codes_mode: form.material_codes_mode,
       version: form.version,
     })
     Object.assign(form, data)
@@ -266,6 +285,26 @@ onMounted(load)
               <n-switch v-model:value="form.mini_program_new_user_enabled" />
               <span>{{ form.mini_program_new_user_enabled ? '启用' : '待审核' }}</span>
             </div>
+          </n-form-item>
+        </n-form>
+      </n-card>
+
+      <n-card class="settings-card feature-card" title="小程序功能开关" :bordered="false">
+        <n-form label-placement="left" label-width="132">
+          <n-form-item label="二级库库存">
+            <n-select v-model:value="form.inventory_mode" :options="inventoryModeOptions" />
+          </n-form-item>
+          <n-form-item label="华星总库存">
+            <n-select v-model:value="form.huaxing_inventory_mode" :options="readOnlyModeOptions" />
+          </n-form-item>
+          <n-form-item label="申购计划">
+            <n-select v-model:value="form.purchase_plans_mode" :options="readOnlyModeOptions" />
+          </n-form-item>
+          <n-form-item label="申购记录">
+            <n-select v-model:value="form.purchase_records_mode" :options="readOnlyModeOptions" />
+          </n-form-item>
+          <n-form-item label="物料编码">
+            <n-select v-model:value="form.material_codes_mode" :options="readOnlyModeOptions" />
           </n-form-item>
         </n-form>
       </n-card>

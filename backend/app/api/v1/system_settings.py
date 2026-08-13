@@ -4,6 +4,7 @@ from app.core.permissions import DbSession, SuperAdmin
 from app.domain.enums import WebhookPlatform
 from app.schemas import (
     ImageAccelerationSettingsRead,
+    MiniProgramFeaturesRead,
     WebhookChannelRead,
     WebhookChannelUpdate,
     WebhookTestRead,
@@ -20,6 +21,13 @@ async def image_acceleration_settings(session: DbSession) -> ImageAccelerationSe
     # 两种鉴权体系不同，故保持匿名。仅返回一个图片加速 URL，泄露价值低。
     server_url = await ai_search_service.get_image_acceleration_server_url(session)
     return ImageAccelerationSettingsRead(image_acceleration_server_url=server_url)
+
+
+@router.get("/mini-program-features", response_model=MiniProgramFeaturesRead)
+async def mini_program_features(session: DbSession) -> MiniProgramFeaturesRead:
+    # 公开配置端点：仅返回各小程序功能开关（禁用/仅查询/可读写），泄露价值低。
+    # 开关只用于小程序前端拦截展示与跳转，后端数据接口不做对应鉴权（见 README）。
+    return await ai_search_service.get_mini_program_features(session)
 
 
 @router.get("/webhooks", response_model=list[WebhookChannelRead])

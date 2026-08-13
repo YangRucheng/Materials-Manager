@@ -18,9 +18,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppError, version_conflict
 from app.core.wechat import configured_wechat_app_ids, get_wechat_credentials
-from app.domain.enums import MiniProgramCodeEnv
+from app.domain.enums import MiniProgramCodeEnv, MiniProgramFeatureMode
 from app.models import BusinessEventLog
-from app.schemas import AiSearchSettingsRead, AiSearchSettingsUpdate, AiSearchTestRequest
+from app.schemas import (
+    AiSearchSettingsRead,
+    AiSearchSettingsUpdate,
+    AiSearchTestRequest,
+    MiniProgramFeaturesRead,
+)
 from app.services.common import log_event, split_or_search_terms
 
 logger = logging.getLogger(__name__)
@@ -50,6 +55,11 @@ class AiSearchConfig:
     mini_program_registration_enabled: bool
     mini_program_new_user_enabled: bool
     image_acceleration_server_url: str
+    inventory_mode: MiniProgramFeatureMode
+    huaxing_inventory_mode: MiniProgramFeatureMode
+    purchase_plans_mode: MiniProgramFeatureMode
+    purchase_records_mode: MiniProgramFeatureMode
+    material_codes_mode: MiniProgramFeatureMode
     updated_at: datetime | None
     version: int
 
@@ -92,7 +102,21 @@ def _payload(config: AiSearchConfig) -> dict[str, object]:
         "mini_program_registration_enabled": config.mini_program_registration_enabled,
         "mini_program_new_user_enabled": config.mini_program_new_user_enabled,
         "image_acceleration_server_url": config.image_acceleration_server_url,
+        "inventory_mode": config.inventory_mode,
+        "huaxing_inventory_mode": config.huaxing_inventory_mode,
+        "purchase_plans_mode": config.purchase_plans_mode,
+        "purchase_records_mode": config.purchase_records_mode,
+        "material_codes_mode": config.material_codes_mode,
     }
+
+
+def _feature_mode(value: object, default: MiniProgramFeatureMode) -> MiniProgramFeatureMode:
+    if not isinstance(value, str):
+        return default
+    try:
+        return MiniProgramFeatureMode(value)
+    except ValueError:
+        return default
 
 
 def _mini_program_code_env(value: object) -> MiniProgramCodeEnv:
@@ -157,6 +181,21 @@ async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
             if isinstance(data.get("image_acceleration_server_url"), str)
             else ""
         ),
+        inventory_mode=_feature_mode(
+            data.get("inventory_mode"), MiniProgramFeatureMode.READ_WRITE
+        ),
+        huaxing_inventory_mode=_feature_mode(
+            data.get("huaxing_inventory_mode"), MiniProgramFeatureMode.QUERY_ONLY
+        ),
+        purchase_plans_mode=_feature_mode(
+            data.get("purchase_plans_mode"), MiniProgramFeatureMode.QUERY_ONLY
+        ),
+        purchase_records_mode=_feature_mode(
+            data.get("purchase_records_mode"), MiniProgramFeatureMode.QUERY_ONLY
+        ),
+        material_codes_mode=_feature_mode(
+            data.get("material_codes_mode"), MiniProgramFeatureMode.QUERY_ONLY
+        ),
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -175,6 +214,11 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
             mini_program_registration_enabled=True,
             mini_program_new_user_enabled=True,
             image_acceleration_server_url="",
+            inventory_mode=MiniProgramFeatureMode.READ_WRITE,
+            huaxing_inventory_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            purchase_plans_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            purchase_records_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            material_codes_mode=MiniProgramFeatureMode.QUERY_ONLY,
             updated_at=None,
             version=0,
         )
@@ -191,6 +235,11 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
         mini_program_registration_enabled=setting.mini_program_registration_enabled,
         mini_program_new_user_enabled=setting.mini_program_new_user_enabled,
         image_acceleration_server_url=setting.image_acceleration_server_url,
+        inventory_mode=setting.inventory_mode,
+        huaxing_inventory_mode=setting.huaxing_inventory_mode,
+        purchase_plans_mode=setting.purchase_plans_mode,
+        purchase_records_mode=setting.purchase_records_mode,
+        material_codes_mode=setting.material_codes_mode,
         updated_at=setting.updated_at,
         version=setting.version,
     )
@@ -237,6 +286,11 @@ async def update_setting(
             "mini_program_registration_enabled": data.mini_program_registration_enabled,
             "mini_program_new_user_enabled": data.mini_program_new_user_enabled,
             "image_acceleration_server_url": data.image_acceleration_server_url,
+            "inventory_mode": data.inventory_mode,
+            "huaxing_inventory_mode": data.huaxing_inventory_mode,
+            "purchase_plans_mode": data.purchase_plans_mode,
+            "purchase_records_mode": data.purchase_records_mode,
+            "material_codes_mode": data.material_codes_mode,
         },
     )
     _cache.clear()
@@ -250,6 +304,11 @@ async def update_setting(
         mini_program_registration_enabled=data.mini_program_registration_enabled,
         mini_program_new_user_enabled=data.mini_program_new_user_enabled,
         image_acceleration_server_url=data.image_acceleration_server_url,
+        inventory_mode=data.inventory_mode,
+        huaxing_inventory_mode=data.huaxing_inventory_mode,
+        purchase_plans_mode=data.purchase_plans_mode,
+        purchase_records_mode=data.purchase_records_mode,
+        material_codes_mode=data.material_codes_mode,
         updated_at=event.occurred_at,
         version=event.id,
     )
@@ -281,6 +340,25 @@ async def is_mini_program_new_user_enabled(session: AsyncSession) -> bool:
 async def get_image_acceleration_server_url(session: AsyncSession) -> str:
     setting = await get_setting(session)
     return setting.image_acceleration_server_url if setting else ""
+
+
+async def get_mini_program_features(session: AsyncSession) -> MiniProgramFeaturesRead:
+    setting = await get_setting(session)
+    if setting is None:
+        return MiniProgramFeaturesRead(
+            inventory_mode=MiniProgramFeatureMode.READ_WRITE,
+            huaxing_inventory_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            purchase_plans_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            purchase_records_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            material_codes_mode=MiniProgramFeatureMode.QUERY_ONLY,
+        )
+    return MiniProgramFeaturesRead(
+        inventory_mode=setting.inventory_mode,
+        huaxing_inventory_mode=setting.huaxing_inventory_mode,
+        purchase_plans_mode=setting.purchase_plans_mode,
+        purchase_records_mode=setting.purchase_records_mode,
+        material_codes_mode=setting.material_codes_mode,
+    )
 
 
 async def is_available(session: AsyncSession) -> bool:
@@ -614,6 +692,11 @@ async def test_search_value(data: AiSearchTestRequest, value: str) -> str | None
         mini_program_registration_enabled=True,
         mini_program_new_user_enabled=True,
         image_acceleration_server_url="",
+        inventory_mode=MiniProgramFeatureMode.READ_WRITE,
+        huaxing_inventory_mode=MiniProgramFeatureMode.QUERY_ONLY,
+        purchase_plans_mode=MiniProgramFeatureMode.QUERY_ONLY,
+        purchase_records_mode=MiniProgramFeatureMode.QUERY_ONLY,
+        material_codes_mode=MiniProgramFeatureMode.QUERY_ONLY,
         updated_at=None,
         version=0,
     )

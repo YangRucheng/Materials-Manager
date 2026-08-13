@@ -1,5 +1,6 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { extractMaterialUuid } = require('../../utils/material');
+const { canOutbound, isFeatureDisabled } = require('../../utils/features');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const { apiBaseUrl } = require('../../config/index');
 const { uploadTime: buildUploadTime } = require('../../config/build-info');
@@ -53,23 +54,36 @@ Page({
   },
 
   openInventory() {
+    if (!this.ensureFeatureEnabled('inventory_mode')) return;
     wx.navigateTo({ url: '/pages/inventory/inventory' });
   },
 
   openHuaXingInventory() {
+    if (!this.ensureFeatureEnabled('huaxing_inventory_mode')) return;
     wx.navigateTo({ url: '/pages/huaxing-inventory/huaxing-inventory' });
   },
 
   openPurchasePlans() {
+    if (!this.ensureFeatureEnabled('purchase_plans_mode')) return;
     wx.navigateTo({ url: '/pages/purchase-plans/purchase-plans' });
   },
 
   openPurchaseRecords() {
+    if (!this.ensureFeatureEnabled('purchase_records_mode')) return;
     wx.navigateTo({ url: '/pages/purchase-records/purchase-records' });
   },
 
   openMaterialCodes() {
+    if (!this.ensureFeatureEnabled('material_codes_mode')) return;
     wx.navigateTo({ url: '/pages/material-codes/material-codes' });
+  },
+
+  ensureFeatureEnabled(modeKey) {
+    if (isFeatureDisabled(modeKey)) {
+      this.showError(new Error(t('featureNotOpen')));
+      return false;
+    }
+    return true;
   },
 
   onShareAppMessage() {
@@ -94,6 +108,10 @@ Page({
   },
 
   async scanMaterial() {
+    if (!canOutbound()) {
+      this.showError(new Error(t('outboundNotOpen')));
+      return;
+    }
     this.setData({ scanning: true });
     try {
       const scanResult = await new Promise((resolve, reject) => {

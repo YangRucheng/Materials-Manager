@@ -19,6 +19,7 @@ export type SourceType = components['schemas']['SourceType']
 export type PurchasePlanStatus = components['schemas']['PurchasePlanStatus']
 export type MiniProgramCodeEnv = components['schemas']['MiniProgramCodeEnv']
 export type MiniProgramStockStatus = components['schemas']['MiniProgramStockStatus']
+export type MiniProgramFeatureMode = components['schemas']['MiniProgramFeatureMode']
 export type WebhookPlatform = components['schemas']['WebhookPlatform']
 export type WebhookEventType = components['schemas']['WebhookEventType']
 
@@ -114,6 +115,11 @@ export interface AiSearchSettingsWrite {
   mini_program_registration_enabled: boolean
   mini_program_new_user_enabled: boolean
   image_acceleration_server_url: string
+  inventory_mode: MiniProgramFeatureMode
+  huaxing_inventory_mode: MiniProgramFeatureMode
+  purchase_plans_mode: MiniProgramFeatureMode
+  purchase_records_mode: MiniProgramFeatureMode
+  material_codes_mode: MiniProgramFeatureMode
   version: number
 }
 
