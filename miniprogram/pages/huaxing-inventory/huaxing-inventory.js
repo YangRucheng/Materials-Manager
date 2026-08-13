@@ -4,6 +4,14 @@ const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function decorateItem(item) {
   const quantity = item.quantity != null ? String(item.quantity) : '';
   return {
@@ -11,6 +19,7 @@ function decorateItem(item) {
     qtyDisplay: quantity
       ? `${quantity}${item.unit_name ? ' ' + item.unit_name : ''}`
       : '',
+    created_at_label: formatDateTime(item.created_at),
   };
 }
 

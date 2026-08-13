@@ -12,6 +12,7 @@ import {
 } from '@/constants/table'
 import { useImportJob } from '@/composables/useImportJob'
 import { usePagedTable } from '@/composables/usePagedTable'
+import { formatShanghaiTime } from '@/utils/time'
 
 const auth = useAuthStore()
 const dialog = useDialog()
@@ -102,6 +103,12 @@ const columns: DataTableColumns<HuaXingInventory> = preventTableColumnCompressio
     width: tableColumnWidths.material,
     ellipsis: { tooltip: true },
     render: (row) => row.subitem_no_name || '—',
+  },
+  {
+    title: '导入时间',
+    key: 'created_at',
+    width: tableColumnWidths.datetime,
+    render: (row) => formatShanghaiTime(row.created_at),
   },
 ])
 const tableScrollX = getTableScrollX(columns)
