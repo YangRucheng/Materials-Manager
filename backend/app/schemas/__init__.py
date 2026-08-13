@@ -688,6 +688,20 @@ class MiniProgramMaterialCodeRead(ReadModel):
     unit_name: str
 
 
+class MiniProgramHuaXingInventoryRead(ReadModel):
+    id: int
+    first_inbound_date: date | None = None
+    warehouse: str | None = None
+    material_code: str | None = None
+    name: str | None = None
+    model_spec: str | None = None
+    quantity: Decimal | None = None
+    unit_name: str | None = None
+    purchaser: str | None = None
+    purchase_department: str | None = None
+    subitem_no_name: str | None = None
+
+
 class MiniProgramOutboundCreate(RequestModel):
     client_request_id: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)

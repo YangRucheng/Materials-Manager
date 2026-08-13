@@ -3105,6 +3105,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/mini-program/huaxing-inventory:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Huaxing Inventory
+      operationId: mini_program_huaxing_inventory_api_v1_mini_program_huaxing_inventory_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Keyword
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_MiniProgramHuaXingInventoryRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program/purchase-plans/{material_id}:
     get:
       tags:
@@ -6421,6 +6493,67 @@ components:
       - trial
       - release
       title: MiniProgramCodeEnv
+    MiniProgramHuaXingInventoryRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        first_inbound_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: First Inbound Date
+        warehouse:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Warehouse
+        material_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Material Code
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        model_spec:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Spec
+        quantity:
+          anyOf:
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          - type: 'null'
+          title: Quantity
+        unit_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit Name
+        purchaser:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Purchaser
+        purchase_department:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Purchase Department
+        subitem_no_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No Name
+      type: object
+      required:
+      - id
+      title: MiniProgramHuaXingInventoryRead
     MiniProgramIdentityRead:
       properties:
         id:
@@ -7489,6 +7622,29 @@ components:
       - page_size
       - total
       title: Page[MaterialCodeLibraryRead]
+    Page_MiniProgramHuaXingInventoryRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MiniProgramHuaXingInventoryRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[MiniProgramHuaXingInventoryRead]
     Page_MiniProgramInventoryItemRead_:
       properties:
         items:

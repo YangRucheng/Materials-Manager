@@ -1,0 +1,47 @@
+<view class="page-shell huaxing-inventory-page">
+  <view class="list-header"><view class="page-title">{{i18n.huaxingInventoryTitle}}</view></view>
+  <view class="list-tools">
+    <t-search
+      value="{{keyword}}"
+      placeholder="{{i18n.huaxingInventorySearchPlaceholder}}"
+      shape="round"
+      confirm-type="search"
+      bind:change="onSearchChange"
+    />
+  </view>
+  <view wx:if="{{!loading || items.length}}" class="result-count">{{resultCount}}</view>
+  <view wx:if="{{loading && !items.length}}" class="state-panel">
+    <t-loading theme="circular" size="48rpx" text="{{i18n.loadingHuaxingInventory}}" />
+  </view>
+  <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
+    <t-empty icon="search" description="{{keyword ? i18n.huaxingInventoryEmptyFiltered : i18n.huaxingInventoryEmpty}}" />
+  </view>
+  <view wx:else class="code-list">
+    <view wx:for="{{items}}" wx:key="id" class="code-card">
+      <view class="code-head">
+        <text class="code-name">{{item.name || i18n.notSet}}</text>
+        <text wx:if="{{item.model_spec}}" class="code-model">{{item.model_spec}}</text>
+      </view>
+      <view wx:if="{{item.warehouse || item.qtyDisplay || item.first_inbound_date}}" class="meta-row">
+        <text wx:if="{{item.warehouse}}" class="meta-warehouse">{{item.warehouse}}</text>
+        <text wx:if="{{item.qtyDisplay}}" class="meta-quantity">{{item.qtyDisplay}}</text>
+        <text wx:if="{{item.first_inbound_date}}" class="meta-date">{{item.first_inbound_date}}</text>
+      </view>
+      <view class="card-divider"></view>
+      <view class="code-value">{{item.material_code}}</view>
+    </view>
+  </view>
+  <view wx:if="{{loadingMore}}" class="load-more">
+    <t-loading theme="circular" size="36rpx" text="{{i18n.loadMore}}" />
+  </view>
+  <view wx:elif="{{items.length && !hasMore}}" class="load-finished">{{i18n.noMore}}</view>
+  <t-toast id="huaxing-inventory-toast" />
+  <button
+    wx:if="{{backTopVisible}}"
+    class="back-top-fab"
+    aria-label="{{i18n.backToTop}}"
+    bind:tap="scrollToTop"
+  >
+    <t-icon name="backtop" size="52rpx" color="#ffffff" />
+  </button>
+</view>

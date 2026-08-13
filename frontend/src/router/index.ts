@@ -67,7 +67,7 @@ const router = createRouter({
           path: 'warehouse/hua-xing-stock',
           name: 'hua-xing-stock',
           component: () => import('@/views/warehouse/HuaXingStockView.vue'),
-          meta: { title: '华星库存' },
+          meta: { title: '华星总库存' },
         },
         {
           path: 'warehouse/operations',

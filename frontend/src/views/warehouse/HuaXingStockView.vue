@@ -43,7 +43,7 @@ const {
       page_size: pager.page_size,
     }),
   initialFilters: () => ({ keyword: '', warehouse: '', purchaseDepartment: '' }),
-  onError: (error) => message.error(error instanceof Error ? error.message : '加载华星库存失败'),
+  onError: (error) => message.error(error instanceof Error ? error.message : '加载华星总库存失败'),
   pageSizeOptions: [20, 50, 100, 200],
 })
 const importJob = useImportJob({
@@ -115,7 +115,7 @@ function showImportSummary(result: Record<string, unknown> | null) {
   dialog.success({
     draggable: true,
     title: '导入完成',
-    content: `已全量更新 ${importedCount.toLocaleString()} 条华星库存数据。`,
+    content: `已全量更新 ${importedCount.toLocaleString()} 条华星总库存数据。`,
     positiveText: '知道了',
   })
 }
@@ -141,8 +141,8 @@ function onFileChange(event: Event) {
   if (!file) return
   dialog.warning({
     draggable: true,
-    title: '全量更新华星库存',
-    content: `确认导入“${file.name}”吗？现有华星库存将被全部删除，并由该文件完整替换。`,
+    title: '全量更新华星总库存',
+    content: `确认导入“${file.name}”吗？现有华星总库存将被全部删除，并由该文件完整替换。`,
     positiveText: '确认全量更新',
     negativeText: '取消',
     onPositiveClick: () => importFile(file),
@@ -153,7 +153,7 @@ function onFileChange(event: Event) {
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">华星库存</h1>
+      <h1 class="page-title">华星总库存</h1>
       <n-button
         v-if="auth.can('warehouse:write')"
         type="primary"
