@@ -31,6 +31,12 @@ class MiniProgramStockStatus(StrEnum):
     LOW_STOCK = "low_stock"
 
 
+class MiniProgramFeatureMode(StrEnum):
+    DISABLED = "disabled"
+    QUERY_ONLY = "query_only"
+    READ_WRITE = "read_write"
+
+
 class PurchasePlanStatus(StrEnum):
     NORMAL = "正常"
     DEFERRED = "暂不申购"

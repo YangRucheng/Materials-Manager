@@ -115,6 +115,11 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         "mini_program_registration_enabled": False,
         "mini_program_new_user_enabled": False,
         "image_acceleration_server_url": "http://192.168.1.10",
+        "inventory_mode": "read_write",
+        "huaxing_inventory_mode": "query_only",
+        "purchase_plans_mode": "query_only",
+        "purchase_records_mode": "query_only",
+        "material_codes_mode": "query_only",
         "updated_at": saved.json()["updated_at"],
         "version": 1,
     }

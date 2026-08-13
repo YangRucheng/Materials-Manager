@@ -437,6 +437,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/system-settings/mini-program-features:
+    get:
+      tags:
+      - 系统设置
+      summary: Mini Program Features
+      operationId: mini_program_features_api_v1_system_settings_mini_program_features_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramFeaturesRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/system-settings/webhooks:
     get:
       tags:
@@ -5930,6 +5973,16 @@ components:
         image_acceleration_server_url:
           type: string
           title: Image Acceleration Server Url
+        inventory_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        huaxing_inventory_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        purchase_plans_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        purchase_records_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        material_codes_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
         updated_at:
           anyOf:
           - type: string
@@ -5951,6 +6004,11 @@ components:
       - mini_program_registration_enabled
       - mini_program_new_user_enabled
       - image_acceleration_server_url
+      - inventory_mode
+      - huaxing_inventory_mode
+      - purchase_plans_mode
+      - purchase_records_mode
+      - material_codes_mode
       - version
       title: AiSearchSettingsRead
     AiSearchSettingsUpdate:
@@ -5995,6 +6053,21 @@ components:
           maxLength: 500
           title: Image Acceleration Server Url
           default: ''
+        inventory_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+          default: read_write
+        huaxing_inventory_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+          default: query_only
+        purchase_plans_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+          default: query_only
+        purchase_records_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+          default: query_only
+        material_codes_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+          default: query_only
         version:
           type: integer
           minimum: 0.0
@@ -6685,6 +6758,33 @@ components:
       - trial
       - release
       title: MiniProgramCodeEnv
+    MiniProgramFeatureMode:
+      type: string
+      enum:
+      - disabled
+      - query_only
+      - read_write
+      title: MiniProgramFeatureMode
+    MiniProgramFeaturesRead:
+      properties:
+        inventory_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        huaxing_inventory_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        purchase_plans_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        purchase_records_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+        material_codes_mode:
+          $ref: '#/components/schemas/MiniProgramFeatureMode'
+      type: object
+      required:
+      - inventory_mode
+      - huaxing_inventory_mode
+      - purchase_plans_mode
+      - purchase_records_mode
+      - material_codes_mode
+      title: MiniProgramFeaturesRead
     MiniProgramHuaXingInventoryRead:
       properties:
         id:
