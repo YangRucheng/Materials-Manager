@@ -25,12 +25,10 @@
       bind:tap="openDetail"
       data-index="{{index}}"
     >
-      <view class="card-topline">
-        <view class="topline-right">
-          <t-tag wx:if="{{item.purchaser}}" theme="primary" variant="light" size="small">{{item.purchaser}}</t-tag>
-        </view>
+      <view class="card-heading">
+        <view class="material-name">{{item.name || i18n.notSet}}</view>
+        <t-tag wx:if="{{item.purchaser}}" theme="primary" variant="light" size="small">{{item.purchaser}}</t-tag>
       </view>
-      <view class="material-name">{{item.name || i18n.notSet}}</view>
       <view wx:if="{{item.model_spec}}" class="material-spec">{{item.model_spec}}</view>
       <view class="card-divider"></view>
       <view class="record-meta">
