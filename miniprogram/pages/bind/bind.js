@@ -10,6 +10,7 @@ Page({
     displayName: '',
     departmentName: '华星检修维护部电气车间',
     loading: false,
+    buttonLabel: 'enterHome',
     i18n: getMessages(),
   },
 
@@ -18,7 +19,11 @@ Page({
     const redirect = extractRedirect(options);
     if (redirect) {
       wx.setStorageSync(REDIRECT_KEY, redirect);
+    } else {
+      wx.removeStorageSync(REDIRECT_KEY);
     }
+    // 按钮文案随回跳目标变化：扫码出库 / 继续原页面 / 进入首页。
+    this.setData({ buttonLabel: this.resolveButtonLabel(redirect) });
     try {
       const session = await getApp().globalData.authPromise;
       if (session.account_disabled) {
@@ -35,6 +40,16 @@ Page({
     } catch (error) {
       this.showError(error);
     }
+  },
+
+  resolveButtonLabel(redirect) {
+    if (getApp().globalData.pendingMaterialUuid) {
+      return 'enterOutbound';
+    }
+    if (redirect) {
+      return 'continueAfterBind';
+    }
+    return 'enterHome';
   },
 
   onNameChange(event) {
