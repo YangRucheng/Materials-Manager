@@ -1,4 +1,5 @@
 import type {
+  HuaXingInventory,
   ManagedUser,
   MiniProgramUser,
   PurchaseMaterial,
@@ -430,6 +431,35 @@ export const operations: StockOperation[] = [
         after_qty: '2',
       },
     ],
+  },
+]
+
+export const huaXingInventory: HuaXingInventory[] = [
+  {
+    id: 1,
+    first_inbound_date: '2022-10-28',
+    warehouse: 'P05综合仓',
+    material_code: 'L012-05048',
+    name: '内丝三通',
+    model_spec: 'DN15',
+    quantity: '25',
+    unit_name: '个',
+    purchaser: '吴冰',
+    purchase_department: '生产调度中心',
+    subitem_no_name: '201-冶炼主厂房',
+  },
+  {
+    id: 2,
+    first_inbound_date: '2025-11-16',
+    warehouse: 'P06综合仓',
+    material_code: 'W004-00003',
+    name: '稀释剂',
+    model_spec: '20L',
+    quantity: '3',
+    unit_name: '桶',
+    purchaser: '夏军',
+    purchase_department: 'HXNI冶炼厂',
+    subitem_no_name: '201-冶炼主厂房 Smelting Plant',
   },
 ]
 

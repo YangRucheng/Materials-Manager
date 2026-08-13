@@ -2,8 +2,8 @@
 import { computed, h, ref } from 'vue'
 import type { DataTableColumns } from 'naive-ui'
 import { useDialog, useMessage } from 'naive-ui'
-import type { MaterialCodeLibrary } from '@/api/generated'
-import { procurementApi } from '@/api/procurement'
+import type { HuaXingInventory } from '@/api/generated'
+import { huaXingInventoryApi } from '@/api/huaXingInventory'
 import { useAuthStore } from '@/stores/auth'
 import {
   getTableScrollX,
@@ -17,10 +17,10 @@ const auth = useAuthStore()
 const dialog = useDialog()
 const message = useMessage()
 const fileInput = ref<HTMLInputElement | null>(null)
-type CodeLibraryFilters = {
-  materialCode: string
-  name: string
-  modelSpec: string
+type HuaXingFilters = {
+  keyword: string
+  warehouse: string
+  purchaseDepartment: string
 }
 const {
   items,
@@ -33,39 +33,47 @@ const {
   changePage,
   changePageSize,
   resetFilters,
-} = usePagedTable<MaterialCodeLibrary, CodeLibraryFilters>({
+} = usePagedTable<HuaXingInventory, HuaXingFilters>({
   fetch: (f, pager) =>
-    procurementApi.materialCodes({
-      material_code: f.materialCode.trim() || undefined,
-      name: f.name.trim() || undefined,
-      model_spec: f.modelSpec.trim() || undefined,
+    huaXingInventoryApi.list({
+      keyword: f.keyword.trim() || undefined,
+      warehouse: f.warehouse.trim() || undefined,
+      purchase_department: f.purchaseDepartment.trim() || undefined,
       page: pager.page,
       page_size: pager.page_size,
     }),
-  initialFilters: () => ({ materialCode: '', name: '', modelSpec: '' }),
-  onError: (error) => message.error(error instanceof Error ? error.message : '加载物料编码库失败'),
+  initialFilters: () => ({ keyword: '', warehouse: '', purchaseDepartment: '' }),
+  onError: (error) => message.error(error instanceof Error ? error.message : '加载华星库存失败'),
   pageSizeOptions: [20, 50, 100, 200],
 })
 const importJob = useImportJob({
-  start: (file) => procurementApi.importMaterialCodes(file),
-  poll: (jobId) => procurementApi.materialCodeImportJob(jobId),
+  start: (file) => huaXingInventoryApi.import(file),
+  poll: (jobId) => huaXingInventoryApi.importJob(jobId),
 })
 const importing = computed(() => importJob.running.value)
 const activeFilterCount = computed(
   () =>
-    [filters.name.trim(), filters.modelSpec.trim(), filters.materialCode.trim()].filter(Boolean)
-      .length,
+    [filters.keyword.trim(), filters.warehouse.trim(), filters.purchaseDepartment.trim()].filter(
+      Boolean,
+    ).length,
 )
 
-const columns: DataTableColumns<MaterialCodeLibrary> = preventTableColumnCompression([
+const columns: DataTableColumns<HuaXingInventory> = preventTableColumnCompression([
   {
-    title: '物料编码',
+    title: '首次入库日期',
+    key: 'first_inbound_date',
+    width: tableColumnWidths.date,
+    render: (row) => row.first_inbound_date || '—',
+  },
+  { title: '仓库', key: 'warehouse', width: tableColumnWidths.person },
+  {
+    title: '货品编码',
     key: 'material_code',
     width: tableColumnWidths.code,
-    render: (row) => h('strong', row.material_code),
+    render: (row) => h('strong', row.material_code ?? '—'),
   },
   {
-    title: '名称',
+    title: '货品名称',
     key: 'name',
     width: tableColumnWidths.name,
     ellipsis: { tooltip: true },
@@ -78,7 +86,23 @@ const columns: DataTableColumns<MaterialCodeLibrary> = preventTableColumnCompres
     ellipsis: { tooltip: true },
     render: (row) => row.model_spec || '—',
   },
-  { title: '计量单位', key: 'unit_name', width: tableColumnWidths.unit },
+  { title: '数量', key: 'quantity', width: tableColumnWidths.quantity, align: 'right' },
+  { title: '单位', key: 'unit_name', width: tableColumnWidths.unit },
+  { title: '申购人', key: 'purchaser', width: tableColumnWidths.person },
+  {
+    title: '申购部门',
+    key: 'purchase_department',
+    width: tableColumnWidths.text,
+    ellipsis: { tooltip: true },
+    render: (row) => row.purchase_department || '—',
+  },
+  {
+    title: '子项号名称',
+    key: 'subitem_no_name',
+    width: tableColumnWidths.material,
+    ellipsis: { tooltip: true },
+    render: (row) => row.subitem_no_name || '—',
+  },
 ])
 const tableScrollX = getTableScrollX(columns)
 
@@ -88,17 +112,10 @@ function openFilePicker() {
 
 function showImportSummary(result: Record<string, unknown> | null) {
   const importedCount = Number(result?.imported_count ?? 0)
-  const blankNameCount = Number(result?.blank_name_count ?? 0)
-  const blankModelCount = Number(result?.blank_model_spec_count ?? 0)
-  const notes = [
-    `已全量更新 ${importedCount.toLocaleString()} 条物料编码。`,
-    blankNameCount ? `${blankNameCount.toLocaleString()} 条名称为空。` : '',
-    blankModelCount ? `${blankModelCount.toLocaleString()} 条型号为空。` : '',
-  ].filter(Boolean)
   dialog.success({
     draggable: true,
     title: '导入完成',
-    content: notes.join('\n'),
+    content: `已全量更新 ${importedCount.toLocaleString()} 条华星库存数据。`,
     positiveText: '知道了',
   })
 }
@@ -107,9 +124,9 @@ async function importFile(file: File) {
   try {
     const result = await importJob.run(file)
     showImportSummary(result)
-    filters.materialCode = ''
-    filters.name = ''
-    filters.modelSpec = ''
+    filters.keyword = ''
+    filters.warehouse = ''
+    filters.purchaseDepartment = ''
     page.value = 1
     await query()
   } catch (error) {
@@ -124,8 +141,8 @@ function onFileChange(event: Event) {
   if (!file) return
   dialog.warning({
     draggable: true,
-    title: '全量更新物料编码库',
-    content: `确认导入“${file.name}”吗？现有编码库将被全部删除，并由该文件完整替换。`,
+    title: '全量更新华星库存',
+    content: `确认导入“${file.name}”吗？现有华星库存将被全部删除，并由该文件完整替换。`,
     positiveText: '确认全量更新',
     negativeText: '取消',
     onPositiveClick: () => importFile(file),
@@ -136,9 +153,9 @@ function onFileChange(event: Event) {
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">物料编码库</h1>
+      <h1 class="page-title">华星库存</h1>
       <n-button
-        v-if="auth.can('purchase:write')"
+        v-if="auth.can('warehouse:write')"
         type="primary"
         :loading="importing"
         @click="openFilePicker"
@@ -161,31 +178,31 @@ function onFileChange(event: Event) {
           已启用 {{ activeFilterCount }} 项
         </n-tag>
       </div>
-      <div class="material-code-filter-grid">
+      <div class="huaxing-filter-grid">
         <label class="filter-field">
-          <span>物资名称</span>
+          <span>货品编码 / 名称 / 型号</span>
           <n-input
-            v-model:value="filters.name"
+            v-model:value="filters.keyword"
             clearable
-            placeholder="输入物资名称"
+            placeholder="输入编码、名称或型号"
             @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
-          <span>型号规格</span>
+          <span>仓库</span>
           <n-input
-            v-model:value="filters.modelSpec"
+            v-model:value="filters.warehouse"
             clearable
-            placeholder="输入型号规格"
+            placeholder="输入仓库"
             @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
-          <span>物料编码</span>
+          <span>申购部门</span>
           <n-input
-            v-model:value="filters.materialCode"
+            v-model:value="filters.purchaseDepartment"
             clearable
-            placeholder="输入物料编码"
+            placeholder="输入申购部门"
             @keyup.enter="query"
           />
         </label>
@@ -205,7 +222,7 @@ function onFileChange(event: Event) {
         :columns="columns"
         :data="items"
         :loading="loading"
-        :row-key="(row: MaterialCodeLibrary) => row.id"
+        :row-key="(row: HuaXingInventory) => row.id"
         :scroll-x="tableScrollX"
       />
       <div class="pagination-bar">
@@ -240,7 +257,7 @@ function onFileChange(event: Event) {
   margin-bottom: 18px;
 }
 
-.material-code-filter-grid {
+.huaxing-filter-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -281,7 +298,7 @@ function onFileChange(event: Event) {
 }
 
 @media (max-width: 760px) {
-  .material-code-filter-grid {
+  .huaxing-filter-grid {
     grid-template-columns: 1fr;
   }
 

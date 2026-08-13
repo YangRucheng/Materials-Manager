@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from app.domain.enums import (
+    ExcelImportJobStatus,
     MiniProgramCodeEnv,
     MiniProgramStockStatus,
     OperationType,
@@ -831,6 +832,33 @@ class MaterialCodeLibraryImportRead(ReadModel):
     imported_count: int
     blank_name_count: int
     blank_model_spec_count: int
+
+
+class ExcelImportJobRead(ReadModel):
+    id: int
+    import_type: str
+    status: ExcelImportJobStatus
+    original_filename: str
+    result: dict[str, Any] | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: UtcDateTime
+    started_at: UtcDateTime | None = None
+    finished_at: UtcDateTime | None = None
+
+
+class HuaXingInventoryRead(ReadModel):
+    id: int
+    first_inbound_date: date | None = None
+    warehouse: str | None = None
+    material_code: str | None = None
+    name: str | None = None
+    model_spec: str | None = None
+    quantity: Decimal | None = None
+    unit_name: str | None = None
+    purchaser: str | None = None
+    purchase_department: str | None = None
+    subitem_no_name: str | None = None
 
 
 class PurchasePlanVersion(RequestModel):

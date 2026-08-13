@@ -18,6 +18,7 @@ from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware, request
 from app.mcp_server import bind_application, mcp, mcp_http_app
 from app.services import (
     ai_search_service,
+    import_job_service,
     purchase_plan_cleanup_service,
     webhook_service,
 )
@@ -34,6 +35,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.environment,
         settings.log_dir,
     )
+    stale_import_jobs = await import_job_service.mark_stale_jobs_failed()
+    if stale_import_jobs:
+        logger.info("marked %s stale excel import jobs as failed", stale_import_jobs)
     webhook_stop_event = asyncio.Event()
     webhook_worker = asyncio.create_task(
         webhook_service.run_delivery_worker(webhook_stop_event),

@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type {
   AiSearchSettings,
   AiSearchSettingsWrite,
+  ExcelImportJob,
   OperationUpdate,
   OperationWrite,
   MovePurchasePlansWrite,
@@ -21,6 +22,7 @@ import type {
 } from '@/api/generated'
 import { apiBaseUrl, imageBaseUrl } from '@/config/env'
 import {
+  huaXingInventory,
   mockFileId,
   miniProgramUsers,
   nextIds,
@@ -317,6 +319,35 @@ const makeOperation = (payload: OperationWrite, type: 'INBOUND' | 'OUTBOUND'): S
   }
   operations.unshift(op)
   return op
+}
+
+// 异步导入任务 mock：POST 返回 PENDING job，每次轮询前进一态（PENDING→RUNNING→SUCCEEDED）。
+const importJobs = new Map<number, ExcelImportJob>()
+const nextImportJobId = { id: 1 }
+const createImportJob = (
+  importType: string,
+  filename: string,
+  result: Record<string, unknown>,
+): ExcelImportJob => {
+  const job: ExcelImportJob = {
+    id: nextImportJobId.id++,
+    import_type: importType,
+    status: 'PENDING',
+    original_filename: filename,
+    result,
+    created_at: new Date().toISOString(),
+  }
+  importJobs.set(job.id, job)
+  return job
+}
+
+const advanceImportJob = (job: ExcelImportJob): ExcelImportJob => {
+  const next: ExcelImportJob =
+    job.status === 'PENDING'
+      ? { ...job, status: 'RUNNING', started_at: new Date().toISOString() }
+      : { ...job, status: 'SUCCEEDED', finished_at: new Date().toISOString() }
+  importJobs.set(job.id, next)
+  return next
 }
 
 export const handlers = [
@@ -1311,4 +1342,52 @@ export const handlers = [
     )
   }),
   http.delete(`${api}/files/images/:id`, () => new HttpResponse(null, { status: 204 })),
+
+  http.get(`${api}/huaxing-inventory`, ({ request }) => {
+    const url = new URL(request.url)
+    const keyword = url.searchParams.get('keyword')
+    const warehouse = url.searchParams.get('warehouse')
+    const purchaseDepartment = url.searchParams.get('purchase_department')
+    const list = huaXingInventory.filter((item) => {
+      const matchesKeyword =
+        !keyword ||
+        matchesOrSearch(`${item.material_code} ${item.name} ${item.model_spec}`, keyword)
+      return (
+        matchesKeyword &&
+        matchesOrSearch(item.warehouse, warehouse) &&
+        matchesOrSearch(item.purchase_department, purchaseDepartment)
+      )
+    })
+    return HttpResponse.json(page(list, url))
+  }),
+  http.post(`${api}/huaxing-inventory/import`, async ({ request }) => {
+    const form = await request.formData()
+    const file = form.get('file') as File
+    const job = createImportJob('HUAXING_INVENTORY', file.name, {
+      imported_count: huaXingInventory.length,
+    })
+    return HttpResponse.json(job, { status: 202 })
+  }),
+  http.get(`${api}/huaxing-inventory/import-jobs/:id`, ({ params }) => {
+    const job = importJobs.get(Number(params.id))
+    if (!job)
+      return HttpResponse.json({ code: 'NOT_FOUND', message: '导入任务不存在' }, { status: 400 })
+    return HttpResponse.json(advanceImportJob(job))
+  }),
+  http.post(`${api}/material-code-library/import`, async ({ request }) => {
+    const form = await request.formData()
+    const file = form.get('file') as File
+    const job = createImportJob('MATERIAL_CODE_LIBRARY', file.name, {
+      imported_count: 3,
+      blank_name_count: 0,
+      blank_model_spec_count: 0,
+    })
+    return HttpResponse.json(job, { status: 202 })
+  }),
+  http.get(`${api}/material-code-library/import-jobs/:id`, ({ params }) => {
+    const job = importJobs.get(Number(params.id))
+    if (!job)
+      return HttpResponse.json({ code: 'NOT_FOUND', message: '导入任务不存在' }, { status: 400 })
+    return HttpResponse.json(advanceImportJob(job))
+  }),
 ]

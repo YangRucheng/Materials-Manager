@@ -1939,12 +1939,12 @@ paths:
               $ref: '#/components/schemas/Body_import_material_codes_api_v1_material_code_library_import_post'
         required: true
       responses:
-        '200':
+        '202':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MaterialCodeLibraryImportRead'
+                $ref: '#/components/schemas/ExcelImportJobRead'
         '400':
           description: 业务校验失败
           content:
@@ -1978,6 +1978,257 @@ paths:
       security:
       - HTTPBearer: []
       - APIKeyHeader: []
+  /api/v1/material-code-library/import-jobs/{job_id}:
+    get:
+      tags:
+      - 物料编码库
+      summary: Get Import Job
+      operationId: get_import_job_api_v1_material_code_library_import_jobs__job_id__get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcelImportJobRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/huaxing-inventory:
+    get:
+      tags:
+      - 华星库存
+      summary: List Huaxing Inventory
+      operationId: list_huaxing_inventory_api_v1_huaxing_inventory_get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Keyword
+      - name: warehouse
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Warehouse
+      - name: purchase_department
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Purchase Department
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_HuaXingInventoryRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/huaxing-inventory/import:
+    post:
+      tags:
+      - 华星库存
+      summary: Import Huaxing Inventory
+      operationId: import_huaxing_inventory_api_v1_huaxing_inventory_import_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcelImportJobRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+  /api/v1/huaxing-inventory/import-jobs/{job_id}:
+    get:
+      tags:
+      - 华星库存
+      summary: Get Import Job
+      operationId: get_import_job_api_v1_huaxing_inventory_import_jobs__job_id__get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcelImportJobRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program-users:
     get:
       tags:
@@ -5818,6 +6069,16 @@ components:
       required:
       - records
       title: BatchUpdatePurchaseRecordsRequest
+    Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post
     Body_import_material_codes_api_v1_material_code_library_import_post:
       properties:
         file:
@@ -5859,6 +6120,67 @@ components:
       - uncoded_purchase_material_count
       - purchase_record_count
       title: DashboardSummaryRead
+    ExcelImportJobRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        import_type:
+          type: string
+          title: Import Type
+        status:
+          $ref: '#/components/schemas/ExcelImportJobStatus'
+        original_filename:
+          type: string
+          title: Original Filename
+        result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Result
+        error_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Code
+        error_message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Message
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        started_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Started At
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+      type: object
+      required:
+      - id
+      - import_type
+      - status
+      - original_filename
+      - created_at
+      title: ExcelImportJobRead
+    ExcelImportJobStatus:
+      type: string
+      enum:
+      - PENDING
+      - RUNNING
+      - SUCCEEDED
+      - FAILED
+      title: ExcelImportJobStatus
     FileObjectRead:
       properties:
         id:
@@ -5890,6 +6212,67 @@ components:
       - width
       - height
       title: FileObjectRead
+    HuaXingInventoryRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        first_inbound_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: First Inbound Date
+        warehouse:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Warehouse
+        material_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Material Code
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        model_spec:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Spec
+        quantity:
+          anyOf:
+          - type: string
+            pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          - type: 'null'
+          title: Quantity
+        unit_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit Name
+        purchaser:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Purchaser
+        purchase_department:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Purchase Department
+        subitem_no_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No Name
+      type: object
+      required:
+      - id
+      title: HuaXingInventoryRead
     ImageAccelerationSettingsRead:
       properties:
         image_acceleration_server_url:
@@ -6003,23 +6386,6 @@ components:
       - refresh_token
       - user
       title: LoginResponse
-    MaterialCodeLibraryImportRead:
-      properties:
-        imported_count:
-          type: integer
-          title: Imported Count
-        blank_name_count:
-          type: integer
-          title: Blank Name Count
-        blank_model_spec_count:
-          type: integer
-          title: Blank Model Spec Count
-      type: object
-      required:
-      - imported_count
-      - blank_name_count
-      - blank_model_spec_count
-      title: MaterialCodeLibraryImportRead
     MaterialCodeLibraryRead:
       properties:
         id:
@@ -7054,6 +7420,29 @@ components:
       - untracked_file_names
       - missing_file_ids
       title: OrphanFileReportRead
+    Page_HuaXingInventoryRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/HuaXingInventoryRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[HuaXingInventoryRead]
     Page_InventoryBalanceRead_:
       properties:
         items:
