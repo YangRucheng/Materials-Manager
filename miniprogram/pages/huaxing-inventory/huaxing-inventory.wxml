@@ -16,19 +16,34 @@
   <view wx:elif="{{!items.length}}" class="state-panel empty-panel">
     <t-empty icon="search" description="{{keyword ? i18n.huaxingInventoryEmptyFiltered : i18n.huaxingInventoryEmpty}}" />
   </view>
-  <view wx:else class="code-list">
-    <view wx:for="{{items}}" wx:key="id" class="code-card">
-      <view class="code-head">
-        <text class="code-name">{{item.name || i18n.notSet}}</text>
-        <text wx:if="{{item.model_spec}}" class="code-model">{{item.model_spec}}</text>
+  <view wx:else class="record-list">
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="record-card"
+      hover-class="record-card-active"
+      bind:tap="openDetail"
+      data-index="{{index}}"
+    >
+      <view class="card-topline">
+        <view class="plan-date">{{item.warehouse}}</view>
+        <view class="topline-right">
+          <t-tag wx:if="{{item.purchaser}}" theme="primary" variant="light" size="small">{{item.purchaser}}</t-tag>
+        </view>
       </view>
-      <view wx:if="{{item.warehouse || item.qtyDisplay || item.first_inbound_date}}" class="meta-row">
-        <text wx:if="{{item.warehouse}}" class="meta-warehouse">{{item.warehouse}}</text>
-        <text wx:if="{{item.qtyDisplay}}" class="meta-quantity">{{item.qtyDisplay}}</text>
-        <text wx:if="{{item.first_inbound_date}}" class="meta-date">{{item.first_inbound_date}}</text>
-      </view>
+      <view class="material-name">{{item.name || i18n.notSet}}</view>
+      <view wx:if="{{item.model_spec}}" class="material-spec">{{item.model_spec}}</view>
       <view class="card-divider"></view>
-      <view class="code-value">{{item.material_code}}</view>
+      <view class="record-meta">
+        <view class="meta-item">
+          <view class="meta-label">{{i18n.materialCodeLabel}}</view>
+          <view class="meta-code">{{item.material_code}}</view>
+        </view>
+        <view class="meta-item quantity-item">
+          <view class="meta-label">{{i18n.quantityLabel}}</view>
+          <view class="quantity-value">{{item.qtyDisplay}}</view>
+        </view>
+      </view>
     </view>
   </view>
   <view wx:if="{{loadingMore}}" class="load-more">
@@ -44,4 +59,55 @@
   >
     <t-icon name="backtop" size="52rpx" color="#ffffff" />
   </button>
+
+  <t-popup
+    visible="{{detailVisible}}"
+    placement="center"
+    close-btn
+    close-on-overlay-click
+    bind:visible-change="onDetailVisibleChange"
+  >
+    <view class="detail-popup" wx:if="{{detailItem}}">
+      <view class="detail-title">{{detailItem.name || i18n.notSet}}</view>
+      <view class="detail-rows">
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.modelSpecLabel}}</view>
+          <view class="detail-value">{{detailItem.model_spec || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.materialCodeLabel}}</view>
+          <view class="detail-value">{{detailItem.material_code}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.warehouseLabel}}</view>
+          <view class="detail-value">{{detailItem.warehouse || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.quantityLabel}}</view>
+          <view class="detail-value">{{detailItem.qtyDisplay || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.unitLabel}}</view>
+          <view class="detail-value">{{detailItem.unit_name || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.firstInboundDateLabel}}</view>
+          <view class="detail-value">{{detailItem.first_inbound_date || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.purchaserLabel}}</view>
+          <view class="detail-value">{{detailItem.purchaser || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.purchaseDepartmentLabel}}</view>
+          <view class="detail-value">{{detailItem.purchase_department || '—'}}</view>
+        </view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.subitemNoNameLabel}}</view>
+          <view class="detail-value">{{detailItem.subitem_no_name || '—'}}</view>
+        </view>
+      </view>
+      <button class="copy-btn" bind:tap="copyNameAndCode">{{i18n.copyNameAndCode}}</button>
+    </view>
+  </t-popup>
 </view>
