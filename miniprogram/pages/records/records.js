@@ -1,5 +1,6 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
+const { buildRedirectQuery } = require('../../utils/navigation');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -51,7 +52,8 @@ Page({
         return;
       }
       if (session.requires_profile) {
-        wx.reLaunch({ url: '/pages/bind/bind' });
+        const redirect = buildRedirectQuery('/pages/records/records');
+        wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
       await this.loadRecords(true);
