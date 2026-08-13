@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         华友新物资系统同步脚本
 // @namespace    https://materials-manager.qcloud.19890605.xyz/
-// @version      2.0.0
+// @version      2.0.1
 // @description  从华兴帆软“物料申购跟踪”同步采购人、状态、合同号和船名到申购记录。
 // @match        http://43.154.152.157:8080/*
 // @updateURL    https://github.com/YangRucheng/Materials-Manager/raw/refs/heads/main/example/script/huayou-new-sync.user.js
@@ -112,8 +112,12 @@
           }
         },
         ontimeout: () => reject(new Error(`请求超时：${url}`)),
-        onerror: (error) =>
-          reject(new Error(error?.error || error?.message || `网络请求失败：${url}`)),
+        onerror: (error) => {
+          const detail = error?.error || error?.message || "网络请求失败";
+          const target = error?.finalUrl || url;
+          const suffix = error?.status ? `（HTTP ${error.status}）` : "";
+          reject(new Error(`${detail}：${target}${suffix}`));
+        },
       }),
     );
   }
@@ -270,9 +274,8 @@
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         },
         data: form({ format: "csv", extype: "page" }),
-        responseType: "arraybuffer",
       });
-      const text = new TextDecoder("utf-8").decode(response.response);
+      const text = String(response.responseText || response.response || "");
       GM_setValue(responseKey, {
         id: taskId,
         ok: true,
