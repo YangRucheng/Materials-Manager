@@ -1,6 +1,7 @@
 const { loginSilently } = require('./utils/auth');
 const { request } = require('./utils/request');
 const { resolveImageBaseUrl } = require('./utils/inventory');
+const { DEFAULT_MODES } = require('./utils/features');
 const { getMessages, initializeI18n } = require('./utils/i18n');
 
 App({
@@ -11,6 +12,8 @@ App({
     accountDisabled: false,
     imageBaseUrl: '',
     imageSettingsPromise: null,
+    featureModes: null,
+    featureSettingsPromise: null,
     locale: 'zh-CN',
     messages: getMessages(),
   },
@@ -29,6 +32,18 @@ App({
         return this.globalData.imageBaseUrl;
       })
       .catch(() => '');
+    this.globalData.featureSettingsPromise = request({
+      url: '/system-settings/mini-program-features',
+      auth: false,
+    })
+      .then((modes) => {
+        this.globalData.featureModes = modes || DEFAULT_MODES;
+        return this.globalData.featureModes;
+      })
+      .catch(() => {
+        this.globalData.featureModes = DEFAULT_MODES;
+        return DEFAULT_MODES;
+      });
     this.globalData.authPromise = loginSilently()
       .then((session) => {
         this.globalData.user = session.user;

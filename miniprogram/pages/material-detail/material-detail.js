@@ -2,6 +2,7 @@ const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { imageUrl } = require('../../utils/inventory');
 const { buildRedirectQuery } = require('../../utils/navigation');
+const { canOutbound } = require('../../utils/features');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
 
@@ -83,6 +84,10 @@ Page({
   },
 
   goOutbound() {
+    if (!canOutbound()) {
+      this.showError(new Error(t('outboundNotOpen')));
+      return;
+    }
     wx.navigateTo({ url: `/pages/outbound/outbound?uuid=${this.materialUuid}` });
   },
 
