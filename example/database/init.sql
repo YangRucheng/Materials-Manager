@@ -128,6 +128,44 @@ CREATE TABLE IF NOT EXISTS `material_code_library` (
   INDEX `ix_material_code_library_model_spec` (`model_spec`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `excel_import_job` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `import_type` VARCHAR(32) NOT NULL,
+  `status` ENUM('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED') NOT NULL DEFAULT 'PENDING',
+  `original_filename` VARCHAR(255) NOT NULL,
+  `file_path` VARCHAR(500) NOT NULL,
+  `result` JSON NULL,
+  `error_code` VARCHAR(64) NULL,
+  `error_message` VARCHAR(1000) NULL,
+  `created_by` BIGINT UNSIGNED NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `started_at` DATETIME(6) NULL,
+  `finished_at` DATETIME(6) NULL,
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_excel_import_job` PRIMARY KEY (`id`),
+  CONSTRAINT `fk_excel_import_job_created_by_user`
+    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
+  INDEX `ix_excel_import_job_type_status` (`import_type`, `status`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `huaxing_inventory` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `first_inbound_date` DATE NULL,
+  `warehouse` VARCHAR(128) NULL,
+  `material_code` VARCHAR(64) NULL,
+  `name` VARCHAR(255) NULL,
+  `model_spec` VARCHAR(255) NULL,
+  `quantity` DECIMAL(18, 2) NULL,
+  `unit_name` VARCHAR(32) NULL,
+  `purchaser` VARCHAR(128) NULL,
+  `purchase_department` VARCHAR(128) NULL,
+  `subitem_no_name` VARCHAR(255) NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_huaxing_inventory` PRIMARY KEY (`id`),
+  INDEX `ix_huaxing_inventory_name` (`name`),
+  INDEX `ix_huaxing_inventory_model_spec` (`model_spec`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_order_no` VARCHAR(128) NULL,

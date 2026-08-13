@@ -29,6 +29,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.domain.enums import (
+    ExcelImportJobStatus,
     OperationType,
     PurchasePlanStatus,
     Role,
@@ -128,6 +129,57 @@ class MaterialCodeLibrary(Base):
     unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now()
+    )
+
+
+class ExcelImportJob(Base):
+    __tablename__ = "excel_import_job"
+    __table_args__ = (Index("ix_excel_import_job_type_status", "import_type", "status", "id"),)
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    import_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[ExcelImportJobStatus] = mapped_column(
+        SAEnum(ExcelImportJobStatus),
+        nullable=False,
+        default=ExcelImportJobStatus.PENDING,
+        server_default=ExcelImportJobStatus.PENDING.value,
+    )
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_message: Mapped[str | None] = mapped_column(String(1000))
+    created_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+    finished_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME,
+        default=_utcnow,
+        server_default=func.now(),
+        onupdate=_utcnow,
+        nullable=False,
+    )
+
+
+class HuaXingInventory(Base):
+    __tablename__ = "huaxing_inventory"
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    first_inbound_date: Mapped[date | None] = mapped_column(Date)
+    warehouse: Mapped[str | None] = mapped_column(String(128))
+    material_code: Mapped[str | None] = mapped_column(String(64))
+    name: Mapped[str | None] = mapped_column(String(255), index=True)
+    model_spec: Mapped[str | None] = mapped_column(String(255), index=True)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    unit_name: Mapped[str | None] = mapped_column(String(32))
+    purchaser: Mapped[str | None] = mapped_column(String(128))
+    purchase_department: Mapped[str | None] = mapped_column(String(128))
+    subitem_no_name: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
     )
 
 
@@ -476,7 +528,9 @@ class WebhookDelivery(Base):
 __all__ = [
     "Base",
     "BusinessEventLog",
+    "ExcelImportJob",
     "FileObject",
+    "HuaXingInventory",
     "MiniProgramUser",
     "PurchaseMaterial",
     "PurchaseMaterialImage",

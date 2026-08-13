@@ -1,7 +1,7 @@
 import { apiClient } from './client'
 import type {
+  ExcelImportJob,
   MaterialCodeLibrary,
-  MaterialCodeLibraryImportResult,
   Page,
   PagedQueryParams,
   MovePurchasePlansWrite,
@@ -74,11 +74,15 @@ export const procurementApi = {
     const formData = new FormData()
     formData.append('file', file)
     return apiClient
-      .post<MaterialCodeLibraryImportResult>('/material-code-library/import', formData, {
+      .post<ExcelImportJob>('/material-code-library/import', formData, {
         timeout: 120_000,
       })
       .then((r) => r.data)
   },
+  materialCodeImportJob: (jobId: number) =>
+    apiClient
+      .get<ExcelImportJob>(`/material-code-library/import-jobs/${jobId}`)
+      .then((r) => r.data),
   materials: (params?: PurchaseMaterialListQuery) =>
     apiClient.get<Page<PurchaseMaterial>>('/purchase-materials', { params }).then((r) => r.data),
   materialFilterOptions: (params?: MaterialFilterOptionsQuery) =>

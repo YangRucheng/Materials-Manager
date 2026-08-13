@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 
 import pytest
@@ -1133,7 +1134,17 @@ async def test_mini_program_material_codes_search_and_pagination(
             )
         },
     )
-    assert imported.status_code == 200, imported.text
+    assert imported.status_code == 202, imported.text
+    for _ in range(200):
+        job_response = await client.get(
+            f"/api/v1/material-code-library/import-jobs/{imported.json()['id']}",
+            headers=purchase_headers,
+        )
+        assert job_response.status_code == 200, job_response.text
+        if job_response.json()["status"] in ("SUCCEEDED", "FAILED"):
+            break
+        await asyncio.sleep(0.05)
+    assert job_response.json()["status"] == "SUCCEEDED", job_response.text
 
     all_codes = await client.get("/api/v1/mini-program/material-codes", headers=mini_headers)
     assert all_codes.status_code == 200, all_codes.text
