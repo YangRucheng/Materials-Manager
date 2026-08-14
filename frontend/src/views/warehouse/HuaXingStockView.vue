@@ -22,6 +22,7 @@ type HuaXingFilters = {
   keyword: string
   warehouse: string
   purchaseDepartment: string
+  purchaser: string
 }
 const {
   items,
@@ -40,10 +41,11 @@ const {
       keyword: f.keyword.trim() || undefined,
       warehouse: f.warehouse.trim() || undefined,
       purchase_department: f.purchaseDepartment.trim() || undefined,
+      purchaser: f.purchaser.trim() || undefined,
       page: pager.page,
       page_size: pager.page_size,
     }),
-  initialFilters: () => ({ keyword: '', warehouse: '', purchaseDepartment: '' }),
+  initialFilters: () => ({ keyword: '', warehouse: '', purchaseDepartment: '', purchaser: '' }),
   onError: (error) => message.error(error instanceof Error ? error.message : '加载华星总库存失败'),
   pageSizeOptions: [20, 50, 100, 200],
 })
@@ -64,9 +66,12 @@ async function loadLastImport() {
 onMounted(() => void loadLastImport())
 const activeFilterCount = computed(
   () =>
-    [filters.keyword.trim(), filters.warehouse.trim(), filters.purchaseDepartment.trim()].filter(
-      Boolean,
-    ).length,
+    [
+      filters.keyword.trim(),
+      filters.warehouse.trim(),
+      filters.purchaseDepartment.trim(),
+      filters.purchaser.trim(),
+    ].filter(Boolean).length,
 )
 
 const columns: DataTableColumns<HuaXingInventory> = preventTableColumnCompression([
@@ -216,6 +221,15 @@ function onFileChange(event: Event) {
             v-model:value="filters.purchaseDepartment"
             clearable
             placeholder="输入申购部门"
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>申购人</span>
+          <n-input
+            v-model:value="filters.purchaser"
+            clearable
+            placeholder="输入申购人"
             @keyup.enter="query"
           />
         </label>
