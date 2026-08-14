@@ -2175,6 +2175,15 @@ paths:
             maxLength: 128
           - type: 'null'
           title: Purchase Department
+      - name: purchaser
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Purchaser
       responses:
         '200':
           description: Successful Response

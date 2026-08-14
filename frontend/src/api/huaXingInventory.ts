@@ -12,6 +12,7 @@ export interface HuaXingInventoryListQuery extends PagedQueryParams {
   keyword?: string
   warehouse?: string
   purchase_department?: string
+  purchaser?: string
 }
 
 export const huaXingInventoryApi = {

@@ -27,12 +27,14 @@ async def list_huaxing_inventory(
     keyword: Annotated[str | None, Query(max_length=255)] = None,
     warehouse: Annotated[str | None, Query(max_length=128)] = None,
     purchase_department: Annotated[str | None, Query(max_length=128)] = None,
+    purchaser: Annotated[str | None, Query(max_length=128)] = None,
 ) -> Page[HuaXingInventoryRead]:
     items, total = await huaxing_inventory_service.search_huaxing_inventory(
         session,
         keyword=keyword,
         warehouse=warehouse,
         purchase_department=purchase_department,
+        purchaser=purchaser,
         page=page,
         page_size=page_size,
     )
