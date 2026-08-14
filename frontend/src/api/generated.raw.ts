@@ -5918,6 +5918,7 @@ export interface operations {
                 keyword?: string | null;
                 warehouse?: string | null;
                 purchase_department?: string | null;
+                purchaser?: string | null;
             };
             header?: never;
             path?: never;
