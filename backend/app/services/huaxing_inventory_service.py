@@ -186,17 +186,24 @@ async def search_huaxing_inventory(
     keyword: str | None,
     warehouse: str | None,
     purchase_department: str | None,
+    purchaser: str | None,
     page: int,
     page_size: int,
 ) -> tuple[list[HuaXingInventoryRead], int]:
     query = select(HuaXingInventory)
     for columns, value in (
         (
-            (HuaXingInventory.material_code, HuaXingInventory.name, HuaXingInventory.model_spec),
+            (
+                HuaXingInventory.material_code,
+                HuaXingInventory.name,
+                HuaXingInventory.model_spec,
+                HuaXingInventory.purchaser,
+            ),
             keyword,
         ),
         ((HuaXingInventory.warehouse,), warehouse),
         ((HuaXingInventory.purchase_department,), purchase_department),
+        ((HuaXingInventory.purchaser,), purchaser),
     ):
         condition = contains_any(columns, value)
         if condition is not None:

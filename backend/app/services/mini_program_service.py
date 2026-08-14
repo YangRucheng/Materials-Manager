@@ -224,6 +224,7 @@ async def list_huaxing_inventory(
         keyword=keyword,
         warehouse=None,
         purchase_department=None,
+        purchaser=None,
         page=page,
         page_size=page_size,
     )
