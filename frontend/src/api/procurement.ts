@@ -45,6 +45,8 @@ export interface PurchaseRecordListQuery extends PagedQueryParams {
   salesperson?: string
   status?: string
   empty_status?: boolean
+  subitem_no?: string
+  empty_subitem_no?: boolean
   sort_by?: string
   sort_order?: 'asc' | 'desc'
 }

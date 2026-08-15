@@ -1012,9 +1012,11 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
         "unit_name",
         "purchase_qty",
         "plan_date",
+        "subitem_no",
     }
     assert item["purchase_qty"] == "3"
     assert item["plan_date"] == "2026-08-04"
+    assert item["subitem_no"] == "01-01"
 
     # keyword 分别命中名称/型号/追溯号/申购单号
     by_name = await client.get(
@@ -1064,6 +1066,29 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
     )
     assert none_status.json()["total"] == 0
     assert none_status.json()["items"] == []
+
+    # subitem_no 筛选
+    by_subitem = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"subitem_no": "01-01"},
+    )
+    assert by_subitem.json()["total"] == 2
+    none_subitem = await client.get(
+        "/api/v1/mini-program/purchase-records",
+        headers=mini_headers,
+        params={"subitem_no": "99-99"},
+    )
+    assert none_subitem.json()["total"] == 0
+    assert none_subitem.json()["items"] == []
+
+    # filter-options 返回子项号
+    filter_options = await client.get(
+        "/api/v1/mini-program/purchase-records/filter-options",
+        headers=mini_headers,
+    )
+    assert filter_options.status_code == 200, filter_options.text
+    assert filter_options.json()["subitem_nos"] == ["01-01"]
 
     # 分页
     page1 = await client.get(

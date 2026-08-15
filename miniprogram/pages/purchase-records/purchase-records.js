@@ -27,6 +27,8 @@ Page({
     keyword: '',
     status: '',
     statusOptions: [],
+    subitemNo: '',
+    subitemNoOptions: [],
     page: 1,
     pageSize: 15,
     total: 0,
@@ -95,11 +97,19 @@ Page({
     void this.loadPlans(true);
   },
 
+  onSubitemNoChange(event) {
+    const value = event.detail.value || '';
+    this.setData({ subitemNo: value });
+    void this.loadPlans(true);
+  },
+
   async loadFilterOptions() {
     let statuses = [];
+    let subitemNos = [];
     try {
       const result = await request({ url: '/mini-program/purchase-records/filter-options' });
       statuses = (result.statuses || []).filter(Boolean);
+      subitemNos = (result.subitem_nos || []).filter(Boolean);
     } catch (error) {
       // 选项加载失败不阻塞列表，但提示用户，并至少保留「全部状态」选项
       Toast({
@@ -113,6 +123,10 @@ Page({
       statusOptions: [
         { label: t('allPurchaseStatuses'), value: '' },
         ...statuses.map((value) => ({ label: value, value })),
+      ],
+      subitemNoOptions: [
+        { label: t('allSubitemNos'), value: '' },
+        ...subitemNos.map((value) => ({ label: value, value })),
       ],
     });
   },
@@ -129,6 +143,8 @@ Page({
       if (keyword) data.keyword = keyword;
       const status = this.data.status.trim();
       if (status) data.status = status;
+      const subitemNo = this.data.subitemNo.trim();
+      if (subitemNo) data.subitem_no = subitemNo;
       const result = await request({ url: '/mini-program/purchase-records', data });
       if (requestId !== this.requestId) return;
       const incoming = (result.items || []).map(decorateRecord);
