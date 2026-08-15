@@ -1,0 +1,43 @@
+name: 基础接口测试
+
+# 合并前的基础接口测试：使用内存 SQLite（无需 MySQL）跑完整后端测试套件。
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/api-test.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/api-test.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 后端接口测试（SQLite）
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: 安装后端依赖
+        working-directory: backend
+        run: pip install -e ".[dev]"
+
+      - name: 运行测试
+        working-directory: backend
+        run: pytest

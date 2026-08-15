@@ -1,0 +1,86 @@
+name: 模拟用户操作测试
+
+# 合并到 main 后：真实启动 MySQL + 后端实例，通过 HTTP 模拟各角色用户的核心操作。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "example/database/**"
+      - ".github/workflows/e2e-simulation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-simulation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: 真实 MySQL + 后端实例模拟请求
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: spare_parts
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: 安装后端依赖
+        working-directory: backend
+        run: pip install -e ".[dev]"
+
+      - name: 安装 MySQL 客户端
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-mysql-client
+
+      - name: 初始化数据库
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot spare_parts < example/database/init.sql
+          echo "数据库初始化完成"
+
+      - name: 启动后端并运行模拟
+        working-directory: backend
+        env:
+          APP_DATABASE_URL: "mysql+asyncmy://root:root@127.0.0.1:3306/spare_parts?charset=utf8mb4"
+          APP_JWT_SECRET: "e2e-test-secret-that-is-long-enough-123456"
+          APP_WECHAT_MINI_PROGRAM_APP_ID: "wx-test-primary,wx-test-secondary"
+          APP_WECHAT_MINI_PROGRAM_APP_SECRET: "test-primary-secret,test-secondary-secret"
+          APP_UPLOAD_DIR: "/tmp/e2e-uploads"
+          APP_LOG_DIR: "/tmp/e2e-logs"
+          E2E_BASE_URL: "http://127.0.0.1:8000"
+        run: |
+          set -e
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          BACKEND_PID=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then
+              echo "后端就绪"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/health > /dev/null
+          python scripts/e2e_simulation.py
+          kill "$BACKEND_PID" 2>/dev/null || true
