@@ -243,6 +243,7 @@ export type PurchaseRecordResultColumn =
   | 'status'
   | 'purchase_date'
   | 'images'
+  | 'subitem_no'
 
 /** 申购计划批量更新 */
 export interface PurchaseMaterialBatchUpdate {

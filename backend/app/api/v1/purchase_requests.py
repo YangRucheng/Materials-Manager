@@ -81,6 +81,7 @@ RECORD_RESULT_HEADERS = {
     "status": "状态",
     "purchase_date": "申购日期",
     "images": "图片",
+    "subitem_no": "子项号",
 }
 
 
@@ -107,6 +108,8 @@ async def purchase_records(
     actual_demand_person: OrSearch128 = None,
     purchase_responsible: OrSearch128 = None,
     salesperson: OrSearch128 = None,
+    subitem_no: Annotated[str | None, Query(max_length=64)] = None,
+    empty_subitem_no: bool = False,
     ai_expand: bool = False,
     sort_by: PurchaseRecordResultColumn | None = None,
     sort_order: SortOrder = "asc",
@@ -131,6 +134,8 @@ async def purchase_records(
         actual_demand_person=actual_demand_person,
         purchase_responsible=purchase_responsible,
         salesperson=salesperson,
+        subitem_no=subitem_no,
+        empty_subitem_no=empty_subitem_no,
         page=page,
         page_size=page_size,
         sort_by=sort_by,
@@ -185,6 +190,8 @@ async def export_purchase_record_results(
         actual_demand_person=data.actual_demand_person,
         purchase_responsible=data.purchase_responsible,
         salesperson=data.salesperson,
+        subitem_no=data.subitem_no,
+        empty_subitem_no=data.empty_subitem_no,
         page=1,
         page_size=EXPORT_ROW_LIMIT + 1,
         sort_by=data.sort_by,
@@ -222,6 +229,7 @@ async def export_purchase_record_results(
                 "salesperson": record.salesperson,
                 "status": record.status,
                 "purchase_date": record.purchase_date,
+                "subitem_no": record.subitem_no,
                 "images": [
                     file_service.file_path(image.id)
                     for image in record.images

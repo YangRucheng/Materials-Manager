@@ -227,9 +227,15 @@ async def mini_program_purchase_records(
     page_size: PageSize = 20,
     keyword: Annotated[str | None, Query(max_length=255)] = None,
     status: Annotated[str | None, Query(max_length=128)] = None,
+    subitem_no: Annotated[str | None, Query(max_length=64)] = None,
 ) -> Page[MiniProgramPurchaseRecordItemRead]:
     items, total = await mini_program_service.list_purchase_records(
-        session, keyword=keyword, status=status, page=page, page_size=page_size
+        session,
+        keyword=keyword,
+        status=status,
+        subitem_no=subitem_no,
+        page=page,
+        page_size=page_size,
     )
     return Page(
         items=[mini_program_service.purchase_record_item_read(item) for item in items],
@@ -247,8 +253,8 @@ async def mini_program_purchase_record_filter_options(
     session: DbSession,
     user: CurrentMiniProgramUser,
 ) -> MiniProgramPurchaseRecordFilterOptions:
-    statuses = await mini_program_service.list_purchase_record_filter_options(session)
-    return MiniProgramPurchaseRecordFilterOptions(statuses=statuses)
+    statuses, subitem_nos = await mini_program_service.list_purchase_record_filter_options(session)
+    return MiniProgramPurchaseRecordFilterOptions(statuses=statuses, subitem_nos=subitem_nos)
 
 
 @mini_router.get("/material-codes", response_model=Page[MiniProgramMaterialCodeRead])

@@ -234,6 +234,46 @@ async def test_purchase_plan_subitem_filters_support_all_exact_and_empty(
 
 
 @pytest.mark.asyncio
+async def test_purchase_record_subitem_filters_support_exact_and_empty(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    first_plan = await create_purchase_plan(
+        client, headers, "记录一号子项", code="DQ-SUB-R1", subitem_no="01-01"
+    )
+    second_plan = await create_purchase_plan(
+        client, headers, "记录二号子项", code="DQ-SUB-R2", subitem_no="02-02"
+    )
+    empty_plan = await create_purchase_plan(
+        client, headers, "记录空子项", code="DQ-SUB-R3", subitem_no=None
+    )
+    first = await move_to_record(client, headers, int(first_plan["id"]))
+    second = await move_to_record(client, headers, int(second_plan["id"]))
+    empty = await move_to_record(client, headers, int(empty_plan["id"]))
+
+    options = await client.get("/api/v1/purchase-records/filter-options", headers=headers)
+    assert options.status_code == 200, options.text
+    assert options.json()["subitem_nos"] == ["01-01", "02-02"]
+
+    exact = await client.get(
+        "/api/v1/purchase-records", headers=headers, params={"subitem_no": "02-02"}
+    )
+    assert [item["line_id"] for item in exact.json()["items"]] == [second["line_id"]]
+
+    empty_result = await client.get(
+        "/api/v1/purchase-records", headers=headers, params={"empty_subitem_no": True}
+    )
+    assert [item["line_id"] for item in empty_result.json()["items"]] == [empty["line_id"]]
+
+    all_records = await client.get("/api/v1/purchase-records", headers=headers)
+    assert {item["line_id"] for item in all_records.json()["items"]} == {
+        first["line_id"],
+        second["line_id"],
+        empty["line_id"],
+    }
+
+
+@pytest.mark.asyncio
 async def test_purchase_lists_support_field_like_and_person_filters(
     client: AsyncClient,
 ) -> None:
@@ -602,6 +642,34 @@ async def test_purchase_record_list_supports_arbitrary_column_sorting(
         "SG-SORT-002",
         "SG-SORT-003",
     ]
+
+
+@pytest.mark.asyncio
+async def test_purchase_record_sort_by_subitem_no(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    first = await create_purchase_plan(
+        client, headers, "子项乙", code="DQ-SORT-SUB-2", subitem_no="02-02"
+    )
+    second = await create_purchase_plan(
+        client, headers, "子项甲", code="DQ-SORT-SUB-1", subitem_no="01-01"
+    )
+    await move_to_record(client, headers, int(first["id"]))
+    await move_to_record(client, headers, int(second["id"]))
+
+    asc = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"sort_by": "subitem_no", "sort_order": "asc"},
+    )
+    assert asc.status_code == 200, asc.text
+    assert [item["subitem_no"] for item in asc.json()["items"]] == ["01-01", "02-02"]
+
+    desc = await client.get(
+        "/api/v1/purchase-records",
+        headers=headers,
+        params={"sort_by": "subitem_no", "sort_order": "desc"},
+    )
+    assert [item["subitem_no"] for item in desc.json()["items"]] == ["02-02", "01-01"]
 
 
 @pytest.mark.asyncio
@@ -1583,6 +1651,31 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
     assert record_sheet["D2"].value == f"{record['purchase_qty']} {record['unit_name']}"
     assert record_sheet["E2"].value == record["usage"]
     assert record_sheet["F2"].value == "已申购"
+
+
+@pytest.mark.asyncio
+async def test_purchase_record_export_includes_subitem_no(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    plan = await create_purchase_plan(
+        client, headers, "导出子项电机", code="DQ-SUB-EXP", subitem_no="01-01"
+    )
+    record = await move_to_record(client, headers, int(plan["id"]))
+
+    export = await client.post(
+        "/api/v1/purchase-records/export-results",
+        headers=headers,
+        json={"columns": ["material_name", "subitem_no", "status"]},
+    )
+    assert export.status_code == 200, export.text
+    sheet = load_workbook(BytesIO(export.content)).active
+    assert [sheet.cell(1, column).value for column in range(1, 4)] == [
+        "物资名称",
+        "子项号",
+        "状态",
+    ]
+    assert sheet["A2"].value == record["material_name"]
+    assert sheet["B2"].value == "01-01"
+    assert sheet["C2"].value == "已申购"
 
 
 @pytest.mark.asyncio

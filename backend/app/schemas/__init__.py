@@ -693,10 +693,12 @@ class MiniProgramPurchaseRecordItemRead(ReadModel):
     unit_name: str
     purchase_qty: Decimal
     plan_date: date
+    subitem_no: str | None = None
 
 
 class MiniProgramPurchaseRecordFilterOptions(ReadModel):
     statuses: list[str]
+    subitem_nos: list[str]
 
 
 class MiniProgramMaterialCodeRead(ReadModel):
@@ -1295,11 +1297,12 @@ PurchaseRecordResultColumn = Literal[
     "status",
     "purchase_date",
     "images",
+    "subitem_no",
 ]
 
 
 class PurchaseRecordResultExportRequest(RequestModel):
-    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=21)
+    columns: list[PurchaseRecordResultColumn] = Field(min_length=1, max_length=22)
     purchase_order_no: str | None = Field(default=None, max_length=255)
     trace_no: str | None = Field(default=None, max_length=255)
     category: str | None = Field(default=None, max_length=64)
@@ -1310,6 +1313,8 @@ class PurchaseRecordResultExportRequest(RequestModel):
     salesperson: str | None = Field(default=None, max_length=128)
     status: str | None = Field(default=None, max_length=128)
     empty_status: bool = False
+    subitem_no: str | None = Field(default=None, max_length=64)
+    empty_subitem_no: bool = False
     sort_by: PurchaseRecordResultColumn | None = None
     sort_order: Literal["asc", "desc"] = "asc"
 

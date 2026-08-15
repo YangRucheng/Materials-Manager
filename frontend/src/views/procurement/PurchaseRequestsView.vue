@@ -48,6 +48,7 @@ const message = useMessage()
 const dialog = useDialog()
 const rowClickGuard = createTableRowClickGuard()
 const EMPTY_STATUS_FILTER = '__empty_status__'
+const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
 type RecordFilters = {
   name: string
   model_spec: string
@@ -57,6 +58,7 @@ type RecordFilters = {
   purchase_responsible: string | null
   salesperson: string | null
   status: string | null
+  subitem_no: string | null
   sort_by: RecordColumnKey | null
   sort_order: 'asc' | 'desc' | null
 }
@@ -81,6 +83,7 @@ const RECORD_SORTABLE_KEYS: readonly RecordColumnKey[] = [
   'purchase_responsible',
   'salesperson',
   'status',
+  'subitem_no',
 ]
 const {
   items,
@@ -109,6 +112,8 @@ const {
       salesperson: f.salesperson?.trim() || undefined,
       status: f.status && f.status !== EMPTY_STATUS_FILTER ? f.status : undefined,
       empty_status: f.status === EMPTY_STATUS_FILTER || undefined,
+      subitem_no: f.subitem_no && f.subitem_no !== EMPTY_SUBITEM_FILTER ? f.subitem_no : undefined,
+      empty_subitem_no: f.subitem_no === EMPTY_SUBITEM_FILTER || undefined,
       sort_by: f.sort_by || undefined,
       sort_order: f.sort_order || undefined,
     }),
@@ -121,6 +126,7 @@ const {
     purchase_responsible: null,
     salesperson: null,
     status: null,
+    subitem_no: null,
     sort_by: null,
     sort_order: null,
   }),
@@ -142,6 +148,7 @@ const {
         purchase_responsible: routeQueryString(route.query.purchase_responsible) || null,
         salesperson: routeQueryString(route.query.salesperson) || null,
         status: routeQueryString(route.query.status) || null,
+        subitem_no: routeQueryString(route.query.subitem_no) || null,
         sort_by: RECORD_SORTABLE_KEYS.includes(sortBy as RecordColumnKey)
           ? (sortBy as RecordColumnKey)
           : null,
@@ -157,6 +164,7 @@ const {
       purchase_responsible: f.purchase_responsible || undefined,
       salesperson: f.salesperson || undefined,
       status: f.status || undefined,
+      subitem_no: f.subitem_no || undefined,
       sort_by: f.sort_by || undefined,
       sort_order: f.sort_order || undefined,
     }),
@@ -251,6 +259,10 @@ const statusOptions = computed(() => [
   { label: '空状态', value: EMPTY_STATUS_FILTER },
   ...filterOptions.value.statuses.map((value) => ({ label: value, value })),
 ])
+const subitemOptions = computed(() => [
+  { label: '空子项号', value: EMPTY_SUBITEM_FILTER },
+  ...filterOptions.value.subitem_nos.map((value) => ({ label: value, value })),
+])
 const selectedRecords = computed(() => {
   const selected = new Set(checkedRowKeys.value.map(Number))
   return items.value.filter((item) => selected.has(item.line_id))
@@ -314,6 +326,7 @@ type RecordColumnKey =
   | 'status'
   | 'purchase_date'
   | 'images'
+  | 'subitem_no'
 
 const availableColumns: Array<{
   key: RecordColumnKey
@@ -473,6 +486,16 @@ const availableColumns: Array<{
       key: 'usage',
       width: tableColumnWidths.text,
       render: (row) => renderTwoLineText(row.usage),
+    },
+  },
+  {
+    key: 'subitem_no',
+    label: '子项号',
+    column: {
+      title: '子项号',
+      key: 'subitem_no',
+      width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.subitem_no),
     },
   },
   {
@@ -655,6 +678,11 @@ async function exportResults() {
       salesperson: filters.salesperson?.trim() || undefined,
       status: filters.status && filters.status !== EMPTY_STATUS_FILTER ? filters.status : undefined,
       empty_status: filters.status === EMPTY_STATUS_FILTER,
+      subitem_no:
+        filters.subitem_no && filters.subitem_no !== EMPTY_SUBITEM_FILTER
+          ? filters.subitem_no
+          : undefined,
+      empty_subitem_no: filters.subitem_no === EMPTY_SUBITEM_FILTER,
       sort_by: filters.sort_by || undefined,
       sort_order: filters.sort_order || 'asc',
     })
@@ -1114,12 +1142,22 @@ onMounted(() => {
             placeholder="选择或搜索状态"
           />
         </label>
+        <label class="filter-field">
+          <span>子项号</span>
+          <n-select
+            v-model:value="filters.subitem_no"
+            :options="subitemOptions"
+            clearable
+            filterable
+            placeholder="选择或搜索子项号"
+          />
+        </label>
       </div>
       <div class="filter-actions">
         <ColumnVisibilityPicker
           :value="visibleColumnKeys"
           :options="fieldOptions"
-          storage-key="procurement.purchase-records.visible-columns.v3"
+          storage-key="procurement.purchase-records.visible-columns.v4"
           @update:value="setVisibleColumnKeys"
         />
         <div class="filter-action-buttons">
@@ -1680,7 +1718,7 @@ onMounted(() => {
 
 .purchase-records-filter-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1724,13 +1762,13 @@ onMounted(() => {
 
 @media (max-width: 1600px) {
   .purchase-records-filter-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 1220px) {
   .purchase-records-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
