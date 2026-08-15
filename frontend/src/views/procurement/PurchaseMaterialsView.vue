@@ -1003,7 +1003,7 @@ onBeforeUnmount(() => {
           已启用 {{ activeFilterCount }} 项
         </n-tag>
       </div>
-      <div class="purchase-plan-filter-grid">
+      <div class="filter-grid">
         <label class="filter-field">
           <span>物资名称</span>
           <n-input
@@ -1486,34 +1486,6 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
 }
 
-.purchase-plan-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.filter-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.filter-field > span {
-  color: #4b5565;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.filter-field :deep(.n-input),
-.filter-field :deep(.n-select) {
-  width: 100%;
-}
-
-.filter-field :deep(.n-input) {
-  background-color: rgb(255 255 255 / 88%);
-}
-
 .status-filter-select :deep(.n-base-selection-tags) {
   min-height: 34px;
   padding: 4px 30px 1px 10px;
@@ -1624,23 +1596,7 @@ onBeforeUnmount(() => {
   min-height: 100%;
 }
 
-@media (max-width: 1600px) {
-  .purchase-plan-filter-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1220px) {
-  .purchase-plan-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 900px) {
-  .purchase-plan-filter-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .filter-actions {
     align-items: stretch;
     flex-direction: column;

@@ -238,7 +238,7 @@ async function confirmReplenishment() {
           <div class="filter-title">筛选条件</div>
         </div>
       </div>
-      <div class="warehouse-filter-grid">
+      <div class="filter-grid">
         <label class="filter-field">
           <span>名称、别名或型号规格</span>
           <n-input
@@ -376,39 +376,8 @@ async function confirmReplenishment() {
   margin-bottom: 18px;
 }
 
-.warehouse-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.filter-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.filter-field > span {
-  color: #4b5565;
-  font-size: 13px;
-  font-weight: 500;
-}
-
 .filter-actions {
   justify-content: flex-end;
   margin-top: 20px;
-}
-
-@media (max-width: 1100px) {
-  .warehouse-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 680px) {
-  .warehouse-filter-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
