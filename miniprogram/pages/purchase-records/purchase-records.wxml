@@ -15,6 +15,12 @@
         options="{{statusOptions}}"
         bind:change="onStatusChange"
       />
+      <t-dropdown-item
+        label="{{i18n.allSubitemNos}}"
+        value="{{subitemNo}}"
+        options="{{subitemNoOptions}}"
+        bind:change="onSubitemNoChange"
+      />
     </t-dropdown-menu>
   </view>
   <view wx:if="{{!loading || items.length}}" class="result-count">{{resultCount}}</view>
@@ -37,6 +43,7 @@
       </view>
       <view class="material-spec">{{item.model_spec}}</view>
       <view wx:if="{{item.trace_no}}" class="trace-line">{{i18n.traceNo}}：{{item.trace_no}}</view>
+      <view wx:if="{{item.subitem_no}}" class="trace-line">{{i18n.subitemNo}}：{{item.subitem_no}}</view>
       <view class="card-divider"></view>
       <view class="record-meta">
         <view class="meta-item">
