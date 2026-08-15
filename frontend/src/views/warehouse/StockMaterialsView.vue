@@ -268,7 +268,7 @@ function rowProps(row: StockMaterial) {
           <div class="filter-title">筛选条件</div>
         </div>
       </div>
-      <div class="warehouse-filter-grid single-column">
+      <div class="filter-grid">
         <label class="filter-field">
           <span>名称、别名或型号规格</span>
           <n-input
@@ -372,29 +372,6 @@ function rowProps(row: StockMaterial) {
   margin-bottom: 18px;
 }
 
-.warehouse-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.warehouse-filter-grid.single-column {
-  grid-template-columns: minmax(260px, 520px);
-}
-
-.filter-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.filter-field > span {
-  color: #4b5565;
-  font-size: 13px;
-  font-weight: 500;
-}
-
 .filter-actions {
   justify-content: flex-end;
   margin-top: 20px;
@@ -412,8 +389,6 @@ function rowProps(row: StockMaterial) {
 }
 
 @media (max-width: 760px) {
-  .warehouse-filter-grid,
-  .warehouse-filter-grid.single-column,
   .policy-grid {
     grid-template-columns: 1fr;
   }

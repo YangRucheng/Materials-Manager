@@ -196,7 +196,7 @@ function onFileChange(event: Event) {
           已启用 {{ activeFilterCount }} 项
         </n-tag>
       </div>
-      <div class="huaxing-filter-grid">
+      <div class="filter-grid">
         <label class="filter-field">
           <span>货品编码 / 名称 / 型号</span>
           <n-input
@@ -286,30 +286,6 @@ function onFileChange(event: Event) {
   margin-bottom: 18px;
 }
 
-.huaxing-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.filter-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.filter-field > span {
-  color: #4b5565;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.filter-field :deep(.n-input) {
-  width: 100%;
-  background-color: rgb(255 255 255 / 88%);
-}
-
 .filter-actions {
   margin-top: 20px;
   padding-top: 16px;
@@ -327,10 +303,6 @@ function onFileChange(event: Event) {
 }
 
 @media (max-width: 760px) {
-  .huaxing-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
   .filter-actions {
     align-items: stretch;
     flex-direction: column;

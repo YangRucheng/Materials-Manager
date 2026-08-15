@@ -22,6 +22,10 @@
   --radius-card: 14px;
   --shadow-card: 0 8px 24px rgb(15 23 42 / 5%);
   --shadow-card-hover: 0 12px 30px rgb(15 23 42 / 8%);
+  /* 筛选区：统一各页面筛选输入框宽度 */
+  --filter-col-min-width: 240px;
+  --filter-grid-gap: 16px;
+  --filter-field-label-gap: 7px;
 }
 * {
   box-sizing: border-box;
@@ -148,6 +152,29 @@ a {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--filter-col-min-width), 1fr));
+  gap: var(--filter-grid-gap);
+}
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--filter-field-label-gap);
+}
+.filter-field > span {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.filter-field .n-input,
+.filter-field .n-select {
+  width: 100%;
+}
+.filter-field .n-input {
+  background-color: rgb(255 255 255 / 88%);
 }
 .card-title {
   color: var(--color-text-strong);
