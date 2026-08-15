@@ -3095,6 +3095,15 @@ paths:
             maxLength: 128
           - type: 'null'
           title: Status
+      - name: subitem_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Subitem No
       responses:
         '200':
           description: Successful Response
@@ -4908,6 +4917,22 @@ paths:
           description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
           title: Salesperson
         description: 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词
+      - name: subitem_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Subitem No
+      - name: empty_subitem_no
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Empty Subitem No
       - name: ai_expand
         in: query
         required: false
@@ -4942,6 +4967,7 @@ paths:
             - status
             - purchase_date
             - images
+            - subitem_no
             type: string
           - type: 'null'
           title: Sort By
@@ -7408,9 +7434,15 @@ components:
             type: string
           type: array
           title: Statuses
+        subitem_nos:
+          items:
+            type: string
+          type: array
+          title: Subitem Nos
       type: object
       required:
       - statuses
+      - subitem_nos
       title: MiniProgramPurchaseRecordFilterOptions
     MiniProgramPurchaseRecordItemRead:
       properties:
@@ -7447,6 +7479,11 @@ components:
           type: string
           format: date
           title: Plan Date
+        subitem_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subitem No
       type: object
       required:
       - line_id
@@ -8938,8 +8975,9 @@ components:
             - status
             - purchase_date
             - images
+            - subitem_no
           type: array
-          maxItems: 21
+          maxItems: 22
           minItems: 1
           title: Columns
         purchase_order_no:
@@ -9000,6 +9038,16 @@ components:
           type: boolean
           title: Empty Status
           default: false
+        subitem_no:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Subitem No
+        empty_subitem_no:
+          type: boolean
+          title: Empty Subitem No
+          default: false
         sort_by:
           anyOf:
           - type: string
@@ -9025,6 +9073,7 @@ components:
             - status
             - purchase_date
             - images
+            - subitem_no
           - type: 'null'
           title: Sort By
         sort_order:

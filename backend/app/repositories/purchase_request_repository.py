@@ -34,6 +34,7 @@ PURCHASE_RECORD_SORT_COLUMNS = {
     "trace_no": PurchaseRequestLine.trace_no,
     "purchase_qty": PurchaseRequestLine.purchase_qty,
     "usage": PurchaseRequestLine.usage,
+    "subitem_no": PurchaseRequestLine.subitem_no,
     "salesperson": PurchaseRequestLine.salesperson,
     "status": PurchaseRequestLine.status,
 }
@@ -133,6 +134,8 @@ async def search_purchase_records(
     actual_demand_person: str | None,
     purchase_responsible: str | None,
     salesperson: str | None,
+    subitem_no: str | None,
+    empty_subitem_no: bool,
     page: int,
     page_size: int,
     sort_by: str | None = None,
@@ -211,6 +214,15 @@ async def search_purchase_records(
         query = query.where(
             func.trim(PurchaseRequestLine.category_snapshot) == category.strip()
         )
+    if empty_subitem_no:
+        query = query.where(
+            or_(
+                PurchaseRequestLine.subitem_no.is_(None),
+                func.trim(PurchaseRequestLine.subitem_no) == "",
+            )
+        )
+    elif subitem_no:
+        query = query.where(func.trim(PurchaseRequestLine.subitem_no) == subitem_no.strip())
     field_filters = (
         ((PurchaseRequest.purchase_order_no,), purchase_order_no),
         ((PurchaseRequestLine.trace_no,), trace_no),
@@ -266,6 +278,7 @@ async def search_mini_program_purchase_records(
     *,
     keyword: str | None = None,
     status: str | None = None,
+    subitem_no: str | None = None,
     page: int = 1,
     page_size: int = 15,
 ) -> tuple[list[PurchaseRequestLine], int]:
@@ -286,6 +299,8 @@ async def search_mini_program_purchase_records(
         query = query.where(keyword_condition)
     if status:
         query = query.where(func.trim(PurchaseRequestLine.status) == status.strip())
+    if subitem_no:
+        query = query.where(func.trim(PurchaseRequestLine.subitem_no) == subitem_no.strip())
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
     items = list(
         (
@@ -328,6 +343,24 @@ async def purchase_status_options(session: AsyncSession) -> list[str]:
             .order_by(PurchaseRequestLine.status)
         )
     )
+
+
+async def purchase_subitem_options(session: AsyncSession) -> list[str]:
+    return [
+        item
+        for item in (
+            await session.scalars(
+                select(PurchaseRequestLine.subitem_no)
+                .where(
+                    PurchaseRequestLine.subitem_no.is_not(None),
+                    func.trim(PurchaseRequestLine.subitem_no) != "",
+                )
+                .distinct()
+                .order_by(PurchaseRequestLine.subitem_no)
+            )
+        ).all()
+        if item is not None
+    ]
 
 
 async def purchase_record_filter_options(

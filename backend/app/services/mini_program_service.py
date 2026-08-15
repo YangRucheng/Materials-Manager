@@ -183,16 +183,26 @@ async def list_purchase_records(
     *,
     keyword: str | None = None,
     status: str | None = None,
+    subitem_no: str | None = None,
     page: int = 1,
     page_size: int = 15,
 ) -> tuple[list[PurchaseRequestLine], int]:
     return await purchase_request_repository.search_mini_program_purchase_records(
-        session, keyword=keyword, status=status, page=page, page_size=page_size
+        session,
+        keyword=keyword,
+        status=status,
+        subitem_no=subitem_no,
+        page=page,
+        page_size=page_size,
     )
 
 
-async def list_purchase_record_filter_options(session: AsyncSession) -> list[str]:
-    return await purchase_request_repository.purchase_status_options(session)
+async def list_purchase_record_filter_options(
+    session: AsyncSession,
+) -> tuple[list[str], list[str]]:
+    statuses = await purchase_request_repository.purchase_status_options(session)
+    subitem_nos = await purchase_request_repository.purchase_subitem_options(session)
+    return statuses, subitem_nos
 
 
 async def list_material_codes(
@@ -261,6 +271,7 @@ def purchase_record_item_read(line: PurchaseRequestLine) -> MiniProgramPurchaseR
         unit_name=line.unit_name_snapshot,
         purchase_qty=line.purchase_qty,
         plan_date=line.plan_date_snapshot,
+        subitem_no=line.subitem_no,
     )
 
 
