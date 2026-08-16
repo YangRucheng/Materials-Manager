@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 from uuid import uuid4
 
@@ -12,6 +13,18 @@ from app.core.security import hash_password
 from app.models import User
 from app.schemas import UserCreate, UserUpdate
 from app.services.common import validate_version
+
+
+def _hash_api_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _issue_api_token(item: User) -> str:
+    """生成新令牌：库中只存哈希，明文挂到对象上一次性返回。"""
+    token = str(uuid4())
+    item.api_token_hash = _hash_api_token(token)
+    item.api_token = token
+    return token
 
 
 async def _paged(
@@ -52,6 +65,7 @@ async def create_user(session: AsyncSession, data: UserCreate) -> User:
         role=data.role,
         enabled=data.enabled,
     )
+    _issue_api_token(item)
     session.add(item)
     try:
         await session.flush()
@@ -86,7 +100,7 @@ async def regenerate_user_api_token(
     if item is None:
         raise not_found("用户")
     validate_version(version, item.version)
-    item.api_token = str(uuid4())
+    _issue_api_token(item)
     item.version += 1
     await session.flush()
     return item

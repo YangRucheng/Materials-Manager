@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   ExcelImportJob,
   LastImport,
+  MaterialCodeExists,
   MaterialCodeLibrary,
   Page,
   PagedQueryParams,
@@ -72,6 +73,12 @@ export const procurementApi = {
   materialCodes: (params?: MaterialCodeLibraryListQuery) =>
     apiClient
       .get<Page<MaterialCodeLibrary>>('/material-code-library', { params })
+      .then((r) => r.data),
+  materialCodeExists: (materialCode: string) =>
+    apiClient
+      .get<MaterialCodeExists>(`/material-code-library/exists`, {
+        params: { material_code: materialCode },
+      })
       .then((r) => r.data),
   importMaterialCodes: (file: File) => {
     const formData = new FormData()

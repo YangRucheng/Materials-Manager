@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import re
 import unicodedata
@@ -8,15 +9,40 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from cryptography.fernet import Fernet
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement, SQLColumnExpression
 
+from app.core.config import settings
 from app.core.errors import AppError, version_conflict
-from app.models import BusinessEventLog, FileObject
+from app.domain.enums import SourceType
+from app.models import BusinessEventLog, FileObject, StockOperation
 from app.schemas import FileObjectRead, Page
 
 SearchableColumn = SQLColumnExpression[Any]
+
+
+def fernet() -> Fernet:
+    """用于加密敏感配置的 Fernet 实例。
+
+    优先使用独立的 APP_FERNET_KEY；未配置时回退到由 jwt_secret 派生的密钥
+    （两者都经 SHA-256 固定为 32 字节），保证既有已加密数据可继续解密。
+    """
+    if settings.fernet_key:
+        digest = hashlib.sha256(settings.fernet_key.encode("utf-8")).digest()
+    else:
+        digest = hashlib.sha256(settings.jwt_secret.encode("utf-8")).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def operation_source_type(item: StockOperation) -> SourceType:
+    """业务读路径的来源判定：MAIN_PROGRAM 来源的流水在落库时存 MANUAL，
+    以 mini_program_user_name_snapshot 非空作为小程序来源的唯一判据。
+    """
+    if item.mini_program_user_name_snapshot is not None:
+        return SourceType.MINI_PROGRAM
+    return item.source_type
 
 
 def utcnow() -> datetime:
@@ -93,7 +119,7 @@ def file_read(file: FileObject) -> FileObjectRead:
     return FileObjectRead(
         id=file.id,
         original_name=file.original_name,
-        mime_type="image/png",
+        mime_type=file.mime_type,
         size_bytes=file.size_bytes,
         width=file.width,
         height=file.height,

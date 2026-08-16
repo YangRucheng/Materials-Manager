@@ -24,7 +24,7 @@ const { items, loading, load } = usePagedTable<ManagedUser, Record<string, never
 const show = ref(false)
 const editing = ref<ManagedUser | null>(null)
 const mcpUrl = computed(() =>
-  editing.value ? resolveMcpUrl(apiBaseUrl, editing.value.api_token) : '',
+  editing.value?.api_token ? resolveMcpUrl(apiBaseUrl, editing.value.api_token) : '',
 )
 const form = reactive({
   username: '',
@@ -120,7 +120,7 @@ async function save() {
   }
 }
 async function copyApiToken() {
-  if (!editing.value) return
+  if (!editing.value?.api_token) return
   try {
     await navigator.clipboard.writeText(editing.value.api_token)
     message.success('接口令牌已复制')
@@ -225,14 +225,19 @@ function remove(row: ManagedUser) {
             show-password-on="click" /></n-form-item
         ><n-form-item v-if="editing" label="接口令牌"
           ><n-input-group>
-            <n-input :value="editing.api_token" readonly />
-            <n-button @click="copyApiToken">复制令牌</n-button>
+            <n-input
+              :value="editing.api_token ?? '（库中只存哈希，请重新生成后再复制新令牌）'"
+              readonly
+            />
+            <n-button :disabled="!editing.api_token" @click="copyApiToken">复制令牌</n-button>
             <n-button @click="regenerateApiToken">重新生成</n-button>
           </n-input-group></n-form-item
         ><n-form-item v-if="editing" label="MCP 地址"
           ><n-input-group>
-            <n-input :value="mcpUrl" readonly />
-            <n-button type="primary" secondary @click="copyMcpUrl">复制地址</n-button>
+            <n-input :value="mcpUrl || '（重新生成令牌后可复制 MCP 地址）'" readonly />
+            <n-button type="primary" secondary :disabled="!mcpUrl" @click="copyMcpUrl"
+              >复制地址</n-button
+            >
           </n-input-group></n-form-item
         ><n-form-item label="启用"><n-switch v-model:value="form.enabled" /></n-form-item></n-form
       ><template #footer

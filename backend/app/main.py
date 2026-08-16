@@ -38,6 +38,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     stale_import_jobs = await import_job_service.mark_stale_jobs_failed()
     if stale_import_jobs:
         logger.info("marked %s stale excel import jobs as failed", stale_import_jobs)
+    purged_import_jobs = await import_job_service.cleanup_finished_jobs()
+    if purged_import_jobs:
+        logger.info("purged %s finished excel import jobs", purged_import_jobs)
     webhook_stop_event = asyncio.Event()
     webhook_worker = asyncio.create_task(
         webhook_service.run_delivery_worker(webhook_stop_event),

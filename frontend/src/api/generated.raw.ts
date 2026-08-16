@@ -519,6 +519,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/material-code-library/exists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Material Code Exists
+         * @description 软校验：编码是否已收录于物料编码库（不阻断业务，仅提示）。
+         */
+        get: operations["material_code_exists_api_v1_material_code_library_exists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/material-code-library/import": {
         parameters: {
             query?: never;
@@ -1812,6 +1832,13 @@ export interface components {
              */
             token_type: "bearer";
             user: components["schemas"]["UserRead"];
+        };
+        /** MaterialCodeExistsRead */
+        MaterialCodeExistsRead: {
+            /** Material Code */
+            material_code: string;
+            /** Exists */
+            exists: boolean;
         };
         /** MaterialCodeLibraryRead */
         MaterialCodeLibraryRead: {
@@ -3252,7 +3279,7 @@ export interface components {
             /** Version */
             version: number;
             /** Api Token */
-            api_token: string;
+            api_token?: string | null;
         };
         /** UserApiTokenRegenerate */
         UserApiTokenRegenerate: {
@@ -5736,6 +5763,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LastImportRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    material_code_exists_api_v1_material_code_library_exists_get: {
+        parameters: {
+            query: {
+                material_code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCodeExistsRead"];
                 };
             };
             /** @description 业务校验失败 */

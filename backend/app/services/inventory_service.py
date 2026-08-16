@@ -31,6 +31,7 @@ from app.schemas import (
 from app.services import webhook_service
 from app.services.common import (
     log_event,
+    operation_source_type,
     utc_aware,
     utc_naive,
     utcnow,
@@ -116,9 +117,8 @@ def _operation_snapshot(item: StockOperation) -> dict[str, object]:
 
 
 def _operation_source_type(item: StockOperation) -> SourceType:
-    if item.mini_program_user_name_snapshot is not None:
-        return SourceType.MINI_PROGRAM
-    return item.source_type
+    # 业务读路径的来源判定统一由 common.operation_source_type 提供。
+    return operation_source_type(item)
 
 
 async def _lock_and_validate_materials(

@@ -9,7 +9,7 @@ from pytest import MonkeyPatch
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.models import BusinessEventLog
+from app.models import BusinessEventLog, SystemSetting
 from app.services import ai_search_service
 from tests.conftest import auth_headers
 from tests.integration.test_procurement import create_purchase_plan, move_to_record
@@ -275,3 +275,75 @@ async def test_glm_models_disable_thinking_and_request_json_output(
     settings = await client.get("/api/v1/ai-search/settings", headers=admin)
     assert settings.status_code == 200
     assert settings.json()["version"] == 0
+
+
+@pytest.mark.asyncio
+async def test_setting_migrates_from_event_log_to_system_setting_table(
+    client: AsyncClient,
+) -> None:
+    """旧部署配置存于 business_event_log；system_setting 空时回退读取，更新时迁移到新表。"""
+    admin = await auth_headers(client, "admin")
+    # 模拟旧部署：只写事件日志，不写 system_setting。
+    async with SessionLocal() as session:
+        session.add(
+            BusinessEventLog(
+                business_type="SYSTEM_SETTING",
+                business_id=1,
+                action="AI_SEARCH_CONFIG_UPDATED",
+                occurred_at=ai_search_service.utcnow(),
+                after_data={
+                    "endpoint": "https://legacy.test/v1",
+                    "api_key_encrypted": (
+                        ai_search_service._encrypt_api_key("legacy-key")
+                    ),
+                    "model": "legacy-model",
+                    "enabled": True,
+                    "mini_program_code_env": "release",
+                    "mini_program_code_app_id": "wx-test-secondary",
+                    "mini_program_registration_enabled": True,
+                    "mini_program_new_user_enabled": True,
+                    "image_acceleration_server_url": "",
+                    "inventory_mode": "read_write",
+                    "huaxing_inventory_mode": "query_only",
+                    "purchase_plans_mode": "query_only",
+                    "purchase_records_mode": "query_only",
+                    "material_codes_mode": "query_only",
+                },
+            )
+        )
+        await session.commit()
+
+    loaded = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert loaded.status_code == 200, loaded.text
+    assert loaded.json()["endpoint"] == "https://legacy.test/v1"
+    assert loaded.json()["api_key"] == "legacy-key"
+    legacy_version = loaded.json()["version"]
+
+    saved = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "https://new.test/v1/",
+            "api_key": "new-key",
+            "model": "new-model",
+            "enabled": True,
+            "mini_program_code_env": "release",
+            "mini_program_code_app_id": "wx-test-secondary",
+            "version": legacy_version,
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["endpoint"] == "https://new.test/v1"
+    assert saved.json()["version"] == legacy_version + 1
+
+    async with SessionLocal() as session:
+        row = await session.get(SystemSetting, "ai_search_config")
+        assert row is not None
+        assert row.setting_value["endpoint"] == "https://new.test/v1"
+        assert row.setting_value["api_key_encrypted"] != "new-key"
+        assert row.version == legacy_version + 1
+
+    reloaded = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert reloaded.status_code == 200, reloaded.text
+    assert reloaded.json()["endpoint"] == "https://new.test/v1"
+    assert reloaded.json()["api_key"] == "new-key"

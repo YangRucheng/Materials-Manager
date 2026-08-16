@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   NTag,
   useDialog,
@@ -328,6 +328,33 @@ const rules: FormRules = {
   ],
   usage: { required: true, message: '请输入用途' },
 }
+
+// 物料编码软校验：编码已存在于编码库时提示“已收录”，否则仅提示未收录，不阻断保存。
+const materialCodeKnown = ref<boolean | null>(null)
+const materialCodeCheckTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+watch(
+  () => form.material_code,
+  (value) => {
+    if (materialCodeCheckTimer.value) clearTimeout(materialCodeCheckTimer.value)
+    if (!show.value) {
+      materialCodeKnown.value = null
+      return
+    }
+    const code = value?.trim() ?? ''
+    if (!code) {
+      materialCodeKnown.value = null
+      return
+    }
+    materialCodeCheckTimer.value = setTimeout(async () => {
+      try {
+        const result = await procurementApi.materialCodeExists(code)
+        materialCodeKnown.value = result.exists
+      } catch {
+        materialCodeKnown.value = null
+      }
+    }, 400)
+  },
+)
 type PlanColumnKey =
   | 'plan_no'
   | 'plan_date'
@@ -1348,13 +1375,31 @@ onBeforeUnmount(() => {
             <n-date-picker v-model:value="createPlanDate" type="date" class="full-width" />
           </n-form-item>
           <n-form-item label="物料编码">
-            <MaterialCodeSelector
-              :model-value="form.material_code || ''"
-              :default-name="form.name"
-              :default-model-spec="form.model_spec"
-              @update:model-value="form.material_code = $event"
-              @select="applyMaterialCode"
-            />
+            <div class="material-code-field">
+              <MaterialCodeSelector
+                :model-value="form.material_code || ''"
+                :default-name="form.name"
+                :default-model-spec="form.model_spec"
+                @update:model-value="form.material_code = $event"
+                @select="applyMaterialCode"
+              />
+              <n-tag
+                v-if="materialCodeKnown === true"
+                type="success"
+                :bordered="false"
+                size="small"
+              >
+                已在编码库
+              </n-tag>
+              <n-tag
+                v-else-if="materialCodeKnown === false"
+                type="warning"
+                :bordered="false"
+                size="small"
+              >
+                编码未收录，仍可保存
+              </n-tag>
+            </div>
           </n-form-item>
           <n-form-item label="名称" path="name">
             <n-input v-model:value="form.name" maxlength="128">
@@ -1466,6 +1511,21 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.material-code-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.material-code-field :deep(.n-input) {
+  flex: 1;
+}
+
+.material-code-field :deep(.n-tag) {
+  flex-shrink: 0;
+}
+
 .quantity-input {
   flex: 1;
 }
