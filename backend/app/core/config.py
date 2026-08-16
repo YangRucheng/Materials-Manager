@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = Field(default=30, ge=1)
     refresh_token_days: int = Field(default=7, ge=1)
+    # 加密 API Key / Webhook 密钥等敏感配置的 Fernet 密钥（可选的独立密钥）。
+    # 留空时回退到由 jwt_secret 派生的密钥，保证既有已加密数据可继续解密；
+    # 设置后优先使用独立密钥（新部署建议固定配置，避免轮换 jwt_secret 连带失效）。
+    fernet_key: str = ""
     wechat_mini_program_app_id: str = ""
     wechat_mini_program_app_secret: str = ""
     upload_dir: Path = BACKEND_DIR / "data" / "uploads"

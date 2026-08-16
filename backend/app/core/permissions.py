@@ -35,10 +35,19 @@ def get_if_match_version(if_match: Annotated[str | None, Header()] = None) -> in
 IfMatchVersion = Annotated[int | None, Depends(get_if_match_version)]
 
 
+def _hash_api_token(token: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 async def find_user_by_api_token(session: AsyncSession, api_token: str) -> User | None:
     if len(api_token) != 36:
         return None
-    return cast(User | None, await session.scalar(select(User).where(User.api_token == api_token)))
+    return cast(
+        User | None,
+        await session.scalar(select(User).where(User.api_token_hash == _hash_api_token(api_token))),
+    )
 
 
 async def authenticate_user_api_token(

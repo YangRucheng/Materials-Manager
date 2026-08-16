@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from io import BytesIO
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from app.core.errors import AppError
 from app.domain.enums import ExcelImportJobStatus
 from app.models import ExcelImportJob
 from app.services import import_job_service
+from app.services.common import utcnow
 from tests.conftest import auth_headers
 
 
@@ -91,6 +93,47 @@ async def test_mark_stale_jobs_failed_marks_interrupted_and_unlinks(
     assert rows[3].error_code is None
     for index, path in enumerate(paths):
         assert path.exists() == (index >= 2)
+
+
+@pytest.mark.asyncio
+async def test_cleanup_finished_jobs_deletes_only_old_terminal_rows(
+    client: AsyncClient,
+) -> None:
+    now = utcnow()
+    async with SessionLocal() as session:
+        old_finished = ExcelImportJob(
+            import_type="CLEANUP_TEST",
+            status=ExcelImportJobStatus.SUCCEEDED,
+            original_filename="old.xlsx",
+            file_path="/tmp/old.xlsx",
+            finished_at=now - timedelta(days=60),
+        )
+        recent_finished = ExcelImportJob(
+            import_type="CLEANUP_TEST",
+            status=ExcelImportJobStatus.FAILED,
+            original_filename="recent.xlsx",
+            file_path="/tmp/recent.xlsx",
+            finished_at=now - timedelta(days=1),
+        )
+        running = ExcelImportJob(
+            import_type="CLEANUP_TEST",
+            status=ExcelImportJobStatus.RUNNING,
+            original_filename="running.xlsx",
+            file_path="/tmp/running.xlsx",
+        )
+        session.add_all([old_finished, recent_finished, running])
+        await session.commit()
+
+    count = await import_job_service.cleanup_finished_jobs(retention_days=30)
+
+    assert count == 1
+    async with SessionLocal() as session:
+        remaining = list(
+            (
+                await session.scalars(select(ExcelImportJob).order_by(ExcelImportJob.id))
+            ).all()
+        )
+    assert [row.original_filename for row in remaining] == ["recent.xlsx", "running.xlsx"]
 
 
 @pytest.mark.asyncio

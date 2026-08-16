@@ -33,6 +33,23 @@ EXPECTED_HEADERS = (
 HEADER_ALIASES = {"首次入库时间": "首次入库日期"}
 MAX_IMPORT_BYTES = 50 * 1024 * 1024
 INSERT_BATCH_SIZE = 2_000
+# 全字段相同视为重复行：上游报表常含重复行，逐字导成一条即可（保留行号提示）。
+DEDUPE_FIELDS = (
+    "first_inbound_date",
+    "warehouse",
+    "material_code",
+    "name",
+    "model_spec",
+    "quantity",
+    "unit_name",
+    "purchaser",
+    "purchase_department",
+    "subitem_no_name",
+)
+
+
+def _dedupe_key(row: dict[str, object]) -> tuple[object, ...]:
+    return tuple(row[field] for field in DEDUPE_FIELDS)
 
 
 def _cell_text(value: object) -> str:
@@ -169,15 +186,31 @@ def parse_huaxing_workbook_file(path: Path) -> list[dict[str, object]]:
 
 
 async def process_import_file(file_path: Path) -> dict[str, object]:
-    """异步导入处理器：解析（线程池）→ 全量替换 → 返回导入条数。"""
+    """异步导入处理器：解析（线程池）→ 全量替换 → 返回导入条数与去重统计。"""
     rows = await asyncio.to_thread(parse_huaxing_workbook_file, file_path)
+    return await _replace_rows(rows)
+
+
+async def _replace_rows(rows: list[dict[str, object]]) -> dict[str, object]:
+    """全量替换华星库存表；完全重复的行只保留一条（上游报表常重复导出）。"""
+    seen: set[tuple[object, ...]] = set()
+    deduplicated: list[dict[str, object]] = []
+    for row in rows:
+        key = _dedupe_key(row)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduplicated.append(row)
     async with SessionLocal() as session:
         await session.execute(delete(HuaXingInventory))
-        for offset in range(0, len(rows), INSERT_BATCH_SIZE):
-            batch = rows[offset : offset + INSERT_BATCH_SIZE]
+        for offset in range(0, len(deduplicated), INSERT_BATCH_SIZE):
+            batch = deduplicated[offset : offset + INSERT_BATCH_SIZE]
             await session.execute(insert(HuaXingInventory), batch)
         await session.commit()
-    return {"imported_count": len(rows)}
+    return {
+        "imported_count": len(deduplicated),
+        "deduplicated_count": len(rows) - len(deduplicated),
+    }
 
 
 async def search_huaxing_inventory(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+from datetime import date
 from uuid import UUID
 
 import pytest
@@ -10,7 +11,7 @@ from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.models import FileObject
+from app.models import FileObject, PurchaseRequest, PurchaseRequestLine, PurchaseRequestLineImage
 from tests.conftest import auth_headers
 
 
@@ -89,6 +90,66 @@ async def test_uploaded_image_is_reencoded_as_png(client: AsyncClient) -> None:
         file_count = await session.scalar(select(func.count()).select_from(FileObject))
     assert persisted_id == body["id"]
     assert file_count == 1
+
+
+@pytest.mark.asyncio
+async def test_purchase_request_line_image_is_never_treated_as_orphan(
+    client: AsyncClient,
+) -> None:
+    """仅被申购记录行引用的图片：不算孤儿、不能被单删（回归 20260810 行级镜像表）。"""
+    warehouse_headers = await auth_headers(client, "warehouse")
+    admin_headers = await auth_headers(client, "admin")
+    source = io.BytesIO()
+    Image.new("RGB", (16, 12), "purple").save(source, format="PNG")
+    uploaded = await client.post(
+        "/api/v1/files/images",
+        headers=warehouse_headers,
+        files={"file": ("record-image.png", source.getvalue(), "image/png")},
+    )
+    file_id = uploaded.json()["id"]
+
+    # 构造一条只引用该图片的申购记录行（模拟 move-to-record 后的行级镜像）。
+    async with SessionLocal() as session:
+        request = PurchaseRequest(purchase_date=None)
+        session.add(request)
+        await session.flush()
+        line = PurchaseRequestLine(
+            purchase_request_id=request.id,
+            plan_no_snapshot="PLAN-TEST-001",
+            plan_date_snapshot=date(2026, 7, 1),
+            demand_department_snapshot="车间",
+            material_name_snapshot="记录物资",
+            model_spec_snapshot="M-1",
+            unit_name_snapshot="个",
+            actual_demand_person_snapshot="张三",
+            purchase_responsible_snapshot="李工",
+            purchase_qty="1",
+            usage="测试",
+        )
+        session.add(line)
+        await session.flush()
+        session.add(
+            PurchaseRequestLineImage(line_id=line.id, file_id=file_id, sort_order=0)
+        )
+        await session.commit()
+
+    report = await client.get(
+        "/api/v1/files/images/orphans?older_than_hours=0", headers=admin_headers
+    )
+    assert report.status_code == 200, report.text
+    assert file_id not in [item["id"] for item in report.json()["unreferenced_records"]]
+
+    removed = await client.delete(f"/api/v1/files/images/{file_id}", headers=warehouse_headers)
+    assert removed.status_code == 409, removed.text
+    assert removed.json()["code"] == "FILE_IN_USE"
+
+    # 孤儿清理也不应删除被记录行引用的图片。
+    cleaned = await client.delete(
+        "/api/v1/files/images/orphans?older_than_hours=0", headers=admin_headers
+    )
+    assert cleaned.status_code == 200, cleaned.text
+    assert file_id not in cleaned.json()["deleted_record_ids"]
+    assert (settings.upload_dir / f"{file_id}.png").exists()
 
 
 @pytest.mark.asyncio

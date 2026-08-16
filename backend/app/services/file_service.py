@@ -23,6 +23,7 @@ from app.core.identifiers import uuid7_string
 from app.models import (
     FileObject,
     PurchaseMaterialImage,
+    PurchaseRequestLineImage,
     StockMaterialImage,
 )
 from app.schemas import (
@@ -70,8 +71,10 @@ async def _digest_lock(digest: str) -> AsyncIterator[None]:
 
 
 def _unreferenced() -> ColumnElement[bool]:
-    return ~exists().where(StockMaterialImage.file_id == FileObject.id) & ~exists().where(
-        PurchaseMaterialImage.file_id == FileObject.id
+    return (
+        ~exists().where(StockMaterialImage.file_id == FileObject.id)
+        & ~exists().where(PurchaseMaterialImage.file_id == FileObject.id)
+        & ~exists().where(PurchaseRequestLineImage.file_id == FileObject.id)
     )
 
 
@@ -196,7 +199,11 @@ async def delete_image(session: AsyncSession, file_id: str) -> None:
     if item is None:
         raise not_found("图片")
     referenced = False
-    for model in (StockMaterialImage, PurchaseMaterialImage):
+    for model in (
+        StockMaterialImage,
+        PurchaseMaterialImage,
+        PurchaseRequestLineImage,
+    ):
         if await session.scalar(select(exists().where(model.file_id == file_id))):
             referenced = True
             break

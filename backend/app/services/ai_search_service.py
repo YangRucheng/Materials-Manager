@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import base64
-import hashlib
 import json
 import logging
 import re
@@ -11,7 +9,7 @@ from datetime import datetime
 from typing import Any, NoReturn
 
 import httpx
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import InvalidToken
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,14 +17,14 @@ from app.core.config import settings
 from app.core.errors import AppError, version_conflict
 from app.core.wechat import configured_wechat_app_ids, get_wechat_credentials
 from app.domain.enums import MiniProgramCodeEnv, MiniProgramFeatureMode
-from app.models import BusinessEventLog
+from app.models import BusinessEventLog, SystemSetting
 from app.schemas import (
     AiSearchSettingsRead,
     AiSearchSettingsUpdate,
     AiSearchTestRequest,
     MiniProgramFeaturesRead,
 )
-from app.services.common import log_event, split_or_search_terms
+from app.services.common import fernet, log_event, split_or_search_terms, utc_aware, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +33,11 @@ _MAX_EXPANSIONS_PER_TERM = 6
 _SETTING_BUSINESS_TYPE = "SYSTEM_SETTING"
 _SETTING_BUSINESS_ID = 1
 _SETTING_ACTION = "AI_SEARCH_CONFIG_UPDATED"
+_SETTING_KEY = "ai_search_config"
 _RESPONSE_TIMEOUT_SECONDS = 10.0
 _TEST_RESPONSE_TIMEOUT_SECONDS = 30.0
 _CONNECT_TIMEOUT_SECONDS = 3.0
+_MAX_CACHE_ENTRIES = 1000
 _cache: dict[tuple[int, tuple[str, ...]], tuple[float, tuple[str, ...]]] = {}
 _client = httpx.AsyncClient(
     timeout=httpx.Timeout(_RESPONSE_TIMEOUT_SECONDS, connect=_CONNECT_TIMEOUT_SECONDS)
@@ -64,18 +64,13 @@ class AiSearchConfig:
     version: int
 
 
-def _fernet() -> Fernet:
-    digest = hashlib.sha256(settings.jwt_secret.encode("utf-8")).digest()
-    return Fernet(base64.urlsafe_b64encode(digest))
-
-
 def _encrypt_api_key(api_key: str) -> str:
-    return _fernet().encrypt(api_key.encode("utf-8")).decode("ascii")
+    return fernet().encrypt(api_key.encode("utf-8")).decode("ascii")
 
 
 def _decrypt_api_key(ciphertext: str) -> str:
     try:
-        return _fernet().decrypt(ciphertext.encode("ascii")).decode("utf-8")
+        return fernet().decrypt(ciphertext.encode("ascii")).decode("utf-8")
     except InvalidToken as exc:
         raise AppError(
             "AI_API_KEY_DECRYPT_FAILED",
@@ -139,20 +134,7 @@ async def close_client() -> None:
     await _client.aclose()
 
 
-async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
-    event = await session.scalar(
-        select(BusinessEventLog)
-        .where(
-            BusinessEventLog.business_type == _SETTING_BUSINESS_TYPE,
-            BusinessEventLog.business_id == _SETTING_BUSINESS_ID,
-            BusinessEventLog.action == _SETTING_ACTION,
-        )
-        .order_by(BusinessEventLog.id.desc())
-        .limit(1)
-    )
-    if event is None:
-        return None
-    data = event.after_data if isinstance(event.after_data, dict) else {}
+def _config_from_data(data: dict[str, Any], *, version: int, updated_at: datetime | None) -> AiSearchConfig:
     endpoint = data.get("endpoint")
     api_key_encrypted = data.get("api_key_encrypted")
     model = data.get("model")
@@ -196,8 +178,32 @@ async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
         material_codes_mode=_feature_mode(
             data.get("material_codes_mode"), MiniProgramFeatureMode.QUERY_ONLY
         ),
-        updated_at=event.occurred_at,
-        version=event.id,
+        updated_at=updated_at,
+        version=version,
+    )
+
+
+async def get_setting(session: AsyncSession) -> AiSearchConfig | None:
+    row = await session.get(SystemSetting, _SETTING_KEY)
+    if row is None:
+        # 兼容旧部署：system_setting 尚为空时回退读取最后一条配置事件。
+        event = await session.scalar(
+            select(BusinessEventLog)
+            .where(
+                BusinessEventLog.business_type == _SETTING_BUSINESS_TYPE,
+                BusinessEventLog.business_id == _SETTING_BUSINESS_ID,
+                BusinessEventLog.action == _SETTING_ACTION,
+            )
+            .order_by(BusinessEventLog.id.desc())
+            .limit(1)
+        )
+        if event is None:
+            return None
+        data = event.after_data if isinstance(event.after_data, dict) else {}
+        return _config_from_data(data, version=event.id, updated_at=event.occurred_at)
+    data = row.setting_value if isinstance(row.setting_value, dict) else {}
+    return _config_from_data(
+        data, version=row.version, updated_at=utc_aware(row.updated_at)
     )
 
 
@@ -267,6 +273,24 @@ async def update_setting(
             details={"app_id": data.mini_program_code_app_id},
         )
 
+    new_version = actual_version + 1
+    now = utcnow()
+    after_data = {
+        "endpoint": data.endpoint.rstrip("/"),
+        "api_key_encrypted": api_key_encrypted,
+        "model": data.model,
+        "enabled": data.enabled,
+        "mini_program_code_env": data.mini_program_code_env,
+        "mini_program_code_app_id": mini_program_code_app_id,
+        "mini_program_registration_enabled": data.mini_program_registration_enabled,
+        "mini_program_new_user_enabled": data.mini_program_new_user_enabled,
+        "image_acceleration_server_url": data.image_acceleration_server_url,
+        "inventory_mode": data.inventory_mode,
+        "huaxing_inventory_mode": data.huaxing_inventory_mode,
+        "purchase_plans_mode": data.purchase_plans_mode,
+        "purchase_records_mode": data.purchase_records_mode,
+        "material_codes_mode": data.material_codes_mode,
+    }
     event = await log_event(
         session,
         business_type=_SETTING_BUSINESS_TYPE,
@@ -276,23 +300,22 @@ async def update_setting(
         new_status="启用" if data.enabled else "停用",
         remark="超级管理员更新高级设置",
         before_data=_payload(current) if current else None,
-        after_data={
-            "endpoint": data.endpoint.rstrip("/"),
-            "api_key_encrypted": api_key_encrypted,
-            "model": data.model,
-            "enabled": data.enabled,
-            "mini_program_code_env": data.mini_program_code_env,
-            "mini_program_code_app_id": mini_program_code_app_id,
-            "mini_program_registration_enabled": data.mini_program_registration_enabled,
-            "mini_program_new_user_enabled": data.mini_program_new_user_enabled,
-            "image_acceleration_server_url": data.image_acceleration_server_url,
-            "inventory_mode": data.inventory_mode,
-            "huaxing_inventory_mode": data.huaxing_inventory_mode,
-            "purchase_plans_mode": data.purchase_plans_mode,
-            "purchase_records_mode": data.purchase_records_mode,
-            "material_codes_mode": data.material_codes_mode,
-        },
+        after_data=after_data,
     )
+    row = await session.get(SystemSetting, _SETTING_KEY)
+    if row is None:
+        row = SystemSetting(
+            setting_key=_SETTING_KEY,
+            setting_value=after_data,
+            version=new_version,
+            updated_at=now,
+        )
+        session.add(row)
+    else:
+        row.setting_value = after_data
+        row.version = new_version
+        row.updated_at = now
+    await session.flush()
     _cache.clear()
     return AiSearchConfig(
         endpoint=data.endpoint.rstrip("/"),
@@ -309,8 +332,8 @@ async def update_setting(
         purchase_plans_mode=data.purchase_plans_mode,
         purchase_records_mode=data.purchase_records_mode,
         material_codes_mode=data.material_codes_mode,
-        updated_at=event.occurred_at,
-        version=event.id,
+        updated_at=utc_aware(now),
+        version=new_version,
     )
 
 
@@ -647,6 +670,9 @@ async def _request_expansions(
                 seen.add(candidate)
     result = tuple(expanded)
     if use_cache:
+        # 容量上限：新增条目且满员时淘汰最早插入的条目（dict 保序），防止无界增长。
+        if cache_key not in _cache and len(_cache) >= _MAX_CACHE_ENTRIES:
+            _cache.pop(next(iter(_cache)))
         _cache[cache_key] = (now, result)
     return result
 

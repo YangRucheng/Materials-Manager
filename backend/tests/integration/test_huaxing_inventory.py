@@ -216,6 +216,27 @@ async def test_header_alias_first_inbound_time(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_import_deduplicates_fully_identical_rows(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    dup = _row("Y001", "按钮")
+    await _import_ok(
+        client,
+        headers,
+        build_report([dup, dup, dup, _row("Y002", "接触器")]),
+    )
+    listed = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"page_size": 50}
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] == 2
+    # 完全相同行只保留一条；跨引用行数不受影响。
+    by_code = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "Y001"}
+    )
+    assert by_code.json()["total"] == 1
+
+
+@pytest.mark.asyncio
 async def test_missing_headers_marks_job_failed(client: AsyncClient) -> None:
     headers = await auth_headers(client, "warehouse")
     workbook = Workbook()

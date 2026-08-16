@@ -17,11 +17,11 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import UploadFile
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -185,6 +185,25 @@ async def mark_stale_jobs_failed() -> int:
     for path in stale_paths:
         await asyncio.to_thread(Path(path).unlink, missing_ok=True)
     return len(stale_paths)
+
+
+async def cleanup_finished_jobs(*, retention_days: int = 30) -> int:
+    """定期清理：删除 retention_days 天前已终态（SUCCEEDED/FAILED）的任务行。
+
+    临时导入文件在 _run_job 的 finally 中已即时删除，这里只收敛历史行。
+    """
+    async with SessionLocal() as session:
+        cutoff = utcnow() - timedelta(days=retention_days)
+        result = await session.execute(
+            delete(ExcelImportJob).where(
+                ExcelImportJob.status.in_(
+                    (ExcelImportJobStatus.SUCCEEDED, ExcelImportJobStatus.FAILED)
+                ),
+                ExcelImportJob.finished_at < cutoff,
+            )
+        )
+        await session.commit()
+        return int(result.rowcount or 0)
 
 
 async def _run_job(job_id: int, processor: ImportProcessor) -> None:

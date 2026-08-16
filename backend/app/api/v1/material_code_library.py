@@ -10,7 +10,13 @@ from fastapi import Path as FPath
 from app.api.deps import PageNo, PageSize
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, PurchaseWriter
-from app.schemas import ExcelImportJobRead, LastImportRead, MaterialCodeLibraryRead, Page
+from app.schemas import (
+    ExcelImportJobRead,
+    LastImportRead,
+    MaterialCodeExistsRead,
+    MaterialCodeLibraryRead,
+    Page,
+)
 from app.services import import_job_service, material_code_library_service
 
 router = APIRouter(prefix="/material-code-library", tags=["物料编码库"])
@@ -50,6 +56,19 @@ async def last_import(
         session, import_type=JOB_TYPE
     )
     return LastImportRead(last_import_at=last_import_at)
+
+
+@router.get("/exists", response_model=MaterialCodeExistsRead)
+async def material_code_exists(
+    session: DbSession,
+    user: CurrentUser,
+    material_code: Annotated[str, Query(min_length=1, max_length=64)],
+) -> MaterialCodeExistsRead:
+    """软校验：编码是否已收录于物料编码库（不阻断业务，仅提示）。"""
+    exists = await material_code_library_service.material_code_exists(
+        session, material_code.strip()
+    )
+    return MaterialCodeExistsRead(material_code=material_code.strip(), exists=exists)
 
 
 @router.post("/import", response_model=ExcelImportJobRead, status_code=202)

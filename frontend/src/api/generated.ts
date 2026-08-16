@@ -37,6 +37,7 @@ export type AiSearchStatus = components['schemas']['AiSearchStatusRead']
 export type AiSearchTestRequest = components['schemas']['AiSearchTestRequest']
 export type ImageAccelerationSettings = components['schemas']['ImageAccelerationSettingsRead']
 export type MaterialCodeLibrary = components['schemas']['MaterialCodeLibraryRead']
+export type MaterialCodeExists = components['schemas']['MaterialCodeExistsRead']
 export type LastImport = components['schemas']['LastImportRead']
 export type ExcelImportJobStatus = components['schemas']['ExcelImportJobStatus']
 export type ExcelImportJob = components['schemas']['ExcelImportJobRead']
@@ -79,9 +80,9 @@ export interface Page<T> {
   total: number
 }
 
-/** 用户 + 接口令牌（后端 UserApiTokenRead） */
+/** 用户 + 接口令牌（后端 UserApiTokenRead；令牌明文仅在新建/重新生成时返回一次） */
 export interface ManagedUser extends User {
-  api_token: string
+  api_token: string | null
 }
 
 /** 小程序用户合并请求 */

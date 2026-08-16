@@ -14,7 +14,8 @@ export const users: ManagedUser[] = [
   {
     id: 1,
     username: 'admin',
-    api_token: '06c0d223-280b-4c24-b768-50e02c458a94',
+    // 明文令牌只在新建/重新生成接口返回一次；列表读取为 null（库中只存哈希）。
+    api_token: null,
     display_name: '系统管理员',
     role: 'SUPER_ADMIN',
     enabled: true,
@@ -23,7 +24,7 @@ export const users: ManagedUser[] = [
   {
     id: 2,
     username: 'warehouse',
-    api_token: '92647633-706f-49ca-8bc5-75336ffc75e6',
+    api_token: null,
     display_name: '仓库管理员',
     role: 'WAREHOUSE_ADMIN',
     enabled: true,
@@ -32,7 +33,7 @@ export const users: ManagedUser[] = [
   {
     id: 3,
     username: 'purchase',
-    api_token: 'd1159d60-5a2f-4de7-8610-8b2c859e695a',
+    api_token: null,
     display_name: '申购管理员',
     role: 'PURCHASE_ADMIN',
     enabled: true,
@@ -41,7 +42,7 @@ export const users: ManagedUser[] = [
   {
     id: 4,
     username: 'readonly',
-    api_token: 'da989f08-76c0-4d51-b9eb-d9d8435b9d87',
+    api_token: null,
     display_name: '只读用户',
     role: 'READ_ONLY',
     enabled: true,

@@ -227,3 +227,41 @@ async def test_import_large_file_succeeds(client: AsyncClient) -> None:
     assert job["result"]["imported_count"] == 500
     assert job["result"]["blank_name_count"] == 0
     assert job["result"]["blank_model_spec_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_material_code_exists_soft_check(client: AsyncClient) -> None:
+    purchase_headers = await auth_headers(client, "purchase")
+    response = await _submit_import(
+        client,
+        purchase_headers,
+        "codes.xlsx",
+        build_workbook([["生效", "Y001", "按钮", "个", "LA38", ""]]),
+    )
+    assert response.status_code == 202, response.text
+    job = await _wait_job(client, purchase_headers, response.json()["id"])
+    assert job["status"] == "SUCCEEDED", job
+
+    known = await client.get(
+        "/api/v1/material-code-library/exists",
+        headers=purchase_headers,
+        params={"material_code": "Y001"},
+    )
+    assert known.status_code == 200, known.text
+    assert known.json() == {"material_code": "Y001", "exists": True}
+
+    unknown = await client.get(
+        "/api/v1/material-code-library/exists",
+        headers=purchase_headers,
+        params={"material_code": "Z999"},
+    )
+    assert unknown.status_code == 200, unknown.text
+    assert unknown.json() == {"material_code": "Z999", "exists": False}
+
+    # 软校验不阻断：编码库为空时返回 exists=False 而非报错。
+    empty = await client.get(
+        "/api/v1/material-code-library/exists",
+        headers=purchase_headers,
+        params={"material_code": "X"},
+    )
+    assert empty.json() == {"material_code": "X", "exists": False}
