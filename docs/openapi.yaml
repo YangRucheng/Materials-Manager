@@ -2015,6 +2015,62 @@ paths:
       security:
       - HTTPBearer: []
       - APIKeyHeader: []
+  /api/v1/material-code-library/exists:
+    get:
+      tags:
+      - 物料编码库
+      summary: Material Code Exists
+      description: 软校验：编码是否已收录于物料编码库（不阻断业务，仅提示）。
+      operationId: material_code_exists_api_v1_material_code_library_exists_get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: material_code
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+          title: Material Code
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCodeExistsRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/material-code-library/import:
     post:
       tags:
@@ -6758,6 +6814,19 @@ components:
       - refresh_token
       - user
       title: LoginResponse
+    MaterialCodeExistsRead:
+      properties:
+        material_code:
+          type: string
+          title: Material Code
+        exists:
+          type: boolean
+          title: Exists
+      type: object
+      required:
+      - material_code
+      - exists
+      title: MaterialCodeExistsRead
     MaterialCodeLibraryRead:
       properties:
         id:
@@ -9858,8 +9927,10 @@ components:
           type: integer
           title: Version
         api_token:
-          type: string
-          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          anyOf:
+          - type: string
+            pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          - type: 'null'
           title: Api Token
       type: object
       required:
@@ -9869,7 +9940,6 @@ components:
       - role
       - enabled
       - version
-      - api_token
       title: UserApiTokenRead
     UserApiTokenRegenerate:
       properties:

@@ -9,7 +9,7 @@
 - 跟踪申购、分批到货和入库进度，形成库存—申购—到货闭环。
 - 提供微信小程序无感登录和二级库物资扫码出库。
 - 提供超级管理员、仓库管理员、申购管理员和只读用户四类权限。
-- 每个管理端用户拥有永不过期的 UUID v4 接口令牌，可在请求头中代替登录，并沿用用户角色权限。
+- 每个管理端用户拥有永不过期的 UUID v4 接口令牌，可在请求头中代替登录，并沿用用户角色权限。库中只存 SHA-256 哈希，明文仅在新建/重新生成时返回一次，请及时保存。
 - 提供带用户令牌的 MCP 服务，让 AI Agent 通过受控业务接口完成管理端功能，不开放任意 SQL。
 - 申购计划与申购记录支持 AI 同义词扩展搜索，超级管理员可配置 OpenAI 兼容端点。
 
@@ -51,5 +51,9 @@ docker compose up -d
 `example/database/init.sql` 仅用于初始化
 新数据库；已有数据库升级前先备份，再执行
 对应的 `example/database/migrations/` 脚本。接口令牌功能需要执行
-`20260804_add_user_api_token.sql`；多小程序升级使用 `upgrade-multi-miniprogram.sql`，并将脚本中的
-原小程序 AppID 替换为真实值。
+`20260804_add_user_api_token.sql`；令牌哈希化升级执行 `20260820_hash_user_api_token.sql`；
+多小程序升级使用 `upgrade-multi-miniprogram.sql`，并将脚本中的
+原小程序 AppID 替换为真实值。20260820 批次还包含
+`20260820_add_system_setting.sql`（AI 搜索配置迁移到独立表）、
+`20260820_narrow_purchase_request_line_unique.sql`（申购记录唯一索引收窄为 usage 哈希）与
+`20260820_drop_redundant_indexes.sql`（删除仅被前导通配 LIKE 查询的无效索引）。
