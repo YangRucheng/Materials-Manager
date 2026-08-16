@@ -131,9 +131,7 @@ CREATE TABLE IF NOT EXISTS `material_code_library` (
   `unit_name` VARCHAR(32) NOT NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   CONSTRAINT `pk_material_code_library` PRIMARY KEY (`id`),
-  CONSTRAINT `uq_material_code_library_material_code` UNIQUE (`material_code`),
-  INDEX `ix_material_code_library_name` (`name`),
-  INDEX `ix_material_code_library_model_spec` (`model_spec`)
+  CONSTRAINT `uq_material_code_library_material_code` UNIQUE (`material_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `excel_import_job` (
@@ -169,9 +167,7 @@ CREATE TABLE IF NOT EXISTS `huaxing_inventory` (
   `purchase_department` VARCHAR(128) NULL,
   `subitem_no_name` VARCHAR(255) NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  CONSTRAINT `pk_huaxing_inventory` PRIMARY KEY (`id`),
-  INDEX `ix_huaxing_inventory_name` (`name`),
-  INDEX `ix_huaxing_inventory_model_spec` (`model_spec`)
+  CONSTRAINT `pk_huaxing_inventory` PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `purchase_request` (
@@ -187,13 +183,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request` (
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
-  CONSTRAINT `pk_purchase_request` PRIMARY KEY (`id`),
-  INDEX `ix_purchase_request_purchase_order_no` (`purchase_order_no`),
-  INDEX `ix_purchase_request_contract_no` (`contract_no`),
-  INDEX `ix_purchase_request_vessel_no` (`vessel_no`),
-  INDEX `ix_purchase_request_consolidation_date` (`consolidation_date`),
-  INDEX `ix_purchase_request_consolidation_port` (`consolidation_port`),
-  INDEX `ix_purchase_request_sailing_date` (`sailing_date`)
+  CONSTRAINT `pk_purchase_request` PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_material` (
@@ -211,11 +201,7 @@ CREATE TABLE IF NOT EXISTS `stock_material` (
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_stock_material` PRIMARY KEY (`id`),
   CONSTRAINT `uq_stock_material_uuid` UNIQUE (`uuid`),
-  CONSTRAINT `uq_stock_material_identity_hash` UNIQUE (`identity_hash`),
-  INDEX `ix_stock_material_model_spec` (`model_spec`),
-  INDEX `ix_stock_material_name` (`name`),
-  INDEX `ix_stock_material_name_id` (`name_id`),
-  INDEX `ix_stock_material_alias` (`alias`)
+  CONSTRAINT `uq_stock_material_identity_hash` UNIQUE (`identity_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `stock_operation` (
@@ -271,12 +257,6 @@ CREATE TABLE IF NOT EXISTS `purchase_material` (
   CONSTRAINT `uq_purchase_material_plan_no` UNIQUE (`plan_no`),
   CONSTRAINT `fk_purchase_material_stock_material_id_stock_material`
     FOREIGN KEY (`stock_material_id`) REFERENCES `stock_material` (`id`),
-  INDEX `ix_purchase_material_plan_date` (`plan_date`),
-  INDEX `ix_purchase_material_material_code` (`material_code`),
-  INDEX `ix_purchase_material_category` (`category`),
-  INDEX `ix_purchase_material_model_spec` (`model_spec`),
-  INDEX `ix_purchase_material_name` (`name`),
-  INDEX `ix_purchase_material_purchase_responsible` (`purchase_responsible`),
   INDEX `ix_purchase_material_status` (`status`),
   INDEX `ix_purchase_material_stock_material_id` (`stock_material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -346,6 +326,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   `purchase_qty` DECIMAL(18, 1) NOT NULL,
   `status` VARCHAR(128) NOT NULL DEFAULT '已申购',
   `usage` VARCHAR(500) NOT NULL,
+  `usage_hash` VARCHAR(32) NOT NULL,
   `subitem_no` VARCHAR(64) NULL,
   `trace_no` VARCHAR(128) NULL,
   `salesperson` VARCHAR(128) NULL,
@@ -355,7 +336,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request_line` (
   CONSTRAINT `pk_purchase_request_line` PRIMARY KEY (`id`),
   CONSTRAINT `ck_purchase_request_line_purchase_positive` CHECK (`purchase_qty` > 0),
   CONSTRAINT `uq_purchase_request_line_purchase_request_id`
-    UNIQUE (`purchase_request_id`, `purchase_material_id`, `subitem_no`, `usage`),
+    UNIQUE (`purchase_request_id`, `purchase_material_id`, `subitem_no`, `usage_hash`),
   CONSTRAINT `fk_purchase_request_line_purchase_request_id_purchase_request`
     FOREIGN KEY (`purchase_request_id`) REFERENCES `purchase_request` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_purchase_request_line_purchase_material_id_purchase_material`

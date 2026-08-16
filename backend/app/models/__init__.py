@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
@@ -25,7 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.mysql import BIGINT, DATETIME, TINYINT
 from sqlalchemy.dialects.mysql import INTEGER as MYSQL_INTEGER
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.core.database import Base
 from app.domain.enums import (
@@ -134,8 +135,8 @@ class MaterialCodeLibrary(Base):
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     material_code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    name: Mapped[str | None] = mapped_column(String(128), index=True)
-    model_spec: Mapped[str | None] = mapped_column(String(255), index=True)
+    name: Mapped[str | None] = mapped_column(String(128))
+    model_spec: Mapped[str | None] = mapped_column(String(255))
     unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now()
@@ -181,8 +182,8 @@ class HuaXingInventory(Base):
     first_inbound_date: Mapped[date | None] = mapped_column(Date)
     warehouse: Mapped[str | None] = mapped_column(String(128))
     material_code: Mapped[str | None] = mapped_column(String(64))
-    name: Mapped[str | None] = mapped_column(String(255), index=True)
-    model_spec: Mapped[str | None] = mapped_column(String(255), index=True)
+    name: Mapped[str | None] = mapped_column(String(255))
+    model_spec: Mapped[str | None] = mapped_column(String(255))
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     unit_name: Mapped[str | None] = mapped_column(String(32))
     purchaser: Mapped[str | None] = mapped_column(String(128))
@@ -212,10 +213,10 @@ class StockMaterial(AuditMixin, Base):
     uuid: Mapped[str] = mapped_column(
         String(36), unique=True, nullable=False, default=lambda: str(uuid4())
     )
-    name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    name_id: Mapped[str | None] = mapped_column(String(128), index=True)
-    alias: Mapped[str | None] = mapped_column(String(128), index=True)
-    model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    name_id: Mapped[str | None] = mapped_column(String(128))
+    alias: Mapped[str | None] = mapped_column(String(128))
+    model_spec: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
     remark: Mapped[str | None] = mapped_column(String(1000))
     identity_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
@@ -283,20 +284,20 @@ class PurchaseMaterial(AuditMixin, Base):
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     plan_no: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
-    plan_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    material_code: Mapped[str | None] = mapped_column(String(64), index=True)
-    category: Mapped[str | None] = mapped_column(String(64), index=True)
+    plan_date: Mapped[date] = mapped_column(Date, nullable=False)
+    material_code: Mapped[str | None] = mapped_column(String(64))
+    category: Mapped[str | None] = mapped_column(String(64))
     urgency: Mapped[str] = mapped_column(
         String(32), nullable=False, default="正常", server_default="正常"
     )
     demand_department: Mapped[str] = mapped_column(
         String(128), nullable=False, default="HXNI 检修维护部", server_default="HXNI 检修维护部"
     )
-    name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    model_spec: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_spec: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
     actual_demand_person: Mapped[str] = mapped_column(String(128), nullable=False)
-    purchase_responsible: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    purchase_responsible: Mapped[str] = mapped_column(String(128), nullable=False)
     planned_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
     subitem_no: Mapped[str | None] = mapped_column(String(64))
@@ -336,12 +337,12 @@ class PurchaseRequest(AuditMixin, Base):
     __tablename__ = "purchase_request"
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
-    purchase_order_no: Mapped[str | None] = mapped_column(String(128), index=True)
-    contract_no: Mapped[str | None] = mapped_column(String(128), index=True)
-    vessel_no: Mapped[str | None] = mapped_column(String(128), index=True)
-    consolidation_date: Mapped[date | None] = mapped_column(Date, index=True)
-    consolidation_port: Mapped[str | None] = mapped_column(String(128), index=True)
-    sailing_date: Mapped[date | None] = mapped_column(Date, index=True)
+    purchase_order_no: Mapped[str | None] = mapped_column(String(128))
+    contract_no: Mapped[str | None] = mapped_column(String(128))
+    vessel_no: Mapped[str | None] = mapped_column(String(128))
+    consolidation_date: Mapped[date | None] = mapped_column(Date)
+    consolidation_port: Mapped[str | None] = mapped_column(String(128))
+    sailing_date: Mapped[date | None] = mapped_column(Date)
     remark: Mapped[str | None] = mapped_column(String(1000))
     purchase_date: Mapped[date | None] = mapped_column(Date)
 
@@ -357,7 +358,10 @@ class PurchaseRequestLine(AuditMixin, Base):
     __tablename__ = "purchase_request_line"
     __table_args__ = (
         CheckConstraint("purchase_qty > 0", name="purchase_positive"),
-        UniqueConstraint("purchase_request_id", "purchase_material_id", "subitem_no", "usage"),
+        # usage 最长 500 字符，直接进唯一索引浪费空间；改用 usage_hash 保持等值语义。
+        UniqueConstraint(
+            "purchase_request_id", "purchase_material_id", "subitem_no", "usage_hash"
+        ),
     )
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
@@ -383,9 +387,17 @@ class PurchaseRequestLine(AuditMixin, Base):
     purchase_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     status: Mapped[str] = mapped_column(String(128), nullable=False, default="已申购")
     usage: Mapped[str] = mapped_column(String(500), nullable=False)
+    # usage 的归一化哈希（SHA-256 十六进制前 32 位），进唯一索引以替代 500 字符的 usage。
+    usage_hash: Mapped[str] = mapped_column(String(32), nullable=False)
     subitem_no: Mapped[str | None] = mapped_column(String(64))
     trace_no: Mapped[str | None] = mapped_column(String(128), index=True)
     salesperson: Mapped[str | None] = mapped_column(String(128))
+
+    @validates("usage")
+    def _sync_usage_hash(self, _key: str, value: str) -> str:
+        usage = value if isinstance(value, str) else (value or "")
+        self.usage_hash = hashlib.sha256(usage.encode("utf-8")).hexdigest()[:32]
+        return value
 
     request: Mapped[PurchaseRequest] = relationship(back_populates="lines", lazy="selectin")
     purchase_material: Mapped[PurchaseMaterial | None] = relationship(lazy="selectin")
