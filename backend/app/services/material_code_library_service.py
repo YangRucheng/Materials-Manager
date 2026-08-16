@@ -165,6 +165,16 @@ async def process_import_file(file_path: Path) -> dict[str, object]:
     }
 
 
+async def material_code_exists(session: AsyncSession, material_code: str) -> bool:
+    """编码是否已收录于物料编码库（空前缀精确匹配）。"""
+    if not material_code:
+        return False
+    exists = await session.scalar(
+        select(MaterialCodeLibrary.id).where(MaterialCodeLibrary.material_code == material_code)
+    )
+    return exists is not None
+
+
 async def search_material_codes(
     session: AsyncSession,
     *,

@@ -864,6 +864,11 @@ class MaterialCodeLibraryRead(ReadModel):
     unit_name: str
 
 
+class MaterialCodeExistsRead(ReadModel):
+    material_code: str
+    exists: bool
+
+
 class MaterialCodeLibraryImportRead(ReadModel):
     imported_count: int
     blank_name_count: int
