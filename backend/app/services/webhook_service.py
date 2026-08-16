@@ -15,7 +15,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from uuid import uuid4
 
 import httpx
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import InvalidToken
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,7 @@ from app.domain.enums import (
 )
 from app.models import WebhookChannel, WebhookDelivery
 from app.schemas import WebhookChannelRead, WebhookChannelUpdate, WebhookTestRequest
-from app.services.common import utc_aware, utcnow
+from app.services.common import fernet, utc_aware, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -50,20 +50,15 @@ class ClaimedDelivery:
     attempts: int
 
 
-def _fernet() -> Fernet:
-    digest = hashlib.sha256(settings.jwt_secret.encode("utf-8")).digest()
-    return Fernet(base64.urlsafe_b64encode(digest))
-
-
 def _encrypt(value: str) -> str:
-    return _fernet().encrypt(value.encode("utf-8")).decode("ascii")
+    return fernet().encrypt(value.encode("utf-8")).decode("ascii")
 
 
 def _decrypt(value: str) -> str:
     if not value:
         return ""
     try:
-        return _fernet().decrypt(value.encode("ascii")).decode("utf-8")
+        return fernet().decrypt(value.encode("ascii")).decode("utf-8")
     except InvalidToken as exc:
         raise AppError(
             "WEBHOOK_CREDENTIAL_DECRYPT_FAILED",
