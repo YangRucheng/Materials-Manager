@@ -50,6 +50,12 @@ def _utcnow() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+def _hash_api_token(token: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 class AuditMixin:
     created_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now()
@@ -62,13 +68,17 @@ class AuditMixin:
 
 class User(Base):
     __tablename__ = "user"
+    __allow_unmapped__ = True
 
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_token: Mapped[str] = mapped_column(
-        String(36), unique=True, nullable=False, default=lambda: str(uuid4())
+    # 接口令牌只存 SHA-256 哈希，明文仅在建/重新生成时返回一次（见 dictionary_service）。
+    api_token_hash: Mapped[str] = mapped_column(
+        String(64), unique=True, nullable=False, default=lambda: _hash_api_token(str(uuid4()))
     )
+    # 非持久化字段：仅承载最近一次生成/重新生成的明文令牌，用于一次性返回。
+    api_token: str | None = None
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     role: Mapped[Role] = mapped_column(SAEnum(Role), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")

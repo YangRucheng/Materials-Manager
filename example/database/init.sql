@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(64) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
-  `api_token` VARCHAR(36) NOT NULL,
+  `api_token_hash` VARCHAR(64) NOT NULL,
   `display_name` VARCHAR(128) NOT NULL,
   `role` ENUM('SUPER_ADMIN', 'WAREHOUSE_ADMIN', 'PURCHASE_ADMIN', 'READ_ONLY') NOT NULL,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `version` INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT `pk_user` PRIMARY KEY (`id`),
   CONSTRAINT `uq_user_username` UNIQUE (`username`),
-  CONSTRAINT `uq_user_api_token` UNIQUE (`api_token`)
+  CONSTRAINT `uq_user_api_token_hash` UNIQUE (`api_token_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `mini_program_user` (

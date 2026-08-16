@@ -53,13 +53,24 @@ async def test_permanent_api_token_authenticates_from_supported_headers(
         "/api/v1/users",
         headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
     )
-    api_token = next(
-        item["api_token"] for item in users.json()["items"] if item["username"] == "warehouse"
+    warehouse_id = next(
+        item["id"] for item in users.json()["items"] if item["username"] == "warehouse"
     )
+    # 令牌只在重新生成接口一次性返回（库中只存哈希）。
+    regenerated = await client.post(
+        f"/api/v1/users/{warehouse_id}/api-token/regenerate",
+        headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
+        json={"version": next(
+            item["version"] for item in users.json()["items"] if item["username"] == "warehouse"
+        )},
+    )
+    assert regenerated.status_code == 200, regenerated.text
+    api_token = regenerated.json()["api_token"]
     parsed = UUID(api_token)
     assert parsed.version == 4
     assert str(parsed) == api_token
     assert "api_token" not in admin_login.json()["user"]
+    assert all(item["api_token"] is None for item in users.json()["items"])
 
     for headers in (
         {"X-API-Token": api_token},

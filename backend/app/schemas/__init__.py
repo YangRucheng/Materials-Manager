@@ -121,7 +121,8 @@ class UserRead(ReadModel):
 
 
 class UserApiTokenRead(UserRead):
-    api_token: ApiToken
+    # 令牌明文仅在新建/重新生成接口中返回一次；列表读取为 None（库中只存哈希）。
+    api_token: ApiToken | None = None
 
 
 class LoginRequest(RequestModel):
