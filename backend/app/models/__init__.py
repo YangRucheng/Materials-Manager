@@ -474,6 +474,19 @@ class BusinessEventLog(Base):
     after_data: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
+class SystemSetting(Base):
+    """系统设置键值表：替代把配置塞进 business_event_log 的做法。"""
+
+    __tablename__ = "system_setting"
+
+    setting_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    setting_value: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    version: Mapped[int] = mapped_column(UINT, default=1, server_default="1", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), onupdate=_utcnow
+    )
+
+
 class WebhookChannel(AuditMixin, Base):
     __tablename__ = "webhook_channel"
 

@@ -64,6 +64,14 @@ CREATE TABLE IF NOT EXISTS `business_event_log` (
   INDEX `ix_business_event_entity` (`business_type`, `business_id`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `system_setting` (
+  `setting_key` VARCHAR(64) NOT NULL,
+  `setting_value` JSON NOT NULL,
+  `version` INT UNSIGNED NOT NULL DEFAULT 1,
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_system_setting` PRIMARY KEY (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `webhook_channel` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `platform` ENUM('FEISHU', 'DINGTALK') NOT NULL,
