@@ -242,15 +242,17 @@ async def next_purchase_plan_no(session: AsyncSession, plan_date: date) -> str:
     prefix = f"PLAN-{plan_date:%Y%m%d}-"
     # 计划号同时存在于 purchase_material 与记录行快照 plan_no_snapshot，
     # 取两者最大值，保证新建计划号与已清理计划留下的快照号不冲突。
+    # with_for_update()：锁读（current read）让并发创建时后到的事务能看到
+    # 已提交的撞号行，配合 create_purchase_material 的保存点重试避免 MAX+1 竞态。
     material_max = await session.scalar(
-        select(func.max(PurchaseMaterial.plan_no)).where(
-            PurchaseMaterial.plan_no.like(prefix + "%")
-        )
+        select(func.max(PurchaseMaterial.plan_no))
+        .where(PurchaseMaterial.plan_no.like(prefix + "%"))
+        .with_for_update()
     )
     snapshot_max = await session.scalar(
-        select(func.max(PurchaseRequestLine.plan_no_snapshot)).where(
-            PurchaseRequestLine.plan_no_snapshot.like(prefix + "%")
-        )
+        select(func.max(PurchaseRequestLine.plan_no_snapshot))
+        .where(PurchaseRequestLine.plan_no_snapshot.like(prefix + "%"))
+        .with_for_update()
     )
     previous = max((value for value in (material_max, snapshot_max) if value), default=None)
     index = int(previous.rsplit("-", 1)[-1]) + 1 if previous else 1
@@ -271,33 +273,45 @@ async def create_purchase_material(
     stock = await _validate_stock_link(session, data.stock_material_id)
     files = await _files(session, data.image_ids)
     plan_date = data.plan_date or datetime.now(SHANGHAI).date()
-    item = PurchaseMaterial(
-        plan_no=await next_purchase_plan_no(session, plan_date),
-        plan_date=plan_date,
-        material_code=data.material_code,
-        category=data.category,
-        urgency=data.urgency,
-        demand_department=data.demand_department,
-        name=data.name,
-        model_spec=data.model_spec,
-        unit_name=data.unit_name,
-        actual_demand_person=data.actual_demand_person or responsible,
-        purchase_responsible=responsible,
-        planned_qty=data.planned_qty,
-        usage=data.usage,
-        subitem_no=data.subitem_no,
-        remark=data.remark,
-        stock_material_id=data.stock_material_id,
-        status=data.status,
-        images=[
-            PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
-            for index, file in enumerate(files)
-        ],
+    # 并发同日创建可能拿到相同 MAX+1 序号，撞 uq_purchase_material_plan_no；
+    # 用保存点重试：撞号后回滚保存点再取新序号，最多 3 次。
+    for _attempt in range(3):
+        try:
+            async with session.begin_nested():
+                item = PurchaseMaterial(
+                    plan_no=await next_purchase_plan_no(session, plan_date),
+                    plan_date=plan_date,
+                    material_code=data.material_code,
+                    category=data.category,
+                    urgency=data.urgency,
+                    demand_department=data.demand_department,
+                    name=data.name,
+                    model_spec=data.model_spec,
+                    unit_name=data.unit_name,
+                    actual_demand_person=data.actual_demand_person or responsible,
+                    purchase_responsible=responsible,
+                    planned_qty=data.planned_qty,
+                    usage=data.usage,
+                    subitem_no=data.subitem_no,
+                    remark=data.remark,
+                    stock_material_id=data.stock_material_id,
+                    status=data.status,
+                    images=[
+                        PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
+                        for index, file in enumerate(files)
+                    ],
+                )
+                item.stock_material = stock
+                session.add(item)
+                await session.flush()
+            return item
+        except IntegrityError:
+            continue
+    raise AppError(
+        "PLAN_NO_CONFLICT",
+        "计划号生成冲突，请稍后重试",
+        status_code=409,
     )
-    item.stock_material = stock
-    session.add(item)
-    await session.flush()
-    return item
 
 
 async def update_purchase_material(
