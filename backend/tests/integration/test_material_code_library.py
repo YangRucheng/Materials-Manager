@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from io import BytesIO
+import csv
+from io import BytesIO, StringIO
 
 import pytest
+import xlwt
 from httpx import AsyncClient
 from openpyxl import Workbook
 
@@ -20,6 +22,28 @@ def build_workbook(rows: list[list[object]]) -> bytes:
     workbook.save(content)
     workbook.close()
     return content.getvalue()
+
+
+def build_csv(rows: list[list[object]]) -> bytes:
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["状态", "编码", "名称", "记账单位名称", "型号", "其他列"])
+    for row in rows:
+        writer.writerow(row)
+    return buffer.getvalue().encode("utf-8")
+
+
+def build_xls(rows: list[list[object]]) -> bytes:
+    workbook = xlwt.Workbook()
+    worksheet = workbook.add_sheet("Sheet1")
+    for column, value in enumerate(["状态", "编码", "名称", "记账单位名称", "型号", "其他列"]):
+        worksheet.write(0, column, value)
+    for row_index, row in enumerate(rows, start=1):
+        for column, value in enumerate(row):
+            worksheet.write(row_index, column, value)
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
 
 
 async def _submit_import(
@@ -265,3 +289,50 @@ async def test_material_code_exists_soft_check(client: AsyncClient) -> None:
         params={"material_code": "X"},
     )
     assert empty.json() == {"material_code": "X", "exists": False}
+
+
+@pytest.mark.asyncio
+async def test_import_csv(client: AsyncClient) -> None:
+    purchase_headers = await auth_headers(client, "purchase")
+    response = await _submit_import(
+        client,
+        purchase_headers,
+        "codes.csv",
+        build_csv([["生效", "C001", "按钮", "个", "LA38", "忽略"]]),
+    )
+    assert response.status_code == 202, response.text
+    job = await _wait_job(client, purchase_headers, response.json()["id"])
+    assert job["status"] == "SUCCEEDED", job
+    assert job["result"] == {
+        "imported_count": 1,
+        "blank_name_count": 0,
+        "blank_model_spec_count": 0,
+    }
+
+    listed = await client.get("/api/v1/material-code-library", headers=purchase_headers)
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["material_code"] == "C001"
+
+
+@pytest.mark.asyncio
+async def test_import_xls(client: AsyncClient) -> None:
+    purchase_headers = await auth_headers(client, "purchase")
+    response = await _submit_import(
+        client,
+        purchase_headers,
+        "codes.xls",
+        build_xls([["生效", "X001", "接触器", "个", "CJX2", "忽略"]]),
+    )
+    assert response.status_code == 202, response.text
+    job = await _wait_job(client, purchase_headers, response.json()["id"])
+    assert job["status"] == "SUCCEEDED", job
+    assert job["result"] == {
+        "imported_count": 1,
+        "blank_name_count": 0,
+        "blank_model_spec_count": 0,
+    }
+
+    listed = await client.get("/api/v1/material-code-library", headers=purchase_headers)
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["items"][0]["material_code"] == "X001"
