@@ -1,13 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from io import BytesIO
 from pathlib import Path
-from zipfile import BadZipFile
 
-from openpyxl import Workbook, load_workbook  # type: ignore[import-untyped]
-from openpyxl.utils.exceptions import InvalidFileException  # type: ignore[import-untyped]
-from openpyxl.worksheet.worksheet import Worksheet  # type: ignore[import-untyped]
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +11,7 @@ from app.core.errors import AppError
 from app.models import MaterialCodeLibrary
 from app.schemas import MaterialCodeLibraryRead
 from app.services.common import contains_any
+from app.services.import_file_reader import read_tabular_rows
 
 EXPECTED_HEADERS = ("编码", "名称", "型号", "记账单位名称")
 MAX_IMPORT_BYTES = 50 * 1024 * 1024
@@ -39,44 +35,30 @@ def _validate_length(value: str, maximum: int, *, row_number: int, header: str) 
         )
 
 
-def _load_workbook(source: Path | bytes) -> Workbook:
-    try:
-        if isinstance(source, Path):
-            return load_workbook(source, read_only=True, data_only=True)
-        return load_workbook(BytesIO(source), read_only=True, data_only=True)
-    except (BadZipFile, InvalidFileException, OSError, ValueError) as exc:
-        raise AppError("INVALID_EXCEL_FILE", "无法读取 Excel 文件，请确认文件格式正确") from exc
-    except Exception as exc:
-        raise AppError(
-            "INVALID_EXCEL_FILE",
-            "读取 Excel 文件时发生未知错误，请确认文件未被损坏",
-        ) from exc
-
-
-def _parse_material_codes(worksheet: Worksheet) -> list[dict[str, str | None]]:
-    header_row_number = 0
+def _parse_material_codes(rows: list[list[object]]) -> list[dict[str, str | None]]:
+    header_row_index = 0
     header_indexes: dict[str, int] = {}
-    for row_number, row in enumerate(worksheet.iter_rows(min_row=1, max_row=20), start=1):
-        headers = [_cell_text(cell.value) for cell in row]
-        indexes = {header: index for index, header in enumerate(headers) if header}
+    for index in range(min(20, len(rows))):
+        headers = [_cell_text(cell) for cell in rows[index]]
+        indexes = {header: i for i, header in enumerate(headers) if header}
         if all(header in indexes for header in EXPECTED_HEADERS):
-            header_row_number = row_number
+            header_row_index = index
             header_indexes = {header: indexes[header] for header in EXPECTED_HEADERS}
             break
     if not header_indexes:
         raise AppError(
             "MATERIAL_CODE_IMPORT_HEADERS_MISSING",
-            "Excel 缺少必需列：编码、名称、型号、记账单位名称",
+            "表格缺少必需列：编码、名称、型号、记账单位名称",
         )
 
-    rows: list[dict[str, str | None]] = []
+    parsed: list[dict[str, str | None]] = []
     seen_codes: dict[str, int] = {}
-    for row_number, row in enumerate(
-        worksheet.iter_rows(min_row=header_row_number + 1), start=header_row_number + 1
-    ):
+    for index in range(header_row_index + 1, len(rows)):
+        row_number = index + 1
+        row = rows[index]
         values = {
-            header: _cell_text(row[index].value) if index < len(row) else ""
-            for header, index in header_indexes.items()
+            header: _cell_text(row[column]) if column < len(row) else ""
+            for header, column in header_indexes.items()
         }
         if not any(values.values()):
             continue
@@ -113,7 +95,7 @@ def _parse_material_codes(worksheet: Worksheet) -> list[dict[str, str | None]]:
             values["记账单位名称"], 32, row_number=row_number, header="记账单位名称"
         )
         seen_codes[material_code] = row_number
-        rows.append(
+        parsed.append(
             {
                 "material_code": material_code,
                 "name": values["名称"] or None,
@@ -121,29 +103,13 @@ def _parse_material_codes(worksheet: Worksheet) -> list[dict[str, str | None]]:
                 "unit_name": values["记账单位名称"],
             }
         )
-    if not rows:
-        raise AppError("MATERIAL_CODE_IMPORT_EMPTY", "Excel 中没有可导入的物料编码数据")
-    return rows
+    if not parsed:
+        raise AppError("MATERIAL_CODE_IMPORT_EMPTY", "表格中没有可导入的物料编码数据")
+    return parsed
 
 
-def parse_material_code_workbook(content: bytes) -> list[dict[str, str | None]]:
-    if not content:
-        raise AppError("EMPTY_EXCEL_FILE", "请选择需要导入的 Excel 文件")
-    if len(content) > MAX_IMPORT_BYTES:
-        raise AppError("EXCEL_FILE_TOO_LARGE", "Excel 文件不能超过 50 MB")
-    workbook = _load_workbook(content)
-    try:
-        return _parse_material_codes(workbook.active)
-    finally:
-        workbook.close()
-
-
-def parse_material_code_workbook_file(path: Path) -> list[dict[str, str | None]]:
-    workbook = _load_workbook(path)
-    try:
-        return _parse_material_codes(workbook.active)
-    finally:
-        workbook.close()
+def parse_material_code_file(path: Path) -> list[dict[str, str | None]]:
+    return _parse_material_codes(read_tabular_rows(path))
 
 
 async def process_import_file(file_path: Path) -> dict[str, object]:
@@ -151,7 +117,7 @@ async def process_import_file(file_path: Path) -> dict[str, object]:
 
     解析发生在任何变更之前，坏文件不会动到现有数据。
     """
-    rows = await asyncio.to_thread(parse_material_code_workbook_file, file_path)
+    rows = await asyncio.to_thread(parse_material_code_file, file_path)
     async with SessionLocal() as session:
         await session.execute(delete(MaterialCodeLibrary))
         for offset in range(0, len(rows), INSERT_BATCH_SIZE):

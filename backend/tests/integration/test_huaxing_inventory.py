@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from io import BytesIO
+import csv
+from io import BytesIO, StringIO
 
 import pytest
+import xlwt
 from httpx import AsyncClient
 from openpyxl import Workbook
 
@@ -45,6 +47,28 @@ def build_report(rows: list[list[object]], *, first_header: str = "首次入库�
     workbook.save(content)
     workbook.close()
     return content.getvalue()
+
+
+def build_report_csv(rows: list[list[object]]) -> bytes:
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(REPORT_HEADERS)
+    for row in rows:
+        writer.writerow(row)
+    return buffer.getvalue().encode("utf-8")
+
+
+def build_report_xls(rows: list[list[object]]) -> bytes:
+    workbook = xlwt.Workbook()
+    worksheet = workbook.add_sheet("Sheet1")
+    for column, value in enumerate(REPORT_HEADERS):
+        worksheet.write(0, column, value)
+    for row_index, row in enumerate(rows, start=1):
+        for column, value in enumerate(row):
+            worksheet.write(row_index, column, value)
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
 
 
 def _row(
@@ -275,3 +299,40 @@ async def test_import_rejects_unsupported_extension(client: AsyncClient) -> None
     response = await _submit_import(client, headers, "stock.txt", b"not excel")
     assert response.status_code == 400
     assert response.json()["code"] == "UNSUPPORTED_EXCEL_FILE"
+
+
+@pytest.mark.asyncio
+async def test_import_csv(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    response = await _submit_import(
+        client, headers, "stock.csv", build_report_csv([_row("C001", "按钮")])
+    )
+    assert response.status_code == 202, response.text
+    job = await _wait_job(client, headers, response.json()["id"])
+    assert job["status"] == "SUCCEEDED", job
+    assert job["result"]["imported_count"] == 1
+
+    listed = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "C001"}
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["material_code"] == "C001"
+
+
+@pytest.mark.asyncio
+async def test_import_xls(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    response = await _submit_import(
+        client, headers, "stock.xls", build_report_xls([_row("X001", "接触器")])
+    )
+    assert response.status_code == 202, response.text
+    job = await _wait_job(client, headers, response.json()["id"])
+    assert job["status"] == "SUCCEEDED", job
+    assert job["result"]["imported_count"] == 1
+
+    listed = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "X001"}
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["items"][0]["material_code"] == "X001"
