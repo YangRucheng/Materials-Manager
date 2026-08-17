@@ -178,13 +178,13 @@ function onFileChange(event: Event) {
         :loading="importing"
         @click="openFilePicker"
       >
-        导入 Excel 全量更新
+        导入表格全量更新
       </n-button>
       <input
         ref="fileInput"
         class="hidden-file-input"
         type="file"
-        accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        accept=".xls,.xlsx,.xlsm,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
         @change="onFileChange"
       />
     </div>
