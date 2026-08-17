@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type {
+  ExcelExportJob,
   ExcelImportJob,
   LastImport,
   MaterialCodeExists,
@@ -138,7 +139,7 @@ export const procurementApi = {
       .then((r) => r.data),
   exportMaterialResults: (payload: PurchasePlanResultExportRequest) =>
     apiClient
-      .post<Blob>('/purchase-materials/export-results', payload, { responseType: 'blob' })
+      .post<ExcelExportJob>('/purchase-materials/export-results', payload)
       .then((r) => r.data),
   exportUncodedMaterials: (params?: UncodedMaterialListQuery) =>
     apiClient
@@ -157,9 +158,13 @@ export const procurementApi = {
       .get<PurchaseRecordFilterOptions>('/purchase-records/filter-options')
       .then((r) => r.data),
   exportRecordResults: (payload: PurchaseRecordResultExportRequest) =>
-    apiClient
-      .post<Blob>('/purchase-records/export-results', payload, { responseType: 'blob' })
-      .then((r) => r.data),
+    apiClient.post<ExcelExportJob>('/purchase-records/export-results', payload).then((r) => r.data),
+  /** 异步导出任务状态轮询 */
+  excelExportJob: (jobId: number) =>
+    apiClient.get<ExcelExportJob>(`/excel-export-jobs/${jobId}`).then((r) => r.data),
+  /** 下载异步导出的 Excel 文件（返回 response 以读取 Content-Disposition 文件名） */
+  excelExportJobFile: (jobId: number) =>
+    apiClient.get<Blob>(`/excel-export-jobs/${jobId}/file`, { responseType: 'blob' }),
   record: (lineId: number) =>
     apiClient.get<PurchaseRecord>(`/purchase-records/${lineId}`).then((r) => r.data),
   restoreRecordToPlan: (lineId: number, version: number) =>

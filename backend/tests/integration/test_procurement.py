@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models import PurchaseMaterial, PurchaseRequest, PurchaseRequestLine
-from tests.conftest import auth_headers, create_stock
+from tests.conftest import auth_headers, await_export_job, create_stock
 
 
 async def create_purchase_plan(
@@ -1589,11 +1589,17 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
             "status": "正常",
         },
     )
-    assert plan_export.status_code == 200, plan_export.text
-    assert f"申购计划导出_{date.today():%Y%m%d}.xlsx" in unquote(
-        plan_export.headers["content-disposition"]
+    assert plan_export.status_code == 202, plan_export.text
+    plan_job = await await_export_job(client, headers, plan_export.json()["id"])
+    assert plan_job["status"] == "SUCCEEDED"
+    plan_file = await client.get(
+        f"/api/v1/excel-export-jobs/{plan_job['id']}/file", headers=headers
     )
-    plan_sheet = load_workbook(BytesIO(plan_export.content)).active
+    assert plan_file.status_code == 200, plan_file.text
+    assert f"申购计划导出_{date.today():%Y%m%d}.xlsx" in unquote(
+        plan_file.headers["content-disposition"]
+    )
+    plan_sheet = load_workbook(BytesIO(plan_file.content)).active
     assert [plan_sheet.cell(1, column).value for column in range(1, 4)] == [
         "名称",
         "计量单位",
@@ -1630,11 +1636,17 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
             "status": "已申购",
         },
     )
-    assert record_export.status_code == 200, record_export.text
-    assert f"申购记录导出_{date.today():%Y%m%d}.xlsx" in unquote(
-        record_export.headers["content-disposition"]
+    assert record_export.status_code == 202, record_export.text
+    record_job = await await_export_job(client, headers, record_export.json()["id"])
+    assert record_job["status"] == "SUCCEEDED"
+    record_file = await client.get(
+        f"/api/v1/excel-export-jobs/{record_job['id']}/file", headers=headers
     )
-    record_sheet = load_workbook(BytesIO(record_export.content)).active
+    assert record_file.status_code == 200, record_file.text
+    assert f"申购记录导出_{date.today():%Y%m%d}.xlsx" in unquote(
+        record_file.headers["content-disposition"]
+    )
+    record_sheet = load_workbook(BytesIO(record_file.content)).active
     assert [record_sheet.cell(1, column).value for column in range(1, 7)] == [
         "物资名称",
         "物资型号",
@@ -1666,8 +1678,12 @@ async def test_purchase_record_export_includes_subitem_no(client: AsyncClient) -
         headers=headers,
         json={"columns": ["material_name", "subitem_no", "status"]},
     )
-    assert export.status_code == 200, export.text
-    sheet = load_workbook(BytesIO(export.content)).active
+    assert export.status_code == 202, export.text
+    job = await await_export_job(client, headers, export.json()["id"])
+    assert job["status"] == "SUCCEEDED"
+    file = await client.get(f"/api/v1/excel-export-jobs/{job['id']}/file", headers=headers)
+    assert file.status_code == 200, file.text
+    sheet = load_workbook(BytesIO(file.content)).active
     assert [sheet.cell(1, column).value for column in range(1, 4)] == [
         "物资名称",
         "子项号",
@@ -1701,8 +1717,15 @@ async def test_result_exports_embed_original_images(client: AsyncClient) -> None
         headers=headers,
         json={"columns": ["name", "images"], "name": "带图导出电机"},
     )
-    assert plan_export.status_code == 200, plan_export.text
-    plan_sheet = load_workbook(BytesIO(plan_export.content)).active
+    assert plan_export.status_code == 202, plan_export.text
+    plan_job = await await_export_job(client, headers, plan_export.json()["id"])
+    assert plan_job["status"] == "SUCCEEDED"
+    assert plan_job["result"]["image_count"] == 1
+    plan_file = await client.get(
+        f"/api/v1/excel-export-jobs/{plan_job['id']}/file", headers=headers
+    )
+    assert plan_file.status_code == 200, plan_file.text
+    plan_sheet = load_workbook(BytesIO(plan_file.content)).active
     assert len(plan_sheet._images) == 1
 
     await move_to_record(client, headers, int(motor["id"]))
@@ -1712,8 +1735,15 @@ async def test_result_exports_embed_original_images(client: AsyncClient) -> None
         headers=headers,
         json={"columns": ["material_name", "images"], "name": "带图导出电机"},
     )
-    assert record_export.status_code == 200, record_export.text
-    record_sheet = load_workbook(BytesIO(record_export.content)).active
+    assert record_export.status_code == 202, record_export.text
+    record_job = await await_export_job(client, headers, record_export.json()["id"])
+    assert record_job["status"] == "SUCCEEDED"
+    assert record_job["result"]["image_count"] == 1
+    record_file = await client.get(
+        f"/api/v1/excel-export-jobs/{record_job['id']}/file", headers=headers
+    )
+    assert record_file.status_code == 200, record_file.text
+    record_sheet = load_workbook(BytesIO(record_file.content)).active
     assert len(record_sheet._images) == 1
 
 

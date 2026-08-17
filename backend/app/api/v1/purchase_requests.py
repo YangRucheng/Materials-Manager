@@ -1,8 +1,12 @@
-from decimal import Decimal
-from typing import Annotated, Literal
+from __future__ import annotations
 
-from fastapi import APIRouter, Query
-from fastapi.responses import Response
+import asyncio
+import functools
+from decimal import Decimal
+from pathlib import Path
+from typing import Annotated, Any, Literal
+
+from fastapi import APIRouter, Query, status
 
 from app.api.deps import (
     OrSearch,
@@ -14,10 +18,12 @@ from app.api.deps import (
     StatusFilter,
 )
 from app.core.constants import EXPORT_ROW_LIMIT
+from app.core.database import SessionLocal
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter
 from app.schemas import (
     BatchUpdatePurchaseRecordsRequest,
+    ExcelExportJobRead,
     Page,
     PurchaseMaterialRead,
     PurchaseRecordFilterOptions,
@@ -28,6 +34,7 @@ from app.schemas import (
 )
 from app.services import (
     ai_search_service,
+    excel_export_job_service,
     excel_export_service,
     file_service,
     material_service,
@@ -169,77 +176,102 @@ async def purchase_record_filter_options(
     )
 
 
-@router.post("/purchase-records/export-results")
+@router.post(
+    "/purchase-records/export-results",
+    response_model=ExcelExportJobRead,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def export_purchase_record_results(
     data: PurchaseRecordResultExportRequest,
-    session: DbSession,
     user: CurrentUser,
-) -> Response:
-    items, total = await service.search_purchase_records(
-        session,
-        status=data.status,
-        empty_status=data.empty_status,
-        keyword=None,
-        search_field=None,
-        search_value=None,
-        purchase_order_no=data.purchase_order_no,
-        trace_no=data.trace_no,
-        category=data.category,
-        name=data.name,
-        model_spec=data.model_spec,
-        actual_demand_person=data.actual_demand_person,
-        purchase_responsible=data.purchase_responsible,
-        salesperson=data.salesperson,
-        subitem_no=data.subitem_no,
-        empty_subitem_no=data.empty_subitem_no,
-        page=1,
-        page_size=EXPORT_ROW_LIMIT + 1,
-        sort_by=data.sort_by,
-        sort_order=data.sort_order,
+) -> ExcelExportJobRead:
+    """查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。"""
+    return await excel_export_job_service.enqueue_export(
+        export_type="PURCHASE_RECORD_RESULTS",
+        params=data.model_dump(mode="json"),
+        processor=functools.partial(_process_record_export, data=data),
+        created_by=user.id,
     )
-    if total > EXPORT_ROW_LIMIT:
-        raise AppError(
-            "EXPORT_RESULT_LIMIT_EXCEEDED",
-            f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
-            status_code=400,
-            details={"total": total, "limit": EXPORT_ROW_LIMIT},
+
+
+async def _process_record_export(
+    target: Path, *, data: PurchaseRecordResultExportRequest
+) -> dict[str, object]:
+    """申购记录导出处理器：查库 + 拼行 + 渲染图片 Excel（CPU 密集走 to_thread）。"""
+    async with SessionLocal() as session:
+        items, total = await service.search_purchase_records(
+            session,
+            status=data.status,
+            empty_status=data.empty_status,
+            keyword=None,
+            search_field=None,
+            search_value=None,
+            purchase_order_no=data.purchase_order_no,
+            trace_no=data.trace_no,
+            category=data.category,
+            name=data.name,
+            model_spec=data.model_spec,
+            actual_demand_person=data.actual_demand_person,
+            purchase_responsible=data.purchase_responsible,
+            salesperson=data.salesperson,
+            subitem_no=data.subitem_no,
+            empty_subitem_no=data.empty_subitem_no,
+            page=1,
+            page_size=EXPORT_ROW_LIMIT + 1,
+            sort_by=data.sort_by,
+            sort_order=data.sort_order,
         )
-    rows = []
-    for item in items:
-        record = service.purchase_record_read(item)
-        rows.append(
-            {
-                "purchase_qty": f"{_quantity_text(record.purchase_qty)} {record.unit_name}",
-                "plan_date": record.plan_date,
-                "purchase_order_no": record.purchase_order_no,
-                "trace_no": record.trace_no,
-                "contract_no": record.contract_no,
-                "vessel_no": record.vessel_no,
-                "consolidation_date": record.consolidation_date,
-                "consolidation_port": record.consolidation_port,
-                "sailing_date": record.sailing_date,
-                "category": record.category,
-                "demand_department": record.demand_department,
-                "material_name": record.material_name,
-                "model_spec": record.model_spec,
-                "material_code": record.material_code,
-                "actual_demand_person": record.actual_demand_person,
-                "usage": record.usage,
-                "purchase_responsible": record.purchase_responsible,
-                "salesperson": record.salesperson,
-                "status": record.status,
-                "purchase_date": record.purchase_date,
-                "subitem_no": record.subitem_no,
-                "images": [
-                    file_service.file_path(image.id)
-                    for image in record.images
-                    if file_service.file_path(image.id).is_file()
-                ],
-            }
-        )
-    columns = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
-    return excel_export_service.excel_response(*excel_export_service.render_result_excel(
-      "申购记录导出", columns, rows))
+        if total > EXPORT_ROW_LIMIT:
+            raise AppError(
+                "EXPORT_RESULT_LIMIT_EXCEEDED",
+                f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
+                status_code=400,
+                details={"total": total, "limit": EXPORT_ROW_LIMIT},
+            )
+        rows: list[dict[str, Any]] = []
+        for item in items:
+            record = service.purchase_record_read(item)
+            image_paths = [
+                file_service.file_path(image.id)
+                for image in record.images
+                if file_service.file_path(image.id).is_file()
+            ]
+            rows.append(
+                {
+                    "purchase_qty": f"{_quantity_text(record.purchase_qty)} {record.unit_name}",
+                    "plan_date": record.plan_date,
+                    "purchase_order_no": record.purchase_order_no,
+                    "trace_no": record.trace_no,
+                    "contract_no": record.contract_no,
+                    "vessel_no": record.vessel_no,
+                    "consolidation_date": record.consolidation_date,
+                    "consolidation_port": record.consolidation_port,
+                    "sailing_date": record.sailing_date,
+                    "category": record.category,
+                    "demand_department": record.demand_department,
+                    "material_name": record.material_name,
+                    "model_spec": record.model_spec,
+                    "material_code": record.material_code,
+                    "actual_demand_person": record.actual_demand_person,
+                    "usage": record.usage,
+                    "purchase_responsible": record.purchase_responsible,
+                    "salesperson": record.salesperson,
+                    "status": record.status,
+                    "purchase_date": record.purchase_date,
+                    "subitem_no": record.subitem_no,
+                    "images": image_paths,
+                }
+            )
+    columns: list[tuple[str, str]] = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
+    content, filename = await asyncio.to_thread(
+        excel_export_service.render_result_excel, "申购记录导出", columns, rows
+    )
+    await asyncio.to_thread(excel_export_service.write_export_file, target, content)
+    return {
+        "download_filename": filename,
+        "rows": len(rows),
+        "image_count": sum(len(row.get("images") or []) for row in rows),
+    }
 
 
 @router.patch("/purchase-records/batch", response_model=list[PurchaseRecordRead])

@@ -154,6 +154,27 @@ CREATE TABLE IF NOT EXISTS `excel_import_job` (
   INDEX `ix_excel_import_job_type_status` (`import_type`, `status`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `excel_export_job` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `export_type` VARCHAR(32) NOT NULL,
+  `status` ENUM('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED') NOT NULL DEFAULT 'PENDING',
+  `download_filename` VARCHAR(255) NULL,
+  `file_path` VARCHAR(500) NULL,
+  `params` JSON NULL,
+  `result` JSON NULL,
+  `error_code` VARCHAR(64) NULL,
+  `error_message` VARCHAR(1000) NULL,
+  `created_by` BIGINT UNSIGNED NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `started_at` DATETIME(6) NULL,
+  `finished_at` DATETIME(6) NULL,
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_excel_export_job` PRIMARY KEY (`id`),
+  CONSTRAINT `fk_excel_export_job_created_by_user`
+    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
+  INDEX `ix_excel_export_job_type_status` (`export_type`, `status`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `huaxing_inventory` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `first_inbound_date` DATE NULL,

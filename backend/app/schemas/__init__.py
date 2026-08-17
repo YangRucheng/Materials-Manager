@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from app.domain.enums import (
+    ExcelExportJobStatus,
     ExcelImportJobStatus,
     MiniProgramCodeEnv,
     MiniProgramFeatureMode,
@@ -888,6 +889,20 @@ class ExcelImportJobRead(ReadModel):
     finished_at: UtcDateTime | None = None
 
 
+class ExcelExportJobRead(ReadModel):
+    id: int
+    export_type: str
+    status: ExcelExportJobStatus
+    download_filename: str | None = None
+    params: dict[str, Any] | None = None
+    result: dict[str, Any] | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: UtcDateTime
+    started_at: UtcDateTime | None = None
+    finished_at: UtcDateTime | None = None
+
+
 class HuaXingInventoryRead(ReadModel):
     id: int
     first_inbound_date: date | None = None
@@ -900,6 +915,12 @@ class HuaXingInventoryRead(ReadModel):
     purchaser: str | None = None
     purchase_department: str | None = None
     subitem_no_name: str | None = None
+
+
+class HuaXingFilterOptions(ReadModel):
+    warehouses: list[str]
+    purchase_departments: list[str]
+    purchasers: list[str]
 
 
 class LastImportRead(ReadModel):
