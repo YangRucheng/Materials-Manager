@@ -33,6 +33,10 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# 全测试共享单个事件循环：引擎/连接（含 sqlite StaticPool 单连接）只在同一 loop 上使用，
+# 避免“后台任务 + HTTP 轮询并发访问同一连接”时跨 loop 锁竞争导致的偶发死锁。
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 
 [tool.ruff]

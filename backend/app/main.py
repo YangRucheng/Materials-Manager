@@ -18,6 +18,7 @@ from app.core.middleware import RealIPMiddleware, RefererCORSMiddleware, request
 from app.mcp_server import bind_application, mcp, mcp_http_app
 from app.services import (
     ai_search_service,
+    excel_export_job_service,
     import_job_service,
     purchase_plan_cleanup_service,
     webhook_service,
@@ -41,6 +42,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     purged_import_jobs = await import_job_service.cleanup_finished_jobs()
     if purged_import_jobs:
         logger.info("purged %s finished excel import jobs", purged_import_jobs)
+    stale_export_jobs = await excel_export_job_service.mark_stale_exports_failed()
+    if stale_export_jobs:
+        logger.info("marked %s stale excel export jobs as failed", stale_export_jobs)
+    purged_export_jobs = await excel_export_job_service.cleanup_finished_exports()
+    if purged_export_jobs:
+        logger.info("purged %s expired excel export jobs", purged_export_jobs)
     webhook_stop_event = asyncio.Event()
     webhook_worker = asyncio.create_task(
         webhook_service.run_delivery_worker(webhook_stop_event),
@@ -53,6 +60,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             purchase_plan_cleanup_service.run_cleanup_worker(cleanup_stop_event),
             name="purchase-plan-cleanup-worker",
         )
+    export_cleanup_stop_event = asyncio.Event()
+    export_cleanup_worker = asyncio.create_task(
+        excel_export_job_service.run_cleanup_worker(export_cleanup_stop_event),
+        name="excel-export-cleanup-worker",
+    )
     try:
         async with mcp.session_manager.run():
             yield
@@ -63,6 +75,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         cleanup_stop_event.set()
         if cleanup_worker is not None:
             await cleanup_worker
+        export_cleanup_stop_event.set()
+        await export_cleanup_worker
         await ai_search_service.close_client()
 
 

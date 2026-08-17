@@ -13,6 +13,7 @@ import type {
   PurchaseRecord,
   PurchaseRecordBatchUpdate,
   PurchaseRecordFilterOptions,
+  PurchaseRecordResultExportRequest,
   PurchaseRecordWrite,
 } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
@@ -33,8 +34,9 @@ import {
 } from '@/constants/table'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { dateToTimestamp, formatDate, toShanghaiDate } from '@/utils/time'
-import { downloadBlob } from '@/utils/download'
+import { downloadBlobWithDisposition } from '@/utils/download'
 import { routeQueryString } from '@/utils/routeQuery'
+import { useExportJob } from '@/composables/useExportJob'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
@@ -173,12 +175,17 @@ const {
 const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
-const resultExporting = ref(false)
 const batchUpdating = ref(false)
 const showBatchEdit = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
+// 异步导出（含图片渲染耗时较长）：提交 202 秒回 → 轮询 → 下载
+const { running: resultExporting, run: runResultExport } =
+  useExportJob<PurchaseRecordResultExportRequest>({
+    start: procurementApi.exportRecordResults,
+    poll: procurementApi.excelExportJob,
+  })
 // 单条编辑弹窗（点击行打开，与申购计划一致）
 const showEdit = ref(false)
 const editing = ref<PurchaseRecord | null>(null)
@@ -665,9 +672,8 @@ async function exportResults() {
     message.warning('请至少显示一个字段')
     return
   }
-  resultExporting.value = true
   try {
-    const content = await procurementApi.exportRecordResults({
+    const job = await runResultExport({
       columns: exportColumns,
       name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
@@ -686,13 +692,17 @@ async function exportResults() {
       sort_by: filters.sort_by || undefined,
       sort_order: filters.sort_order || 'asc',
     })
+    const response = await procurementApi.excelExportJobFile(job.id)
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
-    downloadBlob(content, `申购记录导出_${date}.xlsx`)
-    message.success('查询结果已导出')
+    downloadBlobWithDisposition(
+      response.data,
+      response.headers['content-disposition'],
+      job.download_filename ?? `申购记录导出_${date}.xlsx`,
+    )
+    const rows = job.result?.rows
+    message.success(rows != null ? `查询结果已导出（${rows} 行）` : '查询结果已导出')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导出失败')
-  } finally {
-    resultExporting.value = false
   }
 }
 

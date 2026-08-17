@@ -1049,7 +1049,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Export Material Results */
+        /**
+         * Export Material Results
+         * @description 查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。
+         */
         post: operations["export_material_results_api_v1_purchase_materials_export_results_post"];
         delete?: never;
         options?: never;
@@ -1255,7 +1258,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Export Purchase Record Results */
+        /**
+         * Export Purchase Record Results
+         * @description 查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。
+         */
         post: operations["export_purchase_record_results_api_v1_purchase_records_export_results_post"];
         delete?: never;
         options?: never;
@@ -1362,6 +1368,40 @@ export interface paths {
         put?: never;
         /** Regenerate User Api Token */
         post: operations["regenerate_user_api_token_api_v1_users__item_id__api_token_regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/excel-export-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Export Job */
+        get: operations["get_export_job_api_v1_excel_export_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/excel-export-jobs/{job_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Export Job File */
+        get: operations["download_export_job_file_api_v1_excel_export_jobs__job_id__file_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1693,6 +1733,42 @@ export interface components {
             /** Purchase Record Count */
             purchase_record_count: number;
         };
+        /** ExcelExportJobRead */
+        ExcelExportJobRead: {
+            /** Id */
+            id: number;
+            /** Export Type */
+            export_type: string;
+            status: components["schemas"]["ExcelExportJobStatus"];
+            /** Download Filename */
+            download_filename?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            } | null;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /**
+         * ExcelExportJobStatus
+         * @enum {string}
+         */
+        ExcelExportJobStatus: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
         /** ExcelImportJobRead */
         ExcelImportJobRead: {
             /** Id */
@@ -8028,12 +8104,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ExcelExportJobRead"];
                 };
             };
             /** @description 业务校验失败 */
@@ -9021,12 +9097,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ExcelExportJobRead"];
                 };
             };
             /** @description 业务校验失败 */
@@ -9648,6 +9724,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserApiTokenRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    get_export_job_api_v1_excel_export_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExcelExportJobRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    download_export_job_file_api_v1_excel_export_jobs__job_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description 业务校验失败 */

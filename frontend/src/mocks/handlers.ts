@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type {
   AiSearchSettings,
   AiSearchSettingsWrite,
+  ExcelExportJob,
   ExcelImportJob,
   OperationUpdate,
   OperationWrite,
@@ -353,6 +354,43 @@ const advanceImportJob = (job: ExcelImportJob): ExcelImportJob => {
       : { ...job, status: 'SUCCEEDED', finished_at: new Date().toISOString() }
   importJobs.set(job.id, next)
   return next
+}
+
+// 异步导出任务 mock：POST 返回 PENDING job，每次轮询前进一态，终态后按 id 下载文件。
+const exportJobs = new Map<number, ExcelExportJob>()
+const nextExportJobId = { id: 1 }
+const createExportJob = (exportType: string, downloadFilename: string): ExcelExportJob => {
+  const job: ExcelExportJob = {
+    id: nextExportJobId.id++,
+    export_type: exportType,
+    status: 'PENDING',
+    download_filename: downloadFilename,
+    created_at: new Date().toISOString(),
+  }
+  exportJobs.set(job.id, job)
+  return job
+}
+
+const advanceExportJob = (job: ExcelExportJob): ExcelExportJob => {
+  if (job.status === 'SUCCEEDED' || job.status === 'FAILED') return job
+  const next: ExcelExportJob =
+    job.status === 'PENDING'
+      ? { ...job, status: 'RUNNING', started_at: new Date().toISOString() }
+      : {
+          ...job,
+          status: 'SUCCEEDED',
+          result: { rows: 2, image_count: 1 },
+          finished_at: new Date().toISOString(),
+        }
+  exportJobs.set(job.id, next)
+  return next
+}
+
+const exportWorkbookBytes = (): Uint8Array => {
+  // 最小可用 xlsx（zip 魔数 + 空内容），仅用于前端触发下载流，不做解析。
+  const bytes = new Uint8Array(16)
+  bytes.set([0x50, 0x4b, 0x03, 0x04])
+  return bytes
 }
 
 export const handlers = [
@@ -1399,5 +1437,36 @@ export const handlers = [
     if (!job)
       return HttpResponse.json({ code: 'NOT_FOUND', message: '导入任务不存在' }, { status: 400 })
     return HttpResponse.json(advanceImportJob(job))
+  }),
+  http.post(`${api}/purchase-materials/export-results`, async () => {
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const job = createExportJob('PURCHASE_PLAN_RESULTS', `申购计划导出_${date}.xlsx`)
+    return HttpResponse.json(job, { status: 202 })
+  }),
+  http.post(`${api}/purchase-records/export-results`, async () => {
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const job = createExportJob('PURCHASE_RECORD_RESULTS', `申购记录导出_${date}.xlsx`)
+    return HttpResponse.json(job, { status: 202 })
+  }),
+  http.get(`${api}/excel-export-jobs/:id`, ({ params }) => {
+    const job = exportJobs.get(Number(params.id))
+    if (!job)
+      return HttpResponse.json({ code: 'NOT_FOUND', message: '导出任务不存在' }, { status: 400 })
+    return HttpResponse.json(advanceExportJob(job))
+  }),
+  http.get(`${api}/excel-export-jobs/:id/file`, ({ params }) => {
+    const job = exportJobs.get(Number(params.id))
+    if (!job || job.status !== 'SUCCEEDED')
+      return HttpResponse.json(
+        { code: 'EXPORT_NOT_READY', message: '导出尚未完成，请稍后再试' },
+        { status: 400 },
+      )
+    const filename = job.download_filename ?? 'export.xlsx'
+    return HttpResponse.arrayBuffer(exportWorkbookBytes().buffer, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      },
+    })
   }),
 ]
