@@ -590,23 +590,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/huaxing-inventory/filter-options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Filter Options */
-        get: operations["filter_options_api_v1_huaxing_inventory_filter_options_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/huaxing-inventory/last-import": {
         parameters: {
             query?: never;
@@ -1836,15 +1819,6 @@ export interface components {
             width: number;
             /** Height */
             height: number;
-        };
-        /** HuaXingFilterOptions */
-        HuaXingFilterOptions: {
-            /** Warehouses */
-            warehouses: string[];
-            /** Purchase Departments */
-            purchase_departments: string[];
-            /** Purchasers */
-            purchasers: string[];
         };
         /** HuaXingInventoryRead */
         HuaXingInventoryRead: {
@@ -6140,71 +6114,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_HuaXingInventoryRead_"];
-                };
-            };
-            /** @description 业务校验失败 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description 未认证或凭证无效 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description 权限不足 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description 版本、状态或业务数据冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description 请求参数校验失败 */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    filter_options_api_v1_huaxing_inventory_filter_options_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HuaXingFilterOptions"];
                 };
             };
             /** @description 业务校验失败 */
