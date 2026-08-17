@@ -79,6 +79,29 @@ async def auth_headers(client: AsyncClient, username: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
+async def await_export_job(
+    client: AsyncClient,
+    headers: dict[str, str],
+    job_id: int,
+    *,
+    timeout_seconds: float = 2.0,
+) -> dict:
+    """轮询导出任务直到终态（后台任务与测试同事件循环，正常瞬时完成）。"""
+    import asyncio
+    import time
+
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        response = await client.get(f"/api/v1/excel-export-jobs/{job_id}", headers=headers)
+        assert response.status_code == 200, response.text
+        job = response.json()
+        if job["status"] in ("SUCCEEDED", "FAILED"):
+            return job
+        if time.monotonic() > deadline:
+            raise AssertionError(f"export job {job_id} did not finish: {job}")
+        await asyncio.sleep(0.05)
+
+
 async def create_stock(
     client: AsyncClient, headers: dict[str, str], name: str = "交流接触器"
 ) -> int:

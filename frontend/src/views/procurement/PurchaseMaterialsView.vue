@@ -16,6 +16,7 @@ import type {
   PurchaseFilterOptions,
   PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
+  PurchasePlanResultExportRequest,
   PurchasePlanStatus,
   PurchaseMaterialWrite,
 } from '@/api/generated'
@@ -53,8 +54,9 @@ import {
   purchasePlanStatusOptions,
 } from '@/constants/purchase'
 import { dateToTimestamp, formatDate, toShanghaiDate } from '@/utils/time'
-import { downloadBlob } from '@/utils/download'
+import { downloadBlob, downloadBlobWithDisposition } from '@/utils/download'
 import { routeQueryString } from '@/utils/routeQuery'
+import { useExportJob } from '@/composables/useExportJob'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
 import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
@@ -194,7 +196,12 @@ const {
 const { searchName, applyExpandedName, clearExpandedName } = useImplicitAiSearch(() => filters.name)
 const aiAvailable = ref(false)
 const aiSearching = ref(false)
-const resultExporting = ref(false)
+// 异步导出（含图片渲染耗时较长）：提交 202 秒回 → 轮询 → 下载
+const { running: resultExporting, run: runResultExport } =
+  useExportJob<PurchasePlanResultExportRequest>({
+    start: procurementApi.exportMaterialResults,
+    poll: procurementApi.excelExportJob,
+  })
 const show = ref(false)
 const editing = ref<PurchaseMaterial | null>(null)
 const showBatch = ref(false)
@@ -640,13 +647,12 @@ async function exportResults() {
     message.warning('请至少显示一个字段')
     return
   }
-  resultExporting.value = true
   try {
     const actualDemandPerson =
       filters.actual_demand_person && filters.actual_demand_person !== EMPTY_DEMAND_PERSON_FILTER
         ? filters.actual_demand_person.trim()
         : undefined
-    const content = await procurementApi.exportMaterialResults({
+    const job = await runResultExport({
       columns: exportColumns,
       name: searchName.value,
       model_spec: filters.model_spec.trim() || undefined,
@@ -662,13 +668,17 @@ async function exportResults() {
       sort_by: filters.sort_by || undefined,
       sort_order: filters.sort_order || 'asc',
     })
+    const response = await procurementApi.excelExportJobFile(job.id)
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
-    downloadBlob(content, `申购计划导出_${date}.xlsx`)
-    message.success('查询结果已导出')
+    downloadBlobWithDisposition(
+      response.data,
+      response.headers['content-disposition'],
+      job.download_filename ?? `申购计划导出_${date}.xlsx`,
+    )
+    const rows = job.result?.rows
+    message.success(rows != null ? `查询结果已导出（${rows} 行）` : '查询结果已导出')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导出失败')
-  } finally {
-    resultExporting.value = false
   }
 }
 function openCreate() {

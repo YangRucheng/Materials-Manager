@@ -2277,6 +2277,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/huaxing-inventory/filter-options:
+    get:
+      tags:
+      - 华星库存
+      summary: Filter Options
+      operationId: filter_options_api_v1_huaxing_inventory_filter_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HuaXingFilterOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/huaxing-inventory/last-import:
     get:
       tags:
@@ -4100,6 +4146,7 @@ paths:
       tags:
       - 申购计划
       summary: Export Material Results
+      description: 查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。
       operationId: export_material_results_api_v1_purchase_materials_export_results_post
       requestBody:
         content:
@@ -4108,11 +4155,12 @@ paths:
               $ref: '#/components/schemas/PurchasePlanResultExportRequest'
         required: true
       responses:
-        '200':
+        '202':
           description: Successful Response
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/ExcelExportJobRead'
         '400':
           description: 业务校验失败
           content:
@@ -5125,6 +5173,7 @@ paths:
       tags:
       - 申购记录
       summary: Export Purchase Record Results
+      description: 查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。
       operationId: export_purchase_record_results_api_v1_purchase_records_export_results_post
       requestBody:
         content:
@@ -5133,11 +5182,12 @@ paths:
               $ref: '#/components/schemas/PurchaseRecordResultExportRequest'
         required: true
       responses:
-        '200':
+        '202':
           description: Successful Response
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/ExcelExportJobRead'
         '400':
           description: 业务校验失败
           content:
@@ -5658,6 +5708,113 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserApiTokenRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/excel-export-jobs/{job_id}:
+    get:
+      tags:
+      - 导出任务
+      summary: Get Export Job
+      operationId: get_export_job_api_v1_excel_export_jobs__job_id__get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcelExportJobRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/excel-export-jobs/{job_id}/file:
+    get:
+      tags:
+      - 导出任务
+      summary: Download Export Job File
+      operationId: download_export_job_file_api_v1_excel_export_jobs__job_id__file_get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '400':
           description: 业务校验失败
           content:
@@ -6538,6 +6695,74 @@ components:
       - uncoded_purchase_material_count
       - purchase_record_count
       title: DashboardSummaryRead
+    ExcelExportJobRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        export_type:
+          type: string
+          title: Export Type
+        status:
+          $ref: '#/components/schemas/ExcelExportJobStatus'
+        download_filename:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Download Filename
+        params:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Params
+        result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Result
+        error_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Code
+        error_message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Message
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        started_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Started At
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+      type: object
+      required:
+      - id
+      - export_type
+      - status
+      - created_at
+      title: ExcelExportJobRead
+    ExcelExportJobStatus:
+      type: string
+      enum:
+      - PENDING
+      - RUNNING
+      - SUCCEEDED
+      - FAILED
+      title: ExcelExportJobStatus
     ExcelImportJobRead:
       properties:
         id:
@@ -6630,6 +6855,29 @@ components:
       - width
       - height
       title: FileObjectRead
+    HuaXingFilterOptions:
+      properties:
+        warehouses:
+          items:
+            type: string
+          type: array
+          title: Warehouses
+        purchase_departments:
+          items:
+            type: string
+          type: array
+          title: Purchase Departments
+        purchasers:
+          items:
+            type: string
+          type: array
+          title: Purchasers
+      type: object
+      required:
+      - warehouses
+      - purchase_departments
+      - purchasers
+      title: HuaXingFilterOptions
     HuaXingInventoryRead:
       properties:
         id:

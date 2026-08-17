@@ -1,11 +1,17 @@
+from __future__ import annotations
+
+import asyncio
+import functools
 from datetime import date, timedelta
-from typing import Annotated, Literal
+from pathlib import Path
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 
 from app.api.deps import OrSearch, OrSearch128, OrSearch255, PageNo, PageSize, SortOrder
 from app.core.constants import EXPORT_ROW_LIMIT
+from app.core.database import SessionLocal
 from app.core.errors import AppError
 from app.core.permissions import (
     CurrentUser,
@@ -20,6 +26,7 @@ from app.schemas import (
     ApiError,
     BatchMovePurchasePlansRequest,
     BatchUpdatePurchasePlansRequest,
+    ExcelExportJobRead,
     LinkStockMaterialRequest,
     MovePurchasePlanRequest,
     Page,
@@ -34,6 +41,7 @@ from app.schemas import (
 )
 from app.services import (
     ai_search_service,
+    excel_export_job_service,
     excel_export_service,
     file_service,
     material_service,
@@ -179,12 +187,16 @@ async def create_material(
     return await material_service.purchase_read(session, item)
 
 
-@router.post("/export-results")
+@router.post(
+    "/export-results",
+    response_model=ExcelExportJobRead,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def export_material_results(
     data: PurchasePlanResultExportRequest,
-    session: DbSession,
     user: CurrentUser,
-) -> Response:
+) -> ExcelExportJobRead:
+    """查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。"""
     export_status = [data.status] if isinstance(data.status, PurchasePlanStatus) else data.status
     if user.role != Role.SUPER_ADMIN:
         if export_status and PurchasePlanStatus.ARCHIVED in export_status:
@@ -194,61 +206,90 @@ async def export_material_results(
                 status_code=403,
             )
         export_status = export_status or [PurchasePlanStatus.NORMAL]
-    items, total = await material_service.search_purchase_materials(
-        session,
-        keyword=None,
-        search_field=None,
-        search_value=None,
-        name=data.name,
-        model_spec=data.model_spec,
-        actual_demand_person=data.actual_demand_person,
-        empty_actual_demand_person=data.empty_actual_demand_person,
-        purchase_responsible=None,
-        subitem_no=data.subitem_no,
-        empty_subitem_no=data.empty_subitem_no,
-        category=data.category,
-        status=export_status,
-        coded=None,
-        moved=False,
-        page=1,
-        page_size=EXPORT_ROW_LIMIT + 1,
-        sort_by=data.sort_by,
-        sort_order=data.sort_order,
+    return await excel_export_job_service.enqueue_export(
+        export_type="PURCHASE_PLAN_RESULTS",
+        params=data.model_dump(mode="json"),
+        processor=functools.partial(
+            _process_material_export, data=data, export_status=export_status
+        ),
+        created_by=user.id,
     )
-    if total > EXPORT_ROW_LIMIT:
-        raise AppError(
-            "EXPORT_RESULT_LIMIT_EXCEEDED",
-            f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
-            status_code=400,
-            details={"total": total, "limit": EXPORT_ROW_LIMIT},
+
+
+async def _process_material_export(
+    target: Path,
+    *,
+    data: PurchasePlanResultExportRequest,
+    export_status: list[PurchasePlanStatus] | None,
+) -> dict[str, object]:
+    """申购计划导出处理器：查库 + 拼行 + 渲染图片 Excel（CPU 密集走 to_thread）。
+
+    export_status 由端点按角色在请求期归一化（非超管默认 NORMAL、禁 ARCHIVED），
+    处理器直接沿用，避免后台任务重复依赖用户上下文。
+    """
+    async with SessionLocal() as session:
+        items, total = await material_service.search_purchase_materials(
+            session,
+            keyword=None,
+            search_field=None,
+            search_value=None,
+            name=data.name,
+            model_spec=data.model_spec,
+            actual_demand_person=data.actual_demand_person,
+            empty_actual_demand_person=data.empty_actual_demand_person,
+            purchase_responsible=None,
+            subitem_no=data.subitem_no,
+            empty_subitem_no=data.empty_subitem_no,
+            category=data.category,
+            status=export_status,
+            coded=None,
+            moved=False,
+            page=1,
+            page_size=EXPORT_ROW_LIMIT + 1,
+            sort_by=data.sort_by,
+            sort_order=data.sort_order,
         )
-    rows = [
-        {
-            "plan_no": item.plan_no,
-            "plan_date": item.plan_date,
-            "material_code": item.material_code,
-            "category": item.category,
-            "urgency": item.urgency,
-            "demand_department": item.demand_department,
-            "name": item.name,
-            "model_spec": item.model_spec,
-            "planned_qty": item.planned_qty,
-            "unit_name": item.unit_name,
-            "actual_demand_person": item.actual_demand_person,
-            "purchase_responsible": item.purchase_responsible,
-            "subitem_no": item.subitem_no,
-            "usage": item.usage,
-            "images": [
-                file_service.file_path(link.file.id)
-                for link in item.images
-                if link.file is not None and file_service.file_path(link.file.id).is_file()
-            ],
-        }
-        for item in items
-    ]
-    columns = [(key, PLAN_RESULT_HEADERS[key]) for key in data.columns]
-    return excel_export_service.excel_response(*excel_export_service.render_result_excel(
-      "申购计划导出", columns, rows))
+        if total > EXPORT_ROW_LIMIT:
+            raise AppError(
+                "EXPORT_RESULT_LIMIT_EXCEEDED",
+                f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
+                status_code=400,
+                details={"total": total, "limit": EXPORT_ROW_LIMIT},
+            )
+        rows: list[dict[str, Any]] = [
+            {
+                "plan_no": item.plan_no,
+                "plan_date": item.plan_date,
+                "material_code": item.material_code,
+                "category": item.category,
+                "urgency": item.urgency,
+                "demand_department": item.demand_department,
+                "name": item.name,
+                "model_spec": item.model_spec,
+                "planned_qty": item.planned_qty,
+                "unit_name": item.unit_name,
+                "actual_demand_person": item.actual_demand_person,
+                "purchase_responsible": item.purchase_responsible,
+                "subitem_no": item.subitem_no,
+                "usage": item.usage,
+                "images": [
+                    file_service.file_path(link.file.id)
+                    for link in item.images
+                    if link.file is not None and file_service.file_path(link.file.id).is_file()
+                ],
+            }
+            for item in items
+        ]
+    columns: list[tuple[str, str]] = [(key, PLAN_RESULT_HEADERS[key]) for key in data.columns]
+    content, filename = await asyncio.to_thread(
+        excel_export_service.render_result_excel, "申购计划导出", columns, rows
+    )
+    await asyncio.to_thread(excel_export_service.write_export_file, target, content)
+    return {
+        "download_filename": filename,
+        "rows": len(rows),
+        "image_count": sum(len(row.get("images") or []) for row in rows),
+    }
 
 
 @router.get(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import unicodedata
 from datetime import date
@@ -50,6 +51,13 @@ def excel_response(content: bytes, filename: str) -> Response:
         media_type=XLSX_CONTENT_TYPE,
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
+
+
+def write_export_file(target: Path, content: bytes) -> None:
+    """原子写入导出文件：先写 .tmp 再改名，避免中途失败留下“完成态”文件。"""
+    tmp = target.with_name(f"{target.name}.tmp")
+    tmp.write_bytes(content)
+    os.replace(tmp, target)
 
 
 def _load_spec(file_name: str) -> dict[str, Any]:

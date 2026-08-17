@@ -30,6 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.core.database import Base
 from app.domain.enums import (
+    ExcelExportJobStatus,
     ExcelImportJobStatus,
     OperationType,
     PurchasePlanStatus,
@@ -191,6 +192,49 @@ class HuaXingInventory(Base):
     subitem_no_name: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+
+
+class ExcelExportJob(Base):
+    """异步 Excel 导出任务（申购记录 / 申购计划结果导出共用）。
+
+    与 excel_import_job 对称：PENDING → RUNNING → SUCCEEDED | FAILED。
+    区别在于文件方向相反——file_path 指向后台生成的待下载文件（成功保留至保留期，
+    失败/过期由 excel_export_job_service 清理），download_filename 为下载文件名。
+    """
+
+    __tablename__ = "excel_export_job"
+    __table_args__ = (
+        Index("ix_excel_export_job_type_status", "export_type", "status", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    export_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[ExcelExportJobStatus] = mapped_column(
+        SAEnum(ExcelExportJobStatus),
+        nullable=False,
+        default=ExcelExportJobStatus.PENDING,
+        server_default=ExcelExportJobStatus.PENDING.value,
+    )
+    download_filename: Mapped[str | None] = mapped_column(String(255))
+    file_path: Mapped[str | None] = mapped_column(String(500))
+    # 导出请求参数快照（筛选条件/列），用于排查与潜在的重跑。
+    params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_message: Mapped[str | None] = mapped_column(String(1000))
+    created_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+    finished_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME,
+        default=_utcnow,
+        server_default=func.now(),
+        onupdate=_utcnow,
+        nullable=False,
     )
 
 
@@ -563,6 +607,7 @@ class WebhookDelivery(Base):
 __all__ = [
     "Base",
     "BusinessEventLog",
+    "ExcelExportJob",
     "ExcelImportJob",
     "FileObject",
     "HuaXingInventory",

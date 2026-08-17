@@ -4,6 +4,7 @@ from app.api.v1 import (
     ai_search,
     auth,
     dictionaries,
+    excel_export_jobs,
     files,
     huaxing_inventory,
     inventory,
@@ -40,5 +41,6 @@ router.include_router(purchase_materials.router)
 router.include_router(purchase_record_sync.router)
 router.include_router(purchase_requests.router)
 router.include_router(dictionaries.router)
+router.include_router(excel_export_jobs.router)
 router.include_router(files.router)
 router.include_router(version.router)
