@@ -18,6 +18,7 @@ from app.schemas import (
     Page,
 )
 from app.services import import_job_service, material_code_library_service
+from app.services.import_file_reader import SUPPORTED_IMPORT_SUFFIXES
 
 router = APIRouter(prefix="/material-code-library", tags=["物料编码库"])
 
@@ -77,8 +78,8 @@ async def import_material_codes(
     user: PurchaseWriter,
 ) -> ExcelImportJobRead:
     filename = (file.filename or "").lower()
-    if not filename.endswith((".xlsx", ".xlsm")):
-        raise AppError("UNSUPPORTED_EXCEL_FILE", "仅支持 .xlsx 或 .xlsm 格式的 Excel 文件")
+    if not filename.endswith(SUPPORTED_IMPORT_SUFFIXES):
+        raise AppError("UNSUPPORTED_EXCEL_FILE", "仅支持 .xls、.xlsx 或 .csv 格式的表格文件")
     file_path: Path | None = None
     try:
         file_path = await import_job_service.save_upload(

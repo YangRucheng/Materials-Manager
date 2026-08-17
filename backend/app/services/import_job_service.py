@@ -75,7 +75,7 @@ async def save_upload(upload: UploadFile, *, max_bytes: int) -> Path:
                     break
                 total += len(chunk)
                 if total > max_bytes:
-                    raise AppError("EXCEL_FILE_TOO_LARGE", "Excel 文件不能超过 50 MB")
+                    raise AppError("EXCEL_FILE_TOO_LARGE", "导入文件不能超过 50 MB")
                 fh.write(chunk)
 
     try:

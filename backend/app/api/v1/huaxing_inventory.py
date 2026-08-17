@@ -12,6 +12,7 @@ from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
 from app.schemas import ExcelImportJobRead, HuaXingInventoryRead, LastImportRead, Page
 from app.services import huaxing_inventory_service, import_job_service
+from app.services.import_file_reader import SUPPORTED_IMPORT_SUFFIXES
 
 router = APIRouter(prefix="/huaxing-inventory", tags=["华星库存"])
 
@@ -58,8 +59,8 @@ async def import_huaxing_inventory(
     user: WarehouseWriter,
 ) -> ExcelImportJobRead:
     filename = (file.filename or "").lower()
-    if not filename.endswith((".xlsx", ".xlsm")):
-        raise AppError("UNSUPPORTED_EXCEL_FILE", "仅支持 .xlsx 或 .xlsm 格式的 Excel 文件")
+    if not filename.endswith(SUPPORTED_IMPORT_SUFFIXES):
+        raise AppError("UNSUPPORTED_EXCEL_FILE", "仅支持 .xls、.xlsx 或 .csv 格式的表格文件")
     file_path: Path | None = None
     try:
         file_path = await import_job_service.save_upload(
