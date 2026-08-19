@@ -894,6 +894,9 @@ class ExcelExportJobRead(ReadModel):
     export_type: str
     status: ExcelExportJobStatus
     download_filename: str | None = None
+    # 导出文件 uuid（exports 目录下文件名去掉 .xlsx），用于匿名下载链接；
+    # 仅 SUCCEEDED 任务非空。由 ExcelExportJob.file_uuid 派生属性填充。
+    file_uuid: str | None = None
     params: dict[str, Any] | None = None
     result: dict[str, Any] | None = None
     error_code: str | None = None

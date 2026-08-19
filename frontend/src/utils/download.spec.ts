@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { downloadBlobWithDisposition, filenameFromContentDisposition } from './download'
+import {
+  downloadBlobWithDisposition,
+  downloadFromUrl,
+  exportDownloadUrl,
+  filenameFromContentDisposition,
+} from './download'
 
 describe('filenameFromContentDisposition', () => {
   it('parses RFC 5987 UTF-8 filename*', () => {
@@ -45,5 +50,45 @@ describe('downloadBlobWithDisposition', () => {
     const anchor = click.mock.instances[0] as unknown as HTMLAnchorElement
     expect(anchor.download).toBe('fallback.xlsx')
     click.mockRestore()
+  })
+})
+
+describe('downloadFromUrl', () => {
+  it('creates an anchor with the href and optional filename, then clicks and removes it', () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const appendChild = vi.spyOn(document.body, 'appendChild')
+    const remove = vi.spyOn(HTMLAnchorElement.prototype, 'remove')
+
+    downloadFromUrl(
+      '/api/v1/excel-export-jobs/files/0195f1a2-0000-7000-8000-000000000001',
+      '导出.xlsx',
+    )
+
+    expect(appendChild).toHaveBeenCalledTimes(1)
+    const anchor = click.mock.instances[0] as unknown as HTMLAnchorElement
+    expect(anchor.href).toContain('/excel-export-jobs/files/0195f1a2-0000-7000-8000-000000000001')
+    expect(anchor.download).toBe('导出.xlsx')
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(remove).toHaveBeenCalledTimes(1)
+    click.mockRestore()
+    appendChild.mockRestore()
+    remove.mockRestore()
+  })
+
+  it('omits the download attribute when no filename is given', () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    downloadFromUrl('/api/v1/excel-export-jobs/files/0195f1a2-0000-7000-8000-000000000001')
+
+    const anchor = click.mock.instances[0] as unknown as HTMLAnchorElement
+    expect(anchor.download).toBe('')
+    click.mockRestore()
+  })
+})
+
+describe('exportDownloadUrl', () => {
+  it('joins the api base url with the file uuid path', () => {
+    expect(exportDownloadUrl('0195f1a2-0000-7000-8000-000000000001')).toBe(
+      '/api/v1/excel-export-jobs/files/0195f1a2-0000-7000-8000-000000000001',
+    )
   })
 })

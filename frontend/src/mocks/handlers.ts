@@ -356,7 +356,7 @@ const advanceImportJob = (job: ExcelImportJob): ExcelImportJob => {
   return next
 }
 
-// 异步导出任务 mock：POST 返回 PENDING job，每次轮询前进一态，终态后按 id 下载文件。
+// 异步导出任务 mock：POST 返回 PENDING job，每次轮询前进一态，终态后按 file_uuid 匿名下载文件。
 const exportJobs = new Map<number, ExcelExportJob>()
 const nextExportJobId = { id: 1 }
 const createExportJob = (exportType: string, downloadFilename: string): ExcelExportJob => {
@@ -371,6 +371,9 @@ const createExportJob = (exportType: string, downloadFilename: string): ExcelExp
   return job
 }
 
+const fakeExportFileUuid = (jobId: number): string =>
+  `0195f1a2-0000-7000-8000-${String(jobId).padStart(12, '0')}`
+
 const advanceExportJob = (job: ExcelExportJob): ExcelExportJob => {
   if (job.status === 'SUCCEEDED' || job.status === 'FAILED') return job
   const next: ExcelExportJob =
@@ -379,6 +382,7 @@ const advanceExportJob = (job: ExcelExportJob): ExcelExportJob => {
       : {
           ...job,
           status: 'SUCCEEDED',
+          file_uuid: fakeExportFileUuid(job.id),
           result: { rows: 2, image_count: 1 },
           finished_at: new Date().toISOString(),
         }
@@ -1454,11 +1458,12 @@ export const handlers = [
       return HttpResponse.json({ code: 'NOT_FOUND', message: '导出任务不存在' }, { status: 400 })
     return HttpResponse.json(advanceExportJob(job))
   }),
-  http.get(`${api}/excel-export-jobs/:id/file`, ({ params }) => {
-    const job = exportJobs.get(Number(params.id))
+  // 下载链接不鉴权（与真实后端一致，mock 同样不校验登录态），凭 file_uuid 拉取文件。
+  http.get(`${api}/excel-export-jobs/files/:fileUuid`, ({ params }) => {
+    const job = [...exportJobs.values()].find((item) => item.file_uuid === params.fileUuid)
     if (!job || job.status !== 'SUCCEEDED')
       return HttpResponse.json(
-        { code: 'EXPORT_NOT_READY', message: '导出尚未完成，请稍后再试' },
+        { code: 'EXPORT_FILE_EXPIRED', message: '导出文件已过期或不存在，请重新导出' },
         { status: 400 },
       )
     const filename = job.download_filename ?? 'export.xlsx'

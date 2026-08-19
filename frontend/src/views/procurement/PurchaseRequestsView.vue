@@ -17,6 +17,7 @@ import type {
   PurchaseRecordWrite,
 } from '@/api/generated'
 import { procurementApi } from '@/api/procurement'
+import { AppError } from '@/api/client'
 import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportLoadingOverlay from '@/components/ExportLoadingOverlay.vue'
@@ -34,7 +35,7 @@ import {
 } from '@/constants/table'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { dateToTimestamp, formatDate, toShanghaiDate } from '@/utils/time'
-import { downloadBlobWithDisposition } from '@/utils/download'
+import { downloadFromUrl, exportDownloadUrl } from '@/utils/download'
 import { routeQueryString } from '@/utils/routeQuery'
 import { useExportJob } from '@/composables/useExportJob'
 import { useImplicitAiSearch } from '@/composables/useImplicitAiSearch'
@@ -692,11 +693,17 @@ async function exportResults() {
       sort_by: filters.sort_by || undefined,
       sort_order: filters.sort_order || 'asc',
     })
-    const response = await procurementApi.excelExportJobFile(job.id)
+    if (!job.file_uuid) {
+      throw new AppError({
+        code: 'EXPORT_FILE_EXPIRED',
+        message: '导出文件已过期或不存在，请重新导出',
+        request_id: '',
+      })
+    }
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
-    downloadBlobWithDisposition(
-      response.data,
-      response.headers['content-disposition'],
+    // 下载链接不鉴权：直接以浏览器原生下载方式保存文件（凭接口返回的 file_uuid）。
+    downloadFromUrl(
+      exportDownloadUrl(job.file_uuid),
       job.download_filename ?? `申购记录导出_${date}.xlsx`,
     )
     const rows = job.result?.rows

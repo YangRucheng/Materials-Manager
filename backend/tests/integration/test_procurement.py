@@ -1592,8 +1592,9 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
     assert plan_export.status_code == 202, plan_export.text
     plan_job = await await_export_job(client, headers, plan_export.json()["id"])
     assert plan_job["status"] == "SUCCEEDED"
+    assert plan_job["file_uuid"]
     plan_file = await client.get(
-        f"/api/v1/excel-export-jobs/{plan_job['id']}/file", headers=headers
+        f"/api/v1/excel-export-jobs/files/{plan_job['file_uuid']}"
     )
     assert plan_file.status_code == 200, plan_file.text
     assert f"申购计划导出_{date.today():%Y%m%d}.xlsx" in unquote(
@@ -1639,8 +1640,9 @@ async def test_purchase_result_exports_follow_filters_and_visible_columns(
     assert record_export.status_code == 202, record_export.text
     record_job = await await_export_job(client, headers, record_export.json()["id"])
     assert record_job["status"] == "SUCCEEDED"
+    assert record_job["file_uuid"]
     record_file = await client.get(
-        f"/api/v1/excel-export-jobs/{record_job['id']}/file", headers=headers
+        f"/api/v1/excel-export-jobs/files/{record_job['file_uuid']}"
     )
     assert record_file.status_code == 200, record_file.text
     assert f"申购记录导出_{date.today():%Y%m%d}.xlsx" in unquote(
@@ -1681,7 +1683,8 @@ async def test_purchase_record_export_includes_subitem_no(client: AsyncClient) -
     assert export.status_code == 202, export.text
     job = await await_export_job(client, headers, export.json()["id"])
     assert job["status"] == "SUCCEEDED"
-    file = await client.get(f"/api/v1/excel-export-jobs/{job['id']}/file", headers=headers)
+    assert job["file_uuid"]
+    file = await client.get(f"/api/v1/excel-export-jobs/files/{job['file_uuid']}")
     assert file.status_code == 200, file.text
     sheet = load_workbook(BytesIO(file.content)).active
     assert [sheet.cell(1, column).value for column in range(1, 4)] == [
@@ -1721,8 +1724,9 @@ async def test_result_exports_embed_original_images(client: AsyncClient) -> None
     plan_job = await await_export_job(client, headers, plan_export.json()["id"])
     assert plan_job["status"] == "SUCCEEDED"
     assert plan_job["result"]["image_count"] == 1
+    assert plan_job["file_uuid"]
     plan_file = await client.get(
-        f"/api/v1/excel-export-jobs/{plan_job['id']}/file", headers=headers
+        f"/api/v1/excel-export-jobs/files/{plan_job['file_uuid']}"
     )
     assert plan_file.status_code == 200, plan_file.text
     plan_sheet = load_workbook(BytesIO(plan_file.content)).active
@@ -1739,8 +1743,9 @@ async def test_result_exports_embed_original_images(client: AsyncClient) -> None
     record_job = await await_export_job(client, headers, record_export.json()["id"])
     assert record_job["status"] == "SUCCEEDED"
     assert record_job["result"]["image_count"] == 1
+    assert record_job["file_uuid"]
     record_file = await client.get(
-        f"/api/v1/excel-export-jobs/{record_job['id']}/file", headers=headers
+        f"/api/v1/excel-export-jobs/files/{record_job['file_uuid']}"
     )
     assert record_file.status_code == 200, record_file.text
     record_sheet = load_workbook(BytesIO(record_file.content)).active
