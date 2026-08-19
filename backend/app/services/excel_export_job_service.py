@@ -11,6 +11,13 @@ PENDING → RUNNING → SUCCEEDED | FAILED 持久化在 excel_export_job 表，�
 - 成功：文件保留供下载（可重复下载），超过保留期由 cleanup_finished_exports 删除。
 - 重启残留：mark_stale_exports_failed 把遗留 PENDING/RUNNING 置 FAILED 并删文件。
 
+下载约定（匿名 uuid 链接）：
+- 文件命名即 `{uuid7}.xlsx`，`ExcelExportJobRead.file_uuid` 由 file_path 派生返回。
+- 下载端点 GET /excel-export-jobs/files/{file_uuid} 不鉴权（浏览器原生下载无法带
+  Authorization 头），安全性依赖 uuid7 不可猜解 + 文件仅存在于 exports 目录，
+  与图片匿名读取同一信任模型。状态轮询端点仍鉴权并做属主校验。
+- 任务不可见/未终态/文件过期分别报错（下载按 uuid 解析，不做属主校验）。
+
 处理器约定：各业务模块提供
     async def process_xxx_export(target_path: Path) -> dict[str, object]
 其中返回字典必须含 "download_filename"（下载文件名），可含 rows / image_count 等元信息。
@@ -102,19 +109,26 @@ async def get_export_job(
     return ExcelExportJobRead.model_validate(job)
 
 
-async def get_export_file(
-    session: AsyncSession, *, job_id: int, user: User
+async def get_export_file_by_uuid(
+    session: AsyncSession, *, file_uuid: str
 ) -> tuple[Path, str]:
-    """返回（文件路径, 下载文件名）；任务不可见/未终态/文件过期分别报错。"""
-    job = await session.get(ExcelExportJob, job_id)
-    if job is None or not _visible_to(job, user):
-        raise AppError("NOT_FOUND", "导出任务不存在")
-    if job.status != ExcelExportJobStatus.SUCCEEDED:
-        raise AppError("EXPORT_NOT_READY", "导出尚未完成，请稍后再试")
-    path = Path(job.file_path) if job.file_path else None
-    if path is None or not path.is_file():
+    """按文件 uuid 返回（文件路径, 下载文件名）；供匿名下载端点使用。
+
+    只按 exports 目录下的 {uuid}.xlsx 精确匹配任务行（uuid7 不可猜解），
+    不再做属主校验——下载链接不鉴权是刻意设计（浏览器原生下载无法带 Authorization）。
+    任务不存在/未终态/文件缺失统一报 EXPORT_FILE_EXPIRED。
+    """
+    path = exports_dir() / f"{file_uuid}.xlsx"
+    job = await session.scalar(
+        select(ExcelExportJob).where(ExcelExportJob.file_path == str(path))
+    )
+    if (
+        job is None
+        or job.status != ExcelExportJobStatus.SUCCEEDED
+        or not path.is_file()
+    ):
         raise AppError("EXPORT_FILE_EXPIRED", "导出文件已过期或不存在，请重新导出")
-    return path, job.download_filename or f"export_{job.id}.xlsx"
+    return path, job.download_filename or f"export_{file_uuid}.xlsx"
 
 
 async def mark_stale_exports_failed() -> int:

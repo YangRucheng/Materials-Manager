@@ -293,12 +293,12 @@ async def test_record_export_async_flow_with_images(client: AsyncClient, tmp_pat
     assert job["status"] == "SUCCEEDED"
     assert job["download_filename"].startswith("申购记录导出_")
     assert job["download_filename"].endswith(".xlsx")
+    assert job["file_uuid"]
     assert job["result"]["rows"] == 1
     assert job["result"]["image_count"] == 1
 
-    download = await client.get(
-        f"/api/v1/excel-export-jobs/{job['id']}/file", headers=headers
-    )
+    # 下载端点不鉴权：不带 Authorization 头直接按 file_uuid 拉取。
+    download = await client.get(f"/api/v1/excel-export-jobs/files/{job['file_uuid']}")
     assert download.status_code == 200, download.text
     assert "申购记录导出_" in unquote(download.headers["content-disposition"])
     sheet = load_workbook(BytesIO(download.content)).active
@@ -326,19 +326,15 @@ async def test_plan_export_async_flow_and_ownership(client: AsyncClient, tmp_pat
     assert created.status_code == 202, created.text
     job = await await_export_job(client, headers, created.json()["id"])
     assert job["status"] == "SUCCEEDED"
+    assert job["file_uuid"]
 
-    # 他人不可见/不可下载（避免泄露他人导出数据）
+    # 状态轮询仍鉴权 + 属主校验：他人不可见。
     foreign = await client.get(f"/api/v1/excel-export-jobs/{job['id']}", headers=other_headers)
     assert foreign.status_code == 400
     assert foreign.json()["code"] == "NOT_FOUND"
-    foreign_file = await client.get(
-        f"/api/v1/excel-export-jobs/{job['id']}/file", headers=other_headers
-    )
-    assert foreign_file.status_code == 400
 
-    download = await client.get(
-        f"/api/v1/excel-export-jobs/{job['id']}/file", headers=headers
-    )
+    # 下载端点不鉴权（凭 uuid7 匿名拉取）：无 Authorization 头也可下载。
+    download = await client.get(f"/api/v1/excel-export-jobs/files/{job['file_uuid']}")
     assert download.status_code == 200, download.text
     sheet = load_workbook(BytesIO(download.content)).active
     assert sheet["A2"].value == "异步计划电机"
@@ -351,19 +347,17 @@ async def test_download_guards_not_ready_and_expired(
     from tests.integration.test_procurement import create_purchase_plan
 
     headers = await auth_headers(client, "purchase")
-    other_headers = await auth_headers(client, "warehouse")
 
-    # PENDING 下载 → EXPORT_NOT_READY
-    pending_id = await _insert_job(
-        export_type="UNIT", status=ExcelExportJobStatus.PENDING, file_path=None
-    )
+    # 不存在的 uuid 下载 → EXPORT_FILE_EXPIRED
+    missing_uuid = "00000000-0000-7000-8000-000000000000"
     pending_download = await client.get(
-        f"/api/v1/excel-export-jobs/{pending_id}/file", headers=headers
+        f"/api/v1/excel-export-jobs/files/{missing_uuid}"
     )
     assert pending_download.status_code == 400
-    assert pending_download.json()["code"] == "EXPORT_NOT_READY"
+    assert pending_download.json()["code"] == "EXPORT_FILE_EXPIRED"
 
     # 成功任务删文件后下载 → EXPORT_FILE_EXPIRED（他人查状态仍 NOT_FOUND）
+    other_headers = await auth_headers(client, "warehouse")
     await create_purchase_plan(client, headers, "过期电机", code="ASYNC-EXPIRED")
     created = await client.post(
         "/api/v1/purchase-materials/export-results",
@@ -377,7 +371,7 @@ async def test_download_guards_not_ready_and_expired(
         target = Path(row.file_path)
         await asyncio.to_thread(target.unlink)
     expired = await client.get(
-        f"/api/v1/excel-export-jobs/{job['id']}/file", headers=headers
+        f"/api/v1/excel-export-jobs/files/{job['file_uuid']}"
     )
     assert expired.status_code == 400
     assert expired.json()["code"] == "EXPORT_FILE_EXPIRED"
@@ -386,10 +380,10 @@ async def test_download_guards_not_ready_and_expired(
     assert missing.status_code == 400
     assert missing.json()["code"] == "NOT_FOUND"
     missing_file = await client.get(
-        "/api/v1/excel-export-jobs/999999/file", headers=other_headers
+        f"/api/v1/excel-export-jobs/files/{missing_uuid}", headers=other_headers
     )
     assert missing_file.status_code == 400
-    assert missing_file.json()["code"] == "NOT_FOUND"
+    assert missing_file.json()["code"] == "EXPORT_FILE_EXPIRED"
 
 
 @pytest.mark.asyncio

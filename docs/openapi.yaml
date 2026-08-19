@@ -5746,29 +5746,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/excel-export-jobs/{job_id}/file:
+  /api/v1/excel-export-jobs/files/{file_uuid}:
     get:
       tags:
       - 导出任务
-      summary: Download Export Job File
-      operationId: download_export_job_file_api_v1_excel_export_jobs__job_id__file_get
-      security:
-      - HTTPBearer: []
-      - APIKeyHeader: []
+      summary: Download Export File By Uuid
+      operationId: download_export_file_by_uuid_api_v1_excel_export_jobs_files__file_uuid__get
       parameters:
-      - name: job_id
+      - name: file_uuid
         in: path
         required: true
         schema:
-          type: integer
-          minimum: 1
-          title: Job Id
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          title: File Uuid
       responses:
         '200':
           description: Successful Response
-          content:
-            application/json:
-              schema: {}
         '400':
           description: 业务校验失败
           content:
@@ -6664,6 +6658,11 @@ components:
           - type: string
           - type: 'null'
           title: Download Filename
+        file_uuid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: File Uuid
         params:
           anyOf:
           - additionalProperties: true

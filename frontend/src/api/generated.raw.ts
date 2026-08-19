@@ -1391,15 +1391,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/excel-export-jobs/{job_id}/file": {
+    "/api/v1/excel-export-jobs/files/{file_uuid}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Download Export Job File */
-        get: operations["download_export_job_file_api_v1_excel_export_jobs__job_id__file_get"];
+        /** Download Export File By Uuid */
+        get: operations["download_export_file_by_uuid_api_v1_excel_export_jobs_files__file_uuid__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1742,6 +1742,8 @@ export interface components {
             status: components["schemas"]["ExcelExportJobStatus"];
             /** Download Filename */
             download_filename?: string | null;
+            /** File Uuid */
+            file_uuid?: string | null;
             /** Params */
             params?: {
                 [key: string]: unknown;
@@ -9840,12 +9842,12 @@ export interface operations {
             };
         };
     };
-    download_export_job_file_api_v1_excel_export_jobs__job_id__file_get: {
+    download_export_file_by_uuid_api_v1_excel_export_jobs_files__file_uuid__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                file_uuid: string;
             };
             cookie?: never;
         };
@@ -9856,9 +9858,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": unknown;
-                };
+                content?: never;
             };
             /** @description 业务校验失败 */
             400: {
