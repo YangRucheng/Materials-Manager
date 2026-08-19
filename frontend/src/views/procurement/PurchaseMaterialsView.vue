@@ -672,7 +672,7 @@ async function exportResults() {
     if (!job.file_uuid) {
       throw new AppError({
         code: 'EXPORT_FILE_EXPIRED',
-        message: '导出文件已过期或不存在，请重新导出',
+        message: '导出文件不存在，请重新导出；若仍失败请确认后端服务已更新到最新版本',
         request_id: '',
       })
     }
