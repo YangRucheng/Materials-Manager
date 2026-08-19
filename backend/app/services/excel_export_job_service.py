@@ -114,21 +114,30 @@ async def get_export_file_by_uuid(
 ) -> tuple[Path, str]:
     """按文件 uuid 返回（文件路径, 下载文件名）；供匿名下载端点使用。
 
-    只按 exports 目录下的 {uuid}.xlsx 精确匹配任务行（uuid7 不可猜解），
-    不再做属主校验——下载链接不鉴权是刻意设计（浏览器原生下载无法带 Authorization）。
-    任务不存在/未终态/文件缺失统一报 EXPORT_FILE_EXPIRED。
+    下载链接不鉴权是刻意设计（浏览器原生下载无法带 Authorization 头），安全性
+    依赖 uuid7 不可猜解 + 文件只存在于 exports 目录（保留期后删除）。
+    以文件是否存在为准：导出文件为原子写盘（先 .tmp 再改名），存在即完整可用；
+    任务行仅用于提供友好下载名，行缺失/路径漂移时回退 uuid 命名仍可下载。
+    文件缺失时记录诊断日志（uuid、任务行是否存在及状态），便于线上排查。
     """
     path = exports_dir() / f"{file_uuid}.xlsx"
     job = await session.scalar(
         select(ExcelExportJob).where(ExcelExportJob.file_path == str(path))
     )
-    if (
-        job is None
-        or job.status != ExcelExportJobStatus.SUCCEEDED
-        or not path.is_file()
-    ):
+    if not path.is_file():
+        logger.warning(
+            "export file missing on download file_uuid=%s job_exists=%s job_status=%s",
+            file_uuid,
+            job is not None,
+            job.status.value if job is not None else None,
+        )
         raise AppError("EXPORT_FILE_EXPIRED", "导出文件已过期或不存在，请重新导出")
-    return path, job.download_filename or f"export_{file_uuid}.xlsx"
+    download_filename = (
+        job.download_filename
+        if job is not None and job.download_filename
+        else f"export_{file_uuid}.xlsx"
+    )
+    return path, download_filename
 
 
 async def mark_stale_exports_failed() -> int:

@@ -1463,7 +1463,7 @@ export const handlers = [
     const job = [...exportJobs.values()].find((item) => item.file_uuid === params.fileUuid)
     if (!job || job.status !== 'SUCCEEDED')
       return HttpResponse.json(
-        { code: 'EXPORT_FILE_EXPIRED', message: '导出文件已过期或不存在，请重新导出' },
+        { code: 'EXPORT_FILE_EXPIRED', message: '导出文件不存在，请重新导出' },
         { status: 400 },
       )
     const filename = job.download_filename ?? 'export.xlsx'

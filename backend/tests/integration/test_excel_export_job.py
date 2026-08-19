@@ -387,6 +387,42 @@ async def test_download_guards_not_ready_and_expired(
 
 
 @pytest.mark.asyncio
+async def test_download_serves_file_even_when_job_row_missing(
+    client: AsyncClient, tmp_path
+) -> None:
+    """匿名下载以文件存在为准：任务行缺失/路径漂移时仍可下载（回退 uuid 命名）。"""
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from tests.integration.test_procurement import create_purchase_plan
+
+    headers = await auth_headers(client, "purchase")
+    await create_purchase_plan(client, headers, "残留文件电机", code="ASYNC-ORPHAN")
+
+    created = await client.post(
+        "/api/v1/purchase-materials/export-results",
+        headers=headers,
+        json={"columns": ["name"], "name": "残留文件电机"},
+    )
+    assert created.status_code == 202, created.text
+    job = await await_export_job(client, headers, created.json()["id"])
+    assert job["status"] == "SUCCEEDED"
+    file_uuid = job["file_uuid"]
+
+    # 模拟任务行被清理而文件残留（行与文件同生共死的清理逻辑异常时）
+    async with SessionLocal() as session:
+        row = await session.get(ExcelExportJob, job["id"])
+        await session.delete(row)
+        await session.commit()
+
+    download = await client.get(f"/api/v1/excel-export-jobs/files/{file_uuid}")
+    assert download.status_code == 200, download.text
+    sheet = load_workbook(BytesIO(download.content)).active
+    assert sheet["A2"].value == "残留文件电机"
+
+
+@pytest.mark.asyncio
 async def test_export_limit_exceeded_surfaces_as_job_failure(
     client: AsyncClient, monkeypatch
 ) -> None:
