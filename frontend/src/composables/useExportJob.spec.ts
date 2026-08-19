@@ -7,6 +7,7 @@ const job = (id: number, status: ExcelExportJob['status']): ExcelExportJob => ({
   export_type: 'PURCHASE_PLAN_RESULTS',
   status,
   download_filename: '申购计划导出.xlsx',
+  file_uuid: status === 'SUCCEEDED' ? '0195f1a2-0000-7000-8000-000000000001' : undefined,
   result: { rows: 3 },
   created_at: '2026-08-16T00:00:00Z',
 })

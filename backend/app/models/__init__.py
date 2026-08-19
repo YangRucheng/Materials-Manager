@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -218,6 +219,17 @@ class ExcelExportJob(Base):
     )
     download_filename: Mapped[str | None] = mapped_column(String(255))
     file_path: Mapped[str | None] = mapped_column(String(500))
+
+    @property
+    def file_uuid(self) -> str | None:
+        """导出文件 uuid（exports 目录文件名去掉 .xlsx 后缀）；无文件时为 None。
+
+        下载端点按此 uuid 匿名访问（uuid7 不可猜解），故无需独立 DB 列。
+        """
+        if not self.file_path:
+            return None
+        name = Path(self.file_path).name
+        return name.removesuffix(".xlsx") if name.endswith(".xlsx") else None
     # 导出请求参数快照（筛选条件/列），用于排查与潜在的重跑。
     params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
