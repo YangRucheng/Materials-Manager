@@ -94,6 +94,31 @@ def test_init_sql_seeds_required_accounts() -> None:
     assert "measurement_unit" not in sql
 
 
+def test_init_sql_seed_inserts_only_reference_existing_columns() -> None:
+    """种子 INSERT 的列必须存在于对应表的 CREATE TABLE 定义中。
+
+    防止类似曾出现过的漂移：user 表改为 api_token_hash 后，种子 INSERT 仍引用
+    已删除的 api_token 列，导致 init.sql 在真实 MySQL/MariaDB 上导入失败
+    （ERROR 1054: Unknown column 'api_token' in 'field list'）。
+    """
+    sql = INIT_SQL.read_text(encoding="utf-8")
+    blocks = _table_blocks()
+
+    insert_re = re.compile(
+        r"INSERT INTO `([^`]+)` \((.*?)\)\s*VALUES",
+        re.DOTALL,
+    )
+    inserts = insert_re.findall(sql)
+    assert inserts, "init.sql 中应存在种子 INSERT"
+
+    for table_name, columns_sql in inserts:
+        assert table_name in blocks, f"种子 INSERT 引用了未定义的表：{table_name}"
+        known = set(re.findall(r"^  `([^`]+)`", blocks[table_name], re.MULTILINE))
+        referenced = {col.strip().strip("`") for col in columns_sql.split(",")}
+        missing = sorted(referenced - known)
+        assert not missing, f"{table_name} 种子 INSERT 引用了不存在的列：{missing}"
+
+
 def test_file_identifiers_are_uuid_strings() -> None:
     blocks = _table_blocks()
 
