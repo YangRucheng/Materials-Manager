@@ -25,6 +25,8 @@ from app.domain.enums import (
     OperationType,
     PurchasePlanStatus,
     Role,
+    ShareExpiryOption,
+    ShareType,
     SourceType,
     WebhookEventType,
     WebhookPlatform,
@@ -1356,6 +1358,41 @@ class PurchaseRecordResultExportRequest(RequestModel):
         if len(value) != len(set(value)):
             raise ValueError("columns must be unique")
         return value
+
+
+class ShareCreateRequest(RequestModel):
+    """创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。"""
+
+    share_type: ShareType
+    item_ids: list[int] = Field(min_length=1, max_length=200)
+    expires_in: ShareExpiryOption
+
+    @field_validator("item_ids")
+    @classmethod
+    def unique_item_ids(cls, value: list[int]) -> list[int]:
+        if len(value) != len(set(value)):
+            raise ValueError("item_ids must be unique")
+        return value
+
+
+class ShareRead(ReadModel):
+    token: str
+    share_type: ShareType
+    item_count: int
+    # 失效时间（UTC ISO）；NULL = 永久有效。
+    expires_at: UtcDateTime | None = None
+    created_at: UtcDateTime
+
+
+class SharePublicView(ReadModel):
+    """匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。"""
+
+    share_type: ShareType
+    item_count: int
+    # 失效时间（UTC ISO）；NULL = 永久有效。
+    expires_at: UtcDateTime | None = None
+    created_at: UtcDateTime
+    items: list[PurchaseMaterialRead | PurchaseRecordRead]
 
 
 class PurchaseRecordSyncTargetRead(ReadModel):

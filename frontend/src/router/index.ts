@@ -148,6 +148,12 @@ const router = createRouter({
       ],
     },
     {
+      path: '/share/:token',
+      name: 'share',
+      component: () => import('@/views/public/ShareView.vue'),
+      meta: { public: true, title: '分享查看' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       component: () => import('@/views/NotFoundView.vue'),
       meta: { public: true, title: '页面不存在' },

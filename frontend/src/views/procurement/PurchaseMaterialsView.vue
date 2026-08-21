@@ -33,6 +33,7 @@ import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportLoadingOverlay from '@/components/ExportLoadingOverlay.vue'
 import ImageThumbnails from '@/components/ImageThumbnails.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import ShareLinkDialog from '@/components/ShareLinkDialog.vue'
 import SortableHeader, { type SortOptionKey } from '@/components/SortableHeader.vue'
 import type { ExportOption } from '@/types/export'
 import {
@@ -293,6 +294,11 @@ const selectedPlans = computed(() => {
 })
 const exportOptions = computed<ExportOption[]>(() => {
   const options: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
+  options.push({
+    label: `链接分享（已选 ${selectedPlans.value.length} 条）`,
+    key: 'share',
+    disabled: !selectedPlans.value.length,
+  })
   if (auth.can('purchase:write')) {
     options.push({
       label: `导出采购申请表（已选 ${selectedPlans.value.length} 条）`,
@@ -302,6 +308,7 @@ const exportOptions = computed<ExportOption[]>(() => {
   }
   return options
 })
+const showShare = ref(false)
 const exportLoading = computed(() => resultExporting.value || batchExporting.value)
 const form = reactive<PurchaseMaterialWrite>({
   status: defaultPurchasePlanStatus,
@@ -1007,6 +1014,10 @@ function handleExport(key: string) {
     void exportResults()
     return
   }
+  if (key === 'share') {
+    showShare.value = true
+    return
+  }
   if (key === 'purchase-application') void exportPurchaseApplication()
 }
 onMounted(() => {
@@ -1524,6 +1535,12 @@ onBeforeUnmount(() => {
       ></n-modal
     >
     <PurchaseRecordHistoryDialog v-model:show="showHistory" :initial-name="form.name" />
+    <ShareLinkDialog
+      v-model:show="showShare"
+      share-type="purchase_plan"
+      :item-ids="selectedPlans.map((item) => item.id)"
+      title="申购计划"
+    />
   </div>
 </template>
 

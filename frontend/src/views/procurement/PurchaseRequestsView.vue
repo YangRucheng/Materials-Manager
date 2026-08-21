@@ -22,6 +22,7 @@ import { aiSearchApi } from '@/api/aiSearch'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportLoadingOverlay from '@/components/ExportLoadingOverlay.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import ShareLinkDialog from '@/components/ShareLinkDialog.vue'
 import ImageThumbnails from '@/components/ImageThumbnails.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
@@ -180,7 +181,15 @@ const batchUpdating = ref(false)
 const showBatchEdit = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
-const exportOptions: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
+const exportOptions = computed<ExportOption[]>(() => [
+  { label: '导出查询结果', key: 'results' },
+  {
+    label: `链接分享（已选 ${selectedRecords.value.length} 条）`,
+    key: 'share',
+    disabled: !selectedRecords.value.length,
+  },
+])
+const showShare = ref(false)
 // 异步导出（含图片渲染耗时较长）：提交 202 秒回 → 轮询 → 下载
 const { running: resultExporting, run: runResultExport } =
   useExportJob<PurchaseRecordResultExportRequest>({
@@ -715,6 +724,7 @@ async function exportResults() {
 
 function handleExport(key: string) {
   if (key === 'results') void exportResults()
+  if (key === 'share') showShare.value = true
 }
 
 function syncEditForm(value: PurchaseRecord) {
@@ -1717,6 +1727,12 @@ onMounted(() => {
         </n-space>
       </template>
     </n-modal>
+    <ShareLinkDialog
+      v-model:show="showShare"
+      share-type="purchase_record"
+      :item-ids="selectedRecords.map((item) => item.line_id)"
+      title="申购记录"
+    />
   </div>
 </template>
 

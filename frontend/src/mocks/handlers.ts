@@ -14,6 +14,11 @@ import type {
   PurchaseRecordWrite,
   ReplenishmentDraftWrite,
   ReplenishmentPolicy,
+  ShareCreateRequest,
+  ShareExpiryOption,
+  SharePublicView,
+  ShareRead,
+  ShareType,
   StockMaterialWrite,
   StockOperation,
   WebhookChannelSettings,
@@ -395,6 +400,27 @@ const exportWorkbookBytes = (): Uint8Array => {
   const bytes = new Uint8Array(16)
   bytes.set([0x50, 0x4b, 0x03, 0x04])
   return bytes
+}
+
+// 链接分享 mock：POST 创建分享，GET /shares/:token 匿名读取（不校验登录态），DELETE 撤回。
+const shares = new Map<
+  string,
+  { shareType: ShareType; itemIds: number[]; expiresAt: string | null }
+>()
+const expiryToDate = (expiresIn: ShareExpiryOption): string | null => {
+  if (expiresIn === 'permanent') return null
+  const hours = { '24h': 24, '3d': 72, '7d': 168, '30d': 720 }[expiresIn] ?? 24
+  return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
+}
+const resolveShareItems = (shareType: ShareType, itemIds: number[]): PurchaseMaterial[] => {
+  if (shareType === 'purchase_plan') {
+    return purchaseMaterials.filter((item) => itemIds.includes(item.id))
+  }
+  return purchaseRequests.flatMap((purchaseRequest) =>
+    purchaseRequest.lines
+      .map((line) => purchaseRecord(purchaseRequest, line))
+      .filter((record) => itemIds.includes(record.line_id)),
+  ) as unknown as PurchaseMaterial[]
 }
 
 export const handlers = [
@@ -1473,5 +1499,48 @@ export const handlers = [
         'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
       },
     })
+  }),
+  // 链接分享：POST 创建（需登录），GET /shares/:token 匿名读取，DELETE 撤回。
+  http.post(`${api}/shares`, async ({ request }) => {
+    const body = (await request.json()) as ShareCreateRequest
+    const actorUser = actor(request)
+    if (!request.headers.get('Authorization') || actorUser.role === 'READ_ONLY') {
+      return error(401, 'UNAUTHORIZED', '请先登录')
+    }
+    const token = `0198${Date.now().toString(16).padStart(10, '0')}-0000-7000-8000-${String(
+      shares.size + 1,
+    ).padStart(12, '0')}`
+    const shareRead: ShareRead = {
+      token,
+      share_type: body.share_type,
+      item_count: body.item_ids.length,
+      expires_at: expiryToDate(body.expires_in),
+      created_at: new Date().toISOString(),
+    }
+    shares.set(token, {
+      shareType: body.share_type,
+      itemIds: body.item_ids,
+      expiresAt: shareRead.expires_at ?? null,
+    })
+    return HttpResponse.json(shareRead, { status: 201 })
+  }),
+  http.get(`${api}/shares/:token`, ({ params }) => {
+    const share = shares.get(String(params.token))
+    if (!share) return error(400, 'SHARE_NOT_FOUND', '分享链接不存在或已失效')
+    if (share.expiresAt && new Date(share.expiresAt).getTime() < Date.now())
+      return error(400, 'SHARE_EXPIRED', '分享链接已失效，请联系分享人重新分享')
+    const view: SharePublicView = {
+      share_type: share.shareType,
+      item_count: share.itemIds.length,
+      expires_at: share.expiresAt,
+      created_at: new Date().toISOString(),
+      items: resolveShareItems(share.shareType, share.itemIds) as SharePublicView['items'],
+    }
+    return HttpResponse.json(view)
+  }),
+  http.delete(`${api}/shares/:token`, ({ params, request }) => {
+    if (!request.headers.get('Authorization')) return error(401, 'UNAUTHORIZED', '请先登录')
+    if (!shares.delete(String(params.token))) return error(400, 'NOT_FOUND', '分享链接不存在')
+    return new HttpResponse(null, { status: 204 })
   }),
 ]

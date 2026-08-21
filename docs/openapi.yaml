@@ -5403,6 +5403,165 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/shares:
+    post:
+      tags:
+      - 链接分享
+      summary: Create Share
+      description: '创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
+
+
+        失效时间由前端在二次确认时选择（24小时/3天/7天/30天/永久）。
+
+        返回 token 与失效时间，前端据此拼接分享页 URL（/share/{token}）。'
+      operationId: create_share_api_v1_shares_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+  /api/v1/shares/{token}:
+    get:
+      tags:
+      - 链接分享
+      summary: Get Share
+      operationId: get_share_api_v1_shares__token__get
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          title: Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharePublicView'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - 链接分享
+      summary: Revoke Share
+      description: 撤回分享：仅创建者本人或超级管理员可执行，撤回后匿名读取立即失效。
+      operationId: revoke_share_api_v1_shares__token__delete
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          title: Token
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/users:
     get:
       tags:
@@ -9762,6 +9921,103 @@ components:
       - PURCHASE_ADMIN
       - READ_ONLY
       title: Role
+    ShareCreateRequest:
+      properties:
+        share_type:
+          $ref: '#/components/schemas/ShareType'
+        item_ids:
+          items:
+            type: integer
+          type: array
+          maxItems: 200
+          minItems: 1
+          title: Item Ids
+        expires_in:
+          $ref: '#/components/schemas/ShareExpiryOption'
+      additionalProperties: false
+      type: object
+      required:
+      - share_type
+      - item_ids
+      - expires_in
+      title: ShareCreateRequest
+      description: 创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
+    ShareExpiryOption:
+      type: string
+      enum:
+      - 24h
+      - 3d
+      - 7d
+      - 30d
+      - permanent
+      title: ShareExpiryOption
+      description: 分享链接失效时间选项（前端选择码 → 服务端换算 expires_at）。
+    SharePublicView:
+      properties:
+        share_type:
+          $ref: '#/components/schemas/ShareType'
+        item_count:
+          type: integer
+          title: Item Count
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        items:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/PurchaseMaterialRead'
+            - $ref: '#/components/schemas/PurchaseRecordRead'
+          type: array
+          title: Items
+      type: object
+      required:
+      - share_type
+      - item_count
+      - created_at
+      - items
+      title: SharePublicView
+      description: 匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。
+    ShareRead:
+      properties:
+        token:
+          type: string
+          title: Token
+        share_type:
+          $ref: '#/components/schemas/ShareType'
+        item_count:
+          type: integer
+          title: Item Count
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - token
+      - share_type
+      - item_count
+      - created_at
+      title: ShareRead
+    ShareType:
+      type: string
+      enum:
+      - purchase_plan
+      - purchase_record
+      title: ShareType
+      description: 链接分享的数据类型：申购计划 / 申购记录。
     SourceType:
       type: string
       enum:

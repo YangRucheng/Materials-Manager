@@ -21,6 +21,7 @@ from app.services import (
     excel_export_job_service,
     import_job_service,
     purchase_plan_cleanup_service,
+    share_link_service,
     webhook_service,
 )
 
@@ -48,6 +49,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     purged_export_jobs = await excel_export_job_service.cleanup_finished_exports()
     if purged_export_jobs:
         logger.info("purged %s expired excel export jobs", purged_export_jobs)
+    purged_share_links = await share_link_service.cleanup_expired()
+    if purged_share_links:
+        logger.info("purged %s expired share links", purged_share_links)
     webhook_stop_event = asyncio.Event()
     webhook_worker = asyncio.create_task(
         webhook_service.run_delivery_worker(webhook_stop_event),
@@ -65,6 +69,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         excel_export_job_service.run_cleanup_worker(export_cleanup_stop_event),
         name="excel-export-cleanup-worker",
     )
+    share_cleanup_stop_event = asyncio.Event()
+    share_cleanup_worker = asyncio.create_task(
+        share_link_service.run_cleanup_worker(share_cleanup_stop_event),
+        name="share-link-cleanup-worker",
+    )
     try:
         async with mcp.session_manager.run():
             yield
@@ -77,6 +86,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await cleanup_worker
         export_cleanup_stop_event.set()
         await export_cleanup_worker
+        share_cleanup_stop_event.set()
+        await share_cleanup_worker
         await ai_search_service.close_client()
 
 

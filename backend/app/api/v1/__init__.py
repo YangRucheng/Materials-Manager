@@ -13,6 +13,7 @@ from app.api.v1 import (
     purchase_materials,
     purchase_record_sync,
     purchase_requests,
+    share,
     stock_materials,
     system_settings,
     version,
@@ -40,6 +41,7 @@ router.include_router(mini_program.mini_router)
 router.include_router(purchase_materials.router)
 router.include_router(purchase_record_sync.router)
 router.include_router(purchase_requests.router)
+router.include_router(share.router)
 router.include_router(dictionaries.router)
 router.include_router(excel_export_jobs.router)
 router.include_router(files.router)

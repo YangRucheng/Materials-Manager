@@ -30,12 +30,14 @@ from sqlalchemy.dialects.mysql import INTEGER as MYSQL_INTEGER
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.core.database import Base
+from app.core.identifiers import uuid7_string
 from app.domain.enums import (
     ExcelExportJobStatus,
     ExcelImportJobStatus,
     OperationType,
     PurchasePlanStatus,
     Role,
+    ShareType,
     SourceType,
     WebhookDeliveryStatus,
     WebhookEventType,
@@ -534,6 +536,39 @@ class StockOperationLine(AuditMixin, Base):
     stock_material: Mapped[StockMaterial] = relationship(lazy="selectin")
 
 
+class ShareLink(Base):
+    """匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
+
+    与导出文件的匿名下载同一信任模型——安全性依赖 token 为 UUIDv7（不可猜解），
+    且匿名读取端点仅按 token 返回该分享的数据。expires_at 为空表示永久有效；
+    过期后读取端点拒绝访问，行由 share_link_service 定期清理。
+    """
+
+    __tablename__ = "share_link"
+    __table_args__ = (Index("ix_share_link_expires_at", "expires_at"),)
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    token: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, default=uuid7_string
+    )
+    share_type: Mapped[ShareType] = mapped_column(SAEnum(ShareType), nullable=False, index=True)
+    # 被分享的数据行 id（申购计划 id / 申购记录 line_id），读取时按 id 实时查库快照。
+    item_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False)
+    # 失效时间；NULL = 永久有效。
+    expires_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
+    created_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME,
+        default=_utcnow,
+        server_default=func.now(),
+        onupdate=_utcnow,
+        nullable=False,
+    )
+
+
 class BusinessEventLog(Base):
     __tablename__ = "business_event_log"
     __table_args__ = (Index("ix_business_event_entity", "business_type", "business_id", "id"),)
@@ -629,6 +664,7 @@ __all__ = [
     "PurchaseRequest",
     "PurchaseRequestLine",
     "PurchaseRequestLineImage",
+    "ShareLink",
     "StockBalance",
     "StockMaterial",
     "StockMaterialImage",

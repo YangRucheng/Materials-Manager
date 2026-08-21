@@ -1321,6 +1321,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Share
+         * @description 创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
+         *
+         *     失效时间由前端在二次确认时选择（24小时/3天/7天/30天/永久）。
+         *     返回 token 与失效时间，前端据此拼接分享页 URL（/share/{token}）。
+         */
+        post: operations["create_share_api_v1_shares_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shares/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Share */
+        get: operations["get_share_api_v1_shares__token__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Share
+         * @description 撤回分享：仅创建者本人或超级管理员可执行，撤回后匿名读取立即失效。
+         */
+        delete: operations["revoke_share_api_v1_shares__token__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -3182,6 +3226,61 @@ export interface components {
          * @enum {string}
          */
         Role: "SUPER_ADMIN" | "WAREHOUSE_ADMIN" | "PURCHASE_ADMIN" | "READ_ONLY";
+        /**
+         * ShareCreateRequest
+         * @description 创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
+         */
+        ShareCreateRequest: {
+            share_type: components["schemas"]["ShareType"];
+            /** Item Ids */
+            item_ids: number[];
+            expires_in: components["schemas"]["ShareExpiryOption"];
+        };
+        /**
+         * ShareExpiryOption
+         * @description 分享链接失效时间选项（前端选择码 → 服务端换算 expires_at）。
+         * @enum {string}
+         */
+        ShareExpiryOption: "24h" | "3d" | "7d" | "30d" | "permanent";
+        /**
+         * SharePublicView
+         * @description 匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。
+         */
+        SharePublicView: {
+            share_type: components["schemas"]["ShareType"];
+            /** Item Count */
+            item_count: number;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Items */
+            items: (components["schemas"]["PurchaseMaterialRead"] | components["schemas"]["PurchaseRecordRead"])[];
+        };
+        /** ShareRead */
+        ShareRead: {
+            /** Token */
+            token: string;
+            share_type: components["schemas"]["ShareType"];
+            /** Item Count */
+            item_count: number;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ShareType
+         * @description 链接分享的数据类型：申购计划 / 申购记录。
+         * @enum {string}
+         */
+        ShareType: "purchase_plan" | "purchase_record";
         /**
          * SourceType
          * @enum {string}
@@ -9382,6 +9481,207 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PurchaseMaterialRead"];
                 };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    create_share_api_v1_shares_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    get_share_api_v1_shares__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharePublicView"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    revoke_share_api_v1_shares__token__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description 业务校验失败 */
             400: {

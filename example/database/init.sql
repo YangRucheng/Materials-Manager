@@ -175,6 +175,23 @@ CREATE TABLE IF NOT EXISTS `excel_export_job` (
   INDEX `ix_excel_export_job_type_status` (`export_type`, `status`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `share_link` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `token` VARCHAR(36) NOT NULL,
+  `share_type` ENUM('PURCHASE_PLAN', 'PURCHASE_RECORD') NOT NULL,
+  `item_ids` JSON NOT NULL,
+  `expires_at` DATETIME(6) NULL,
+  `created_by` BIGINT UNSIGNED NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_share_link` PRIMARY KEY (`id`),
+  CONSTRAINT `uq_share_link_token` UNIQUE (`token`),
+  CONSTRAINT `fk_share_link_created_by_user`
+    FOREIGN KEY (`created_by`) REFERENCES `user` (`id`),
+  INDEX `ix_share_link_expires_at` (`expires_at`),
+  INDEX `ix_share_link_share_type` (`share_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `huaxing_inventory` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `first_inbound_date` DATE NULL,

@@ -73,3 +73,20 @@ class ExcelExportJobStatus(StrEnum):
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
+
+
+class ShareType(StrEnum):
+    """链接分享的数据类型：申购计划 / 申购记录。"""
+
+    PURCHASE_PLAN = "purchase_plan"
+    PURCHASE_RECORD = "purchase_record"
+
+
+class ShareExpiryOption(StrEnum):
+    """分享链接失效时间选项（前端选择码 → 服务端换算 expires_at）。"""
+
+    HOURS_24 = "24h"
+    DAYS_3 = "3d"
+    DAYS_7 = "7d"
+    DAYS_30 = "30d"
+    PERMANENT = "permanent"
