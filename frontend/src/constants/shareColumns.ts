@@ -49,3 +49,14 @@ export function shareColumnOptions(
 ): ShareColumnOption[] {
   return shareType === 'purchase_record' ? SHARE_RECORD_COLUMNS : SHARE_PLAN_COLUMNS
 }
+
+/** 默认不展示的列：分享链接默认不对外展示「状态」。 */
+export const SHARE_DEFAULT_HIDDEN_KEYS: readonly string[] = ['status']
+
+/** 分享链接默认展示列 = 该类型全部列去掉默认隐藏列。 */
+export function defaultShareColumnKeys(shareType: 'purchase_plan' | 'purchase_record'): string[] {
+  const hidden = new Set(SHARE_DEFAULT_HIDDEN_KEYS)
+  return shareColumnOptions(shareType)
+    .map((option) => option.key)
+    .filter((key) => !hidden.has(key))
+}

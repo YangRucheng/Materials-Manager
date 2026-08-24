@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { SHARE_PLAN_COLUMNS, SHARE_RECORD_COLUMNS, shareColumnOptions } from './shareColumns'
+import {
+  defaultShareColumnKeys,
+  SHARE_PLAN_COLUMNS,
+  SHARE_RECORD_COLUMNS,
+  shareColumnOptions,
+} from './shareColumns'
 
 // 与后端 SharePlanColumn / ShareRecordColumn Literal 保持一致，防止前后端键漂移。
 const PLAN_KEYS = [
@@ -55,5 +60,16 @@ describe('shareColumns', () => {
   it('shareColumnOptions 按类型返回对应列定义', () => {
     expect(shareColumnOptions('purchase_plan')).toBe(SHARE_PLAN_COLUMNS)
     expect(shareColumnOptions('purchase_record')).toBe(SHARE_RECORD_COLUMNS)
+  })
+
+  it('默认展示列 = 全部列去掉「状态」', () => {
+    expect(defaultShareColumnKeys('purchase_plan')).toEqual(
+      PLAN_KEYS.filter((key) => key !== 'status'),
+    )
+    expect(defaultShareColumnKeys('purchase_record')).toEqual(
+      RECORD_KEYS.filter((key) => key !== 'status'),
+    )
+    expect(defaultShareColumnKeys('purchase_plan')).not.toContain('status')
+    expect(defaultShareColumnKeys('purchase_record')).not.toContain('status')
   })
 })

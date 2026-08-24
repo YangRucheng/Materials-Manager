@@ -105,6 +105,19 @@ def _validate_columns(share_type: ShareType, columns: list[str] | None) -> list[
     return columns
 
 
+# 默认展示列：未配置列（columns=NULL）时的展示集合 = 该类型全部列去掉「状态」。
+_DEFAULT_EXCLUDED_COLUMNS: frozenset[str] = frozenset({"status"})
+# 渲染辅助字段：数量列展示需要计量单位，虽不是可选展示列，但在过滤时始终下发。
+_ALWAYS_INCLUDE_COLUMNS: frozenset[str] = frozenset({"unit_name"})
+
+
+def _resolved_columns(share_type: ShareType, columns: list[str] | None) -> set[str]:
+    """把存储的列配置解析为最终展示键集合：None = 默认集合（全部列去掉状态）。"""
+    if columns is not None:
+        return set(columns)
+    return _allowed_keys(share_type) - _DEFAULT_EXCLUDED_COLUMNS
+
+
 def _expires_at_for(expires_in: ShareExpiryOption) -> datetime | None:
     """把前端选择的失效选项换算为失效时间（naive UTC）；PERMANENT 返回 None。"""
     delta = _EXPIRY_DELTAS[expires_in]
@@ -155,7 +168,8 @@ async def create_share(
 async def get_public_share(session: AsyncSession, *, token: str) -> SharePublicView:
     """匿名读取分享数据：校验 token 存在且未过期，按分享时的 id 实时读取数据快照。
 
-    columns 为 None 时返回完整类型行；否则只返回所选列（+行身份键），隐藏列数据不下发。
+    columns 为 None 时使用默认展示列（全部列去掉「状态」）；否则只返回所选列。
+    无论哪种情况都只返回展示列 + 行身份键 + 计量单位，隐藏列数据不下发。
     """
     share = await session.scalar(select(ShareLink).where(ShareLink.token == token))
     if share is None:
@@ -190,19 +204,16 @@ async def get_public_share(session: AsyncSession, *, token: str) -> SharePublicV
             )
         ]
         identity_key = "line_id"
-    if share.columns is not None:
-        selected = set(share.columns)
-        items = [
-            {
-                key: value
-                for key, value in row.model_dump(mode="json").items()
-                if key in selected or key == identity_key
-            }
-            for row in typed_items
-        ]
-    else:
-        # 未配置列时维持现状：返回完整行（JSON 序列化与既有 typed 响应一致）。
-        items = [row.model_dump(mode="json") for row in typed_items]
+    selected = _resolved_columns(share.share_type, share.columns)
+    # 只返回所选列 + 行身份键 + 渲染辅助字段（计量单位），隐藏列数据不下发。
+    items = [
+        {
+            key: value
+            for key, value in row.model_dump(mode="json").items()
+            if key in selected or key == identity_key or key in _ALWAYS_INCLUDE_COLUMNS
+        }
+        for row in typed_items
+    ]
     return SharePublicView(
         share_type=share.share_type,
         item_count=len(share.item_ids),

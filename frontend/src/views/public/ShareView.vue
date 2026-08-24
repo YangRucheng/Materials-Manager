@@ -6,6 +6,7 @@ import type { FileObject, SharePublicView } from '@/api/generated'
 import { shareApi } from '@/api/share'
 import { AppError } from '@/api/client'
 import ImageThumbnails from '@/components/ImageThumbnails.vue'
+import { defaultShareColumnKeys } from '@/constants/shareColumns'
 import { formatDate, formatShanghaiTime } from '@/utils/time'
 
 const route = useRoute()
@@ -207,11 +208,16 @@ const columnDefs = computed<ShareColumnDef[]>(() =>
   isRecord.value ? recordColumnDefs : planColumnDefs,
 )
 
-/** 展示列：配置了 columns 且非空时按配置过滤注册表，否则展示全部。 */
+/** 展示列：配置了 columns 且非空时按配置过滤注册表，否则用默认展示列（全部列去掉「状态」）。 */
 const visibleKeys = computed<string[]>(() => {
   const all = columnDefs.value.map((def) => def.key)
   const configured = data.value?.columns
-  if (!configured || configured.length === 0) return all
+  if (!configured || configured.length === 0) {
+    const defaults = new Set(
+      defaultShareColumnKeys(isRecord.value ? 'purchase_record' : 'purchase_plan'),
+    )
+    return all.filter((key) => defaults.has(key))
+  }
   return all.filter((key) => configured.includes(key))
 })
 

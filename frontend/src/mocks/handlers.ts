@@ -27,6 +27,7 @@ import type {
   WebhookTestInput,
 } from '@/api/generated'
 import { apiBaseUrl, imageBaseUrl } from '@/config/env'
+import { defaultShareColumnKeys } from '@/constants/shareColumns'
 import {
   huaXingInventory,
   mockFileId,
@@ -428,19 +429,21 @@ const resolveShareItems = (shareType: ShareType, itemIds: number[]): PurchaseMat
       .filter((record) => itemIds.includes(record.line_id)),
   ) as unknown as PurchaseMaterial[]
 }
-// 按分享展示列过滤行：仅保留所选列 + 行身份键（plan→id / record→line_id）。
+// 按分享展示列过滤行：仅保留所选列 + 行身份键（plan→id / record→line_id）+ 计量单位；
+// 未配置列时使用默认展示列（全部列去掉「状态」）。
 const filterShareRows = (
   shareType: ShareType,
   items: PurchaseMaterial[],
   columns: string[] | null,
 ): unknown[] => {
-  if (!columns || columns.length === 0) return items
   const identityKey = shareType === 'purchase_plan' ? 'id' : 'line_id'
-  const selected = new Set(columns)
+  const selected =
+    columns && columns.length > 0 ? new Set(columns) : new Set(defaultShareColumnKeys(shareType))
+  const alwaysIncluded = new Set(['unit_name'])
   return items.map((row) =>
     Object.fromEntries(
       Object.entries(row as unknown as Record<string, unknown>).filter(
-        ([key]) => key === identityKey || selected.has(key),
+        ([key]) => key === identityKey || selected.has(key) || alwaysIncluded.has(key),
       ),
     ),
   )

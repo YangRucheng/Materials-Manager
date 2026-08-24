@@ -54,7 +54,10 @@ async def test_share_purchase_plan_and_anonymous_view(client: AsyncClient) -> No
     assert item["id"] == plan["id"]
     assert item["name"] == "共享计划"
     assert item["material_code"] == "SHARE-PLAN-001"
-    assert "moved_to_record" in item
+    # 默认展示列不包含非展示字段与「状态」；计量单位作为渲染辅助始终下发。
+    assert "moved_to_record" not in item
+    assert "status" not in item
+    assert item["unit_name"]
 
 
 @pytest.mark.asyncio
@@ -82,7 +85,9 @@ async def test_share_purchase_record_and_anonymous_view(client: AsyncClient) -> 
     item = body["items"][0]
     assert item["line_id"] == line_id
     assert item["material_name"] == "共享记录"
-    assert item["status"] == "已申购"
+    # 默认展示列不含「状态」。
+    assert "status" not in item
+    assert item["unit_name"]
 
 
 @pytest.mark.asyncio
@@ -226,8 +231,8 @@ async def test_create_share_with_columns_filters_public_view(client: AsyncClient
     body = view.json()
     assert body["columns"] == ["name", "status"]
     assert len(body["items"]) == 1
-    # 只下发所选列 + 行身份键 id；隐藏列数据（如 usage）不下发。
-    assert set(body["items"][0].keys()) == {"id", "name", "status"}
+    # 只下发所选列 + 行身份键 id + 计量单位（渲染辅助）；隐藏列数据（如 usage）不下发。
+    assert set(body["items"][0].keys()) == {"id", "name", "status", "unit_name"}
     assert body["items"][0]["name"] == "受限共享"
     assert "usage" not in body["items"][0]
     assert "material_code" not in body["items"][0]
@@ -257,13 +262,13 @@ async def test_share_record_columns_filter_and_identity(client: AsyncClient) -> 
     view = await client.get(f"/api/v1/shares/{token}")
     assert view.status_code == 200, view.text
     item = view.json()["items"][0]
-    # 记录行身份键为 line_id。
-    assert set(item.keys()) == {"line_id", "material_name", "purchase_qty"}
+    # 记录行身份键为 line_id；计量单位为渲染辅助字段始终下发。
+    assert set(item.keys()) == {"line_id", "material_name", "purchase_qty", "unit_name"}
     assert item["material_name"] == "受限记录"
 
 
 @pytest.mark.asyncio
-async def test_share_without_columns_returns_full_items(client: AsyncClient) -> None:
+async def test_share_without_columns_uses_default_columns(client: AsyncClient) -> None:
     headers = await auth_headers(client, "purchase")
     plan = await create_purchase_plan(client, headers, "全列共享", code="SHARE-PLAN-ALL")
     created = await _create_plan_share(client, headers, [int(plan["id"])])
@@ -274,9 +279,11 @@ async def test_share_without_columns_returns_full_items(client: AsyncClient) -> 
     body = view.json()
     assert body["columns"] is None
     item = body["items"][0]
-    # 未配置列时维持现状：返回完整类型行。
-    for key in ("id", "plan_no", "name", "material_code", "usage", "status", "images"):
+    # 默认展示列 = 全部列去掉「状态」；非展示字段（plan_no 等）与状态都不下发。
+    for key in ("id", "name", "material_code", "usage", "images", "unit_name"):
         assert key in item
+    assert "status" not in item
+    assert "plan_no" not in item
 
 
 @pytest.mark.asyncio
@@ -349,7 +356,7 @@ async def test_update_share_columns_permission_and_reset(client: AsyncClient) ->
     assert unknown.status_code == 400, unknown.text
     assert unknown.json()["code"] == "NOT_FOUND"
 
-    # 创建者可改列；null 恢复展示全部列。
+    # 创建者可改列；null 恢复默认展示列（去掉「状态」）。
     updated = await client.patch(
         f"/api/v1/shares/{token}", headers=purchase_headers, json={"columns": ["name"]}
     )
@@ -366,6 +373,7 @@ async def test_update_share_columns_permission_and_reset(client: AsyncClient) ->
     assert view.status_code == 200, view.text
     assert view.json()["columns"] is None
     assert "usage" in view.json()["items"][0]
+    assert "status" not in view.json()["items"][0]
 
 
 @pytest.mark.asyncio
