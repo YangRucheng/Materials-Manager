@@ -115,7 +115,7 @@ def _resolved_columns(share_type: ShareType, columns: list[str] | None) -> set[s
     """把存储的列配置解析为最终展示键集合：None = 默认集合（全部列去掉状态）。"""
     if columns is not None:
         return set(columns)
-    return _allowed_keys(share_type) - _DEFAULT_EXCLUDED_COLUMNS
+    return set(_allowed_keys(share_type) - _DEFAULT_EXCLUDED_COLUMNS)
 
 
 def _expires_at_for(expires_in: ShareExpiryOption) -> datetime | None:
@@ -262,20 +262,27 @@ async def list_shares(
     return pairs, total
 
 
-async def update_columns(
+async def update_share(
     session: AsyncSession,
     *,
     token: str,
     user: User,
-    columns: list[str] | None,
+    columns: list[str] | None = None,
+    expires_in: ShareExpiryOption | None = None,
 ) -> ShareLink:
-    """更新分享链接的展示列：仅创建者本人或超级管理员可执行。"""
+    """更新分享链接的展示列与到期时间：仅创建者本人或超级管理员可执行。
+
+    columns/expires_in 为 None 表示对应项不修改；expires_in 传 'permanent' 表示永久有效。
+    """
     share = await session.scalar(select(ShareLink).where(ShareLink.token == token))
     if share is None:
         raise not_found("分享链接")
     if share.created_by != user.id and user.role != Role.SUPER_ADMIN:
         raise AppError("FORBIDDEN", "只能修改自己创建的分享链接", status_code=403)
-    share.columns = _validate_columns(share.share_type, columns)
+    if columns is not None:
+        share.columns = _validate_columns(share.share_type, columns)
+    if expires_in is not None:
+        share.expires_at = _expires_at_for(expires_in)
     await session.flush()
     return share
 
@@ -319,7 +326,7 @@ __all__ = [
     "get_public_share",
     "revoke_share",
     "list_shares",
-    "update_columns",
+    "update_share",
     "cleanup_expired",
     "run_cleanup_worker",
 ]

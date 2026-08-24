@@ -6,11 +6,11 @@ from app.core.permissions import CurrentUser, DbSession
 from app.schemas import (
     FileId,
     Page,
-    ShareColumnsUpdate,
     ShareCreateRequest,
     ShareListRead,
     SharePublicView,
     ShareRead,
+    ShareUpdateRequest,
 )
 from app.services import share_link_service
 
@@ -86,15 +86,19 @@ async def get_share(token: FileId, session: DbSession) -> SharePublicView:
 
 
 @router.patch("/{token}", response_model=ShareRead)
-async def update_share_columns(
+async def update_share(
     token: FileId,
-    data: ShareColumnsUpdate,
+    data: ShareUpdateRequest,
     session: DbSession,
     user: CurrentUser,
 ) -> ShareRead:
-    """更新分享链接的展示列：仅创建者本人或超级管理员可执行，NULL 表示展示全部列。"""
-    share = await share_link_service.update_columns(
-        session, token=token, user=user, columns=data.columns
+    """更新分享链接：展示列与到期时间；仅创建者本人或超级管理员可执行。"""
+    share = await share_link_service.update_share(
+        session,
+        token=token,
+        user=user,
+        columns=data.columns,
+        expires_in=data.expires_in,
     )
     return ShareRead(
         token=share.token,

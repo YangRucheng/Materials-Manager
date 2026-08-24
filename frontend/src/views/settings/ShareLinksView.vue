@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
 import { NButton, NTag, useDialog, useMessage } from 'naive-ui'
-import type { ShareListRead, ShareType } from '@/api/generated'
+import type { ShareExpiryOption, ShareListRead, ShareType } from '@/api/generated'
 import { shareApi } from '@/api/share'
 import {
   defaultShareColumnKeys,
@@ -32,25 +32,41 @@ const shareTypeLabels: Record<ShareType, string> = {
   purchase_record: '申购记录',
 }
 
-// ---- 设置列弹窗 ----
-const showColumnsModal = ref(false)
-const editingColumns = ref<ShareListRead | null>(null)
+// ---- 编辑弹窗（展示列 + 到期时间 + 删除） ----
+const showEditModal = ref(false)
+const editingShare = ref<ShareListRead | null>(null)
 const selectedColumns = ref<string[]>([])
-const savingColumns = ref(false)
+const selectedExpiry = ref<ShareExpiryOption | 'keep'>('keep')
+const saving = ref(false)
 
 const columnOptions = computed<ShareColumnOption[]>(() =>
-  editingColumns.value ? shareColumnOptions(editingColumns.value.share_type) : [],
+  editingShare.value ? shareColumnOptions(editingShare.value.share_type) : [],
 )
 
-function openColumnsModal(row: ShareListRead) {
-  editingColumns.value = row
+/** 到期时间选项：keep = 保持不变（编辑时默认，不改动原到期时间）。 */
+const expiryOptions: Array<{ value: ShareExpiryOption | 'keep'; label: string }> = [
+  { value: 'keep', label: '保持不变' },
+  { value: '24h', label: '24小时' },
+  { value: '3d', label: '3天' },
+  { value: '7d', label: '7天' },
+  { value: '30d', label: '30天' },
+  { value: 'permanent', label: '永久' },
+]
+
+const currentExpiryLabel = computed(() =>
+  editingShare.value?.expires_at ? formatShanghaiTime(editingShare.value.expires_at) : '永久有效',
+)
+
+function openEditModal(row: ShareListRead) {
+  editingShare.value = row
   const allKeys = shareColumnOptions(row.share_type).map((option) => option.key)
   // 未配置列时默认展示列（全部列去掉「状态」）；已配置则按配置回显。
   selectedColumns.value =
     row.columns == null
       ? allKeys.filter((key) => defaultShareColumnKeys(row.share_type).includes(key))
       : allKeys.filter((key) => row.columns?.includes(key))
-  showColumnsModal.value = true
+  selectedExpiry.value = 'keep'
+  showEditModal.value = true
 }
 
 function toggleColumn(key: string) {
@@ -63,23 +79,55 @@ function toggleColumn(key: string) {
   }
 }
 
-async function saveColumns() {
-  if (!editingColumns.value) return
+async function saveEdit() {
+  if (!editingShare.value) return
   if (selectedColumns.value.length === 0) {
     message.warning('请至少保留 1 列')
     return
   }
-  savingColumns.value = true
+  const row = editingShare.value
+  const defaultKeys = defaultShareColumnKeys(row.share_type)
+  const isDefaultColumns =
+    row.columns == null &&
+    selectedColumns.value.length === defaultKeys.length &&
+    selectedColumns.value.every((key) => defaultKeys.includes(key))
+  saving.value = true
   try {
-    await shareApi.updateShareColumns(editingColumns.value.token, selectedColumns.value)
-    message.success('展示列已更新')
-    showColumnsModal.value = false
+    await shareApi.updateShare(row.token, {
+      columns: isDefaultColumns ? null : selectedColumns.value,
+      expires_in: selectedExpiry.value === 'keep' ? null : selectedExpiry.value,
+    })
+    message.success('分享链接已更新')
+    showEditModal.value = false
     await load()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
-    savingColumns.value = false
+    saving.value = false
   }
+}
+
+function deleteShare() {
+  const row = editingShare.value
+  if (!row) return
+  dialog.warning({
+    draggable: true,
+    title: '删除分享链接',
+    content: `删除后，该「${shareTypeLabels[row.share_type]}」分享链接将立即失效，任何持有链接的人都无法再查看。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await shareApi.revokeShare(row.token)
+        message.success('分享链接已删除')
+        showEditModal.value = false
+        await load()
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : '删除失败')
+        return false
+      }
+    },
+  })
 }
 
 function columnLabels(row: ShareListRead): string {
@@ -95,26 +143,6 @@ async function copyLink(token: string) {
   } catch {
     message.warning('复制失败，请手动复制')
   }
-}
-
-function revoke(row: ShareListRead) {
-  dialog.warning({
-    draggable: true,
-    title: '撤回分享链接',
-    content: `撤回后，该「${shareTypeLabels[row.share_type]}」分享链接将立即失效，任何持有链接的人都无法再查看。`,
-    positiveText: '撤回',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await shareApi.revokeShare(row.token)
-        message.success('分享链接已撤回')
-        await load()
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : '撤回失败')
-        return false
-      }
-    },
-  })
 }
 
 const columns = preventTableColumnCompression<ShareListRead>([
@@ -183,7 +211,7 @@ const columns = preventTableColumnCompression<ShareListRead>([
   {
     title: '操作',
     key: 'action',
-    width: 210,
+    width: 160,
     render: (row) =>
       h('div', { style: 'display:flex;gap:8px' }, [
         h(
@@ -191,16 +219,7 @@ const columns = preventTableColumnCompression<ShareListRead>([
           { size: 'small', secondary: true, onClick: () => void copyLink(row.token) },
           { default: () => '复制链接' },
         ),
-        h(
-          NButton,
-          { size: 'small', onClick: () => openColumnsModal(row) },
-          { default: () => '设置列' },
-        ),
-        h(
-          NButton,
-          { size: 'small', type: 'error', secondary: true, onClick: () => revoke(row) },
-          { default: () => '撤回' },
-        ),
+        h(NButton, { size: 'small', onClick: () => openEditModal(row) }, { default: () => '编辑' }),
       ]),
   },
 ])
@@ -237,23 +256,25 @@ const tableScrollX = getTableScrollX(columns)
     </n-card>
 
     <n-modal
-      v-model:show="showColumnsModal"
+      v-model:show="showEditModal"
       preset="card"
       draggable
-      title="设置分享页展示列"
-      style="width: min(620px, calc(100vw - 32px))"
+      title="编辑分享链接"
+      style="width: min(640px, calc(100vw - 32px))"
       :mask-closable="false"
     >
-      <template v-if="editingColumns">
+      <template v-if="editingShare">
         <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
-          该「{{ shareTypeLabels[editingColumns.share_type] }}」分享链接当前
+          该「{{ shareTypeLabels[editingShare.share_type] }}」分享链接当前
           <b>{{
-            editingColumns.columns == null
+            editingShare.columns == null
               ? '使用默认展示列（不含「状态」）'
-              : `展示 ${editingColumns.columns.length} 列`
+              : `展示 ${editingShare.columns.length} 列`
           }}</b
           >。取消勾选的列在公开页不再展示，且其数据不会随分享响应下发。
         </n-alert>
+
+        <h3 class="edit-section-title">展示列</h3>
         <div class="column-card-grid">
           <button
             v-for="option in columnOptions"
@@ -272,11 +293,28 @@ const tableScrollX = getTableScrollX(columns)
           </button>
         </div>
         <p class="column-card-hint">至少保留 1 列</p>
+
+        <h3 class="edit-section-title edit-section-title--expiry">到期时间</h3>
+        <p class="expiry-current">当前到期：{{ currentExpiryLabel }}</p>
+        <n-radio-group v-model:value="selectedExpiry" name="share-expiry-edit">
+          <n-space wrap>
+            <n-radio-button
+              v-for="option in expiryOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </n-radio-button>
+          </n-space>
+        </n-radio-group>
       </template>
       <template #footer>
-        <n-space justify="end">
-          <n-button :disabled="savingColumns" @click="showColumnsModal = false">取消</n-button>
-          <n-button type="primary" :loading="savingColumns" @click="saveColumns">保存</n-button>
+        <n-space justify="space-between" align="center">
+          <n-button type="error" secondary :disabled="saving" @click="deleteShare">删除</n-button>
+          <n-space>
+            <n-button :disabled="saving" @click="showEditModal = false">取消</n-button>
+            <n-button type="primary" :loading="saving" @click="saveEdit">保存</n-button>
+          </n-space>
         </n-space>
       </template>
     </n-modal>
@@ -373,6 +411,23 @@ const tableScrollX = getTableScrollX(columns)
   margin: 12px 0 0;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.edit-section-title {
+  margin: 0 0 12px;
+  color: var(--color-text-strong);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.edit-section-title--expiry {
+  margin-top: 20px;
+}
+
+.expiry-current {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 @media (max-width: 640px) {

@@ -1367,10 +1367,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update Share Columns
-         * @description 更新分享链接的展示列：仅创建者本人或超级管理员可执行，NULL 表示展示全部列。
+         * Update Share
+         * @description 更新分享链接：展示列与到期时间；仅创建者本人或超级管理员可执行。
          */
-        patch: operations["update_share_columns_api_v1_shares__token__patch"];
+        patch: operations["update_share_api_v1_shares__token__patch"];
         trace?: never;
     };
     "/api/v1/users": {
@@ -3246,14 +3246,6 @@ export interface components {
          */
         Role: "SUPER_ADMIN" | "WAREHOUSE_ADMIN" | "PURCHASE_ADMIN" | "READ_ONLY";
         /**
-         * ShareColumnsUpdate
-         * @description 更新分享链接的展示列：NULL = 展示全部默认列。
-         */
-        ShareColumnsUpdate: {
-            /** Columns */
-            columns: string[] | null;
-        };
-        /**
          * ShareCreateRequest
          * @description 创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
          */
@@ -3343,6 +3335,15 @@ export interface components {
          * @enum {string}
          */
         ShareType: "purchase_plan" | "purchase_record";
+        /**
+         * ShareUpdateRequest
+         * @description 更新分享链接：展示列 + 到期时间。缺省/为 None 表示对应项不修改。
+         */
+        ShareUpdateRequest: {
+            /** Columns */
+            columns?: string[] | null;
+            expires_in?: components["schemas"]["ShareExpiryOption"] | null;
+        };
         /**
          * SourceType
          * @enum {string}
@@ -9860,7 +9861,7 @@ export interface operations {
             };
         };
     };
-    update_share_columns_api_v1_shares__token__patch: {
+    update_share_api_v1_shares__token__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -9871,7 +9872,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ShareColumnsUpdate"];
+                "application/json": components["schemas"]["ShareUpdateRequest"];
             };
         };
         responses: {

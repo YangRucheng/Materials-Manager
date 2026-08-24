@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -333,7 +333,7 @@ async def test_create_share_rejects_invalid_columns(client: AsyncClient) -> None
 
 
 @pytest.mark.asyncio
-async def test_update_share_columns_permission_and_reset(client: AsyncClient) -> None:
+async def test_update_share_permission_and_columns(client: AsyncClient) -> None:
     purchase_headers = await auth_headers(client, "purchase")
     readonly_headers = await auth_headers(client, "readonly")
     plan = await create_purchase_plan(client, purchase_headers, "改列共享")
@@ -356,24 +356,61 @@ async def test_update_share_columns_permission_and_reset(client: AsyncClient) ->
     assert unknown.status_code == 400, unknown.text
     assert unknown.json()["code"] == "NOT_FOUND"
 
-    # 创建者可改列；null 恢复默认展示列（去掉「状态」）。
+    # 创建者可改列；columns 缺省/None 表示不修改展示列。
     updated = await client.patch(
         f"/api/v1/shares/{token}", headers=purchase_headers, json={"columns": ["name"]}
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["columns"] == ["name"]
 
-    reset = await client.patch(
+    # 只更新到期时间，columns 传 None 保持不变。
+    kept = await client.patch(
         f"/api/v1/shares/{token}", headers=purchase_headers, json={"columns": None}
     )
-    assert reset.status_code == 200, reset.text
-    assert reset.json()["columns"] is None
+    assert kept.status_code == 200, kept.text
+    assert kept.json()["columns"] == ["name"]
 
     view = await client.get(f"/api/v1/shares/{token}")
     assert view.status_code == 200, view.text
-    assert view.json()["columns"] is None
-    assert "usage" in view.json()["items"][0]
-    assert "status" not in view.json()["items"][0]
+    assert view.json()["columns"] == ["name"]
+    item = view.json()["items"][0]
+    assert set(item.keys()) == {"id", "name", "unit_name"}
+
+
+@pytest.mark.asyncio
+async def test_update_share_expiry(client: AsyncClient) -> None:
+    purchase_headers = await auth_headers(client, "purchase")
+    plan = await create_purchase_plan(client, purchase_headers, "改期共享")
+    created = await _create_plan_share(
+        client, purchase_headers, [int(plan["id"])], expires_in="24h"
+    )
+    token = created["token"]
+    assert created["expires_at"] is not None
+
+    # 修改为 7 天后到期。
+    extended = await client.patch(
+        f"/api/v1/shares/{token}", headers=purchase_headers, json={"expires_in": "7d"}
+    )
+    assert extended.status_code == 200, extended.text
+    body = extended.json()
+    assert body["expires_at"] is not None
+    expiry = datetime.fromisoformat(body["expires_at"]).replace(tzinfo=None)
+    assert utcnow() + timedelta(days=6) < expiry < utcnow() + timedelta(days=8)
+
+    # 修改为永久有效。
+    permanent = await client.patch(
+        f"/api/v1/shares/{token}", headers=purchase_headers, json={"expires_in": "permanent"}
+    )
+    assert permanent.status_code == 200, permanent.text
+    assert permanent.json()["expires_at"] is None
+
+    # 只改列时到期时间保持不变（仍为永久）。
+    only_columns = await client.patch(
+        f"/api/v1/shares/{token}", headers=purchase_headers, json={"columns": ["name"]}
+    )
+    assert only_columns.status_code == 200, only_columns.text
+    assert only_columns.json()["expires_at"] is None
+    assert only_columns.json()["columns"] == ["name"]
 
 
 @pytest.mark.asyncio

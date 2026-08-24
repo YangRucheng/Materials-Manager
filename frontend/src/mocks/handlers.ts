@@ -1614,8 +1614,14 @@ export const handlers = [
     if (!share) return error(400, 'SHARE_NOT_FOUND', '分享链接不存在或已失效')
     if (share.createdBy !== actorUser.username && actorUser.role !== 'SUPER_ADMIN')
       return error(403, 'FORBIDDEN', '只能修改自己创建的分享链接')
-    const body = (await request.json()) as { columns: string[] | null }
-    share.columns = body.columns ?? null
+    const body = (await request.json()) as {
+      columns?: string[] | null
+      expires_in?: ShareExpiryOption | null
+    }
+    // columns 为数组时更新展示列；null/缺省表示不修改。
+    if (Array.isArray(body.columns)) share.columns = body.columns
+    // expires_in 有值时更新到期时间；null/缺省表示不修改。
+    if (body.expires_in) share.expiresAt = expiryToDate(body.expires_in)
     return HttpResponse.json(mockShareRead(token, share))
   }),
   http.delete(`${api}/shares/:token`, ({ params, request }) => {

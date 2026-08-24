@@ -1430,10 +1430,11 @@ class ShareCreateRequest(RequestModel):
         return _validate_share_columns(value)
 
 
-class ShareColumnsUpdate(RequestModel):
-    """更新分享链接的展示列：NULL = 展示全部默认列。"""
+class ShareUpdateRequest(RequestModel):
+    """更新分享链接：展示列 + 到期时间。缺省/为 None 表示对应项不修改。"""
 
-    columns: list[str] | None
+    columns: list[str] | None = None
+    expires_in: ShareExpiryOption | None = None
 
     @field_validator("columns")
     @classmethod
