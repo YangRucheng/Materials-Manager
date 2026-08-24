@@ -157,7 +157,7 @@ const router = createRouter({
       path: '/share/:token',
       name: 'share',
       component: () => import('@/views/public/ShareView.vue'),
-      meta: { public: true, title: '分享查看' },
+      meta: { public: true, title: '分享预览' },
     },
     {
       path: '/:pathMatch(.*)*',
