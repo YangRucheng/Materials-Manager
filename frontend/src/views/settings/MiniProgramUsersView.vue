@@ -207,7 +207,6 @@ function confirmDelete() {
           <h1 class="page-title">小程序用户</h1>
           <n-tag round size="small" type="info">{{ items.length }} 位</n-tag>
         </div>
-        <p class="page-description">按人员管理多个小程序身份，并支持人工合并重复账号</p>
       </div>
     </div>
     <n-card class="data-card" :bordered="false">
@@ -310,12 +309,6 @@ function confirmDelete() {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.page-description {
-  margin: 8px 0 0;
-  color: var(--color-text-muted);
-  font-size: 14px;
 }
 
 .modal-footer {

@@ -207,7 +207,6 @@ const tableScrollX = getTableScrollX(columns)
     <div class="page-header">
       <div>
         <h1 class="page-title">分享链接</h1>
-        <p class="page-desc">管理已创建的匿名分享链接，可为每个链接单独设置公开页展示的列。</p>
       </div>
     </div>
     <n-card class="data-card"
@@ -283,12 +282,6 @@ const tableScrollX = getTableScrollX(columns)
 </template>
 
 <style scoped>
-.page-desc {
-  margin: 4px 0 0;
-  color: #7a8699;
-  font-size: 13px;
-}
-
 .pagination-bar {
   display: flex;
   justify-content: flex-end;

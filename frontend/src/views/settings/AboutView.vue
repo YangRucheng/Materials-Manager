@@ -21,7 +21,6 @@ onMounted(async () => {
     <div class="page-header">
       <div>
         <h1 class="page-title">关于系统</h1>
-        <p class="page-description">系统信息、使用提示与版权说明。</p>
       </div>
     </div>
 
@@ -84,12 +83,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.page-description {
-  margin: 5px 0 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
-}
-
 .about-card :deep(.n-card__content) {
   padding: 24px 28px;
 }

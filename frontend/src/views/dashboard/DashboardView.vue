@@ -77,7 +77,6 @@ onMounted(load)
         <div class="page-header">
           <div>
             <span class="card-title">低库存提醒</span>
-            <div class="section-description">仅展示前 5 条，完整数据请前往库存查询</div>
           </div>
           <n-button text type="primary" @click="router.push('/warehouse/stock?low_stock=true')"
             >查看全部</n-button
@@ -126,11 +125,5 @@ onMounted(load)
   font-size: 30px;
   font-weight: 650;
   line-height: 1.2;
-}
-.section-description {
-  margin-top: 3px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 400;
 }
 </style>
