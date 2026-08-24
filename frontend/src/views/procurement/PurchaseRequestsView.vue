@@ -1670,11 +1670,20 @@ onMounted(() => {
             <n-form-item label="型号规格" required>
               <n-input v-model:value="reapplyForm.model_spec" maxlength="128" />
             </n-form-item>
-            <n-form-item label="单位" required>
-              <n-input v-model:value="reapplyForm.unit_name" maxlength="32" />
-            </n-form-item>
-            <n-form-item label="申购数量" required>
-              <QuantityInput v-model:value="reapplyForm.planned_qty" />
+            <n-form-item label="申购数量 / 计量单位" required>
+              <n-input-group>
+                <QuantityInput
+                  v-model:value="reapplyForm.planned_qty"
+                  :decimal-places="1"
+                  class="quantity-input"
+                />
+                <n-input
+                  v-model:value="reapplyForm.unit_name"
+                  maxlength="32"
+                  placeholder="计量单位"
+                  class="quantity-unit-select"
+                />
+              </n-input-group>
             </n-form-item>
             <n-form-item label="物料编码">
               <n-input
