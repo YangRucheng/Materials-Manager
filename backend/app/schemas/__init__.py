@@ -1360,12 +1360,62 @@ class PurchaseRecordResultExportRequest(RequestModel):
         return value
 
 
+# 分享页可展示列（键名与前端 ShareView 表头一致）。NULL/缺省 = 展示全部默认列。
+SharePlanColumn = Literal[
+    "plan_date",
+    "material_code",
+    "category",
+    "urgency",
+    "demand_department",
+    "name",
+    "model_spec",
+    "planned_qty",
+    "actual_demand_person",
+    "purchase_responsible",
+    "subitem_no",
+    "usage",
+    "status",
+    "images",
+]
+
+ShareRecordColumn = Literal[
+    "plan_date",
+    "purchase_order_no",
+    "trace_no",
+    "category",
+    "demand_department",
+    "material_name",
+    "model_spec",
+    "purchase_qty",
+    "actual_demand_person",
+    "purchase_responsible",
+    "salesperson",
+    "subitem_no",
+    "usage",
+    "status",
+    "images",
+]
+
+
+def _validate_share_columns(value: list[str] | None) -> list[str] | None:
+    """校验分享页展示列：None 表示全部；否则至少 1 项、去重（键的合法性按分享类型另行校验）。"""
+    if value is None:
+        return None
+    if len(value) < 1:
+        raise ValueError("columns must not be empty")
+    if len(value) != len(set(value)):
+        raise ValueError("columns must be unique")
+    return value
+
+
 class ShareCreateRequest(RequestModel):
     """创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。"""
 
     share_type: ShareType
     item_ids: list[int] = Field(min_length=1, max_length=200)
     expires_in: ShareExpiryOption
+    # 分享页展示列；NULL = 展示全部默认列，否则仅展示列出的列（键名按分享类型校验）。
+    columns: list[str] | None = None
 
     @field_validator("item_ids")
     @classmethod
@@ -1373,6 +1423,22 @@ class ShareCreateRequest(RequestModel):
         if len(value) != len(set(value)):
             raise ValueError("item_ids must be unique")
         return value
+
+    @field_validator("columns")
+    @classmethod
+    def validate_columns(cls, value: list[str] | None) -> list[str] | None:
+        return _validate_share_columns(value)
+
+
+class ShareColumnsUpdate(RequestModel):
+    """更新分享链接的展示列：NULL = 展示全部默认列。"""
+
+    columns: list[str] | None
+
+    @field_validator("columns")
+    @classmethod
+    def validate_columns(cls, value: list[str] | None) -> list[str] | None:
+        return _validate_share_columns(value)
 
 
 class ShareRead(ReadModel):
@@ -1382,17 +1448,38 @@ class ShareRead(ReadModel):
     # 失效时间（UTC ISO）；NULL = 永久有效。
     expires_at: UtcDateTime | None = None
     created_at: UtcDateTime
+    # 分享页展示列；NULL = 展示全部默认列。
+    columns: list[str] | None = None
+
+
+class ShareListRead(ReadModel):
+    """管理端「分享链接」列表项。"""
+
+    token: str
+    share_type: ShareType
+    item_count: int
+    expires_at: UtcDateTime | None = None
+    created_at: UtcDateTime
+    created_by: int | None = None
+    created_by_name: str | None = None
+    columns: list[str] | None = None
 
 
 class SharePublicView(ReadModel):
-    """匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。"""
+    """匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。
+
+    当 columns 为 NULL 时 items 为完整类型行；否则 items 为仅含所选列（+行身份键）的字典行，
+    隐藏列的数据不会随响应下发。
+    """
 
     share_type: ShareType
     item_count: int
     # 失效时间（UTC ISO）；NULL = 永久有效。
     expires_at: UtcDateTime | None = None
     created_at: UtcDateTime
-    items: list[PurchaseMaterialRead | PurchaseRecordRead]
+    # 分享页展示列；NULL = 展示全部默认列。
+    columns: list[str] | None = None
+    items: list[dict[str, Any]]
 
 
 class PurchaseRecordSyncTargetRead(ReadModel):

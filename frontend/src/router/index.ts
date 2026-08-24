@@ -145,6 +145,12 @@ const router = createRouter({
           component: () => import('@/views/settings/AboutView.vue'),
           meta: { title: '关于', permission: 'settings:write' },
         },
+        {
+          path: 'settings/share-links',
+          name: 'share-links',
+          component: () => import('@/views/settings/ShareLinksView.vue'),
+          meta: { title: '分享链接', permission: 'settings:write' },
+        },
       ],
     },
     {

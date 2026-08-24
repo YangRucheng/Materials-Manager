@@ -40,12 +40,13 @@ const menuOptions = computed<MenuOption[]>(() => {
   })
   if (auth.can('settings:write'))
     items.push({
-      label: '系统设置',
+      label: '系统管理',
       key: 'settings-group',
       children: [
         link('管理端用户', 'users'),
         link('小程序用户', 'mini-program-users'),
         link('高级设置', 'advanced-settings'),
+        link('分享链接', 'share-links'),
         link('关于', 'about'),
       ],
     })

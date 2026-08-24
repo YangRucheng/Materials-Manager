@@ -5404,6 +5404,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
   /api/v1/shares:
+    get:
+      tags:
+      - 链接分享
+      summary: List Shares
+      description: 管理端「分享链接」列表：普通用户只看自己创建的，超管看全部。
+      operationId: list_shares_api_v1_shares_get
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_ShareListRead_'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     post:
       tags:
       - 链接分享
@@ -5415,12 +5479,15 @@ paths:
 
         返回 token 与失效时间，前端据此拼接分享页 URL（/share/{token}）。'
       operationId: create_share_api_v1_shares_post
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ShareCreateRequest'
-        required: true
       responses:
         '201':
           description: Successful Response
@@ -5458,9 +5525,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      security:
-      - HTTPBearer: []
-      - APIKeyHeader: []
   /api/v1/shares/{token}:
     get:
       tags:
@@ -5482,6 +5546,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharePublicView'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      tags:
+      - 链接分享
+      summary: Update Share Columns
+      description: 更新分享链接的展示列：仅创建者本人或超级管理员可执行，NULL 表示展示全部列。
+      operationId: update_share_columns_api_v1_shares__token__patch
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+          title: Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareColumnsUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareRead'
         '400':
           description: 业务校验失败
           content:
@@ -8573,6 +8697,29 @@ components:
       - page_size
       - total
       title: Page[PurchaseRecordRead]
+    Page_ShareListRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ShareListRead'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: Page[ShareListRead]
     Page_StockMaterialRead_:
       properties:
         items:
@@ -9921,6 +10068,21 @@ components:
       - PURCHASE_ADMIN
       - READ_ONLY
       title: Role
+    ShareColumnsUpdate:
+      properties:
+        columns:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Columns
+      additionalProperties: false
+      type: object
+      required:
+      - columns
+      title: ShareColumnsUpdate
+      description: 更新分享链接的展示列：NULL = 展示全部默认列。
     ShareCreateRequest:
       properties:
         share_type:
@@ -9934,6 +10096,13 @@ components:
           title: Item Ids
         expires_in:
           $ref: '#/components/schemas/ShareExpiryOption'
+        columns:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Columns
       additionalProperties: false
       type: object
       required:
@@ -9952,6 +10121,51 @@ components:
       - permanent
       title: ShareExpiryOption
       description: 分享链接失效时间选项（前端选择码 → 服务端换算 expires_at）。
+    ShareListRead:
+      properties:
+        token:
+          type: string
+          title: Token
+        share_type:
+          $ref: '#/components/schemas/ShareType'
+        item_count:
+          type: integer
+          title: Item Count
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
+        created_by_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created By Name
+        columns:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Columns
+      type: object
+      required:
+      - token
+      - share_type
+      - item_count
+      - created_at
+      title: ShareListRead
+      description: 管理端「分享链接」列表项。
     SharePublicView:
       properties:
         share_type:
@@ -9969,11 +10183,17 @@ components:
           type: string
           format: date-time
           title: Created At
+        columns:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Columns
         items:
           items:
-            anyOf:
-            - $ref: '#/components/schemas/PurchaseMaterialRead'
-            - $ref: '#/components/schemas/PurchaseRecordRead'
+            additionalProperties: true
+            type: object
           type: array
           title: Items
       type: object
@@ -9983,7 +10203,12 @@ components:
       - created_at
       - items
       title: SharePublicView
-      description: 匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。
+      description: '匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。
+
+
+        当 columns 为 NULL 时 items 为完整类型行；否则 items 为仅含所选列（+行身份键）的字典行，
+
+        隐藏列的数据不会随响应下发。'
     ShareRead:
       properties:
         token:
@@ -10004,6 +10229,13 @@ components:
           type: string
           format: date-time
           title: Created At
+        columns:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Columns
       type: object
       required:
       - token

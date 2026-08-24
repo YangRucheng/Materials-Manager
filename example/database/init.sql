@@ -180,6 +180,7 @@ CREATE TABLE IF NOT EXISTS `share_link` (
   `token` VARCHAR(36) NOT NULL,
   `share_type` ENUM('PURCHASE_PLAN', 'PURCHASE_RECORD') NOT NULL,
   `item_ids` JSON NOT NULL,
+  `columns` JSON NULL,
   `expires_at` DATETIME(6) NULL,
   `created_by` BIGINT UNSIGNED NULL,
   `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

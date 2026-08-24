@@ -68,7 +68,9 @@ export type VersionInfo = components['schemas']['VersionInfoRead']
 export type ShareType = components['schemas']['ShareType']
 export type ShareExpiryOption = components['schemas']['ShareExpiryOption']
 export type ShareCreateRequest = components['schemas']['ShareCreateRequest']
+export type ShareColumnsUpdate = components['schemas']['ShareColumnsUpdate']
 export type ShareRead = components['schemas']['ShareRead']
+export type ShareListRead = components['schemas']['ShareListRead']
 export type SharePublicView = components['schemas']['SharePublicView']
 
 /* ===== 前端自建视图模型 / 泛型 / Literal（openapi 无对应 schema，手写保留） ===== */

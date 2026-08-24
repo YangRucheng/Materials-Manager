@@ -402,11 +402,17 @@ const exportWorkbookBytes = (): Uint8Array => {
   return bytes
 }
 
-// 链接分享 mock：POST 创建分享，GET /shares/:token 匿名读取（不校验登录态），DELETE 撤回。
-const shares = new Map<
-  string,
-  { shareType: ShareType; itemIds: number[]; expiresAt: string | null }
->()
+// 链接分享 mock：POST 创建分享，GET /shares 列表，GET /shares/:token 匿名读取（不校验登录态），
+// PATCH /shares/:token 更新展示列，DELETE 撤回。
+interface MockShare {
+  shareType: ShareType
+  itemIds: number[]
+  expiresAt: string | null
+  columns: string[] | null
+  createdBy: string
+  createdAt: string
+}
+const shares = new Map<string, MockShare>()
 const expiryToDate = (expiresIn: ShareExpiryOption): string | null => {
   if (expiresIn === 'permanent') return null
   const hours = { '24h': 24, '3d': 72, '7d': 168, '30d': 720 }[expiresIn] ?? 24
@@ -422,6 +428,31 @@ const resolveShareItems = (shareType: ShareType, itemIds: number[]): PurchaseMat
       .filter((record) => itemIds.includes(record.line_id)),
   ) as unknown as PurchaseMaterial[]
 }
+// 按分享展示列过滤行：仅保留所选列 + 行身份键（plan→id / record→line_id）。
+const filterShareRows = (
+  shareType: ShareType,
+  items: PurchaseMaterial[],
+  columns: string[] | null,
+): unknown[] => {
+  if (!columns || columns.length === 0) return items
+  const identityKey = shareType === 'purchase_plan' ? 'id' : 'line_id'
+  const selected = new Set(columns)
+  return items.map((row) =>
+    Object.fromEntries(
+      Object.entries(row as unknown as Record<string, unknown>).filter(
+        ([key]) => key === identityKey || selected.has(key),
+      ),
+    ),
+  )
+}
+const mockShareRead = (token: string, share: MockShare) => ({
+  token,
+  share_type: share.shareType,
+  item_count: share.itemIds.length,
+  expires_at: share.expiresAt,
+  created_at: share.createdAt,
+  columns: share.columns,
+})
 
 export const handlers = [
   http.post(`${api}/ai-search/expand`, async ({ request }) => {
@@ -1470,12 +1501,12 @@ export const handlers = [
   }),
   http.post(`${api}/purchase-materials/export-results`, async () => {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const job = createExportJob('PURCHASE_PLAN_RESULTS', `申购计划导出_${date}.xlsx`)
+    const job = createExportJob('PURCHASE_PLAN_RESULTS', `申购计划导出_${date}（共2条）.xlsx`)
     return HttpResponse.json(job, { status: 202 })
   }),
   http.post(`${api}/purchase-records/export-results`, async () => {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const job = createExportJob('PURCHASE_RECORD_RESULTS', `申购记录导出_${date}.xlsx`)
+    const job = createExportJob('PURCHASE_RECORD_RESULTS', `申购记录导出_${date}（共2条）.xlsx`)
     return HttpResponse.json(job, { status: 202 })
   }),
   http.get(`${api}/excel-export-jobs/:id`, ({ params }) => {
@@ -1500,7 +1531,7 @@ export const handlers = [
       },
     })
   }),
-  // 链接分享：POST 创建（需登录），GET /shares/:token 匿名读取，DELETE 撤回。
+  // 链接分享：POST 创建（需登录），GET /shares 列表，GET /shares/:token 匿名读取，PATCH 改列，DELETE 撤回。
   http.post(`${api}/shares`, async ({ request }) => {
     const body = (await request.json()) as ShareCreateRequest
     const actorUser = actor(request)
@@ -1510,19 +1541,48 @@ export const handlers = [
     const token = `0198${Date.now().toString(16).padStart(10, '0')}-0000-7000-8000-${String(
       shares.size + 1,
     ).padStart(12, '0')}`
+    const createdAt = new Date().toISOString()
     const shareRead: ShareRead = {
       token,
       share_type: body.share_type,
       item_count: body.item_ids.length,
       expires_at: expiryToDate(body.expires_in),
-      created_at: new Date().toISOString(),
+      created_at: createdAt,
+      columns: body.columns ?? null,
     }
     shares.set(token, {
       shareType: body.share_type,
       itemIds: body.item_ids,
       expiresAt: shareRead.expires_at ?? null,
+      columns: shareRead.columns ?? null,
+      createdBy: actorUser.username,
+      createdAt,
     })
     return HttpResponse.json(shareRead, { status: 201 })
+  }),
+  http.get(`${api}/shares`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return error(401, 'UNAUTHORIZED', '请先登录')
+    const actorUser = actor(request)
+    const url = new URL(request.url)
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1)
+    const pageSize = Math.min(200, Math.max(1, Number(url.searchParams.get('page_size')) || 20))
+    const rows = [...shares.entries()]
+      .filter(
+        ([, share]) => actorUser.role === 'SUPER_ADMIN' || share.createdBy === actorUser.username,
+      )
+      .sort((a, b) => (b[1].createdAt < a[1].createdAt ? -1 : 1))
+    const total = rows.length
+    const paged = rows.slice((page - 1) * pageSize, page * pageSize)
+    return HttpResponse.json({
+      items: paged.map(([token, share]) => ({
+        ...mockShareRead(token, share),
+        created_by: users.find((x) => x.username === share.createdBy)?.id ?? null,
+        created_by_name: users.find((x) => x.username === share.createdBy)?.display_name ?? null,
+      })),
+      page,
+      page_size: pageSize,
+      total,
+    })
   }),
   http.get(`${api}/shares/:token`, ({ params }) => {
     const share = shares.get(String(params.token))
@@ -1533,10 +1593,27 @@ export const handlers = [
       share_type: share.shareType,
       item_count: share.itemIds.length,
       expires_at: share.expiresAt,
-      created_at: new Date().toISOString(),
-      items: resolveShareItems(share.shareType, share.itemIds) as SharePublicView['items'],
+      created_at: share.createdAt,
+      columns: share.columns,
+      items: filterShareRows(
+        share.shareType,
+        resolveShareItems(share.shareType, share.itemIds),
+        share.columns,
+      ) as SharePublicView['items'],
     }
     return HttpResponse.json(view)
+  }),
+  http.patch(`${api}/shares/:token`, async ({ params, request }) => {
+    if (!request.headers.get('Authorization')) return error(401, 'UNAUTHORIZED', '请先登录')
+    const actorUser = actor(request)
+    const token = String(params.token)
+    const share = shares.get(token)
+    if (!share) return error(400, 'SHARE_NOT_FOUND', '分享链接不存在或已失效')
+    if (share.createdBy !== actorUser.username && actorUser.role !== 'SUPER_ADMIN')
+      return error(403, 'FORBIDDEN', '只能修改自己创建的分享链接')
+    const body = (await request.json()) as { columns: string[] | null }
+    share.columns = body.columns ?? null
+    return HttpResponse.json(mockShareRead(token, share))
   }),
   http.delete(`${api}/shares/:token`, ({ params, request }) => {
     if (!request.headers.get('Authorization')) return error(401, 'UNAUTHORIZED', '请先登录')

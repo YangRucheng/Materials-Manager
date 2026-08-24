@@ -17,7 +17,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import SessionLocal
@@ -44,6 +44,66 @@ _SHARE_TYPE_LABELS: dict[ShareType, str] = {
     ShareType.PURCHASE_RECORD: "申购记录",
 }
 
+# 分享页可展示列（键名与前端 ShareView 表头一致）。
+_SHARE_PLAN_KEYS: frozenset[str] = frozenset(
+    {
+        "plan_date",
+        "material_code",
+        "category",
+        "urgency",
+        "demand_department",
+        "name",
+        "model_spec",
+        "planned_qty",
+        "actual_demand_person",
+        "purchase_responsible",
+        "subitem_no",
+        "usage",
+        "status",
+        "images",
+    }
+)
+_SHARE_RECORD_KEYS: frozenset[str] = frozenset(
+    {
+        "plan_date",
+        "purchase_order_no",
+        "trace_no",
+        "category",
+        "demand_department",
+        "material_name",
+        "model_spec",
+        "purchase_qty",
+        "actual_demand_person",
+        "purchase_responsible",
+        "salesperson",
+        "subitem_no",
+        "usage",
+        "status",
+        "images",
+    }
+)
+
+
+def _allowed_keys(share_type: ShareType) -> frozenset[str]:
+    if share_type == ShareType.PURCHASE_PLAN:
+        return _SHARE_PLAN_KEYS
+    return _SHARE_RECORD_KEYS
+
+
+def _validate_columns(share_type: ShareType, columns: list[str] | None) -> list[str] | None:
+    """校验展示列：None 表示全部；否则必须非空、无重复、且都是该类型合法键。"""
+    if columns is None:
+        return None
+    allowed = _allowed_keys(share_type)
+    invalid = [key for key in columns if key not in allowed]
+    if invalid:
+        raise AppError(
+            "VALIDATION_ERROR",
+            f"包含不适用于{_SHARE_TYPE_LABELS[share_type]}的列: {', '.join(invalid)}",
+            status_code=422,
+        )
+    return columns
+
 
 def _expires_at_for(expires_in: ShareExpiryOption) -> datetime | None:
     """把前端选择的失效选项换算为失效时间（naive UTC）；PERMANENT 返回 None。"""
@@ -58,6 +118,7 @@ async def create_share(
     item_ids: list[int],
     expires_in: ShareExpiryOption,
     created_by: int,
+    columns: list[str] | None = None,
 ) -> ShareLink:
     """创建分享链接：校验勾选项存在后落库，返回持久化的 ShareLink。"""
     ids = sorted(set(item_ids))
@@ -82,6 +143,7 @@ async def create_share(
     share = ShareLink(
         share_type=share_type,
         item_ids=ids,
+        columns=_validate_columns(share_type, columns),
         expires_at=_expires_at_for(expires_in),
         created_by=created_by,
     )
@@ -91,34 +153,62 @@ async def create_share(
 
 
 async def get_public_share(session: AsyncSession, *, token: str) -> SharePublicView:
-    """匿名读取分享数据：校验 token 存在且未过期，按分享时的 id 实时读取数据快照。"""
+    """匿名读取分享数据：校验 token 存在且未过期，按分享时的 id 实时读取数据快照。
+
+    columns 为 None 时返回完整类型行；否则只返回所选列（+行身份键），隐藏列数据不下发。
+    """
     share = await session.scalar(select(ShareLink).where(ShareLink.token == token))
     if share is None:
         raise AppError("SHARE_NOT_FOUND", "分享链接不存在或已失效", status_code=400)
     if share.expires_at is not None and share.expires_at < utcnow():
         raise AppError("SHARE_EXPIRED", "分享链接已失效，请联系分享人重新分享", status_code=400)
-    items: list[PurchaseMaterialRead | PurchaseRecordRead]
     if share.share_type == ShareType.PURCHASE_PLAN:
-        plan_rows = (
-            await session.scalars(
-                select(PurchaseMaterial).where(PurchaseMaterial.id.in_(share.item_ids))
+        typed_items: list[PurchaseMaterialRead | PurchaseRecordRead] = [
+            await material_service.purchase_read(session, item)
+            for item in sorted(
+                (
+                    await session.scalars(
+                        select(PurchaseMaterial).where(PurchaseMaterial.id.in_(share.item_ids))
+                    )
+                ).all(),
+                key=lambda row: share.item_ids.index(row.id),
             )
-        ).all()
-        plan_rows = sorted(plan_rows, key=lambda item: share.item_ids.index(item.id))
-        items = [await material_service.purchase_read(session, item) for item in plan_rows]
+        ]
+        identity_key = "id"
     else:
-        record_rows = (
-            await session.scalars(
-                select(PurchaseRequestLine).where(PurchaseRequestLine.id.in_(share.item_ids))
+        typed_items = [
+            purchase_request_service.purchase_record_read(line)
+            for line in sorted(
+                (
+                    await session.scalars(
+                        select(PurchaseRequestLine).where(
+                            PurchaseRequestLine.id.in_(share.item_ids)
+                        )
+                    )
+                ).all(),
+                key=lambda line: share.item_ids.index(line.id),
             )
-        ).all()
-        record_rows = sorted(record_rows, key=lambda line: share.item_ids.index(line.id))
-        items = [purchase_request_service.purchase_record_read(line) for line in record_rows]
+        ]
+        identity_key = "line_id"
+    if share.columns is not None:
+        selected = set(share.columns)
+        items = [
+            {
+                key: value
+                for key, value in row.model_dump(mode="json").items()
+                if key in selected or key == identity_key
+            }
+            for row in typed_items
+        ]
+    else:
+        # 未配置列时维持现状：返回完整行（JSON 序列化与既有 typed 响应一致）。
+        items = [row.model_dump(mode="json") for row in typed_items]
     return SharePublicView(
         share_type=share.share_type,
         item_count=len(share.item_ids),
         expires_at=share.expires_at,
         created_at=share.created_at,
+        columns=share.columns,
         items=items,
     )
 
@@ -132,6 +222,51 @@ async def revoke_share(session: AsyncSession, *, token: str, user: User) -> None
         raise AppError("FORBIDDEN", "只能撤回自己创建的分享链接", status_code=403)
     await session.delete(share)
     await session.flush()
+
+
+async def list_shares(
+    session: AsyncSession,
+    *,
+    user: User,
+    page: int,
+    page_size: int,
+) -> tuple[list[tuple[ShareLink, User | None]], int]:
+    """分页列出分享链接：普通用户只看自己创建的，超管看全部；按创建时间倒序。"""
+    query = select(ShareLink, User).outerjoin(User, User.id == ShareLink.created_by)
+    count_query = select(func.count(ShareLink.id))
+    if user.role != Role.SUPER_ADMIN:
+        query = query.where(ShareLink.created_by == user.id)
+        count_query = count_query.where(ShareLink.created_by == user.id)
+    total = int((await session.scalar(count_query)) or 0)
+    rows = (
+        await session.execute(
+            query.order_by(ShareLink.created_at.desc(), ShareLink.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+    pairs: list[tuple[ShareLink, User | None]] = []
+    for share, creator in rows:
+        pairs.append((share, creator))
+    return pairs, total
+
+
+async def update_columns(
+    session: AsyncSession,
+    *,
+    token: str,
+    user: User,
+    columns: list[str] | None,
+) -> ShareLink:
+    """更新分享链接的展示列：仅创建者本人或超级管理员可执行。"""
+    share = await session.scalar(select(ShareLink).where(ShareLink.token == token))
+    if share is None:
+        raise not_found("分享链接")
+    if share.created_by != user.id and user.role != Role.SUPER_ADMIN:
+        raise AppError("FORBIDDEN", "只能修改自己创建的分享链接", status_code=403)
+    share.columns = _validate_columns(share.share_type, columns)
+    await session.flush()
+    return share
 
 
 async def cleanup_expired() -> int:
@@ -172,6 +307,8 @@ __all__ = [
     "create_share",
     "get_public_share",
     "revoke_share",
+    "list_shares",
+    "update_columns",
     "cleanup_expired",
     "run_cleanup_worker",
 ]

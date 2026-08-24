@@ -1328,7 +1328,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Shares
+         * @description 管理端「分享链接」列表：普通用户只看自己创建的，超管看全部。
+         */
+        get: operations["list_shares_api_v1_shares_get"];
         put?: never;
         /**
          * Create Share
@@ -1362,7 +1366,11 @@ export interface paths {
         delete: operations["revoke_share_api_v1_shares__token__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Share Columns
+         * @description 更新分享链接的展示列：仅创建者本人或超级管理员可执行，NULL 表示展示全部列。
+         */
+        patch: operations["update_share_columns_api_v1_shares__token__patch"];
         trace?: never;
     };
     "/api/v1/users": {
@@ -2658,6 +2666,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[ShareListRead] */
+        Page_ShareListRead_: {
+            /** Items */
+            items: components["schemas"]["ShareListRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[StockMaterialRead] */
         Page_StockMaterialRead_: {
             /** Items */
@@ -3227,6 +3246,14 @@ export interface components {
          */
         Role: "SUPER_ADMIN" | "WAREHOUSE_ADMIN" | "PURCHASE_ADMIN" | "READ_ONLY";
         /**
+         * ShareColumnsUpdate
+         * @description 更新分享链接的展示列：NULL = 展示全部默认列。
+         */
+        ShareColumnsUpdate: {
+            /** Columns */
+            columns: string[] | null;
+        };
+        /**
          * ShareCreateRequest
          * @description 创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
          */
@@ -3235,6 +3262,8 @@ export interface components {
             /** Item Ids */
             item_ids: number[];
             expires_in: components["schemas"]["ShareExpiryOption"];
+            /** Columns */
+            columns?: string[] | null;
         };
         /**
          * ShareExpiryOption
@@ -3243,8 +3272,35 @@ export interface components {
          */
         ShareExpiryOption: "24h" | "3d" | "7d" | "30d" | "permanent";
         /**
+         * ShareListRead
+         * @description 管理端「分享链接」列表项。
+         */
+        ShareListRead: {
+            /** Token */
+            token: string;
+            share_type: components["schemas"]["ShareType"];
+            /** Item Count */
+            item_count: number;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: number | null;
+            /** Created By Name */
+            created_by_name?: string | null;
+            /** Columns */
+            columns?: string[] | null;
+        };
+        /**
          * SharePublicView
          * @description 匿名读取端点返回体：分享类型 + 按分享时的 id 实时读取的数据行快照。
+         *
+         *     当 columns 为 NULL 时 items 为完整类型行；否则 items 为仅含所选列（+行身份键）的字典行，
+         *     隐藏列的数据不会随响应下发。
          */
         SharePublicView: {
             share_type: components["schemas"]["ShareType"];
@@ -3257,8 +3313,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Columns */
+            columns?: string[] | null;
             /** Items */
-            items: (components["schemas"]["PurchaseMaterialRead"] | components["schemas"]["PurchaseRecordRead"])[];
+            items: {
+                [key: string]: unknown;
+            }[];
         };
         /** ShareRead */
         ShareRead: {
@@ -3274,6 +3334,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Columns */
+            columns?: string[] | null;
         };
         /**
          * ShareType
@@ -9529,6 +9591,74 @@ export interface operations {
             };
         };
     };
+    list_shares_api_v1_shares_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ShareListRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     create_share_api_v1_shares_post: {
         parameters: {
             query?: never;
@@ -9682,6 +9812,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    update_share_columns_api_v1_shares__token__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareColumnsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareRead"];
+                };
             };
             /** @description 业务校验失败 */
             400: {

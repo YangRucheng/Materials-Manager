@@ -554,6 +554,8 @@ class ShareLink(Base):
     share_type: Mapped[ShareType] = mapped_column(SAEnum(ShareType), nullable=False, index=True)
     # 被分享的数据行 id（申购计划 id / 申购记录 line_id），读取时按 id 实时查库快照。
     item_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False)
+    # 分享页展示列（键名）；NULL = 展示该类型全部默认列，否则仅展示列出的列。
+    columns: Mapped[list[str] | None] = mapped_column(JSON)
     # 失效时间；NULL = 永久有效。
     expires_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME)
     created_by: Mapped[int | None] = mapped_column(BIGINT_ID, ForeignKey("user.id"))
