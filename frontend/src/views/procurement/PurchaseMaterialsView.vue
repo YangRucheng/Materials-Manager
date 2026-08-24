@@ -90,7 +90,6 @@ type PurchaseFilters = {
 // fromQuery 在 usePagedTable setup 期同步执行，早于 availableColumns 定义，
 // 需在 hook 调用前声明运行时值用于校验 URL 恢复的 sort_by 合法性。
 const PLAN_SORTABLE_KEYS: readonly PlanColumnKey[] = [
-  'plan_no',
   'plan_date',
   'material_code',
   'category',
@@ -293,7 +292,7 @@ const selectedPlans = computed(() => {
   return items.value.filter((item) => selected.has(item.id))
 })
 const exportOptions = computed<ExportOption[]>(() => {
-  const options: ExportOption[] = [{ label: '导出查询结果', key: 'results' }]
+  const options: ExportOption[] = [{ label: `导出查询结果（共 ${total} 条）`, key: 'results' }]
   options.push({
     label: `链接分享（已选 ${selectedPlans.value.length} 条）`,
     key: 'share',
@@ -371,7 +370,6 @@ watch(
   },
 )
 type PlanColumnKey =
-  | 'plan_no'
   | 'plan_date'
   | 'material_code'
   | 'category'
@@ -392,16 +390,6 @@ const availableColumns: Array<{
   label: string
   column: DataTableBaseColumn<PurchaseMaterial>
 }> = [
-  {
-    key: 'plan_no',
-    label: '计划 ID',
-    column: {
-      title: '计划 ID',
-      key: 'plan_no',
-      width: tableColumnWidths.identifier,
-      render: (row) => renderTwoLineText(row.plan_no),
-    },
-  },
   {
     key: 'plan_date',
     label: '需求日期',
@@ -684,13 +672,13 @@ async function exportResults() {
       })
     }
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    const rows = job.result?.rows
     // 下载链接不鉴权：直接以浏览器原生下载方式保存文件（凭接口返回的 file_uuid）。
     downloadFromUrl(
       exportDownloadUrl(job.file_uuid),
       job.download_filename ?? `申购计划导出_${date}.xlsx`,
     )
-    const rows = job.result?.rows
-    message.success(rows != null ? `查询结果已导出（${rows} 行）` : '查询结果已导出')
+    message.success(rows != null ? `查询结果已导出（共${rows}条）` : '查询结果已导出')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导出失败')
   }

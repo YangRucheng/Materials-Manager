@@ -35,19 +35,16 @@ const { items, total, page, pageSize, loading, changePage, changePageSize } = us
   initialFilters: () => ({}),
 })
 const exporting = ref(false)
-const exportOptions: ExportOption[] = [{ label: '导出物料编码申请表', key: 'application' }]
-type UncodedColumnKey = 'plan_no' | 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
+const exportOptions: ExportOption[] = [
+  { label: `导出物料编码申请表（共 ${total} 条）`, key: 'application' },
+]
+type UncodedColumnKey = 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
 
 const availableColumns: Array<{
   key: UncodedColumnKey
   label: string
   column: DataTableBaseColumn<PurchaseMaterial>
 }> = [
-  {
-    key: 'plan_no',
-    label: '计划 ID',
-    column: { title: '计划 ID', key: 'plan_no', width: tableColumnWidths.identifier },
-  },
   {
     key: 'plan_date',
     label: '需求日期',

@@ -182,7 +182,7 @@ const showBatchEdit = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions = computed<ExportOption[]>(() => [
-  { label: '导出查询结果', key: 'results' },
+  { label: `导出查询结果（共 ${total} 条）`, key: 'results' },
   {
     label: `链接分享（已选 ${selectedRecords.value.length} 条）`,
     key: 'share',
@@ -710,13 +710,13 @@ async function exportResults() {
       })
     }
     const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    const rows = job.result?.rows
     // 下载链接不鉴权：直接以浏览器原生下载方式保存文件（凭接口返回的 file_uuid）。
     downloadFromUrl(
       exportDownloadUrl(job.file_uuid),
       job.download_filename ?? `申购记录导出_${date}.xlsx`,
     )
-    const rows = job.result?.rows
-    message.success(rows != null ? `查询结果已导出（${rows} 行）` : '查询结果已导出')
+    message.success(rows != null ? `查询结果已导出（共${rows}条）` : '查询结果已导出')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '导出失败')
   }
