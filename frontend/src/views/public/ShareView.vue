@@ -331,29 +331,22 @@ onMounted(async () => {
 .share-page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 32px 20px;
-  background: linear-gradient(160deg, #eef3fb 0%, #f6f8fb 40%, #f2f5f9 100%);
+  background: #f4f7fb;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
 }
 
 .share-shell {
   width: 100%;
-  max-width: 1100px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.share-header,
-.share-table-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(30, 60, 110, 0.08);
 }
 
 .share-header {
-  padding: 20px 24px 16px;
+  padding: 18px 28px 14px;
+  border-bottom: 1px solid #e8edf5;
+  background: #fff;
 }
 
 .share-brand {
@@ -362,7 +355,7 @@ onMounted(async () => {
   gap: 8px;
   color: #7a8699;
   font-size: 13px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .brand-dot {
@@ -394,12 +387,14 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .share-table-card {
-  padding: 8px 12px 12px;
-  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  padding: 14px 28px 20px;
+  background: #fff;
 }
 
 .share-table {
@@ -434,16 +429,16 @@ onMounted(async () => {
   text-align: center;
   color: #a6b0c0;
   font-size: 12px;
-  padding: 8px 0 4px;
+  padding: 10px 0 14px;
 }
 
 @media (max-width: 640px) {
-  .share-page {
-    padding: 16px 10px;
+  .share-header {
+    padding: 14px 16px 12px;
   }
 
-  .share-header {
-    padding: 16px;
+  .share-table-card {
+    padding: 10px 12px 14px;
   }
 
   .share-title {
