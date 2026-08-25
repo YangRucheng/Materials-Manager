@@ -248,10 +248,10 @@ onMounted(() => void load())
               />
             </NInputGroup>
           </n-form-item>
-          <n-form-item label="实际需求人" required>
+          <n-form-item label="提报员工" required>
             <n-input v-model:value="form.actual_demand_person" maxlength="128" />
           </n-form-item>
-          <n-form-item label="申购负责人" required>
+          <n-form-item label="实际需求人" required>
             <n-input v-model:value="form.purchase_responsible" maxlength="128" />
           </n-form-item>
           <n-form-item label="业务员">

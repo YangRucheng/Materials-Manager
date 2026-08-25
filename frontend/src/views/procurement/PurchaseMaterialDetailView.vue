@@ -122,7 +122,7 @@ async function save() {
     !form.usage.trim() ||
     !planDate.value
   ) {
-    message.error('请完整填写需求日期、物资、数量、用途、实际需求人和申购负责人')
+    message.error('请完整填写需求日期、物资、数量、用途、提报员工和实际需求人')
     return
   }
   saving.value = true
@@ -282,10 +282,10 @@ onMounted(() => void load())
               />
             </n-input-group>
           </n-form-item>
-          <n-form-item label="实际需求人" required>
+          <n-form-item label="提报员工" required>
             <n-input v-model:value="form.actual_demand_person" maxlength="128" />
           </n-form-item>
-          <n-form-item label="申购负责人" required>
+          <n-form-item label="实际需求人" required>
             <n-input v-model:value="form.purchase_responsible" maxlength="128" />
           </n-form-item>
           <n-form-item label="子项号">

@@ -227,7 +227,7 @@ const filterOptions = ref<PurchaseFilterOptions>({
   categories: [],
 })
 const actualDemandPersonOptions = computed(() => [
-  { label: '空需求人', value: EMPTY_DEMAND_PERSON_FILTER },
+  { label: '空提报员工', value: EMPTY_DEMAND_PERSON_FILTER },
   ...filterOptions.value.actual_demand_persons.map((value) => ({ label: value, value })),
 ])
 const subitemOptions = computed(() => [
@@ -332,8 +332,8 @@ const form = reactive<PurchaseMaterialWrite>({
 const rules: FormRules = {
   name: { required: true, message: '请输入名称' },
   model_spec: { required: true, message: '请输入型号规格' },
-  actual_demand_person: { required: true, message: '请输入实际需求人' },
-  purchase_responsible: { required: true, message: '请输入申购负责人' },
+  actual_demand_person: { required: true, message: '请输入提报员工' },
+  purchase_responsible: { required: true, message: '请输入实际需求人' },
   planned_qty: [
     { required: true, message: '请输入计划数量' },
     {
@@ -481,9 +481,9 @@ const availableColumns: Array<{
   },
   {
     key: 'actual_demand_person',
-    label: '实际需求人',
+    label: '提报员工',
     column: {
-      title: '实际需求人',
+      title: '提报员工',
       key: 'actual_demand_person',
       width: tableColumnWidths.person,
       render: (row) => renderTwoLineText(row.actual_demand_person),
@@ -491,9 +491,9 @@ const availableColumns: Array<{
   },
   {
     key: 'purchase_responsible',
-    label: '申购负责人',
+    label: '实际需求人',
     column: {
-      title: '申购负责人',
+      title: '实际需求人',
       key: 'purchase_responsible',
       width: tableColumnWidths.person,
       render: (row) => renderTwoLineText(row.purchase_responsible),
@@ -895,14 +895,14 @@ async function batchUpdate() {
   }
   if (batchEditForm.update_actual_demand_person) {
     if (!batchEditForm.actual_demand_person.trim()) {
-      message.error('请输入实际需求人')
+      message.error('请输入提报员工')
       return
     }
     payload.actual_demand_person = batchEditForm.actual_demand_person.trim()
   }
   if (batchEditForm.update_purchase_responsible) {
     if (!batchEditForm.purchase_responsible.trim()) {
-      message.error('请输入申购负责人')
+      message.error('请输入实际需求人')
       return
     }
     payload.purchase_responsible = batchEditForm.purchase_responsible.trim()
@@ -1068,11 +1068,11 @@ onBeforeUnmount(() => {
           />
         </label>
         <label class="filter-field">
-          <span>实际需求人</span>
+          <span>提报员工</span>
           <n-select
             v-model:value="filters.actual_demand_person"
             :options="actualDemandPersonOptions"
-            placeholder="选择或搜索需求人"
+            placeholder="选择或搜索提报员工"
             filterable
             clearable
           />
@@ -1236,7 +1236,7 @@ onBeforeUnmount(() => {
           <n-form-item>
             <template #label>
               <n-checkbox v-model:checked="batchEditForm.update_actual_demand_person">
-                修改实际需求人
+                修改提报员工
               </n-checkbox>
             </template>
             <n-input
@@ -1248,7 +1248,7 @@ onBeforeUnmount(() => {
           <n-form-item>
             <template #label>
               <n-checkbox v-model:checked="batchEditForm.update_purchase_responsible">
-                修改申购负责人
+                修改实际需求人
               </n-checkbox>
             </template>
             <n-input
@@ -1449,15 +1449,19 @@ onBeforeUnmount(() => {
               />
             </n-input-group>
           </n-form-item>
-          <n-form-item label="实际需求人" path="actual_demand_person">
+          <n-form-item label="提报员工" path="actual_demand_person">
             <n-input
               v-model:value="form.actual_demand_person"
               maxlength="128"
-              placeholder="填写提出实际需求的员工"
+              placeholder="填写提出需求的员工"
             />
           </n-form-item>
-          <n-form-item label="申购负责人" path="purchase_responsible">
-            <n-input v-model:value="form.purchase_responsible" maxlength="128" />
+          <n-form-item label="实际需求人" path="purchase_responsible">
+            <n-input
+              v-model:value="form.purchase_responsible"
+              maxlength="128"
+              placeholder="填写作为实际需求人的车间负责人"
+            />
           </n-form-item>
           <n-form-item label="子项号">
             <n-input v-model:value="form.subitem_no" maxlength="64" placeholder="选填" />

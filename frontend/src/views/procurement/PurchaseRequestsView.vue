@@ -517,9 +517,9 @@ const availableColumns: Array<{
   },
   {
     key: 'actual_demand_person',
-    label: '实际需求人',
+    label: '提报员工',
     column: {
-      title: '实际需求人',
+      title: '提报员工',
       key: 'actual_demand_person',
       width: tableColumnWidths.person,
       render: (row) => renderTwoLineText(row.actual_demand_person),
@@ -527,9 +527,9 @@ const availableColumns: Array<{
   },
   {
     key: 'purchase_responsible',
-    label: '申购负责人',
+    label: '实际需求人',
     column: {
-      title: '申购负责人',
+      title: '实际需求人',
       key: 'purchase_responsible',
       width: tableColumnWidths.person,
       render: (row) => renderTwoLineText(row.purchase_responsible),
@@ -1012,7 +1012,7 @@ async function batchUpdate() {
   if (batchEditForm.update_actual_demand_person) {
     const value = batchEditForm.actual_demand_person.trim()
     if (!value) {
-      message.error('请选择或输入实际需求人')
+      message.error('请选择或输入提报员工')
       return
     }
     payload.actual_demand_person = value
@@ -1020,7 +1020,7 @@ async function batchUpdate() {
   if (batchEditForm.update_purchase_responsible) {
     const value = batchEditForm.purchase_responsible.trim()
     if (!value) {
-      message.error('请选择或输入申购负责人')
+      message.error('请选择或输入实际需求人')
       return
     }
     payload.purchase_responsible = value
@@ -1130,21 +1130,21 @@ onMounted(() => {
           />
         </label>
         <label class="filter-field">
-          <span>实际需求人</span>
+          <span>提报员工</span>
           <n-select
             v-model:value="filters.actual_demand_person"
             :options="actualDemandPersonOptions"
-            placeholder="选择或搜索需求人"
+            placeholder="选择或搜索提报员工"
             filterable
             clearable
           />
         </label>
         <label class="filter-field">
-          <span>申购负责人</span>
+          <span>实际需求人</span>
           <n-select
             v-model:value="filters.purchase_responsible"
             :options="purchaseResponsibleOptions"
-            placeholder="选择或搜索负责人"
+            placeholder="选择或搜索实际需求人"
             filterable
             clearable
           />
@@ -1369,7 +1369,7 @@ onMounted(() => {
             <n-form-item>
               <template #label>
                 <n-checkbox v-model:checked="batchEditForm.update_actual_demand_person">
-                  修改实际需求人
+                  修改提报员工
                 </n-checkbox>
               </template>
               <n-select
@@ -1377,14 +1377,14 @@ onMounted(() => {
                 :options="actualDemandPersonOptions"
                 filterable
                 tag
-                placeholder="选择或输入实际需求人"
+                placeholder="选择或输入提报员工"
                 :disabled="!batchEditForm.update_actual_demand_person"
               />
             </n-form-item>
             <n-form-item>
               <template #label>
                 <n-checkbox v-model:checked="batchEditForm.update_purchase_responsible">
-                  修改申购负责人
+                  修改实际需求人
                 </n-checkbox>
               </template>
               <n-select
@@ -1392,7 +1392,7 @@ onMounted(() => {
                 :options="purchaseResponsibleOptions"
                 filterable
                 tag
-                placeholder="选择或输入申购负责人"
+                placeholder="选择或输入实际需求人"
                 :disabled="!batchEditForm.update_purchase_responsible"
               />
             </n-form-item>
@@ -1514,10 +1514,10 @@ onMounted(() => {
                 />
               </n-input-group>
             </n-form-item>
-            <n-form-item label="实际需求人" required>
+            <n-form-item label="提报员工" required>
               <n-input v-model:value="editForm.actual_demand_person" maxlength="128" />
             </n-form-item>
-            <n-form-item label="申购负责人" required>
+            <n-form-item label="实际需求人" required>
               <n-input v-model:value="editForm.purchase_responsible" maxlength="128" />
             </n-form-item>
             <n-form-item label="业务员">
@@ -1707,10 +1707,10 @@ onMounted(() => {
             <n-form-item label="需求部门">
               <n-input v-model:value="reapplyForm.demand_department" maxlength="128" />
             </n-form-item>
-            <n-form-item label="实际需求人">
+            <n-form-item label="提报员工">
               <n-input v-model:value="reapplyForm.actual_demand_person" maxlength="128" />
             </n-form-item>
-            <n-form-item label="申购负责人">
+            <n-form-item label="实际需求人">
               <n-input v-model:value="reapplyForm.purchase_responsible" maxlength="128" />
             </n-form-item>
             <n-form-item label="子项号">
