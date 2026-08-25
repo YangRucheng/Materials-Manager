@@ -12,13 +12,13 @@ describe('默认申购单号', () => {
     expect(defaultPurchaseOrderNo(new Date('2026-07-16T16:30:05Z'))).toBe('申购 2026/7/17')
   })
 
-  it('记住最后一次新增使用的申购负责人', () => {
+  it('记住最后一次新增使用的实际需求人', () => {
     rememberPurchaseResponsible('  李工  ')
 
     expect(getLastPurchaseResponsible()).toBe('李工')
   })
 
-  it('不使用空值覆盖已记住的负责人', () => {
+  it('不使用空值覆盖已记住的实际需求人', () => {
     rememberPurchaseResponsible('王工')
     rememberPurchaseResponsible('   ')
 

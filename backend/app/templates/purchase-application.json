@@ -54,7 +54,7 @@
     { "column": "A", "header": "物料编码（必填）", "field": "material_code" },
     { "column": "B", "header": "物料名称（必填）", "field": "name" },
     { "column": "C", "header": "申请数量（必填）", "field": "planned_qty" },
-    { "column": "D", "header": "实际需求人", "field": "actual_demand_person" },
+    { "column": "D", "header": "实际需求人", "field": "purchase_responsible" },
     { "column": "E", "header": "需求部门", "field": "demand_department" },
     { "column": "F", "header": "用途", "field": "usage" },
     {

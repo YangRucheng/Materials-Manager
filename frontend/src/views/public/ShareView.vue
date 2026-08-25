@@ -96,14 +96,14 @@ const planColumnDefs: ShareColumnDef[] = [
   },
   {
     key: 'actual_demand_person',
-    title: '实际需求人',
+    title: '提报员工',
     width: 120,
     ellipsis: { tooltip: true },
     render: (row) => String(row.actual_demand_person ?? ''),
   },
   {
     key: 'purchase_responsible',
-    title: '申购负责人',
+    title: '实际需求人',
     width: 120,
     ellipsis: { tooltip: true },
     render: (row) => String(row.purchase_responsible ?? ''),
@@ -169,14 +169,14 @@ const recordColumnDefs: ShareColumnDef[] = [
   },
   {
     key: 'actual_demand_person',
-    title: '实际需求人',
+    title: '提报员工',
     width: 120,
     ellipsis: { tooltip: true },
     render: (row) => String(row.actual_demand_person ?? ''),
   },
   {
     key: 'purchase_responsible',
-    title: '申购负责人',
+    title: '实际需求人',
     width: 120,
     ellipsis: { tooltip: true },
     render: (row) => String(row.purchase_responsible ?? ''),

@@ -72,13 +72,13 @@ const columns: DataTableColumns<PurchaseRecord> = [
     render: (row) => h(NTag, null, { default: () => row.status || '\\' }),
   },
   {
-    title: '申购负责人',
+    title: '实际需求人',
     key: 'purchase_responsible',
     width: 110,
     render: (row) => renderTwoLineText(row.purchase_responsible),
   },
   {
-    title: '实际需求人',
+    title: '提报员工',
     key: 'actual_demand_person',
     width: 110,
     render: (row) => renderTwoLineText(row.actual_demand_person),

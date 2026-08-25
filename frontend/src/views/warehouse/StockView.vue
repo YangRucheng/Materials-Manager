@@ -189,7 +189,7 @@ async function openReplenishment(row: InventoryBalance) {
       replenishmentForm.purchase_responsible = defaults.purchase_responsible
     }
   } catch {
-    message.warning('默认申购负责人加载失败，请手动填写')
+    message.warning('默认实际需求人加载失败，请手动填写')
   } finally {
     loadingDefaults.value = false
   }
@@ -203,7 +203,7 @@ async function confirmReplenishment() {
     !replenishmentForm.actual_demand_person.trim() ||
     !replenishmentForm.purchase_responsible.trim()
   ) {
-    message.error('请确认需求日期、计划数量、实际需求人和申购负责人')
+    message.error('请确认需求日期、计划数量、提报员工和实际需求人')
     return
   }
   replenishing.value = true
@@ -335,18 +335,18 @@ async function confirmReplenishment() {
           </n-form-item>
         </div>
         <div class="form-grid">
-          <n-form-item label="实际需求人" required>
+          <n-form-item label="提报员工" required>
             <n-input
               v-model:value="replenishmentForm.actual_demand_person"
               maxlength="128"
-              placeholder="填写提出实际需求的员工"
+              placeholder="填写提出需求的员工"
             />
           </n-form-item>
-          <n-form-item label="申购负责人" required>
+          <n-form-item label="实际需求人" required>
             <n-input
               v-model:value="replenishmentForm.purchase_responsible"
               maxlength="128"
-              placeholder="填写负责申购的人员"
+              placeholder="填写作为实际需求人的车间负责人"
             />
           </n-form-item>
         </div>
