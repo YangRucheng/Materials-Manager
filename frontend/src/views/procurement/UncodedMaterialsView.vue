@@ -35,9 +35,11 @@ const { items, total, page, pageSize, loading, changePage, changePageSize } = us
   initialFilters: () => ({}),
 })
 const exporting = ref(false)
-const exportOptions: ExportOption[] = [
+// 必须是 computed：普通数组在 setup 求值一次，total 此时为初始 0，
+// 数据加载完成后不会重新计算，条数会永远显示 0。
+const exportOptions = computed<ExportOption[]>(() => [
   { label: `导出物料编码申请表（共 ${total.value} 条）`, key: 'application' },
-]
+])
 type UncodedColumnKey = 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
 
 const availableColumns: Array<{
