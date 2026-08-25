@@ -313,7 +313,7 @@ function rowProps(row: StockMaterial) {
       preset="card"
       draggable
       :title="editing ? '编辑二级库物资' : '新建二级库物资'"
-      style="width: 720px"
+      style="width: min(720px, calc(100vw - 24px))"
       :mask-closable="false"
     >
       <n-form ref="formRef" :model="form" :rules="rules" label-placement="top">
