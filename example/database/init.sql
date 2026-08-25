@@ -436,12 +436,12 @@ SET @readonly_api_token = LOWER(CONCAT(HEX(RANDOM_BYTES(4)), '-', HEX(RANDOM_BYT
   SUBSTRING('89ab', 1 + FLOOR(RAND() * 4), 1), SUBSTRING(HEX(RANDOM_BYTES(2)), 2, 3),
   '-', HEX(RANDOM_BYTES(6))));
 
-INSERT INTO `user` (`username`, `password_hash`, `api_token`, `display_name`, `role`, `enabled`)
+INSERT INTO `user` (`username`, `password_hash`, `api_token_hash`, `display_name`, `role`, `enabled`)
 VALUES
-  ('admin', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @admin_api_token, '系统管理员', 'SUPER_ADMIN', 1),
-  ('warehouse', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @warehouse_api_token, '仓库管理员', 'WAREHOUSE_ADMIN', 1),
-  ('purchase', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @purchase_api_token, '申购管理员', 'PURCHASE_ADMIN', 1),
-  ('readonly', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', @readonly_api_token, '只读用户', 'READ_ONLY', 1)
+  ('admin', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', SHA2(@admin_api_token, 256), '系统管理员', 'SUPER_ADMIN', 1),
+  ('warehouse', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', SHA2(@warehouse_api_token, 256), '仓库管理员', 'WAREHOUSE_ADMIN', 1),
+  ('purchase', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', SHA2(@purchase_api_token, 256), '申购管理员', 'PURCHASE_ADMIN', 1),
+  ('readonly', '$argon2id$v=19$m=65536,t=3,p=4$VNlqfY9XSeszkV1Ry0SIiQ$/ll+8yljB5zZ/oCnO9cj+dzh4p05nebxSdxy1icYrKg', SHA2(@readonly_api_token, 256), '只读用户', 'READ_ONLY', 1)
 ON DUPLICATE KEY UPDATE
   `display_name` = VALUES(`display_name`),
   `role` = VALUES(`role`),
