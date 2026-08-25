@@ -2,6 +2,7 @@
 import { computed, h, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { MenuOption } from 'naive-ui'
+import { useMediaQuery } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth'
 import { roleLabels } from '@/types/navigation'
 import { LOGO_URL } from '@/constants/branding'
@@ -10,8 +11,19 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const collapsed = ref(false)
+// 移动端断点：≤768px 时侧边栏切换为抽屉导航
+const isMobile = useMediaQuery('(max-width: 768px)')
+const drawerOpen = ref(false)
+const closeDrawer = () => {
+  drawerOpen.value = false
+}
 const link = (label: string, name: string) => ({
-  label: () => h(RouterLink, { to: { name } }, { default: () => label }),
+  label: () =>
+    h(
+      RouterLink,
+      { to: { name }, onClick: closeDrawer },
+      { default: () => label },
+    ),
   key: name,
 })
 
@@ -60,8 +72,9 @@ function logout() {
 </script>
 
 <template>
-  <n-layout has-sider class="app-shell">
+  <n-layout :has-sider="!isMobile" class="app-shell">
     <n-layout-sider
+      v-if="!isMobile"
       bordered
       collapse-mode="width"
       :collapsed-width="64"
@@ -85,25 +98,45 @@ function logout() {
     </n-layout-sider>
     <n-layout>
       <n-layout-header bordered class="topbar">
-        <n-breadcrumb>
-          <n-breadcrumb-item>备件管理</n-breadcrumb-item>
-          <n-breadcrumb-item>{{ route.meta.title }}</n-breadcrumb-item>
-        </n-breadcrumb>
+        <div class="topbar-left">
+          <button
+            v-if="isMobile"
+            type="button"
+            class="menu-toggle"
+            aria-label="打开导航菜单"
+            @click="drawerOpen = true"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M3 6h18M3 12h18M3 18h18" />
+            </svg>
+          </button>
+          <n-breadcrumb>
+            <n-breadcrumb-item v-if="!isMobile">备件管理</n-breadcrumb-item>
+            <n-breadcrumb-item>{{ route.meta.title }}</n-breadcrumb-item>
+          </n-breadcrumb>
+        </div>
         <n-dropdown :options="[{ label: '退出登录', key: 'logout' }]" @select="logout">
           <button type="button" class="user-menu-trigger" aria-label="打开用户菜单">
             <span class="user-summary">
               <span class="user-name">{{ auth.user?.display_name || auth.user?.username }}</span>
-              <span class="user-role">{{ auth.user ? roleLabels[auth.user.role] : '' }}</span>
+              <span v-if="!isMobile" class="user-role">{{
+                auth.user ? roleLabels[auth.user.role] : ''
+              }}</span>
             </span>
             <span class="user-menu-caret" aria-hidden="true" />
           </button>
         </n-dropdown>
       </n-layout-header>
-      <n-layout-content
-        class="app-content"
-        content-style="padding: 24px 28px 32px;"
-        :native-scrollbar="false"
-      >
+      <n-layout-content class="app-content" :native-scrollbar="false">
         <router-view v-slot="{ Component, route: currentRoute }">
           <keep-alive>
             <component
@@ -117,6 +150,20 @@ function logout() {
       </n-layout-content>
     </n-layout>
   </n-layout>
+
+  <!-- 移动端抽屉导航 -->
+  <n-drawer v-model:show="drawerOpen" placement="left" :width="250" aria-label="导航菜单">
+    <div class="drawer-brand">
+      <img class="brand-mark" :src="LOGO_URL" alt="系统 Logo" />
+      <span>电气车间备件</span>
+    </div>
+    <n-menu
+      class="drawer-menu"
+      :options="menuOptions"
+      :value="String(route.name || '')"
+      @update:value="closeDrawer"
+    />
+  </n-drawer>
 </template>
 
 <style scoped>
@@ -154,6 +201,33 @@ function logout() {
   justify-content: space-between;
   background: rgb(255 255 255 / 92%);
   backdrop-filter: blur(12px);
+}
+.topbar-left {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.menu-toggle {
+  display: grid;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.menu-toggle:hover,
+.menu-toggle:focus-visible {
+  border-color: #dce5ff;
+  background: var(--color-primary-soft);
+  outline: none;
 }
 .user-menu-trigger {
   min-height: 44px;
@@ -202,7 +276,37 @@ function logout() {
   transform: rotate(45deg);
 }
 .app-content {
+  padding: 24px 28px 32px;
   background:
     radial-gradient(circle at 100% 0%, rgb(63 99 216 / 4%), transparent 28%), var(--color-bg);
+}
+/* 抽屉内导航 */
+.drawer-brand {
+  display: flex;
+  height: 68px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-strong);
+  font-size: 17px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.drawer-menu {
+  padding-top: 8px;
+}
+/* 移动端（≤768px）顶栏与内容区适配 */
+@media (max-width: 768px) {
+  .topbar {
+    height: 56px;
+    padding: 0 12px;
+  }
+  .user-summary {
+    min-width: 0;
+  }
+  .app-content {
+    padding: 16px 14px 24px;
+  }
 }
 </style>
