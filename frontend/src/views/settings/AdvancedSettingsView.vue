@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import { aiSearchApi } from '@/api/aiSearch'
 import { systemSettingsApi } from '@/api/systemSettings'
+import { inventoryModeOptionsFor } from '@/utils/settings'
 import type {
   MiniProgramFeatureMode,
   SecondaryWarehouseMode,
@@ -25,11 +26,11 @@ const codeEnvOptions = [
   { label: '体验版', value: 'trial' },
   { label: '正式版', value: 'release' },
 ]
-const inventoryModeOptions: Array<{ label: string; value: MiniProgramFeatureMode }> = [
-  { label: '禁用', value: 'disabled' },
-  { label: '仅查询', value: 'query_only' },
-  { label: '可读写', value: 'read_write' },
-]
+const inventoryModeLabels: Record<MiniProgramFeatureMode, string> = {
+  disabled: '禁用',
+  query_only: '仅查询',
+  read_write: '可读写',
+}
 const readOnlyModeOptions: Array<{ label: string; value: MiniProgramFeatureMode }> = [
   { label: '禁用', value: 'disabled' },
   { label: '仅查询', value: 'query_only' },
@@ -38,6 +39,13 @@ const secondaryWarehouseModeOptions: Array<{ label: string; value: SecondaryWare
   { label: '完整模式', value: 'full' },
   { label: '精简模式', value: 'lite' },
 ]
+// 精简模式下小程序端「二级库库存」仅提供 禁用/仅查询（不支持出入库）。
+const inventoryModeOptions = computed<Array<{ label: string; value: MiniProgramFeatureMode }>>(() =>
+  inventoryModeOptionsFor(form.secondary_warehouse_mode).map((value) => ({
+    label: inventoryModeLabels[value],
+    value,
+  })),
+)
 const form = reactive({
   endpoint: '',
   api_key: '',
@@ -57,6 +65,13 @@ const form = reactive({
   secondary_warehouse_mode: 'full' as SecondaryWarehouseMode,
   version: 0,
 })
+// 精简模式下二级库不支持「可读写」：归一化 inventory_mode，避免下拉选中值不在选项内。
+function normalizeInventoryMode() {
+  if (form.secondary_warehouse_mode === 'lite' && form.inventory_mode === 'read_write') {
+    form.inventory_mode = 'query_only'
+  }
+}
+watch(() => form.secondary_warehouse_mode, normalizeInventoryMode)
 const miniProgramAppOptions = computed(() =>
   form.mini_program_app_ids.map((appId) => ({ label: appId, value: appId })),
 )
@@ -105,6 +120,7 @@ async function load() {
       systemSettingsApi.webhooks(),
     ])
     Object.assign(form, data)
+    normalizeInventoryMode()
     for (const channel of webhookChannels) {
       Object.assign(webhookForms[channel.platform], channel)
     }
@@ -168,6 +184,8 @@ async function save() {
       Object.assign(webhookForms[channel.platform], channel)
     }
     message.success('高级设置已保存')
+    // 二级库模式等系统级配置在应用启动时读取，保存后强制刷新页面以立即生效（菜单/路由按模式切换）。
+    window.setTimeout(() => window.location.reload(), 600)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败')
   } finally {
@@ -300,50 +318,42 @@ onMounted(load)
         </n-form>
       </n-card>
 
-      <n-card class="settings-card feature-card" title="小程序功能开关" :bordered="false">
-        <n-form label-placement="left" label-width="132">
-          <n-form-item label="二级库库存">
-            <n-select v-model:value="form.inventory_mode" :options="inventoryModeOptions" />
-          </n-form-item>
-          <n-form-item label="华星总库存">
-            <n-select v-model:value="form.huaxing_inventory_mode" :options="readOnlyModeOptions" />
-          </n-form-item>
-          <n-form-item label="申购计划">
-            <n-select v-model:value="form.purchase_plans_mode" :options="readOnlyModeOptions" />
-          </n-form-item>
-          <n-form-item label="申购记录">
-            <n-select v-model:value="form.purchase_records_mode" :options="readOnlyModeOptions" />
-          </n-form-item>
-          <n-form-item label="物料编码">
-            <n-select v-model:value="form.material_codes_mode" :options="readOnlyModeOptions" />
-          </n-form-item>
-        </n-form>
-      </n-card>
+      <n-card class="settings-card feature-status-card" title="功能状态" :bordered="false">
+        <div class="feature-group">
+          <div class="feature-group-title">后台</div>
+          <n-form label-placement="left" label-width="132">
+            <n-form-item label="二级库运行模式">
+              <n-select
+                v-model:value="form.secondary_warehouse_mode"
+                :options="secondaryWarehouseModeOptions"
+                style="width: 220px"
+              />
+            </n-form-item>
+          </n-form>
+        </div>
 
-      <n-card class="settings-card secondary-mode-card" title="二级库模式" :bordered="false">
-        <n-form label-placement="left" label-width="132">
-          <n-form-item label="运行模式">
-            <n-radio-group v-model:value="form.secondary_warehouse_mode">
-              <n-space>
-                <n-radio-button
-                  v-for="option in secondaryWarehouseModeOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </n-radio-button>
-              </n-space>
-            </n-radio-group>
-          </n-form-item>
-        </n-form>
-        <div class="mode-hint">
-          <p v-if="form.secondary_warehouse_mode === 'full'">
-            完整模式：二级库支持物资档案、库存、出入库与操作记录，数据存完整模式表。
-          </p>
-          <p v-else>
-            精简模式：小程序端二级库仅可查看、不支持出入库；后台「二级库」tab 变为单页 （Excel
-            一次性导入 + 只读查询），数据存独立精简表，与完整模式数据互不影响。
-          </p>
+        <div class="feature-group">
+          <div class="feature-group-title">小程序端</div>
+          <n-form label-placement="left" label-width="132">
+            <n-form-item label="二级库库存">
+              <n-select v-model:value="form.inventory_mode" :options="inventoryModeOptions" />
+            </n-form-item>
+            <n-form-item label="华星总库存">
+              <n-select
+                v-model:value="form.huaxing_inventory_mode"
+                :options="readOnlyModeOptions"
+              />
+            </n-form-item>
+            <n-form-item label="申购计划">
+              <n-select v-model:value="form.purchase_plans_mode" :options="readOnlyModeOptions" />
+            </n-form-item>
+            <n-form-item label="申购记录">
+              <n-select v-model:value="form.purchase_records_mode" :options="readOnlyModeOptions" />
+            </n-form-item>
+            <n-form-item label="物料编码">
+              <n-select v-model:value="form.material_codes_mode" :options="readOnlyModeOptions" />
+            </n-form-item>
+          </n-form>
         </div>
       </n-card>
 
@@ -513,18 +523,21 @@ onMounted(load)
   font-size: 13px;
 }
 
-.mode-hint {
-  margin: 0 12px 4px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: #f5f7fb;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.7;
+.feature-group {
+  padding-bottom: 4px;
 }
 
-.mode-hint p {
-  margin: 0;
+.feature-group + .feature-group {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.feature-group-title {
+  margin-bottom: 8px;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 :deep(.n-card-header) {
