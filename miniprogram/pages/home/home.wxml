@@ -52,7 +52,7 @@
     </view>
   </view>
 
-  <view wx:if="{{!liteMode}}" class="section-card scan-card">
+  <view wx:if="{{featureReady && !liteMode}}" class="section-card scan-card">
     <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
     <view class="scan-title">{{i18n.scanMaterialCode}}</view>
     <view class="scan-description">{{i18n.scanDescription}}</view>

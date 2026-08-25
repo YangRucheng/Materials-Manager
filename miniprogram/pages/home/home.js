@@ -21,6 +21,8 @@ Page({
   data: {
     user: null,
     scanning: false,
+    // 功能配置接口返回前保持 false：避免精简模式下扫码出库卡片先渲染再隐藏造成闪烁。
+    featureReady: false,
     liteMode: false,
     userProfileVisible: false,
     miniProgramUpdatedAt: buildUploadTime || t('unknown'),
@@ -51,6 +53,7 @@ Page({
           ...session.user,
           registered_at: formatDateTime(session.user.created_at),
         },
+        featureReady: true,
         liteMode: featureModes.secondary_warehouse_mode === SECONDARY_WAREHOUSE_LITE,
       });
     } catch (error) {
