@@ -57,6 +57,7 @@ let aiSettings: AiSearchSettings = {
   purchase_plans_mode: 'query_only',
   purchase_records_mode: 'query_only',
   material_codes_mode: 'query_only',
+  secondary_warehouse_mode: 'full',
   updated_at: new Date().toISOString(),
   version: 1,
 }
@@ -476,6 +477,16 @@ export const handlers = [
       image_acceleration_server_url: aiSettings.image_acceleration_server_url,
     }),
   ),
+  http.get(`${api}/system-settings/mini-program-features`, () =>
+    HttpResponse.json({
+      inventory_mode: aiSettings.inventory_mode,
+      huaxing_inventory_mode: aiSettings.huaxing_inventory_mode,
+      purchase_plans_mode: aiSettings.purchase_plans_mode,
+      purchase_records_mode: aiSettings.purchase_records_mode,
+      material_codes_mode: aiSettings.material_codes_mode,
+      secondary_warehouse_mode: aiSettings.secondary_warehouse_mode,
+    }),
+  ),
   http.get(`${api}/system-settings/webhooks`, ({ request }) =>
     actor(request).role === 'SUPER_ADMIN'
       ? HttpResponse.json(webhookSettings)
@@ -538,6 +549,7 @@ export const handlers = [
       purchase_plans_mode: body.purchase_plans_mode,
       purchase_records_mode: body.purchase_records_mode,
       material_codes_mode: body.material_codes_mode,
+      secondary_warehouse_mode: body.secondary_warehouse_mode,
       updated_at: now(),
       version: aiSettings.version + 1,
     }

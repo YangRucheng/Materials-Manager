@@ -25,6 +25,7 @@ from app.domain.enums import (
     OperationType,
     PurchasePlanStatus,
     Role,
+    SecondaryWarehouseMode,
     ShareExpiryOption,
     ShareType,
     SourceType,
@@ -256,6 +257,7 @@ class AiSearchSettingsRead(ReadModel):
     purchase_plans_mode: MiniProgramFeatureMode
     purchase_records_mode: MiniProgramFeatureMode
     material_codes_mode: MiniProgramFeatureMode
+    secondary_warehouse_mode: SecondaryWarehouseMode
     updated_at: datetime | None = None
     version: int
 
@@ -275,6 +277,7 @@ class AiSearchSettingsUpdate(RequestModel):
     purchase_plans_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
     purchase_records_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
     material_codes_mode: MiniProgramFeatureMode = MiniProgramFeatureMode.QUERY_ONLY
+    secondary_warehouse_mode: SecondaryWarehouseMode = SecondaryWarehouseMode.FULL
     version: int = Field(ge=0)
 
     @field_validator("endpoint")
@@ -364,6 +367,7 @@ class MiniProgramFeaturesRead(BaseModel):
     purchase_plans_mode: MiniProgramFeatureMode
     purchase_records_mode: MiniProgramFeatureMode
     material_codes_mode: MiniProgramFeatureMode
+    secondary_warehouse_mode: SecondaryWarehouseMode
 
 
 class AiSearchExpandRequest(RequestModel):
@@ -930,6 +934,27 @@ class HuaXingFilterOptions(ReadModel):
 
 class LastImportRead(ReadModel):
     last_import_at: UtcDateTime | None = None
+
+
+class LiteInventoryRead(ReadModel):
+    """管理端精简二级库行（Excel 一次性导入 + 只读查询）。"""
+
+    id: int
+    name: str
+    model_spec: str | None = None
+    unit_name: str | None = None
+    quantity: Decimal | None = None
+    remark: str | None = None
+
+
+class MiniProgramLiteInventoryItemRead(ReadModel):
+    """小程序端精简二级库行（无出入库，仅查看）。"""
+
+    id: int
+    name: str
+    model_spec: str | None = None
+    unit_name: str | None = None
+    quantity: Decimal | None = None
 
 
 class PurchasePlanVersion(RequestModel):

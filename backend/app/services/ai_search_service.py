@@ -16,7 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppError, version_conflict
 from app.core.wechat import configured_wechat_app_ids, get_wechat_credentials
-from app.domain.enums import MiniProgramCodeEnv, MiniProgramFeatureMode
+from app.domain.enums import (
+    MiniProgramCodeEnv,
+    MiniProgramFeatureMode,
+    SecondaryWarehouseMode,
+)
 from app.models import BusinessEventLog, SystemSetting
 from app.schemas import (
     AiSearchSettingsRead,
@@ -60,6 +64,7 @@ class AiSearchConfig:
     purchase_plans_mode: MiniProgramFeatureMode
     purchase_records_mode: MiniProgramFeatureMode
     material_codes_mode: MiniProgramFeatureMode
+    secondary_warehouse_mode: SecondaryWarehouseMode
     updated_at: datetime | None
     version: int
 
@@ -102,6 +107,7 @@ def _payload(config: AiSearchConfig) -> dict[str, object]:
         "purchase_plans_mode": config.purchase_plans_mode,
         "purchase_records_mode": config.purchase_records_mode,
         "material_codes_mode": config.material_codes_mode,
+        "secondary_warehouse_mode": config.secondary_warehouse_mode,
     }
 
 
@@ -112,6 +118,15 @@ def _feature_mode(value: object, default: MiniProgramFeatureMode) -> MiniProgram
         return MiniProgramFeatureMode(value)
     except ValueError:
         return default
+
+
+def _secondary_warehouse_mode(value: object) -> SecondaryWarehouseMode:
+    if not isinstance(value, str):
+        return SecondaryWarehouseMode.FULL
+    try:
+        return SecondaryWarehouseMode(value)
+    except ValueError:
+        return SecondaryWarehouseMode.FULL
 
 
 def _mini_program_code_env(value: object) -> MiniProgramCodeEnv:
@@ -178,6 +193,9 @@ def _config_from_data(data: dict[str, Any], *, version: int, updated_at: datetim
         material_codes_mode=_feature_mode(
             data.get("material_codes_mode"), MiniProgramFeatureMode.QUERY_ONLY
         ),
+        secondary_warehouse_mode=_secondary_warehouse_mode(
+            data.get("secondary_warehouse_mode")
+        ),
         updated_at=updated_at,
         version=version,
     )
@@ -225,6 +243,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
             purchase_plans_mode=MiniProgramFeatureMode.QUERY_ONLY,
             purchase_records_mode=MiniProgramFeatureMode.QUERY_ONLY,
             material_codes_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            secondary_warehouse_mode=SecondaryWarehouseMode.FULL,
             updated_at=None,
             version=0,
         )
@@ -246,6 +265,7 @@ def setting_read(setting: AiSearchConfig | None) -> AiSearchSettingsRead:
         purchase_plans_mode=setting.purchase_plans_mode,
         purchase_records_mode=setting.purchase_records_mode,
         material_codes_mode=setting.material_codes_mode,
+        secondary_warehouse_mode=setting.secondary_warehouse_mode,
         updated_at=setting.updated_at,
         version=setting.version,
     )
@@ -290,6 +310,7 @@ async def update_setting(
         "purchase_plans_mode": data.purchase_plans_mode,
         "purchase_records_mode": data.purchase_records_mode,
         "material_codes_mode": data.material_codes_mode,
+        "secondary_warehouse_mode": data.secondary_warehouse_mode,
     }
     event = await log_event(
         session,
@@ -332,6 +353,7 @@ async def update_setting(
         purchase_plans_mode=data.purchase_plans_mode,
         purchase_records_mode=data.purchase_records_mode,
         material_codes_mode=data.material_codes_mode,
+        secondary_warehouse_mode=data.secondary_warehouse_mode,
         updated_at=utc_aware(now),
         version=new_version,
     )
@@ -374,6 +396,7 @@ async def get_mini_program_features(session: AsyncSession) -> MiniProgramFeature
             purchase_plans_mode=MiniProgramFeatureMode.QUERY_ONLY,
             purchase_records_mode=MiniProgramFeatureMode.QUERY_ONLY,
             material_codes_mode=MiniProgramFeatureMode.QUERY_ONLY,
+            secondary_warehouse_mode=SecondaryWarehouseMode.FULL,
         )
     return MiniProgramFeaturesRead(
         inventory_mode=setting.inventory_mode,
@@ -381,6 +404,15 @@ async def get_mini_program_features(session: AsyncSession) -> MiniProgramFeature
         purchase_plans_mode=setting.purchase_plans_mode,
         purchase_records_mode=setting.purchase_records_mode,
         material_codes_mode=setting.material_codes_mode,
+        secondary_warehouse_mode=setting.secondary_warehouse_mode,
+    )
+
+
+async def is_lite_secondary_warehouse(session: AsyncSession) -> bool:
+    """二级库是否处于精简模式（独立表 + 只读 + Excel 导入）。"""
+    setting = await get_setting(session)
+    return bool(
+        setting and setting.secondary_warehouse_mode == SecondaryWarehouseMode.LITE
     )
 
 
@@ -723,6 +755,7 @@ async def test_search_value(data: AiSearchTestRequest, value: str) -> str | None
         purchase_plans_mode=MiniProgramFeatureMode.QUERY_ONLY,
         purchase_records_mode=MiniProgramFeatureMode.QUERY_ONLY,
         material_codes_mode=MiniProgramFeatureMode.QUERY_ONLY,
+        secondary_warehouse_mode=SecondaryWarehouseMode.FULL,
         updated_at=None,
         version=0,
     )

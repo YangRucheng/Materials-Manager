@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.enums import PurchasePlanStatus
 from app.models import (
+    LiteInventory,
     PurchaseMaterial,
     PurchaseRequestLine,
     StockBalance,
@@ -18,6 +19,11 @@ from app.models import (
 
 async def count_stock_materials(session: AsyncSession) -> int:
     return int((await session.scalar(select(func.count(StockMaterial.id)))) or 0)
+
+
+async def count_lite_inventory(session: AsyncSession) -> int:
+    """精简二级库行数（二级库精简模式下工作台“二级库物资”统计用）。"""
+    return int((await session.scalar(select(func.count(LiteInventory.id)))) or 0)
 
 
 async def count_low_stock_materials(session: AsyncSession) -> int:

@@ -641,6 +641,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/secondary-warehouse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Lite Inventory
+         * @description 精简二级库列表查询（物资名称/型号/备注关键字匹配）。
+         */
+        get: operations["list_lite_inventory_api_v1_secondary_warehouse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/secondary-warehouse/last-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Last Import */
+        get: operations["last_import_api_v1_secondary_warehouse_last_import_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/secondary-warehouse/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Lite Inventory */
+        post: operations["import_lite_inventory_api_v1_secondary_warehouse_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/secondary-warehouse/import-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Import Job */
+        get: operations["get_import_job_api_v1_secondary_warehouse_import_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mini-program-users": {
         parameters: {
             query?: never;
@@ -770,6 +841,43 @@ export interface paths {
         };
         /** Mini Program Inventory */
         get: operations["mini_program_inventory_api_v1_mini_program_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mini-program/lite-inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mini Program Lite Inventory
+         * @description 精简二级库（仅查看）。小程序端按二级库模式调用本接口或 /inventory。
+         */
+        get: operations["mini_program_lite_inventory_api_v1_mini_program_lite_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mini-program/lite-inventory/last-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mini Program Lite Inventory Last Import */
+        get: operations["mini_program_lite_inventory_last_import_api_v1_mini_program_lite_inventory_last_import_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1575,6 +1683,7 @@ export interface components {
             purchase_plans_mode: components["schemas"]["MiniProgramFeatureMode"];
             purchase_records_mode: components["schemas"]["MiniProgramFeatureMode"];
             material_codes_mode: components["schemas"]["MiniProgramFeatureMode"];
+            secondary_warehouse_mode: components["schemas"]["SecondaryWarehouseMode"];
             /** Updated At */
             updated_at?: string | null;
             /** Version */
@@ -1634,6 +1743,8 @@ export interface components {
             purchase_records_mode: components["schemas"]["MiniProgramFeatureMode"];
             /** @default query_only */
             material_codes_mode: components["schemas"]["MiniProgramFeatureMode"];
+            /** @default full */
+            secondary_warehouse_mode: components["schemas"]["SecondaryWarehouseMode"];
             /** Version */
             version: number;
         };
@@ -1761,6 +1872,11 @@ export interface components {
         };
         /** Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post */
         Body_import_huaxing_inventory_api_v1_huaxing_inventory_import_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_import_lite_inventory_api_v1_secondary_warehouse_import_post */
+        Body_import_lite_inventory_api_v1_secondary_warehouse_import_post: {
             /** File */
             file: string;
         };
@@ -1942,6 +2058,24 @@ export interface components {
             /** Version */
             version?: number | null;
         };
+        /**
+         * LiteInventoryRead
+         * @description 管理端精简二级库行（Excel 一次性导入 + 只读查询）。
+         */
+        LiteInventoryRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Model Spec */
+            model_spec?: string | null;
+            /** Unit Name */
+            unit_name?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+            /** Remark */
+            remark?: string | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Username */
@@ -2000,6 +2134,7 @@ export interface components {
             purchase_plans_mode: components["schemas"]["MiniProgramFeatureMode"];
             purchase_records_mode: components["schemas"]["MiniProgramFeatureMode"];
             material_codes_mode: components["schemas"]["MiniProgramFeatureMode"];
+            secondary_warehouse_mode: components["schemas"]["SecondaryWarehouseMode"];
         };
         /** MiniProgramHuaXingInventoryRead */
         MiniProgramHuaXingInventoryRead: {
@@ -2056,6 +2191,22 @@ export interface components {
             /** Current Qty */
             current_qty: string;
             stock_status: components["schemas"]["MiniProgramStockStatus"];
+        };
+        /**
+         * MiniProgramLiteInventoryItemRead
+         * @description 小程序端精简二级库行（无出入库，仅查看）。
+         */
+        MiniProgramLiteInventoryItemRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Model Spec */
+            model_spec?: string | null;
+            /** Unit Name */
+            unit_name?: string | null;
+            /** Quantity */
+            quantity?: string | null;
         };
         /** MiniProgramLoginResponse */
         MiniProgramLoginResponse: {
@@ -2556,6 +2707,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[LiteInventoryRead] */
+        Page_LiteInventoryRead_: {
+            /** Items */
+            items: components["schemas"]["LiteInventoryRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[MaterialCodeLibraryRead] */
         Page_MaterialCodeLibraryRead_: {
             /** Items */
@@ -2582,6 +2744,17 @@ export interface components {
         Page_MiniProgramInventoryItemRead_: {
             /** Items */
             items: components["schemas"]["MiniProgramInventoryItemRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[MiniProgramLiteInventoryItemRead] */
+        Page_MiniProgramLiteInventoryItemRead_: {
+            /** Items */
+            items: components["schemas"]["MiniProgramLiteInventoryItemRead"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -3245,6 +3418,12 @@ export interface components {
          * @enum {string}
          */
         Role: "SUPER_ADMIN" | "WAREHOUSE_ADMIN" | "PURCHASE_ADMIN" | "READ_ONLY";
+        /**
+         * SecondaryWarehouseMode
+         * @description 二级库运行模式：完整模式（物资/出入库/流水）与精简模式（Excel 导入 + 只读查询）。
+         * @enum {string}
+         */
+        SecondaryWarehouseMode: "full" | "lite";
         /**
          * ShareCreateRequest
          * @description 创建匿名分享链接：把勾选的申购计划/申购记录分享为无鉴权页面。
@@ -6528,6 +6707,276 @@ export interface operations {
             };
         };
     };
+    list_lite_inventory_api_v1_secondary_warehouse_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LiteInventoryRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    last_import_api_v1_secondary_warehouse_last_import_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LastImportRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    import_lite_inventory_api_v1_secondary_warehouse_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_lite_inventory_api_v1_secondary_warehouse_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExcelImportJobRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    get_import_job_api_v1_secondary_warehouse_import_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExcelImportJobRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     list_mini_program_users_api_v1_mini_program_users_get: {
         parameters: {
             query?: {
@@ -7101,6 +7550,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_MiniProgramInventoryItemRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_lite_inventory_api_v1_mini_program_lite_inventory_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MiniProgramLiteInventoryItemRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    mini_program_lite_inventory_last_import_api_v1_mini_program_lite_inventory_last_import_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LastImportRead"];
                 };
             };
             /** @description 业务校验失败 */

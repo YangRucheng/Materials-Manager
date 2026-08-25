@@ -13,6 +13,7 @@ from app.api.v1 import (
     purchase_materials,
     purchase_record_sync,
     purchase_requests,
+    secondary_warehouse,
     share,
     stock_materials,
     system_settings,
@@ -36,6 +37,7 @@ router.include_router(stock_materials.router)
 router.include_router(inventory.router)
 router.include_router(material_code_library.router)
 router.include_router(huaxing_inventory.router)
+router.include_router(secondary_warehouse.router)
 router.include_router(mini_program.management_router)
 router.include_router(mini_program.mini_router)
 router.include_router(purchase_materials.router)

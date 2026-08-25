@@ -1,6 +1,6 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { extractMaterialUuid } = require('../../utils/material');
-const { canOutbound, isFeatureDisabled } = require('../../utils/features');
+const { canOutbound, isFeatureDisabled, SECONDARY_WAREHOUSE_LITE } = require('../../utils/features');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const { apiBaseUrl } = require('../../config/index');
 const { uploadTime: buildUploadTime } = require('../../config/build-info');
@@ -21,6 +21,7 @@ Page({
   data: {
     user: null,
     scanning: false,
+    liteMode: false,
     userProfileVisible: false,
     miniProgramUpdatedAt: buildUploadTime || t('unknown'),
     i18n: getMessages(),
@@ -29,7 +30,10 @@ Page({
   async onLoad() {
     setNavigationBarTitle('appTitle');
     try {
-      const session = await getApp().globalData.authPromise;
+      const [session, featureModes] = await Promise.all([
+        getApp().globalData.authPromise,
+        getApp().globalData.featureSettingsPromise,
+      ]);
       if (session.account_disabled) {
         wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
@@ -47,6 +51,7 @@ Page({
           ...session.user,
           registered_at: formatDateTime(session.user.created_at),
         },
+        liteMode: featureModes.secondary_warehouse_mode === SECONDARY_WAREHOUSE_LITE,
       });
     } catch (error) {
       this.showError(error);

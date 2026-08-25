@@ -209,6 +209,17 @@ CREATE TABLE IF NOT EXISTS `huaxing_inventory` (
   CONSTRAINT `pk_huaxing_inventory` PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `lite_inventory` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(128) NOT NULL,
+  `model_spec` VARCHAR(255) NULL,
+  `unit_name` VARCHAR(32) NULL,
+  `quantity` DECIMAL(18, 2) NULL,
+  `remark` VARCHAR(1000) NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT `pk_lite_inventory` PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `purchase_request` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `purchase_order_no` VARCHAR(128) NULL,

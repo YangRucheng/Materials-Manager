@@ -37,6 +37,7 @@ from app.repositories import purchase_request_repository
 from app.schemas import (
     MiniProgramHuaXingInventoryRead,
     MiniProgramInventoryItemRead,
+    MiniProgramLiteInventoryItemRead,
     MiniProgramMaterialCodeRead,
     MiniProgramMaterialRead,
     MiniProgramOperationRead,
@@ -55,6 +56,7 @@ from app.services import (
     ai_search_service,
     huaxing_inventory_service,
     inventory_service,
+    lite_inventory_service,
     material_code_library_service,
     webhook_service,
 )
@@ -252,6 +254,28 @@ async def list_huaxing_inventory(
                 purchaser=item.purchaser,
                 purchase_department=item.purchase_department,
                 subitem_no_name=item.subitem_no_name,
+            )
+            for item in items
+        ],
+        total,
+    )
+
+
+async def list_lite_inventory(
+    session: AsyncSession, *, keyword: str | None, page: int, page_size: int
+) -> tuple[list[MiniProgramLiteInventoryItemRead], int]:
+    """精简二级库列表（仅查看，无出入库）。"""
+    items, total = await lite_inventory_service.search_lite_inventory(
+        session, keyword=keyword, page=page, page_size=page_size
+    )
+    return (
+        [
+            MiniProgramLiteInventoryItemRead(
+                id=item.id,
+                name=item.name,
+                model_spec=item.model_spec,
+                unit_name=item.unit_name,
+                quantity=item.quantity,
             )
             for item in items
         ],
@@ -756,9 +780,21 @@ def _outbound_read(
     )
 
 
+async def _ensure_not_lite_secondary_warehouse(session: AsyncSession) -> None:
+    """精简模式下二级库仅支持查看，拦截小程序出入库相关调用。"""
+    if await ai_search_service.is_lite_secondary_warehouse(session):
+        raise AppError(
+            "OUTBOUND_DISABLED",
+            "二级库精简模式下不支持出入库",
+            status_code=403,
+        )
+
+
 async def recent_outbound_reasons(
     session: AsyncSession, user: MiniProgramUser
 ) -> tuple[list[MiniProgramOutboundReason], list[MiniProgramOutboundReason]]:
+    await _ensure_not_lite_secondary_warehouse(session)
+
     async def list_reasons(user_name: str | None = None) -> list[MiniProgramOutboundReason]:
         last_used_at = func.max(StockOperation.occurred_at)
         last_operation_id = func.max(StockOperation.id)
@@ -788,6 +824,7 @@ async def recent_outbound_reasons(
 async def create_outbound(
     session: AsyncSession, data: MiniProgramOutboundCreate, user: MiniProgramUser
 ) -> MiniProgramOutboundRead:
+    await _ensure_not_lite_secondary_warehouse(session)
     material = await get_material(session, data.material_uuid, for_update=True)
     operation = await inventory_service.create_operation(
         session,

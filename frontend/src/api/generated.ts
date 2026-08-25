@@ -20,6 +20,7 @@ export type PurchasePlanStatus = components['schemas']['PurchasePlanStatus']
 export type MiniProgramCodeEnv = components['schemas']['MiniProgramCodeEnv']
 export type MiniProgramStockStatus = components['schemas']['MiniProgramStockStatus']
 export type MiniProgramFeatureMode = components['schemas']['MiniProgramFeatureMode']
+export type SecondaryWarehouseMode = components['schemas']['SecondaryWarehouseMode']
 export type WebhookPlatform = components['schemas']['WebhookPlatform']
 export type WebhookEventType = components['schemas']['WebhookEventType']
 
@@ -35,6 +36,7 @@ export type MiniProgramLoginResponse = components['schemas']['MiniProgramLoginRe
 export type AiSearchSettings = components['schemas']['AiSearchSettingsRead']
 export type AiSearchStatus = components['schemas']['AiSearchStatusRead']
 export type AiSearchTestRequest = components['schemas']['AiSearchTestRequest']
+export type MiniProgramFeatures = components['schemas']['MiniProgramFeaturesRead']
 export type ImageAccelerationSettings = components['schemas']['ImageAccelerationSettingsRead']
 export type MaterialCodeLibrary = components['schemas']['MaterialCodeLibraryRead']
 export type MaterialCodeExists = components['schemas']['MaterialCodeExistsRead']
@@ -44,6 +46,8 @@ export type ExcelImportJob = components['schemas']['ExcelImportJobRead']
 export type ExcelExportJobStatus = components['schemas']['ExcelExportJobStatus']
 export type ExcelExportJob = components['schemas']['ExcelExportJobRead']
 export type HuaXingInventory = components['schemas']['HuaXingInventoryRead']
+export type LiteInventory = components['schemas']['LiteInventoryRead']
+export type MiniProgramLiteInventoryItem = components['schemas']['MiniProgramLiteInventoryItemRead']
 export type FileObject = components['schemas']['FileObjectRead']
 export type ReplenishmentPolicy = components['schemas']['ReplenishmentPolicyRead']
 export type StockMaterial = components['schemas']['StockMaterialRead']
@@ -130,6 +134,7 @@ export interface AiSearchSettingsWrite {
   purchase_plans_mode: MiniProgramFeatureMode
   purchase_records_mode: MiniProgramFeatureMode
   material_codes_mode: MiniProgramFeatureMode
+  secondary_warehouse_mode: SecondaryWarehouseMode
   version: number
 }
 

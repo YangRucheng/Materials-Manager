@@ -52,7 +52,7 @@
     </view>
   </view>
 
-  <view class="section-card scan-card">
+  <view wx:if="{{!liteMode}}" class="section-card scan-card">
     <view class="scan-icon"><t-icon name="scan" size="64rpx" /></view>
     <view class="scan-title">{{i18n.scanMaterialCode}}</view>
     <view class="scan-description">{{i18n.scanDescription}}</view>
@@ -97,7 +97,12 @@
           <view class="user-profile-value">{{miniProgramUpdatedAt}}</view>
         </view>
       </view>
-      <view class="user-profile-records" hover-class="user-profile-records-active" bind:tap="openRecords">
+      <view
+        wx:if="{{!liteMode}}"
+        class="user-profile-records"
+        hover-class="user-profile-records-active"
+        bind:tap="openRecords"
+      >
         <view class="records-entry">
           <t-icon name="time" size="36rpx" color="#5573d1" />
           <view class="records-entry-text">{{i18n.viewRecords}}</view>

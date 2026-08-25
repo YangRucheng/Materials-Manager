@@ -198,6 +198,25 @@ class HuaXingInventory(Base):
     )
 
 
+class LiteInventory(Base):
+    """精简二级库：Excel 一次性全量导入 + 只读查询（独立于完整模式 stock_material 等表）。
+
+    仅当二级库处于精简模式时被读取/写入；完整模式数据不受影响。
+    """
+
+    __tablename__ = "lite_inventory"
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_spec: Mapped[str | None] = mapped_column(String(255))
+    unit_name: Mapped[str | None] = mapped_column(String(32))
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    remark: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(
+        UTC_DATETIME, default=_utcnow, server_default=func.now(), nullable=False
+    )
+
+
 class ExcelExportJob(Base):
     """异步 Excel 导出任务（申购记录 / 申购计划结果导出共用）。
 
@@ -660,6 +679,7 @@ __all__ = [
     "ExcelImportJob",
     "FileObject",
     "HuaXingInventory",
+    "LiteInventory",
     "MiniProgramUser",
     "PurchaseMaterial",
     "PurchaseMaterialImage",
