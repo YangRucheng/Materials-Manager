@@ -182,7 +182,7 @@ const showBatchEdit = ref(false)
 const checkedRowKeys = ref<Array<string | number>>([])
 const tableAreaRef = ref<HTMLElement | null>(null)
 const exportOptions = computed<ExportOption[]>(() => [
-  { label: `导出查询结果（共 ${total} 条）`, key: 'results' },
+  { label: `导出查询结果（共 ${total.value} 条）`, key: 'results' },
   {
     label: `链接分享（已选 ${selectedRecords.value.length} 条）`,
     key: 'share',

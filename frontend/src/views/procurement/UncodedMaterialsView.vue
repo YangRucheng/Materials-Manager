@@ -36,7 +36,7 @@ const { items, total, page, pageSize, loading, changePage, changePageSize } = us
 })
 const exporting = ref(false)
 const exportOptions: ExportOption[] = [
-  { label: `导出物料编码申请表（共 ${total} 条）`, key: 'application' },
+  { label: `导出物料编码申请表（共 ${total.value} 条）`, key: 'application' },
 ]
 type UncodedColumnKey = 'plan_date' | 'name' | 'model_spec' | 'unit_name' | 'created_at'
 

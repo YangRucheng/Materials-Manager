@@ -292,7 +292,9 @@ const selectedPlans = computed(() => {
   return items.value.filter((item) => selected.has(item.id))
 })
 const exportOptions = computed<ExportOption[]>(() => {
-  const options: ExportOption[] = [{ label: `导出查询结果（共 ${total} 条）`, key: 'results' }]
+  const options: ExportOption[] = [
+    { label: `导出查询结果（共 ${total.value} 条）`, key: 'results' },
+  ]
   options.push({
     label: `链接分享（已选 ${selectedPlans.value.length} 条）`,
     key: 'share',
