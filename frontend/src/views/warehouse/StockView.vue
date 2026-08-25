@@ -299,7 +299,7 @@ async function confirmReplenishment() {
       preset="card"
       draggable
       title="确认发起补库"
-      style="width: 560px"
+      style="width: min(560px, calc(100vw - 24px))"
       :mask-closable="false"
     >
       <n-alert type="warning" style="margin-bottom: 16px">

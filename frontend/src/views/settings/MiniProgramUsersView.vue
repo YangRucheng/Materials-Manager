@@ -225,7 +225,7 @@ function confirmDelete() {
       preset="card"
       draggable
       title="编辑小程序用户"
-      style="width: 520px"
+      style="width: min(520px, calc(100vw - 24px))"
     >
       <n-form label-placement="top">
         <n-form-item label="已绑定小程序身份">
@@ -277,7 +277,7 @@ function confirmDelete() {
       preset="card"
       draggable
       title="合并小程序账号"
-      style="width: 520px"
+      style="width: min(520px, calc(100vw - 24px))"
     >
       <n-alert type="warning" :bordered="false">
         当前账号“{{

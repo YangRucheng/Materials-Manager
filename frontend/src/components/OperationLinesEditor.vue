@@ -109,8 +109,12 @@ function remove(index: number) {
 <style scoped>
 .line-table {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 8px;
+  /* 窄屏下物资行保持单行，允许横向滚动查看 */
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 .line-head,
 .line-row {
@@ -118,6 +122,8 @@ function remove(index: number) {
   grid-template-columns: minmax(300px, 2fr) 120px 180px 60px;
   gap: 12px;
   align-items: center;
+  /* 行最小总宽，保证窄屏可横向滚动而不塌缩 */
+  min-width: 680px;
 }
 .line-head {
   color: #6b7280;

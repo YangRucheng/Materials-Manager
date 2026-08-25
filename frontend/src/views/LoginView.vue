@@ -131,4 +131,37 @@ h2 {
   font-size: 28px;
   margin: 0 0 22px;
 }
+@media (max-width: 768px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .login-intro {
+    min-height: 220px;
+    place-items: center;
+  }
+  .login-intro::after {
+    display: none;
+  }
+  .intro-content {
+    max-width: 100%;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  .login-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 16px;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 12px 0 0;
+  }
+  .login-panel {
+    padding: 28px 16px 40px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 420px;
+  }
+}
 </style>

@@ -80,7 +80,7 @@ async function confirm() {
     preset="card"
     draggable
     title="反向冲销"
-    style="width: 640px"
+    style="width: min(640px, calc(100vw - 24px))"
     :mask-closable="false"
   >
     <n-alert type="warning" style="margin-bottom: 16px">

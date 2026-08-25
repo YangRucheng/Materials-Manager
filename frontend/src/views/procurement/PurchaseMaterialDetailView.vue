@@ -344,7 +344,7 @@ onMounted(() => void load())
       preset="card"
       draggable
       title="转入申购记录"
-      style="width: 560px"
+      style="width: min(560px, calc(100vw - 24px))"
       :mask-closable="false"
     >
       <n-alert type="info" style="margin-bottom: 16px"

@@ -18,12 +18,7 @@ const closeDrawer = () => {
   drawerOpen.value = false
 }
 const link = (label: string, name: string) => ({
-  label: () =>
-    h(
-      RouterLink,
-      { to: { name }, onClick: closeDrawer },
-      { default: () => label },
-    ),
+  label: () => h(RouterLink, { to: { name }, onClick: closeDrawer }, { default: () => label }),
   key: name,
 })
 

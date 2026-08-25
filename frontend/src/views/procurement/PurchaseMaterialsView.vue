@@ -1179,7 +1179,7 @@ onBeforeUnmount(() => {
       preset="card"
       draggable
       title="批量修改申购计划"
-      style="width: 620px"
+      style="width: min(620px, calc(100vw - 24px))"
       :mask-closable="false"
     >
       <n-alert type="info" style="margin-bottom: 16px">
@@ -1306,7 +1306,7 @@ onBeforeUnmount(() => {
       preset="card"
       draggable
       title="批量转为申购记录"
-      style="width: 620px"
+      style="width: min(620px, calc(100vw - 24px))"
       :mask-closable="false"
     >
       <n-alert type="info" style="margin-bottom: 16px">
@@ -1384,7 +1384,7 @@ onBeforeUnmount(() => {
       preset="card"
       draggable
       :title="editing ? '编辑申购计划' : '新建申购计划'"
-      style="width: 680px"
+      style="width: min(680px, calc(100vw - 24px))"
       :mask-closable="false"
     >
       <n-form ref="formRef" :model="form" :rules="rules" label-placement="top">
