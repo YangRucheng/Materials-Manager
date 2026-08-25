@@ -20,6 +20,7 @@ from app.schemas import (
     LastImportRead,
     MiniProgramHuaXingInventoryRead,
     MiniProgramInventoryItemRead,
+    MiniProgramLiteInventoryItemRead,
     MiniProgramLoginResponse,
     MiniProgramMaterialCodeRead,
     MiniProgramMaterialRead,
@@ -175,6 +176,35 @@ async def mini_program_inventory(
         page_size=page_size,
         total=total,
     )
+
+
+@mini_router.get("/lite-inventory", response_model=Page[MiniProgramLiteInventoryItemRead])
+async def mini_program_lite_inventory(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    keyword: Annotated[str | None, Query(max_length=255)] = None,
+) -> Page[MiniProgramLiteInventoryItemRead]:
+    """精简二级库（仅查看）。小程序端按二级库模式调用本接口或 /inventory。"""
+    items, total = await mini_program_service.list_lite_inventory(
+        session,
+        keyword=keyword,
+        page=page,
+        page_size=page_size,
+    )
+    return Page(items=items, page=page, page_size=page_size, total=total)
+
+
+@mini_router.get("/lite-inventory/last-import", response_model=LastImportRead)
+async def mini_program_lite_inventory_last_import(
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> LastImportRead:
+    last_import_at = await import_job_service.latest_import_finished_at(
+        session, import_type="LITE_INVENTORY"
+    )
+    return LastImportRead(last_import_at=last_import_at)
 
 
 @mini_router.get("/purchase-plans", response_model=Page[MiniProgramPurchasePlanItemRead])

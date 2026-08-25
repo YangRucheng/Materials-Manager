@@ -3,7 +3,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { aiSearchApi } from '@/api/aiSearch'
 import { systemSettingsApi } from '@/api/systemSettings'
-import type { MiniProgramFeatureMode, WebhookEventType, WebhookPlatform } from '@/api/generated'
+import type {
+  MiniProgramFeatureMode,
+  SecondaryWarehouseMode,
+  WebhookEventType,
+  WebhookPlatform,
+} from '@/api/generated'
 
 const message = useMessage()
 const loading = ref(false)
@@ -29,6 +34,10 @@ const readOnlyModeOptions: Array<{ label: string; value: MiniProgramFeatureMode 
   { label: '禁用', value: 'disabled' },
   { label: '仅查询', value: 'query_only' },
 ]
+const secondaryWarehouseModeOptions: Array<{ label: string; value: SecondaryWarehouseMode }> = [
+  { label: '完整模式', value: 'full' },
+  { label: '精简模式', value: 'lite' },
+]
 const form = reactive({
   endpoint: '',
   api_key: '',
@@ -45,6 +54,7 @@ const form = reactive({
   purchase_plans_mode: 'query_only' as MiniProgramFeatureMode,
   purchase_records_mode: 'query_only' as MiniProgramFeatureMode,
   material_codes_mode: 'query_only' as MiniProgramFeatureMode,
+  secondary_warehouse_mode: 'full' as SecondaryWarehouseMode,
   version: 0,
 })
 const miniProgramAppOptions = computed(() =>
@@ -138,6 +148,7 @@ async function save() {
       purchase_plans_mode: form.purchase_plans_mode,
       purchase_records_mode: form.purchase_records_mode,
       material_codes_mode: form.material_codes_mode,
+      secondary_warehouse_mode: form.secondary_warehouse_mode,
       version: form.version,
     })
     Object.assign(form, data)
@@ -309,6 +320,33 @@ onMounted(load)
         </n-form>
       </n-card>
 
+      <n-card class="settings-card secondary-mode-card" title="二级库模式" :bordered="false">
+        <n-form label-placement="left" label-width="132">
+          <n-form-item label="运行模式">
+            <n-radio-group v-model:value="form.secondary_warehouse_mode">
+              <n-space>
+                <n-radio-button
+                  v-for="option in secondaryWarehouseModeOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </n-radio-button>
+              </n-space>
+            </n-radio-group>
+          </n-form-item>
+        </n-form>
+        <div class="mode-hint">
+          <p v-if="form.secondary_warehouse_mode === 'full'">
+            完整模式：二级库支持物资档案、库存、出入库与操作记录，数据存完整模式表。
+          </p>
+          <p v-else>
+            精简模式：小程序端二级库仅可查看、不支持出入库；后台「二级库」tab 变为单页 （Excel
+            一次性导入 + 只读查询），数据存独立精简表，与完整模式数据互不影响。
+          </p>
+        </div>
+      </n-card>
+
       <n-card class="settings-card image-card" title="图片加速" :bordered="false">
         <n-form label-placement="top">
           <n-form-item label="加速服务器地址">
@@ -473,6 +511,20 @@ onMounted(load)
   gap: 10px;
   color: #64748b;
   font-size: 13px;
+}
+
+.mode-hint {
+  margin: 0 12px 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f5f7fb;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.mode-hint p {
+  margin: 0;
 }
 
 :deep(.n-card-header) {

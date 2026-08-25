@@ -10,6 +10,7 @@ Page({
     items: [],
     keyword: '',
     stockStatus: 'all',
+    liteMode: false,
     page: 1,
     pageSize: 15,
     total: 0,
@@ -23,7 +24,10 @@ Page({
   async onLoad() {
     setNavigationBarTitle('inventoryTitle');
     try {
-      const session = await getApp().globalData.authPromise;
+      const [session, featureModes] = await Promise.all([
+        getApp().globalData.authPromise,
+        getApp().globalData.featureSettingsPromise,
+      ]);
       if (session.account_disabled) {
         wx.reLaunch({ url: '/pages/disabled/disabled' });
         return;
@@ -37,6 +41,8 @@ Page({
         wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
+      // 精简模式：二级库独立表 + 只读，调用精简接口且无库存状态/详情。
+      this.setData({ liteMode: featureModes.secondary_warehouse_mode === 'lite' });
       await this.loadInventory(true);
     } catch (error) {
       this.setData({ loading: false });
@@ -69,6 +75,9 @@ Page({
   },
 
   onStatusChange(event) {
+    if (this.data.liteMode) {
+      return;
+    }
     const stockStatus = event.detail.value;
     if (stockStatus === this.data.stockStatus) {
       return;
@@ -94,14 +103,25 @@ Page({
       if (keyword) {
         query.keyword = keyword;
       }
-      if (this.data.stockStatus !== 'all') {
+      if (!this.data.liteMode && this.data.stockStatus !== 'all') {
         query.stock_status = this.data.stockStatus;
       }
-      const result = await request({ url: '/mini-program/inventory', data: query });
+      const url = this.data.liteMode
+        ? '/mini-program/lite-inventory'
+        : '/mini-program/inventory';
+      const result = await request({ url, data: query });
       if (requestId !== this.requestId) {
         return;
       }
-      const incoming = (result.items || []).map(decorateStock);
+      // 精简条目无 uuid/库存状态：统一补 current_qty 与行键，仅展示数量。
+      const incoming = this.data.liteMode
+        ? (result.items || []).map((item) => ({
+            ...item,
+            key: item.id,
+            current_qty: item.quantity,
+            is_lite: true,
+          }))
+        : (result.items || []).map((item) => ({ ...item, key: item.uuid, is_lite: false, ...decorateStock(item) }));
       const items = reset ? incoming : [...this.data.items, ...incoming];
       this.setData({
         items,
@@ -122,8 +142,12 @@ Page({
   },
 
   openDetail(event) {
+    const uuid = event.currentTarget.dataset.uuid;
+    if (!uuid) {
+      return;
+    }
     wx.navigateTo({
-      url: `/pages/material-detail/material-detail?uuid=${event.currentTarget.dataset.uuid}`,
+      url: `/pages/material-detail/material-detail?uuid=${uuid}`,
     });
   },
 

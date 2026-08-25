@@ -4,12 +4,14 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { MenuOption } from 'naive-ui'
 import { useMediaQuery } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { roleLabels } from '@/types/navigation'
 import { LOGO_URL } from '@/constants/branding'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const settings = useSettingsStore()
 const collapsed = ref(false)
 // 移动端断点：≤768px 时侧边栏切换为抽屉导航
 const isMobile = useMediaQuery('(max-width: 768px)')
@@ -24,16 +26,21 @@ const link = (label: string, name: string) => ({
 
 const menuOptions = computed<MenuOption[]>(() => {
   const items: MenuOption[] = [link('工作台', 'dashboard')]
-  items.push({
-    label: '二级库',
-    key: 'warehouse-group',
-    children: [
-      link('库存查询', 'stock'),
-      link('物资档案', 'stock-materials'),
-      link('操作记录', 'operations'),
-      ...(auth.can('warehouse:write') ? [link('入库', 'inbound'), link('出库', 'outbound')] : []),
-    ],
-  })
+  if (settings.isLiteMode) {
+    // 精简模式：二级库只有一级 tab（Excel 导入 + 只读查询），与华星总库存同层级。
+    items.push(link('二级库', 'warehouse-lite'))
+  } else {
+    items.push({
+      label: '二级库',
+      key: 'warehouse-group',
+      children: [
+        link('库存查询', 'stock'),
+        link('物资档案', 'stock-materials'),
+        link('操作记录', 'operations'),
+        ...(auth.can('warehouse:write') ? [link('入库', 'inbound'), link('出库', 'outbound')] : []),
+      ],
+    })
+  }
   items.push(link('华星总库存', 'hua-xing-stock'))
   items.push({
     label: '申购管理',

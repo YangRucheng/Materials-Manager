@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type {
   ImageAccelerationSettings,
+  MiniProgramFeatures,
   WebhookChannelSettings,
   WebhookChannelSettingsWrite,
   WebhookPlatform,
@@ -12,6 +13,10 @@ export const systemSettingsApi = {
   imageAcceleration: () =>
     apiClient
       .get<ImageAccelerationSettings>('/system-settings/image-acceleration', { timeout: 3000 })
+      .then((response) => response.data),
+  miniProgramFeatures: () =>
+    apiClient
+      .get<MiniProgramFeatures>('/system-settings/mini-program-features', { timeout: 3000 })
       .then((response) => response.data),
   webhooks: () =>
     apiClient

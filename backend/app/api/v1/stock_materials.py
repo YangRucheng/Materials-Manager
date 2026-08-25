@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 
-from app.api.deps import PageNo, PageSize
+from app.api.deps import PageNo, PageSize, RequireFullSecondaryWarehouse
 from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, WarehouseWriter
 from app.domain.enums import MiniProgramCodeEnv
 from app.schemas import (
@@ -64,7 +64,10 @@ async def list_materials(
 
 @router.post("", response_model=StockMaterialRead, status_code=status.HTTP_201_CREATED)
 async def create_material(
-    data: StockMaterialCreate, session: DbSession, user: WarehouseWriter
+    data: StockMaterialCreate,
+    session: DbSession,
+    user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockMaterialRead:
     item = await material_service.create_stock_material(session, data)
     return material_service.stock_read(item)
@@ -134,6 +137,7 @@ async def update_material(
     data: StockMaterialUpdate,
     session: DbSession,
     user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockMaterialRead:
     item = await material_service.get_stock_material(session, material_id)
     await material_service.update_stock_material(session, item, data)
@@ -146,6 +150,7 @@ async def delete_material(
     session: DbSession,
     user: WarehouseWriter,
     if_match: IfMatchVersion,
+    _: RequireFullSecondaryWarehouse,
 ) -> None:
     item = await material_service.get_stock_material(session, material_id)
     await material_service.delete_stock_material(session, item, if_match)
@@ -157,6 +162,7 @@ async def save_policy(
     data: ReplenishmentPolicyWrite,
     session: DbSession,
     user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockMaterialRead:
     item = await material_service.get_stock_material(session, material_id)
     await replenishment_service.set_policy(session, item, data)

@@ -37,6 +37,13 @@ class MiniProgramFeatureMode(StrEnum):
     READ_WRITE = "read_write"
 
 
+class SecondaryWarehouseMode(StrEnum):
+    """二级库运行模式：完整模式（物资/出入库/流水）与精简模式（Excel 导入 + 只读查询）。"""
+
+    FULL = "full"
+    LITE = "lite"
+
+
 class PurchasePlanStatus(StrEnum):
     NORMAL = "正常"
     DEFERRED = "暂不申购"

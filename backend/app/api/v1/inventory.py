@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, status
 
-from app.api.deps import PageNo, PageSize
+from app.api.deps import PageNo, PageSize, RequireFullSecondaryWarehouse
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
 from app.domain.enums import OperationType, SourceType
@@ -111,7 +111,10 @@ async def balance_detail(
     "/inventory/inbounds", response_model=StockOperationRead, status_code=status.HTTP_201_CREATED
 )
 async def inbound(
-    data: OperationCreate, session: DbSession, user: WarehouseWriter
+    data: OperationCreate,
+    session: DbSession,
+    user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockOperationRead:
     item = await inventory_service.create_operation(session, data, OperationType.INBOUND)
     return await inventory_service.operation_read(session, item)
@@ -121,7 +124,10 @@ async def inbound(
     "/inventory/outbounds", response_model=StockOperationRead, status_code=status.HTTP_201_CREATED
 )
 async def outbound(
-    data: OperationCreate, session: DbSession, user: WarehouseWriter
+    data: OperationCreate,
+    session: DbSession,
+    user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockOperationRead:
     item = await inventory_service.create_operation(session, data, OperationType.OUTBOUND)
     return await inventory_service.operation_read(session, item)
@@ -178,6 +184,7 @@ async def edit_operation(
     data: OperationUpdate,
     session: DbSession,
     user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockOperationRead:
     item = await inventory_service.get_operation(session, operation_id, for_update=True)
     item = await inventory_service.update_operation(session, item, data)
@@ -190,6 +197,7 @@ async def reverse_operation(
     data: ReverseOperationRequest,
     session: DbSession,
     user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> StockOperationRead:
     original = await inventory_service.get_operation(session, operation_id, for_update=True)
     item = await inventory_service.reverse_operation(session, original, data)
@@ -205,6 +213,7 @@ async def replenish(
     data: ReplenishmentDraftCreate,
     session: DbSession,
     user: WarehouseWriter,
+    _: RequireFullSecondaryWarehouse,
 ) -> ReplenishmentDraftRead:
     return await replenishment_service.create_replenishment_draft(session, material_id, data)
 

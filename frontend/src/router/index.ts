@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Permission } from '@/types/navigation'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -10,6 +11,17 @@ declare module 'vue-router' {
     keepAlive?: boolean
   }
 }
+
+/** 完整模式二级库的路由：精简模式下统一重定向到精简视图 */
+const FULL_WAREHOUSE_ROUTES = new Set([
+  'stock-materials',
+  'stock-material-detail',
+  'inbound',
+  'outbound',
+  'stock',
+  'operations',
+  'operation-detail',
+])
 
 const router = createRouter({
   history: createWebHistory(),
@@ -68,6 +80,12 @@ const router = createRouter({
           name: 'hua-xing-stock',
           component: () => import('@/views/warehouse/HuaXingStockView.vue'),
           meta: { title: '华星总库存' },
+        },
+        {
+          path: 'warehouse/lite',
+          name: 'warehouse-lite',
+          component: () => import('@/views/warehouse/SecondaryWarehouseLiteView.vue'),
+          meta: { title: '二级库' },
         },
         {
           path: 'warehouse/operations',
@@ -174,6 +192,10 @@ router.beforeEach((to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   if (to.name === 'login' && auth.isAuthenticated) return { name: 'dashboard' }
   if (to.meta.permission && !auth.can(to.meta.permission)) return { name: 'dashboard' }
+  // 二级库精简模式下，完整模式仓库路由不可访问，统一重定向到精简视图。
+  if (useSettingsStore().isLiteMode && to.name && FULL_WAREHOUSE_ROUTES.has(String(to.name))) {
+    return { name: 'warehouse-lite' }
+  }
 })
 
 export default router

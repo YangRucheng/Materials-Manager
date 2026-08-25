@@ -120,6 +120,7 @@ async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypte
         "purchase_plans_mode": "query_only",
         "purchase_records_mode": "query_only",
         "material_codes_mode": "query_only",
+        "secondary_warehouse_mode": "full",
         "updated_at": saved.json()["updated_at"],
         "version": 1,
     }
