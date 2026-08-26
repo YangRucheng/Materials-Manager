@@ -9,7 +9,9 @@ import type {
 
 /** 华星库存列表查询 */
 export interface HuaXingInventoryListQuery extends PagedQueryParams {
-  keyword?: string
+  material_code?: string
+  name?: string
+  model_spec?: string
   warehouse?: string
   purchase_department?: string
   purchaser?: string

@@ -148,11 +148,22 @@ async def _replace_rows(rows: list[dict[str, object]]) -> dict[str, object]:
 async def search_lite_inventory(
     session: AsyncSession,
     *,
-    keyword: str | None,
+    keyword: str | None = None,
+    name: str | None = None,
+    model_spec: str | None = None,
     page: int,
     page_size: int,
 ) -> tuple[list[LiteInventoryRead], int]:
     query = select(LiteInventory)
+    # 后台按字段独立筛选：各字段内多关键词 OR，字段之间 AND。
+    for columns, value in (
+        ((LiteInventory.name,), name),
+        ((LiteInventory.model_spec,), model_spec),
+    ):
+        condition = contains_any(columns, value)
+        if condition is not None:
+            query = query.where(condition)
+    # keyword 兼容旧调用（小程序端仍按名称/型号/备注跨列 OR 匹配）。
     keyword_condition = contains_any(
         (LiteInventory.name, LiteInventory.model_spec, LiteInventory.remark), keyword
     )

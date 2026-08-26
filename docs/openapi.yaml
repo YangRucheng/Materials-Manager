@@ -2182,6 +2182,7 @@ paths:
       tags:
       - 华星库存
       summary: List Huaxing Inventory
+      description: 华星总库存列表查询（货品编码/货品名称/型号等字段独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。
       operationId: list_huaxing_inventory_api_v1_huaxing_inventory_get
       security:
       - HTTPBearer: []
@@ -2204,7 +2205,16 @@ paths:
           minimum: 1
           default: 20
           title: Page Size
-      - name: keyword
+      - name: material_code
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Material Code
+      - name: name
         in: query
         required: false
         schema:
@@ -2212,7 +2222,16 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
-          title: Keyword
+          title: Name
+      - name: model_spec
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Model Spec
       - name: warehouse
         in: query
         required: false
@@ -2434,7 +2453,7 @@ paths:
       tags:
       - 二级库
       summary: List Lite Inventory
-      description: 精简二级库列表查询（物资名称/型号/备注关键字匹配）。
+      description: 精简二级库列表查询（物资名称/型号独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。
       operationId: list_lite_inventory_api_v1_secondary_warehouse_get
       security:
       - HTTPBearer: []
@@ -2457,7 +2476,16 @@ paths:
           minimum: 1
           default: 20
           title: Page Size
-      - name: keyword
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Name
+      - name: model_spec
         in: query
         required: false
         schema:
@@ -2465,7 +2493,7 @@ paths:
           - type: string
             maxLength: 255
           - type: 'null'
-          title: Keyword
+          title: Model Spec
       responses:
         '200':
           description: Successful Response

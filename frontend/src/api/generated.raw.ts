@@ -580,7 +580,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Huaxing Inventory */
+        /**
+         * List Huaxing Inventory
+         * @description 华星总库存列表查询（货品编码/货品名称/型号等字段独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。
+         */
         get: operations["list_huaxing_inventory_api_v1_huaxing_inventory_get"];
         put?: never;
         post?: never;
@@ -650,7 +653,7 @@ export interface paths {
         };
         /**
          * List Lite Inventory
-         * @description 精简二级库列表查询（物资名称/型号/备注关键字匹配）。
+         * @description 精简二级库列表查询（物资名称/型号独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。
          */
         get: operations["list_lite_inventory_api_v1_secondary_warehouse_get"];
         put?: never;
@@ -6439,7 +6442,9 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
-                keyword?: string | null;
+                material_code?: string | null;
+                name?: string | null;
+                model_spec?: string | null;
                 warehouse?: string | null;
                 purchase_department?: string | null;
                 purchaser?: string | null;
@@ -6712,7 +6717,8 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
-                keyword?: string | null;
+                name?: string | null;
+                model_spec?: string | null;
             };
             header?: never;
             path?: never;

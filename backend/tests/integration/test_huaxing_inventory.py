@@ -169,14 +169,14 @@ async def test_warehouse_import_and_search(client: AsyncClient) -> None:
     assert listed.status_code == 200, listed.text
     assert listed.json()["total"] == 3
 
-    by_keyword = await client.get(
+    by_name = await client.get(
         "/api/v1/huaxing-inventory",
         headers=headers,
-        params={"keyword": "内丝三通|L012"},
+        params={"name": "内丝三通"},
     )
-    assert by_keyword.status_code == 200, by_keyword.text
-    assert by_keyword.json()["total"] == 1
-    item = by_keyword.json()["items"][0]
+    assert by_name.status_code == 200, by_name.text
+    assert by_name.json()["total"] == 1
+    item = by_name.json()["items"][0]
     assert item["material_code"] == "L012-05048"
     assert item["first_inbound_date"] == "2022-10-28"
     assert item["warehouse"] == "P05综合仓"
@@ -200,7 +200,7 @@ async def test_warehouse_import_and_search(client: AsyncClient) -> None:
     assert by_department.json()["total"] == 1
 
     no_match = await client.get(
-        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "不存在"}
+        "/api/v1/huaxing-inventory", headers=headers, params={"name": "不存在"}
     )
     assert no_match.json()["items"] == []
 
@@ -234,7 +234,7 @@ async def test_header_alias_first_inbound_time(client: AsyncClient) -> None:
         build_report([_row("Y001", "按钮")], first_header="首次入库时间"),
     )
     listed = await client.get(
-        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "Y001"}
+        "/api/v1/huaxing-inventory", headers=headers, params={"material_code": "Y001"}
     )
     assert listed.json()["total"] == 1
 
@@ -255,7 +255,7 @@ async def test_import_deduplicates_fully_identical_rows(client: AsyncClient) -> 
     assert listed.json()["total"] == 2
     # 完全相同行只保留一条；跨引用行数不受影响。
     by_code = await client.get(
-        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "Y001"}
+        "/api/v1/huaxing-inventory", headers=headers, params={"material_code": "Y001"}
     )
     assert by_code.json()["total"] == 1
 
@@ -313,7 +313,7 @@ async def test_import_csv(client: AsyncClient) -> None:
     assert job["result"]["imported_count"] == 1
 
     listed = await client.get(
-        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "C001"}
+        "/api/v1/huaxing-inventory", headers=headers, params={"material_code": "C001"}
     )
     assert listed.status_code == 200, listed.text
     assert listed.json()["total"] == 1
@@ -332,7 +332,68 @@ async def test_import_xls(client: AsyncClient) -> None:
     assert job["result"]["imported_count"] == 1
 
     listed = await client.get(
-        "/api/v1/huaxing-inventory", headers=headers, params={"keyword": "X001"}
+        "/api/v1/huaxing-inventory", headers=headers, params={"material_code": "X001"}
     )
     assert listed.status_code == 200, listed.text
     assert listed.json()["items"][0]["material_code"] == "X001"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_model_spec(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    await _import_ok(
+        client,
+        headers,
+        build_report(
+            [
+                _row("M001", "接触器", model_spec="CJX2-2510"),
+                _row("M002", "接触器", model_spec="CJX2-1210"),
+            ]
+        ),
+    )
+    listed = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"model_spec": "CJX2-25"}
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["material_code"] == "M001"
+
+
+@pytest.mark.asyncio
+async def test_filter_code_or_and_cross_field_and(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    await _import_ok(
+        client,
+        headers,
+        build_report(
+            [
+                _row("L012-05048", "内丝三通", model_spec="DN15"),
+                _row("W004-00003", "稀释剂", model_spec="25L", quantity=3),
+                _row("L013-05048", "内丝弯头", model_spec="DN15"),
+            ]
+        ),
+    )
+    # 同一输入框内用 | 分隔多关键词按 OR 匹配：命中两条含 L012/L013 的编码。
+    by_code_or = await client.get(
+        "/api/v1/huaxing-inventory",
+        headers=headers,
+        params={"material_code": "L012|L013"},
+    )
+    assert by_code_or.status_code == 200, by_code_or.text
+    assert by_code_or.json()["total"] == 2
+
+    # 名称框内 OR：命中 内丝三通/内丝弯头 两条。
+    by_name_or = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"name": "内丝三通|内丝弯头"}
+    )
+    assert by_name_or.json()["total"] == 2
+
+    # 不同输入框之间按 AND：编码 L012 且名称 内丝三通 → 仅一条。
+    by_and = await client.get(
+        "/api/v1/huaxing-inventory",
+        headers=headers,
+        params={"material_code": "L012", "name": "内丝三通"},
+    )
+    assert by_and.status_code == 200, by_and.text
+    assert by_and.json()["total"] == 1
+    assert by_and.json()["items"][0]["material_code"] == "L012-05048"
