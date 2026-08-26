@@ -68,6 +68,16 @@ onMounted(async () => {
         <div class="copyright-panel">
           <p>本系统为华星镍业检修维护部电气自动化车间设计。</p>
           <p>
+            项目仓库：
+            <a
+              href="https://github.com/YangRucheng/Materials-Manager"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              github.com/YangRucheng/Materials-Manager
+            </a>
+          </p>
+          <p>
             版权归
             <a href="https://github.com/YangRucheng" target="_blank" rel="noopener noreferrer">
               github.com/YangRucheng
