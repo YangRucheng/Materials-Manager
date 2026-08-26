@@ -363,6 +363,46 @@ async def export_purchase_application(
       "purchase-application.json", rows))
 
 
+@router.post(
+    "/export-purchase-approval",
+    responses={400: {"model": ApiError, "description": "Excel 导出模板缺失或格式错误"}},
+)
+async def export_purchase_approval(
+    data: PurchasePlanExportRequest,
+    session: DbSession,
+    user: CurrentUser,
+) -> Response:
+    materials = await material_service.purchase_materials_for_export(
+        session,
+        material_ids=data.material_ids,
+        coded=None,
+        moved=False,
+        status=None if user.role == Role.SUPER_ADMIN else PurchasePlanStatus.NORMAL,
+    )
+    material_service.validate_purchase_approval_export(materials)
+    rows = [
+        {
+            "serial": index,
+            "material_code": item.material_code,
+            "name": item.name,
+            "model_spec": item.model_spec,
+            "planned_qty": item.planned_qty,
+            "unit_name": item.unit_name,
+            "purchase_responsible": item.purchase_responsible,
+            "department": "HXNI 检修维护部",
+            "usage": item.usage,
+            "required_arrival_date": date.today() + timedelta(days=80),
+            "urgency": item.urgency,
+            "remark": item.remark,
+            "subitem_no": item.subitem_no,
+        }
+        for index, item in enumerate(materials, start=1)
+    ]
+    return excel_export_service.excel_response(
+        *excel_export_service.render_excel("purchase-approval.json", rows)
+    )
+
+
 @router.post("/batch-move-to-record", response_model=list[PurchaseRecordRead])
 async def batch_move_to_record(
     data: BatchMovePurchasePlansRequest,

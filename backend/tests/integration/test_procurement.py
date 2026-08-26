@@ -1573,6 +1573,108 @@ async def test_purchase_application_export_requires_code_subitem_and_usage(
 
 
 @pytest.mark.asyncio
+async def test_export_purchase_approval(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "purchase")
+    plan = await create_purchase_plan(
+        client,
+        headers,
+        "审批表测试物资",
+        code="DQ-APP-1",
+        model_spec="CJX2-2510",
+        planned_qty="8",
+        purchase_responsible="王工",
+        subitem_no="GX-99",
+    )
+    response = await client.post(
+        "/api/v1/purchase-materials/export-purchase-approval",
+        headers=headers,
+        json={"material_ids": [plan["id"]]},
+    )
+    assert response.status_code == 200, response.text
+    assert f"采购申请（审批）_{date.today():%Y%m%d}.xlsx" in unquote(
+        response.headers["content-disposition"]
+    )
+    sheet = load_workbook(BytesIO(response.content)).active
+    assert [sheet.cell(1, column).value for column in range(1, 16)] == [
+        "序号",
+        "物料编码",
+        "物料名称",
+        "型号",
+        "申请数量",
+        "单位",
+        "实际需求人",
+        "使用部门",
+        "用途",
+        "库存量",
+        "在途量",
+        "到现场日期",
+        "紧急程度",
+        "备注",
+        "子项号",
+    ]
+    assert sheet["A2"].value == 1
+    assert sheet["B2"].value == "DQ-APP-1"
+    assert sheet["C2"].value == "审批表测试物资"
+    assert sheet["D2"].value == "CJX2-2510"
+    assert str(sheet["E2"].value) == "8"
+    assert sheet["F2"].value == "个"
+    assert sheet["G2"].value == "王工"
+    assert sheet["H2"].value == "HXNI 检修维护部"
+    assert sheet["I2"].value == "控制柜检修"
+    assert sheet["J2"].value in (None, "")
+    assert sheet["K2"].value in (None, "")
+    assert sheet["L2"].value.date() == date.today() + timedelta(days=80)
+    assert sheet["M2"].value == "正常"
+    assert sheet["N2"].value == "新计划"
+    assert sheet["O2"].value == "GX-99"
+
+
+@pytest.mark.asyncio
+async def test_purchase_approval_export_requires_mandatory_fields(
+    client: AsyncClient,
+) -> None:
+    headers = await auth_headers(client, "purchase")
+    missing_subitem = await create_purchase_plan(
+        client, headers, "缺子项号审批", code="DQ-APP-2", subitem_no=None
+    )
+    missing_model = await create_purchase_plan(
+        client, headers, "缺型号审批", code="DQ-APP-3"
+    )
+    missing_name = await create_purchase_plan(client, headers, "缺名称审批", code="DQ-APP-4")
+    async with SessionLocal() as session:
+        for material_id, field, value in (
+            (missing_model["id"], "model_spec", " "),
+            (missing_name["id"], "name", " "),
+        ):
+            material = await session.get(PurchaseMaterial, int(material_id))
+            assert material is not None
+            setattr(material, field, value)
+        await session.commit()
+
+    response = await client.post(
+        "/api/v1/purchase-materials/export-purchase-approval",
+        headers=headers,
+        json={
+            "material_ids": [
+                missing_subitem["id"],
+                missing_model["id"],
+                missing_name["id"],
+            ]
+        },
+    )
+
+    assert response.status_code == 409, response.text
+    payload = response.json()
+    assert payload["code"] == "PURCHASE_APPROVAL_EXPORT_FIELDS_REQUIRED"
+    assert payload["message"] == "导出申购审批表前请补全：子项号、物资名称、型号"
+    assert payload["details"]["missing_fields"] == {
+        "subitem_no": [missing_subitem["id"]],
+        "name": [missing_name["id"]],
+        "model_spec": [missing_model["id"]],
+    }
+
+
+@pytest.mark.asyncio
 async def test_purchase_result_exports_follow_filters_and_visible_columns(
     client: AsyncClient,
 ) -> None:

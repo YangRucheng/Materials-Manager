@@ -196,6 +196,7 @@ def _purchase_application_workbook(spec: dict[str, Any], rows: list[dict[str, An
             _style(cell, styles[column.get("style", "data")])
         sheet.row_dimensions[row_no].height = 24
 
+    last_column = get_column_letter(len(spec["columns"]))
     last_row = max(data_start, data_start + len(rows) - 1)
     for column in spec["columns"]:
         validation_name = column.get("validation")
@@ -212,14 +213,14 @@ def _purchase_application_workbook(spec: dict[str, Any], rows: list[dict[str, An
         sheet.add_data_validation(validation)
         validation.add(f"{column['column']}{data_start}:{column['column']}{last_row}")
 
-    if rows:
+    if rows and spec["sheet"].get("highlight_missing_first_column", False):
         red_fill = PatternFill("solid", fgColor="FFFCE8E6")
         sheet.conditional_formatting.add(
-            f"A{data_start}:K{last_row}",
+            f"A{data_start}:{last_column}{last_row}",
             FormulaRule(formula=[f"LEN($A{data_start})=0"], fill=red_fill),
         )
-    sheet.auto_filter.ref = f"A{header_row}:K{last_row}"
-    sheet.print_area = f"A{header_row}:K{last_row}"
+    sheet.auto_filter.ref = f"A{header_row}:{last_column}{last_row}"
+    sheet.print_area = f"A{header_row}:{last_column}{last_row}"
     return workbook
 
 

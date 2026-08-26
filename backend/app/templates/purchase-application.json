@@ -8,6 +8,7 @@
     "header_row": 1,
     "data_start_row": 2,
     "freeze_panes": "A2",
+    "highlight_missing_first_column": true,
     "column_widths": {
       "A": 23.33,
       "B": 18.33,

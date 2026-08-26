@@ -49,6 +49,57 @@ def test_invalid_template_raises_readable_business_error(monkeypatch, tmp_path: 
     assert raised.value.code == "EXPORT_TEMPLATE_INVALID"
 
 
+def test_purchase_approval_template_renders_fifteen_columns() -> None:
+    content, filename = excel_export_service.render_excel(
+        "purchase-approval.json",
+        [
+            {
+                "serial": 1,
+                "material_code": "DQ-001",
+                "name": "接触器",
+                "model_spec": "CJX2-2510",
+                "planned_qty": 5,
+                "unit_name": "个",
+                "purchase_responsible": "张三",
+                "department": "HXNI 检修维护部",
+                "usage": "检修备用",
+                "required_arrival_date": date(2026, 11, 15),
+                "urgency": "正常",
+                "remark": "备注",
+                "subitem_no": "GX-001",
+            }
+        ],
+    )
+
+    assert filename == f"采购申请（审批）_{date.today():%Y%m%d}.xlsx"
+    sheet = load_workbook(BytesIO(content)).active
+    assert [sheet.cell(1, column).value for column in range(1, 16)] == [
+        "序号",
+        "物料编码",
+        "物料名称",
+        "型号",
+        "申请数量",
+        "单位",
+        "实际需求人",
+        "使用部门",
+        "用途",
+        "库存量",
+        "在途量",
+        "到现场日期",
+        "紧急程度",
+        "备注",
+        "子项号",
+    ]
+    assert sheet["A2"].value == 1
+    assert sheet["B2"].value == "DQ-001"
+    assert sheet["C2"].value == "接触器"
+    assert sheet["H2"].value == "HXNI 检修维护部"
+    assert sheet["J2"].value in (None, "")
+    assert sheet["K2"].value in (None, "")
+    assert sheet["L2"].value.date() == date(2026, 11, 15)
+    assert sheet.auto_filter.ref == "A1:O2"
+
+
 def test_result_excel_uses_visible_columns_and_readable_layout() -> None:
     content, filename = excel_export_service.render_result_excel(
         "申购计划导出",

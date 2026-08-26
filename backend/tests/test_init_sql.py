@@ -111,4 +111,5 @@ def test_excel_templates_are_json_specs_not_binary_workbooks() -> None:
     assert {path.name for path in template_dir.iterdir()} == {
         "material-code-application.json",
         "purchase-application.json",
+        "purchase-approval.json",
     }
