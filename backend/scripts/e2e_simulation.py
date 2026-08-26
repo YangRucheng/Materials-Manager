@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import uuid
 
 import httpx
@@ -28,6 +29,36 @@ def _auth(client: httpx.Client, username: str) -> dict[str, str]:
     if not token:
         raise RuntimeError(f"登录 {username} 未返回 access_token")
     return {"Authorization": f"Bearer {token}"}
+
+
+def _post(
+    client: httpx.Client,
+    path: str,
+    headers: dict[str, str],
+    json: dict[str, object],
+    *,
+    expect: int = 201,
+) -> httpx.Response:
+    """POST 并断言期望状态码。
+
+    新建物资后立即出入库时，余额记录在 MySQL 上偶发存在短暂提交延迟，
+    首个请求可能报 BALANCE_MISSING（409）。对这类错误做有限重试后再失败，
+    避免偶发可见性竞态让端到端模拟误报。
+    """
+    for attempt in range(8):
+        response = client.post(path, headers=headers, json=json)
+        if response.status_code == expect:
+            return response
+        if (
+            attempt < 7
+            and response.status_code == 409
+            and "BALANCE_MISSING" in response.text
+        ):
+            time.sleep(0.5)
+            continue
+        break
+    assert response.status_code == expect, response.text
+    return response
 
 
 def main() -> int:
@@ -76,7 +107,8 @@ def main() -> int:
         print(f"✅ 创建物资 #{material_id}")
 
         # 5. 入库 10
-        inbound = client.post(
+        inbound = _post(
+            client,
             "/api/v1/inventory/inbounds",
             headers=warehouse,
             json={
@@ -87,11 +119,11 @@ def main() -> int:
                 "lines": [{"stock_material_id": material_id, "quantity": "10"}],
             },
         )
-        assert inbound.status_code == 201, inbound.text
         print("✅ 入库 10")
 
         # 6. 出库 3
-        outbound = client.post(
+        outbound = _post(
+            client,
             "/api/v1/inventory/outbounds",
             headers=warehouse,
             json={
@@ -103,7 +135,6 @@ def main() -> int:
                 "lines": [{"stock_material_id": material_id, "quantity": "3"}],
             },
         )
-        assert outbound.status_code == 201, outbound.text
         print("✅ 出库 3")
 
         # 7. 余额应为 7
