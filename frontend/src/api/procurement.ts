@@ -137,6 +137,14 @@ export const procurementApi = {
         { responseType: 'blob' },
       )
       .then((r) => r.data),
+  exportPurchaseApproval: (materialIds: number[]) =>
+    apiClient
+      .post<Blob>(
+        '/purchase-materials/export-purchase-approval',
+        { material_ids: materialIds },
+        { responseType: 'blob' },
+      )
+      .then((r) => r.data),
   exportMaterialResults: (payload: PurchasePlanResultExportRequest) =>
     apiClient
       .post<ExcelExportJob>('/purchase-materials/export-results', payload)

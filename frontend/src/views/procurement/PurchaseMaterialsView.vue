@@ -306,6 +306,11 @@ const exportOptions = computed<ExportOption[]>(() => {
       key: 'purchase-application',
       disabled: !selectedPlans.value.length,
     })
+    options.push({
+      label: `导出申购审批表（已选 ${selectedPlans.value.length} 条）`,
+      key: 'purchase-approval',
+      disabled: !selectedPlans.value.length,
+    })
   }
   return options
 })
@@ -999,6 +1004,37 @@ async function exportPurchaseApplication() {
     batchExporting.value = false
   }
 }
+async function exportPurchaseApproval() {
+  if (!selectedPlans.value.length) return
+  const requiredFields = [
+    { label: '子项号', missing: (item: PurchaseMaterial) => !item.subitem_no?.trim() },
+    { label: '物资名称', missing: (item: PurchaseMaterial) => !item.name?.trim() },
+    { label: '型号', missing: (item: PurchaseMaterial) => !item.model_spec?.trim() },
+    { label: '申请数量', missing: (item: PurchaseMaterial) => !item.planned_qty?.trim() },
+    { label: '单位', missing: (item: PurchaseMaterial) => !item.unit_name?.trim() },
+    { label: '用途', missing: (item: PurchaseMaterial) => !item.usage?.trim() },
+  ]
+  const missingLabels = requiredFields
+    .filter(({ missing }) => selectedPlans.value.some(missing))
+    .map(({ label }) => label)
+  if (missingLabels.length) {
+    message.warning(`导出申购审批表前请补全：${missingLabels.join('、')}`)
+    return
+  }
+  batchExporting.value = true
+  try {
+    const content = await procurementApi.exportPurchaseApproval(
+      selectedPlans.value.map((item) => item.id),
+    )
+    const date = toShanghaiDate(Date.now()).replace(/-/g, '')
+    downloadBlob(content, `采购申请（审批）_${date}.xlsx`)
+    message.success('申购审批表已导出')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '导出失败')
+  } finally {
+    batchExporting.value = false
+  }
+}
 function handleExport(key: string) {
   if (key === 'results') {
     void exportResults()
@@ -1009,6 +1045,7 @@ function handleExport(key: string) {
     return
   }
   if (key === 'purchase-application') void exportPurchaseApplication()
+  if (key === 'purchase-approval') void exportPurchaseApproval()
 }
 onMounted(() => {
   document.addEventListener('fullscreenchange', syncTableFullscreen)

@@ -574,3 +574,34 @@ def validate_purchase_application_export(materials: list[PurchaseMaterial]) -> N
             status_code=409,
             details={"missing_fields": missing_fields},
         )
+
+
+def validate_purchase_approval_export(materials: list[PurchaseMaterial]) -> None:
+    """申购审批表导出必填校验：子项号、物资名称、型号、申请数量、单位、用途缺一不可。"""
+    field_checks = {
+        "subitem_no": ("子项号", lambda item: item.subitem_no),
+        "name": ("物资名称", lambda item: item.name),
+        "model_spec": ("型号", lambda item: item.model_spec),
+        "planned_qty": ("申请数量", lambda item: item.planned_qty),
+        "unit_name": ("单位", lambda item: item.unit_name),
+        "usage": ("用途", lambda item: item.usage),
+    }
+    missing_fields: dict[str, list[int]] = {}
+    missing_labels: list[str] = []
+    for field, (label, value_getter) in field_checks.items():
+        missing_ids = [
+            item.id
+            for item in materials
+            if not (value := value_getter(item)) or not str(value).strip()
+        ]
+        if missing_ids:
+            missing_fields[field] = missing_ids
+            missing_labels.append(label)
+
+    if missing_fields:
+        raise AppError(
+            "PURCHASE_APPROVAL_EXPORT_FIELDS_REQUIRED",
+            f"导出申购审批表前请补全：{'、'.join(missing_labels)}",
+            status_code=409,
+            details={"missing_fields": missing_fields},
+        )

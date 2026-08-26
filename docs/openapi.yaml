@@ -4625,6 +4625,57 @@ paths:
       security:
       - HTTPBearer: []
       - APIKeyHeader: []
+  /api/v1/purchase-materials/export-purchase-approval:
+    post:
+      tags:
+      - 申购计划
+      summary: Export Purchase Approval
+      operationId: export_purchase_approval_api_v1_purchase_materials_export_purchase_approval_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchasePlanExportRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '400':
+          description: Excel 导出模板缺失或格式错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/purchase-materials/batch-move-to-record:
     post:
       tags:
