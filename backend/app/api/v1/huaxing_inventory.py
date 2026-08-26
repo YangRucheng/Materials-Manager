@@ -25,14 +25,19 @@ async def list_huaxing_inventory(
     user: CurrentUser,
     page: PageNo = 1,
     page_size: PageSize = 20,
-    keyword: Annotated[str | None, Query(max_length=255)] = None,
+    material_code: Annotated[str | None, Query(max_length=64)] = None,
+    name: Annotated[str | None, Query(max_length=255)] = None,
+    model_spec: Annotated[str | None, Query(max_length=255)] = None,
     warehouse: Annotated[str | None, Query(max_length=128)] = None,
     purchase_department: Annotated[str | None, Query(max_length=128)] = None,
     purchaser: Annotated[str | None, Query(max_length=128)] = None,
 ) -> Page[HuaXingInventoryRead]:
+    """华星总库存列表查询（货品编码/货品名称/型号等字段独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。"""
     items, total = await huaxing_inventory_service.search_huaxing_inventory(
         session,
-        keyword=keyword,
+        material_code=material_code,
+        name=name,
+        model_spec=model_spec,
         warehouse=warehouse,
         purchase_department=purchase_department,
         purchaser=purchaser,

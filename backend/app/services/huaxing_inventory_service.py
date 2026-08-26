@@ -202,24 +202,22 @@ async def _replace_rows(rows: list[dict[str, object]]) -> dict[str, object]:
 async def search_huaxing_inventory(
     session: AsyncSession,
     *,
-    keyword: str | None,
-    warehouse: str | None,
-    purchase_department: str | None,
-    purchaser: str | None,
+    keyword: str | None = None,
+    material_code: str | None = None,
+    name: str | None = None,
+    model_spec: str | None = None,
+    warehouse: str | None = None,
+    purchase_department: str | None = None,
+    purchaser: str | None = None,
     page: int,
     page_size: int,
 ) -> tuple[list[HuaXingInventoryRead], int]:
     query = select(HuaXingInventory)
+    # 后台按字段独立筛选：各字段内多关键词 OR，字段之间 AND。
     for columns, value in (
-        (
-            (
-                HuaXingInventory.material_code,
-                HuaXingInventory.name,
-                HuaXingInventory.model_spec,
-                HuaXingInventory.purchaser,
-            ),
-            keyword,
-        ),
+        ((HuaXingInventory.material_code,), material_code),
+        ((HuaXingInventory.name,), name),
+        ((HuaXingInventory.model_spec,), model_spec),
         ((HuaXingInventory.warehouse,), warehouse),
         ((HuaXingInventory.purchase_department,), purchase_department),
         ((HuaXingInventory.purchaser,), purchaser),
@@ -227,6 +225,18 @@ async def search_huaxing_inventory(
         condition = contains_any(columns, value)
         if condition is not None:
             query = query.where(condition)
+    # keyword 兼容旧调用（小程序端仍按编码/名称/型号/申购人跨列 OR 匹配）。
+    keyword_condition = contains_any(
+        (
+            HuaXingInventory.material_code,
+            HuaXingInventory.name,
+            HuaXingInventory.model_spec,
+            HuaXingInventory.purchaser,
+        ),
+        keyword,
+    )
+    if keyword_condition is not None:
+        query = query.where(keyword_condition)
     total = int((await session.scalar(select(func.count()).select_from(query.subquery()))) or 0)
     result = await session.scalars(
         query.order_by(HuaXingInventory.id).offset((page - 1) * page_size).limit(page_size)

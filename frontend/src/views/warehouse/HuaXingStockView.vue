@@ -19,7 +19,9 @@ const dialog = useDialog()
 const message = useMessage()
 const fileInput = ref<HTMLInputElement | null>(null)
 type HuaXingFilters = {
-  keyword: string
+  materialCode: string
+  name: string
+  modelSpec: string
   warehouse: string
   purchaseDepartment: string
   purchaser: string
@@ -38,14 +40,23 @@ const {
 } = usePagedTable<HuaXingInventory, HuaXingFilters>({
   fetch: (f, pager) =>
     huaXingInventoryApi.list({
-      keyword: f.keyword.trim() || undefined,
+      material_code: f.materialCode.trim() || undefined,
+      name: f.name.trim() || undefined,
+      model_spec: f.modelSpec.trim() || undefined,
       warehouse: f.warehouse.trim() || undefined,
       purchase_department: f.purchaseDepartment.trim() || undefined,
       purchaser: f.purchaser.trim() || undefined,
       page: pager.page,
       page_size: pager.page_size,
     }),
-  initialFilters: () => ({ keyword: '', warehouse: '', purchaseDepartment: '', purchaser: '' }),
+  initialFilters: () => ({
+    materialCode: '',
+    name: '',
+    modelSpec: '',
+    warehouse: '',
+    purchaseDepartment: '',
+    purchaser: '',
+  }),
   onError: (error) => message.error(error instanceof Error ? error.message : '加载华星总库存失败'),
   pageSizeOptions: [20, 50, 100, 200],
 })
@@ -67,7 +78,9 @@ onMounted(() => void loadLastImport())
 const activeFilterCount = computed(
   () =>
     [
-      filters.keyword.trim(),
+      filters.materialCode.trim(),
+      filters.name.trim(),
+      filters.modelSpec.trim(),
       filters.warehouse.trim(),
       filters.purchaseDepartment.trim(),
       filters.purchaser.trim(),
@@ -141,7 +154,9 @@ async function importFile(file: File) {
   try {
     const result = await importJob.run(file)
     showImportSummary(result)
-    filters.keyword = ''
+    filters.materialCode = ''
+    filters.name = ''
+    filters.modelSpec = ''
     filters.warehouse = ''
     filters.purchaseDepartment = ''
     page.value = 1
@@ -198,11 +213,29 @@ function onFileChange(event: Event) {
       </div>
       <div class="filter-grid">
         <label class="filter-field">
-          <span>货品编码 / 名称 / 型号</span>
+          <span>货品编码</span>
           <n-input
-            v-model:value="filters.keyword"
+            v-model:value="filters.materialCode"
             clearable
-            placeholder="输入编码、名称或型号"
+            placeholder="输入货品编码"
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>货品名称</span>
+          <n-input
+            v-model:value="filters.name"
+            clearable
+            placeholder="输入货品名称"
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>型号</span>
+          <n-input
+            v-model:value="filters.modelSpec"
+            clearable
+            placeholder="输入型号"
             @keyup.enter="query"
           />
         </label>

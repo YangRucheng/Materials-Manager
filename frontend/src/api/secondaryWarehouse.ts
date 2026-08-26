@@ -3,7 +3,8 @@ import type { ExcelImportJob, LastImport, LiteInventory, Page, PagedQueryParams 
 
 /** 精简二级库列表查询 */
 export interface LiteInventoryListQuery extends PagedQueryParams {
-  keyword?: string
+  name?: string
+  model_spec?: string
 }
 
 export const secondaryWarehouseApi = {

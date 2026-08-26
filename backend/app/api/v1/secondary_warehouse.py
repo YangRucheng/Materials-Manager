@@ -25,12 +25,14 @@ async def list_lite_inventory(
     user: CurrentUser,
     page: PageNo = 1,
     page_size: PageSize = 20,
-    keyword: Annotated[str | None, Query(max_length=255)] = None,
+    name: Annotated[str | None, Query(max_length=128)] = None,
+    model_spec: Annotated[str | None, Query(max_length=255)] = None,
 ) -> Page[LiteInventoryRead]:
-    """精简二级库列表查询（物资名称/型号/备注关键字匹配）。"""
+    """精简二级库列表查询（物资名称/型号独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。"""
     items, total = await lite_inventory_service.search_lite_inventory(
         session,
-        keyword=keyword,
+        name=name,
+        model_spec=model_spec,
         page=page,
         page_size=page_size,
     )

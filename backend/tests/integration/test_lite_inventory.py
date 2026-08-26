@@ -116,7 +116,7 @@ async def test_warehouse_import_and_search(client: AsyncClient) -> None:
     by_keyword = await client.get(
         "/api/v1/secondary-warehouse",
         headers=headers,
-        params={"keyword": "交流接触器"},
+        params={"name": "交流接触器"},
     )
     assert by_keyword.status_code == 200, by_keyword.text
     assert by_keyword.json()["total"] == 1
@@ -128,7 +128,7 @@ async def test_warehouse_import_and_search(client: AsyncClient) -> None:
     assert item["remark"] == "库存"
 
     no_match = await client.get(
-        "/api/v1/secondary-warehouse", headers=headers, params={"keyword": "不存在"}
+        "/api/v1/secondary-warehouse", headers=headers, params={"name": "不存在"}
     )
     assert no_match.json()["items"] == []
 
@@ -238,14 +238,14 @@ async def test_import_csv_and_xls(client: AsyncClient) -> None:
     job = await _import_ok(client, headers, build_report_csv([_row("按钮")]), "lite.csv")
     assert job["result"]["imported_count"] == 1
     listed = await client.get(
-        "/api/v1/secondary-warehouse", headers=headers, params={"keyword": "按钮"}
+        "/api/v1/secondary-warehouse", headers=headers, params={"name": "按钮"}
     )
     assert listed.json()["total"] == 1
 
     job_xls = await _import_ok(client, headers, build_report_xls([_row("接触器")]), "lite.xls")
     assert job_xls["result"]["imported_count"] == 1
     listed = await client.get(
-        "/api/v1/secondary-warehouse", headers=headers, params={"keyword": "接触器"}
+        "/api/v1/secondary-warehouse", headers=headers, params={"name": "接触器"}
     )
     assert listed.json()["total"] == 1
 
@@ -261,3 +261,45 @@ async def test_last_import(client: AsyncClient) -> None:
     after = await client.get("/api/v1/secondary-warehouse/last-import", headers=headers)
     assert after.status_code == 200
     assert after.json()["last_import_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_filter_name_or_and_cross_field_and(client: AsyncClient) -> None:
+    headers = await auth_headers(client, "warehouse")
+    await _import_ok(
+        client,
+        headers,
+        build_report(
+            [
+                _row("交流接触器", model_spec="CJX2-2510", quantity=5, remark="库存"),
+                _row("热继电器", model_spec="JRS1-25", unit="只", quantity=12),
+                _row("交流接触器", model_spec="CJX2-1210", unit="个", quantity=3),
+            ]
+        ),
+    )
+    # 同一输入框内用 | 分隔多关键词按 OR 匹配：命中两条“交流接触器”。
+    by_name_or = await client.get(
+        "/api/v1/secondary-warehouse",
+        headers=headers,
+        params={"name": "交流接触器|热继电器"},
+    )
+    assert by_name_or.status_code == 200, by_name_or.text
+    assert by_name_or.json()["total"] == 3
+
+    # 型号框过滤：命中 CJX2-2510 一条。
+    by_model = await client.get(
+        "/api/v1/secondary-warehouse", headers=headers, params={"model_spec": "CJX2-2510"}
+    )
+    assert by_model.status_code == 200, by_model.text
+    assert by_model.json()["total"] == 1
+    assert by_model.json()["items"][0]["quantity"] == "5"
+
+    # 不同输入框之间按 AND：名称 交流接触器 且 型号 CJX2-1210 → 仅一条。
+    by_and = await client.get(
+        "/api/v1/secondary-warehouse",
+        headers=headers,
+        params={"name": "交流接触器", "model_spec": "CJX2-1210"},
+    )
+    assert by_and.status_code == 200, by_and.text
+    assert by_and.json()["total"] == 1
+    assert by_and.json()["items"][0]["quantity"] == "3"

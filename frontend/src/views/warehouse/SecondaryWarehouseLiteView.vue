@@ -19,7 +19,8 @@ const dialog = useDialog()
 const message = useMessage()
 const fileInput = ref<HTMLInputElement | null>(null)
 type LiteFilters = {
-  keyword: string
+  name: string
+  modelSpec: string
 }
 const {
   items,
@@ -35,11 +36,12 @@ const {
 } = usePagedTable<LiteInventory, LiteFilters>({
   fetch: (f, pager) =>
     secondaryWarehouseApi.list({
-      keyword: f.keyword.trim() || undefined,
+      name: f.name.trim() || undefined,
+      model_spec: f.modelSpec.trim() || undefined,
       page: pager.page,
       page_size: pager.page_size,
     }),
-  initialFilters: () => ({ keyword: '' }),
+  initialFilters: () => ({ name: '', modelSpec: '' }),
   onError: (error) => message.error(error instanceof Error ? error.message : '加载二级库失败'),
   pageSizeOptions: [20, 50, 100, 200],
 })
@@ -58,7 +60,9 @@ async function loadLastImport() {
   }
 }
 onMounted(() => void loadLastImport())
-const activeFilterCount = computed(() => [filters.keyword.trim()].filter(Boolean).length)
+const activeFilterCount = computed(
+  () => [filters.name.trim(), filters.modelSpec.trim()].filter(Boolean).length,
+)
 
 const columns: DataTableColumns<LiteInventory> = preventTableColumnCompression([
   {
@@ -117,7 +121,8 @@ async function importFile(file: File) {
   try {
     const result = await importJob.run(file)
     showImportSummary(result)
-    filters.keyword = ''
+    filters.name = ''
+    filters.modelSpec = ''
     page.value = 1
     await query()
   } catch (error) {
@@ -172,11 +177,20 @@ function onFileChange(event: Event) {
       </div>
       <div class="filter-grid">
         <label class="filter-field">
-          <span>物资名称 / 型号 / 备注</span>
+          <span>物资名称</span>
           <n-input
-            v-model:value="filters.keyword"
+            v-model:value="filters.name"
             clearable
-            placeholder="输入名称、型号或备注"
+            placeholder="输入物资名称"
+            @keyup.enter="query"
+          />
+        </label>
+        <label class="filter-field">
+          <span>型号规格</span>
+          <n-input
+            v-model:value="filters.modelSpec"
+            clearable
+            placeholder="输入型号规格"
             @keyup.enter="query"
           />
         </label>
