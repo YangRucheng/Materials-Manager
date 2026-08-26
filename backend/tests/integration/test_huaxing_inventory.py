@@ -188,21 +188,46 @@ async def test_warehouse_import_and_search(client: AsyncClient) -> None:
     assert item["purchase_department"] == "生产调度中心"
     assert item["subitem_no_name"] == "201-冶炼主厂房"
 
-    by_warehouse = await client.get(
+    by_warehouse_removed = await client.get(
         "/api/v1/huaxing-inventory", headers=headers, params={"warehouse": "P06"}
     )
-    assert by_warehouse.json()["total"] == 1
-    assert by_warehouse.json()["items"][0]["material_code"] == "W004-00003"
+    # 仓库筛选已移除：未知参数被忽略，仍返回全部数据。
+    assert by_warehouse_removed.status_code == 200
+    assert by_warehouse_removed.json()["total"] == 3
 
+    # 申购部门为下拉多选，按精确值匹配。
     by_department = await client.get(
-        "/api/v1/huaxing-inventory", headers=headers, params={"purchase_department": "冶炼厂"}
+        "/api/v1/huaxing-inventory",
+        headers=headers,
+        params={"purchase_department": "HXNI冶炼厂"},
     )
     assert by_department.json()["total"] == 1
+    assert by_department.json()["items"][0]["material_code"] == "W004-00003"
+
+    # | 分隔多值做 OR：生产调度中心（2 条）+ HXNI冶炼厂（1 条）。
+    by_departments = await client.get(
+        "/api/v1/huaxing-inventory",
+        headers=headers,
+        params={"purchase_department": "生产调度中心|HXNI冶炼厂"},
+    )
+    assert by_departments.json()["total"] == 3
+
+    # 申购人同为下拉多选精确匹配。
+    by_purchasers = await client.get(
+        "/api/v1/huaxing-inventory", headers=headers, params={"purchaser": "吴冰|夏军"}
+    )
+    assert by_purchasers.json()["total"] == 3
 
     no_match = await client.get(
         "/api/v1/huaxing-inventory", headers=headers, params={"name": "不存在"}
     )
     assert no_match.json()["items"] == []
+
+    # 筛选下拉选项：申购部门/申购人 distinct 去空。
+    options = await client.get("/api/v1/huaxing-inventory/filter-options", headers=headers)
+    assert options.status_code == 200, options.text
+    assert options.json()["purchase_departments"] == ["HXNI冶炼厂", "生产调度中心"]
+    assert options.json()["purchasers"] == ["吴冰", "夏军"]
 
 
 @pytest.mark.asyncio

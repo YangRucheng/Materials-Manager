@@ -12,7 +12,7 @@ from app.core.database import SessionLocal
 from app.core.errors import AppError
 from app.models import HuaXingInventory
 from app.schemas import HuaXingInventoryRead
-from app.services.common import contains_any
+from app.services.common import contains_any, split_or_search_terms
 from app.services.import_file_reader import read_tabular_rows
 
 EXPECTED_HEADERS = (
@@ -199,6 +199,31 @@ async def _replace_rows(rows: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
+async def list_huaxing_filter_options(
+    session: AsyncSession,
+) -> tuple[list[str], list[str]]:
+    """华星库存筛选下拉选项：申购部门/申购人去空后的 distinct 值。"""
+    department_query = select(HuaXingInventory.purchase_department).where(
+        HuaXingInventory.purchase_department.is_not(None),
+        func.trim(HuaXingInventory.purchase_department) != "",
+    )
+    purchaser_query = select(HuaXingInventory.purchaser).where(
+        HuaXingInventory.purchaser.is_not(None),
+        func.trim(HuaXingInventory.purchaser) != "",
+    )
+    purchase_departments = list(
+        await session.scalars(
+            department_query.distinct().order_by(HuaXingInventory.purchase_department)
+        )
+    )
+    purchasers = list(
+        await session.scalars(
+            purchaser_query.distinct().order_by(HuaXingInventory.purchaser)
+        )
+    )
+    return purchase_departments, purchasers
+
+
 async def search_huaxing_inventory(
     session: AsyncSession,
     *,
@@ -206,25 +231,29 @@ async def search_huaxing_inventory(
     material_code: str | None = None,
     name: str | None = None,
     model_spec: str | None = None,
-    warehouse: str | None = None,
     purchase_department: str | None = None,
     purchaser: str | None = None,
     page: int,
     page_size: int,
 ) -> tuple[list[HuaXingInventoryRead], int]:
     query = select(HuaXingInventory)
-    # 后台按字段独立筛选：各字段内多关键词 OR，字段之间 AND。
+    # 后台按字段独立筛选：文本字段内多关键词 OR，字段之间 AND。
     for columns, value in (
         ((HuaXingInventory.material_code,), material_code),
         ((HuaXingInventory.name,), name),
         ((HuaXingInventory.model_spec,), model_spec),
-        ((HuaXingInventory.warehouse,), warehouse),
-        ((HuaXingInventory.purchase_department,), purchase_department),
-        ((HuaXingInventory.purchaser,), purchaser),
     ):
         condition = contains_any(columns, value)
         if condition is not None:
             query = query.where(condition)
+    # 申购部门/申购人为下拉多选：按 | 分隔多值精确 IN 匹配。
+    for column, value in (
+        (HuaXingInventory.purchase_department, purchase_department),
+        (HuaXingInventory.purchaser, purchaser),
+    ):
+        terms = split_or_search_terms(value)
+        if terms:
+            query = query.where(column.in_(terms))
     # keyword 兼容旧调用（小程序端仍按编码/名称/型号/申购人跨列 OR 匹配）。
     keyword_condition = contains_any(
         (

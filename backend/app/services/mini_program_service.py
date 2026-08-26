@@ -234,7 +234,6 @@ async def list_huaxing_inventory(
     items, total = await huaxing_inventory_service.search_huaxing_inventory(
         session,
         keyword=keyword,
-        warehouse=None,
         purchase_department=None,
         purchaser=None,
         page=page,

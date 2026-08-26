@@ -114,6 +114,13 @@ const matchesOrSearch = (value: string | number | null | undefined, search: stri
   const normalizedValue = String(value ?? '').toLowerCase()
   return terms.some((term) => normalizedValue.includes(term))
 }
+// 下拉多选字段（申购部门/申购人）：| 分隔多值按精确值匹配。
+const matchesExactAny = (value: string | number | null | undefined, search: string | null) => {
+  const terms = orSearchTerms(search)
+  if (!terms.length) return true
+  const normalizedValue = String(value ?? '').toLowerCase()
+  return terms.includes(normalizedValue)
+}
 const compareNullableTextDesc = (
   left: string | null | undefined,
   right: string | null | undefined,
@@ -1470,19 +1477,39 @@ export const handlers = [
   http.get(`${api}/huaxing-inventory`, ({ request }) => {
     const url = new URL(request.url)
     const keyword = url.searchParams.get('keyword')
-    const warehouse = url.searchParams.get('warehouse')
+    const materialCode = url.searchParams.get('material_code')
+    const name = url.searchParams.get('name')
+    const modelSpec = url.searchParams.get('model_spec')
     const purchaseDepartment = url.searchParams.get('purchase_department')
+    const purchaser = url.searchParams.get('purchaser')
     const list = huaXingInventory.filter((item) => {
       const matchesKeyword =
         !keyword ||
         matchesOrSearch(`${item.material_code} ${item.name} ${item.model_spec}`, keyword)
       return (
         matchesKeyword &&
-        matchesOrSearch(item.warehouse, warehouse) &&
-        matchesOrSearch(item.purchase_department, purchaseDepartment)
+        matchesOrSearch(item.material_code, materialCode) &&
+        matchesOrSearch(item.name, name) &&
+        matchesOrSearch(item.model_spec, modelSpec) &&
+        matchesExactAny(item.purchase_department, purchaseDepartment) &&
+        matchesExactAny(item.purchaser, purchaser)
       )
     })
     return HttpResponse.json(page(list, url))
+  }),
+  http.get(`${api}/huaxing-inventory/filter-options`, () => {
+    const purchaseDepartments = [
+      ...new Set(
+        huaXingInventory.map((item) => item.purchase_department).filter(Boolean) as string[],
+      ),
+    ].sort()
+    const purchasers = [
+      ...new Set(huaXingInventory.map((item) => item.purchaser).filter(Boolean) as string[]),
+    ].sort()
+    return HttpResponse.json({
+      purchase_departments: purchaseDepartments,
+      purchasers,
+    })
   }),
   http.post(`${api}/huaxing-inventory/import`, async ({ request }) => {
     const form = await request.formData()

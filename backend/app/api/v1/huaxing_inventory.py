@@ -10,7 +10,13 @@ from fastapi import Path as FPath
 from app.api.deps import PageNo, PageSize
 from app.core.errors import AppError
 from app.core.permissions import CurrentUser, DbSession, WarehouseWriter
-from app.schemas import ExcelImportJobRead, HuaXingInventoryRead, LastImportRead, Page
+from app.schemas import (
+    ExcelImportJobRead,
+    HuaXingFilterOptions,
+    HuaXingInventoryRead,
+    LastImportRead,
+    Page,
+)
 from app.services import huaxing_inventory_service, import_job_service
 from app.services.import_file_reader import SUPPORTED_IMPORT_SUFFIXES
 
@@ -28,23 +34,36 @@ async def list_huaxing_inventory(
     material_code: Annotated[str | None, Query(max_length=64)] = None,
     name: Annotated[str | None, Query(max_length=255)] = None,
     model_spec: Annotated[str | None, Query(max_length=255)] = None,
-    warehouse: Annotated[str | None, Query(max_length=128)] = None,
     purchase_department: Annotated[str | None, Query(max_length=128)] = None,
     purchaser: Annotated[str | None, Query(max_length=128)] = None,
 ) -> Page[HuaXingInventoryRead]:
-    """华星总库存列表查询（货品编码/货品名称/型号等字段独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。"""
+    """华星总库存列表查询（文本字段内多关键词按 | 分隔做 OR；申购部门/申购人为精确多值筛选）。"""
     items, total = await huaxing_inventory_service.search_huaxing_inventory(
         session,
         material_code=material_code,
         name=name,
         model_spec=model_spec,
-        warehouse=warehouse,
         purchase_department=purchase_department,
         purchaser=purchaser,
         page=page,
         page_size=page_size,
     )
     return Page(items=items, page=page, page_size=page_size, total=total)
+
+
+@router.get("/filter-options", response_model=HuaXingFilterOptions)
+async def filter_options(
+    session: DbSession,
+    user: CurrentUser,
+) -> HuaXingFilterOptions:
+    """华星库存筛选下拉选项（申购部门/申购人 distinct 值）。"""
+    purchase_departments, purchasers = await huaxing_inventory_service.list_huaxing_filter_options(
+        session
+    )
+    return HuaXingFilterOptions(
+        purchase_departments=purchase_departments,
+        purchasers=purchasers,
+    )
 
 
 @router.get("/last-import", response_model=LastImportRead)

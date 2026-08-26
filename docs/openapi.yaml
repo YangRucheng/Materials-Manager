@@ -2182,7 +2182,7 @@ paths:
       tags:
       - 华星库存
       summary: List Huaxing Inventory
-      description: 华星总库存列表查询（货品编码/货品名称/型号等字段独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。
+      description: 华星总库存列表查询（文本字段内多关键词按 | 分隔做 OR；申购部门/申购人为精确多值筛选）。
       operationId: list_huaxing_inventory_api_v1_huaxing_inventory_get
       security:
       - HTTPBearer: []
@@ -2232,15 +2232,6 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Model Spec
-      - name: warehouse
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            maxLength: 128
-          - type: 'null'
-          title: Warehouse
       - name: purchase_department
         in: query
         required: false
@@ -2296,6 +2287,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/huaxing-inventory/filter-options:
+    get:
+      tags:
+      - 华星库存
+      summary: Filter Options
+      description: 华星库存筛选下拉选项（申购部门/申购人 distinct 值）。
+      operationId: filter_options_api_v1_huaxing_inventory_filter_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HuaXingFilterOptions'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - HTTPBearer: []
+      - APIKeyHeader: []
   /api/v1/huaxing-inventory/last-import:
     get:
       tags:
@@ -7530,6 +7568,23 @@ components:
       - width
       - height
       title: FileObjectRead
+    HuaXingFilterOptions:
+      properties:
+        purchase_departments:
+          items:
+            type: string
+          type: array
+          title: Purchase Departments
+        purchasers:
+          items:
+            type: string
+          type: array
+          title: Purchasers
+      type: object
+      required:
+      - purchase_departments
+      - purchasers
+      title: HuaXingFilterOptions
     HuaXingInventoryRead:
       properties:
         id:
