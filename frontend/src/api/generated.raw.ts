@@ -582,9 +582,29 @@ export interface paths {
         };
         /**
          * List Huaxing Inventory
-         * @description 华星总库存列表查询（货品编码/货品名称/型号等字段独立筛选，各字段内多关键词按 | 分隔做 OR 匹配）。
+         * @description 华星总库存列表查询（文本字段内多关键词按 | 分隔做 OR；申购部门/申购人为精确多值筛选）。
          */
         get: operations["list_huaxing_inventory_api_v1_huaxing_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/huaxing-inventory/filter-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Filter Options
+         * @description 华星库存筛选下拉选项（申购部门/申购人 distinct 值）。
+         */
+        get: operations["filter_options_api_v1_huaxing_inventory_filter_options_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2009,6 +2029,13 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+        };
+        /** HuaXingFilterOptions */
+        HuaXingFilterOptions: {
+            /** Purchase Departments */
+            purchase_departments: string[];
+            /** Purchasers */
+            purchasers: string[];
         };
         /** HuaXingInventoryRead */
         HuaXingInventoryRead: {
@@ -6462,7 +6489,6 @@ export interface operations {
                 material_code?: string | null;
                 name?: string | null;
                 model_spec?: string | null;
-                warehouse?: string | null;
                 purchase_department?: string | null;
                 purchaser?: string | null;
             };
@@ -6479,6 +6505,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_HuaXingInventoryRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    filter_options_api_v1_huaxing_inventory_filter_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HuaXingFilterOptions"];
                 };
             };
             /** @description 业务校验失败 */

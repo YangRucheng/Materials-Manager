@@ -927,7 +927,6 @@ class HuaXingInventoryRead(ReadModel):
 
 
 class HuaXingFilterOptions(ReadModel):
-    warehouses: list[str]
     purchase_departments: list[str]
     purchasers: list[str]
 

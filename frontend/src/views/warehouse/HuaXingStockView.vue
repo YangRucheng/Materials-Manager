@@ -22,9 +22,8 @@ type HuaXingFilters = {
   materialCode: string
   name: string
   modelSpec: string
-  warehouse: string
-  purchaseDepartment: string
-  purchaser: string
+  purchaseDepartment: string[]
+  purchaser: string[]
 }
 const {
   items,
@@ -43,9 +42,8 @@ const {
       material_code: f.materialCode.trim() || undefined,
       name: f.name.trim() || undefined,
       model_spec: f.modelSpec.trim() || undefined,
-      warehouse: f.warehouse.trim() || undefined,
-      purchase_department: f.purchaseDepartment.trim() || undefined,
-      purchaser: f.purchaser.trim() || undefined,
+      purchase_department: f.purchaseDepartment.length ? f.purchaseDepartment.join('|') : undefined,
+      purchaser: f.purchaser.length ? f.purchaser.join('|') : undefined,
       page: pager.page,
       page_size: pager.page_size,
     }),
@@ -53,13 +51,23 @@ const {
     materialCode: '',
     name: '',
     modelSpec: '',
-    warehouse: '',
-    purchaseDepartment: '',
-    purchaser: '',
+    purchaseDepartment: [],
+    purchaser: [],
   }),
   onError: (error) => message.error(error instanceof Error ? error.message : '加载华星总库存失败'),
   pageSizeOptions: [20, 50, 100, 200],
 })
+const departmentOptions = ref<{ label: string; value: string }[]>([])
+const purchaserOptions = ref<{ label: string; value: string }[]>([])
+async function loadFilterOptions() {
+  try {
+    const options = await huaXingInventoryApi.filterOptions()
+    departmentOptions.value = options.purchase_departments.map((value) => ({ label: value, value }))
+    purchaserOptions.value = options.purchasers.map((value) => ({ label: value, value }))
+  } catch {
+    // 选项加载失败不影响列表；下拉为空时仍可正常查询
+  }
+}
 const importJob = useImportJob({
   start: (file) => huaXingInventoryApi.import(file),
   poll: (jobId) => huaXingInventoryApi.importJob(jobId),
@@ -74,16 +82,18 @@ async function loadLastImport() {
     lastImportAt.value = '—'
   }
 }
-onMounted(() => void loadLastImport())
+onMounted(() => {
+  void loadLastImport()
+  void loadFilterOptions()
+})
 const activeFilterCount = computed(
   () =>
     [
       filters.materialCode.trim(),
       filters.name.trim(),
       filters.modelSpec.trim(),
-      filters.warehouse.trim(),
-      filters.purchaseDepartment.trim(),
-      filters.purchaser.trim(),
+      ...filters.purchaseDepartment,
+      ...filters.purchaser,
     ].filter(Boolean).length,
 )
 
@@ -157,8 +167,8 @@ async function importFile(file: File) {
     filters.materialCode = ''
     filters.name = ''
     filters.modelSpec = ''
-    filters.warehouse = ''
-    filters.purchaseDepartment = ''
+    filters.purchaseDepartment = []
+    filters.purchaser = []
     page.value = 1
     await query()
   } catch (error) {
@@ -213,15 +223,6 @@ function onFileChange(event: Event) {
       </div>
       <div class="filter-grid">
         <label class="filter-field">
-          <span>货品编码</span>
-          <n-input
-            v-model:value="filters.materialCode"
-            clearable
-            placeholder="输入货品编码"
-            @keyup.enter="query"
-          />
-        </label>
-        <label class="filter-field">
           <span>货品名称</span>
           <n-input
             v-model:value="filters.name"
@@ -240,30 +241,34 @@ function onFileChange(event: Event) {
           />
         </label>
         <label class="filter-field">
-          <span>仓库</span>
+          <span>货品编码</span>
           <n-input
-            v-model:value="filters.warehouse"
+            v-model:value="filters.materialCode"
             clearable
-            placeholder="输入仓库"
+            placeholder="输入货品编码"
             @keyup.enter="query"
           />
         </label>
         <label class="filter-field">
           <span>申购部门</span>
-          <n-input
+          <n-select
             v-model:value="filters.purchaseDepartment"
+            :options="departmentOptions"
+            multiple
+            filterable
             clearable
-            placeholder="输入申购部门"
-            @keyup.enter="query"
+            placeholder="选择申购部门（可多选）"
           />
         </label>
         <label class="filter-field">
           <span>申购人</span>
-          <n-input
+          <n-select
             v-model:value="filters.purchaser"
+            :options="purchaserOptions"
+            multiple
+            filterable
             clearable
-            placeholder="输入申购人"
-            @keyup.enter="query"
+            placeholder="选择申购人（可多选）"
           />
         </label>
       </div>
