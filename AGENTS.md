@@ -10,7 +10,6 @@
 - 小程序：微信小程序，位于 `miniprogram/`。
 - 前后端契约统一维护在 `docs/openapi.yaml`，前端类型由它生成（`src/api/generated.raw.ts`、`src/api/generated.ts`），**禁止手改生成文件**。
 - 部署：Docker Compose（后端 + nginx 托管前端静态产物）。前端/后端镜像由 CI 在合并后构建。
-  实际生产环境：服务器仅托管后端，前端静态产物由 CI/CD 自动处理（详见「部署上线」）。
 - 默认工作目录：仓库根目录 `/workspace/备件管理系统`。
 
 ## 必读先做
@@ -102,36 +101,6 @@ gh pr list --state all   # 找出 CLOSED 且未合并的分支
 git push origin --delete <多余分支名>
 git branch -D <多余分支名>  # 如需删除本地对应分支
 ```
-
-## 部署上线（生产环境）
-
-> 生产服务器仅托管**后端**；**前端静态产物由 CI/CD 自动处理，无需手动部署**。只有涉及后端接口/后端逻辑的改动才需要走本节部署。涉及安全配置（数据库密码、`APP_JWT_SECRET`、小程序密钥、frp token 等）只存在于服务器上的 compose 文件，**切勿写入本仓库**。
-
-- 生产服务器：`43.156.3.118`，`root` 用户。SSH 密钥使用本机 `~/.ssh/private.key`（ED25519）：
-
-  ```bash
-  ssh -i ~/.ssh/private.key root@43.156.3.118
-  ```
-
-- 后端由 1Panel 管理的 Docker Compose 部署，目录：`/opt/1panel/docker/compose/materials-manager/`，依赖 1Panel 的 `MySQL` 容器（`1panel-network` 外部网络）。后端 API 对外端口 `24125`（容器内 `8000`）。
-- 更新后端（前提：CI 已把新镜像推送到 `docker.io/yangrucheng/materials-manager:backend`）：
-
-  ```bash
-  cd /opt/1panel/docker/compose/materials-manager
-  docker compose pull backend
-  docker compose up -d backend
-  ```
-
-  compose 中 `pull_policy: always`，`up -d` 会自动重新拉取最新镜像。
-- 验证：
-
-  ```bash
-  curl -s http://127.0.0.1:24125/health          # 期望 {"status":"ok","database":"ok"}
-  # 新增/改动接口验证（401=路由已上线需认证，404=路由缺失）：
-  curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:24125/api/v1/huaxing-inventory/filter-options
-  ```
-
-- **镜像构建提醒**：合并到 main 触发的「构建 Docker 镜像」可能被并发抢占（concurrency `cancel-in-progress`）导致镜像**未推送**。部署前先确认 main 上 `gh run list --branch main` 的构建为 success；若被取消，用 `gh run rerun <run-id>` 重跑，或手动触发 `gh workflow run build-images.yml --ref main`，确认完成后（含 `:backend` / `:frontend` 标签）再部署。
 
 ## 注意事项
 
