@@ -13,11 +13,13 @@ import {
 import { useImportJob } from '@/composables/useImportJob'
 import { usePagedTable } from '@/composables/usePagedTable'
 import { formatShanghaiTime } from '@/utils/time'
+import FilterExpandButton from '@/components/FilterExpandButton.vue'
 
 const auth = useAuthStore()
 const dialog = useDialog()
 const message = useMessage()
 const fileInput = ref<HTMLInputElement | null>(null)
+const filterExpanded = ref(false)
 type HuaXingFilters = {
   materialCode: string
   name: string
@@ -217,9 +219,12 @@ function onFileChange(event: Event) {
     <n-card class="filter-card" :bordered="false">
       <div class="filter-heading">
         <div class="filter-title">筛选条件</div>
-        <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
-          已启用 {{ activeFilterCount }} 项
-        </n-tag>
+        <div class="filter-heading-actions">
+          <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
+            已启用 {{ activeFilterCount }} 项
+          </n-tag>
+          <FilterExpandButton v-model:expanded="filterExpanded" />
+        </div>
       </div>
       <div class="filter-grid">
         <label class="filter-field">
@@ -240,45 +245,49 @@ function onFileChange(event: Event) {
             @keyup.enter="query"
           />
         </label>
-        <label class="filter-field">
-          <span>货品编码</span>
-          <n-input
-            v-model:value="filters.materialCode"
-            clearable
-            placeholder="输入货品编码"
-            @keyup.enter="query"
-          />
-        </label>
-        <label class="filter-field">
-          <span>申购部门</span>
-          <n-select
-            v-model:value="filters.purchaseDepartment"
-            :options="departmentOptions"
-            multiple
-            filterable
-            clearable
-            placeholder="选择申购部门（可多选）"
-          />
-        </label>
-        <label class="filter-field">
-          <span>申购人</span>
-          <n-select
-            v-model:value="filters.purchaser"
-            :options="purchaserOptions"
-            multiple
-            filterable
-            clearable
-            placeholder="选择申购人（可多选）"
-          />
-        </label>
       </div>
-      <div class="filter-actions">
-        <span class="muted"
-          >共 {{ total.toLocaleString() }} 条 · 上次导入：{{ lastImportAt || '—' }}</span
-        >
-        <div class="filter-action-buttons">
-          <n-button @click="resetFilters">重置</n-button>
-          <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
+        <div class="filter-grid">
+          <label class="filter-field">
+            <span>货品编码</span>
+            <n-input
+              v-model:value="filters.materialCode"
+              clearable
+              placeholder="输入货品编码"
+              @keyup.enter="query"
+            />
+          </label>
+          <label class="filter-field">
+            <span>申购部门</span>
+            <n-select
+              v-model:value="filters.purchaseDepartment"
+              :options="departmentOptions"
+              multiple
+              filterable
+              clearable
+              placeholder="选择申购部门（可多选）"
+            />
+          </label>
+          <label class="filter-field">
+            <span>申购人</span>
+            <n-select
+              v-model:value="filters.purchaser"
+              :options="purchaserOptions"
+              multiple
+              filterable
+              clearable
+              placeholder="选择申购人（可多选）"
+            />
+          </label>
+        </div>
+        <div class="filter-actions">
+          <span class="muted"
+            >共 {{ total.toLocaleString() }} 条 · 上次导入：{{ lastImportAt || '—' }}</span
+          >
+          <div class="filter-action-buttons">
+            <n-button @click="resetFilters">重置</n-button>
+            <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+          </div>
         </div>
       </div>
     </n-card>

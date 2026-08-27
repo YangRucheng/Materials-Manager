@@ -9,6 +9,7 @@ import { formatShanghaiTime, toShanghaiDate } from '@/utils/time'
 import { isDecimalString } from '@/utils/decimal'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import QuantityInput from '@/components/QuantityInput.vue'
+import FilterExpandButton from '@/components/FilterExpandButton.vue'
 import { usePagedTable } from '@/composables/usePagedTable'
 import {
   getTableScrollX,
@@ -23,6 +24,7 @@ const rowClickGuard = createTableRowClickGuard()
 const showReplenishment = ref(false)
 const replenishing = ref(false)
 const loadingDefaults = ref(false)
+const filterExpanded = ref(false)
 const replenishmentRow = ref<InventoryBalance | null>(null)
 const replenishmentForm = reactive<ReplenishmentDraftWrite>({
   planned_qty: '',
@@ -234,8 +236,9 @@ async function confirmReplenishment() {
     </div>
     <n-card class="filter-card" :bordered="false">
       <div class="filter-heading">
-        <div>
-          <div class="filter-title">筛选条件</div>
+        <div class="filter-title">筛选条件</div>
+        <div class="filter-heading-actions">
+          <FilterExpandButton v-model:expanded="filterExpanded" />
         </div>
       </div>
       <div class="filter-grid">
@@ -248,30 +251,34 @@ async function confirmReplenishment() {
             @keyup.enter="query"
           />
         </label>
-        <label class="filter-field">
-          <span>库存下限</span>
-          <n-input v-model:value="filters.min_qty" clearable placeholder="输入库存下限" />
-        </label>
-        <label class="filter-field">
-          <span>库存上限</span>
-          <n-input v-model:value="filters.max_qty" clearable placeholder="输入库存上限" />
-        </label>
-        <label class="filter-field">
-          <span>预警状态</span>
-          <n-select
-            v-model:value="filters.low_stock"
-            clearable
-            :options="[
-              { label: '仅低库存', value: true },
-              { label: '全部库存', value: false },
-            ]"
-            placeholder="选择预警状态"
-          />
-        </label>
       </div>
-      <div class="filter-actions">
-        <n-button @click="resetFilters">重置</n-button>
-        <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
+        <div class="filter-grid">
+          <label class="filter-field">
+            <span>库存下限</span>
+            <n-input v-model:value="filters.min_qty" clearable placeholder="输入库存下限" />
+          </label>
+          <label class="filter-field">
+            <span>库存上限</span>
+            <n-input v-model:value="filters.max_qty" clearable placeholder="输入库存上限" />
+          </label>
+          <label class="filter-field">
+            <span>预警状态</span>
+            <n-select
+              v-model:value="filters.low_stock"
+              clearable
+              :options="[
+                { label: '仅低库存', value: true },
+                { label: '全部库存', value: false },
+              ]"
+              placeholder="选择预警状态"
+            />
+          </label>
+        </div>
+        <div class="filter-actions">
+          <n-button @click="resetFilters">重置</n-button>
+          <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+        </div>
       </div>
     </n-card>
     <n-card class="data-card" :bordered="false"

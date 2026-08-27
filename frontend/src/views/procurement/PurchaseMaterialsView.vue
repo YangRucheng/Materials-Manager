@@ -33,6 +33,7 @@ import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import ExportLoadingOverlay from '@/components/ExportLoadingOverlay.vue'
 import ImageThumbnails from '@/components/ImageThumbnails.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import FilterExpandButton from '@/components/FilterExpandButton.vue'
 import ShareLinkDialog from '@/components/ShareLinkDialog.vue'
 import SortableHeader, { type SortOptionKey } from '@/components/SortableHeader.vue'
 import type { ExportOption } from '@/types/export'
@@ -69,6 +70,7 @@ const auth = useAuthStore()
 const message = useMessage()
 const dialog = useDialog()
 const rowClickGuard = createTableRowClickGuard()
+const filterExpanded = ref(false)
 const EMPTY_DEMAND_PERSON_FILTER = '__empty_actual_demand_person__'
 const EMPTY_SUBITEM_FILTER = '__empty_subitem_no__'
 const canViewArchivedPlans = computed(() => auth.user?.role === 'SUPER_ADMIN')
@@ -1081,9 +1083,12 @@ onBeforeUnmount(() => {
     <n-card class="filter-card" :bordered="false">
       <div class="filter-heading">
         <div class="filter-title">筛选条件</div>
-        <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
-          已启用 {{ activeFilterCount }} 项
-        </n-tag>
+        <div class="filter-heading-actions">
+          <n-tag v-if="activeFilterCount" :bordered="false" round type="success">
+            已启用 {{ activeFilterCount }} 项
+          </n-tag>
+          <FilterExpandButton v-model:expanded="filterExpanded" />
+        </div>
       </div>
       <div class="filter-grid">
         <label class="filter-field">
@@ -1104,74 +1109,78 @@ onBeforeUnmount(() => {
             @keyup.enter="query"
           />
         </label>
-        <label class="filter-field">
-          <span>提报员工</span>
-          <n-select
-            v-model:value="filters.actual_demand_person"
-            :options="actualDemandPersonOptions"
-            placeholder="选择或搜索提报员工"
-            filterable
-            clearable
-          />
-        </label>
-        <label class="filter-field">
-          <span>子项号</span>
-          <n-select
-            v-model:value="filters.subitem_no"
-            :options="subitemOptions"
-            placeholder="选择或搜索子项号"
-            filterable
-            clearable
-          />
-        </label>
-        <label class="filter-field">
-          <span>类别</span>
-          <n-select
-            v-model:value="filters.category"
-            :options="categoryOptions"
-            placeholder="选择类别"
-            filterable
-            clearable
-          />
-        </label>
-        <label class="filter-field">
-          <span>申购状态</span>
-          <n-select
-            v-model:value="filters.status"
-            class="status-filter-select"
-            :options="statusFilterOptions"
-            multiple
-            clearable
-            placeholder="选择一个或多个状态"
-          />
-        </label>
       </div>
-      <div class="filter-actions">
-        <ColumnVisibilityPicker
-          :value="visibleColumnKeys"
-          :options="fieldOptions"
-          storage-key="procurement.purchase-materials.visible-columns.v4"
-          @update:value="setVisibleColumnKeys"
-        />
-        <div class="filter-action-buttons">
-          <n-button @click="resetFilters">重置</n-button>
-          <n-button
-            secondary
-            type="primary"
-            :loading="aiSearching"
-            :disabled="!aiAvailable || !filters.name.trim()"
-            :title="
-              aiAvailable
-                ? filters.name.trim()
-                  ? '自动扩展物资名称同义词并立即查询'
-                  : '请先输入物资名称'
-                : '请联系超级管理员配置大模型服务'
-            "
-            @click="aiQuery"
-          >
-            智能查询
-          </n-button>
-          <n-button type="primary" @click="query">查询</n-button>
+      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
+        <div class="filter-grid">
+          <label class="filter-field">
+            <span>提报员工</span>
+            <n-select
+              v-model:value="filters.actual_demand_person"
+              :options="actualDemandPersonOptions"
+              placeholder="选择或搜索提报员工"
+              filterable
+              clearable
+            />
+          </label>
+          <label class="filter-field">
+            <span>子项号</span>
+            <n-select
+              v-model:value="filters.subitem_no"
+              :options="subitemOptions"
+              placeholder="选择或搜索子项号"
+              filterable
+              clearable
+            />
+          </label>
+          <label class="filter-field">
+            <span>类别</span>
+            <n-select
+              v-model:value="filters.category"
+              :options="categoryOptions"
+              placeholder="选择类别"
+              filterable
+              clearable
+            />
+          </label>
+          <label class="filter-field">
+            <span>申购状态</span>
+            <n-select
+              v-model:value="filters.status"
+              class="status-filter-select"
+              :options="statusFilterOptions"
+              multiple
+              clearable
+              placeholder="选择一个或多个状态"
+            />
+          </label>
+        </div>
+        <div class="filter-actions">
+          <ColumnVisibilityPicker
+            :value="visibleColumnKeys"
+            :options="fieldOptions"
+            storage-key="procurement.purchase-materials.visible-columns.v4"
+            @update:value="setVisibleColumnKeys"
+          />
+          <div class="filter-action-buttons">
+            <n-button @click="resetFilters">重置</n-button>
+            <n-button
+              secondary
+              type="primary"
+              :loading="aiSearching"
+              :disabled="!aiAvailable || !filters.name.trim()"
+              :title="
+                aiAvailable
+                  ? filters.name.trim()
+                    ? '自动扩展物资名称同义词并立即查询'
+                    : '请先输入物资名称'
+                  : '请联系超级管理员配置大模型服务'
+              "
+              @click="aiQuery"
+            >
+              智能查询
+            </n-button>
+            <n-button type="primary" @click="query">查询</n-button>
+          </div>
         </div>
       </div>
     </n-card>

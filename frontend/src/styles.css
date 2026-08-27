@@ -178,6 +178,17 @@ a {
 .filter-field .n-input {
   background-color: rgb(255 255 255 / 88%);
 }
+/* 筛选区头部右侧操作（如「已启用 N 项」标签与折叠开关） */
+.filter-heading-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+/* 筛选折叠开关：桌面端隐藏（筛选始终全量展示），仅在移动端断点内显示 */
+.filter-collapse-btn {
+  display: none;
+}
 .card-title {
   color: var(--color-text-strong);
   font-size: 16px;
@@ -262,6 +273,19 @@ a {
   .filter-actions > .n-button,
   .filter-actions > button {
     width: 100%;
+  }
+  /* 移动端筛选区默认收起：仅保留名称+型号等常用字段，其余经「更多筛选」展开 */
+  .filter-collapse-btn {
+    display: inline-flex;
+  }
+  .filter-extras {
+    display: none;
+  }
+  .filter-extras.filter-extras-open {
+    display: block;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border-subtle);
   }
   /* 分页器过宽时允许横向滑动，避免挤压溢出 */
   .pagination-bar {
