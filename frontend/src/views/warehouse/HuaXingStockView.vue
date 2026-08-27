@@ -245,9 +245,7 @@ function onFileChange(event: Event) {
             @keyup.enter="query"
           />
         </label>
-      </div>
-      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
-        <div class="filter-grid">
+        <div class="filter-extras-fields" :class="{ 'filter-extras-open': filterExpanded }">
           <label class="filter-field">
             <span>货品编码</span>
             <n-input
@@ -280,6 +278,8 @@ function onFileChange(event: Event) {
             />
           </label>
         </div>
+      </div>
+      <div class="filter-extras-actions" :class="{ 'filter-extras-open': filterExpanded }">
         <div class="filter-actions">
           <span class="muted"
             >共 {{ total.toLocaleString() }} 条 · 上次导入：{{ lastImportAt || '—' }}</span

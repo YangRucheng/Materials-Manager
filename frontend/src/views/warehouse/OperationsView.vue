@@ -167,9 +167,7 @@ function rowProps(row: StockOperation) {
             @keyup.enter="query"
           />
         </label>
-      </div>
-      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
-        <div class="filter-grid">
+        <div class="filter-extras-fields" :class="{ 'filter-extras-open': filterExpanded }">
           <label class="filter-field">
             <span>流水号</span>
             <n-input
@@ -201,6 +199,8 @@ function rowProps(row: StockOperation) {
             />
           </label>
         </div>
+      </div>
+      <div class="filter-extras-actions" :class="{ 'filter-extras-open': filterExpanded }">
         <div class="filter-actions">
           <n-button @click="resetFilters">重置</n-button>
           <n-button type="primary" :loading="loading" @click="query">查询</n-button>
