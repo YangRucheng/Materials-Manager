@@ -11,6 +11,7 @@ declare module 'vue' {
     ColumnVisibilityPicker: typeof import('./src/components/ColumnVisibilityPicker.vue')['default']
     ExportButton: typeof import('./src/components/ExportButton.vue')['default']
     ExportLoadingOverlay: typeof import('./src/components/ExportLoadingOverlay.vue')['default']
+    FilterExpandButton: typeof import('./src/components/FilterExpandButton.vue')['default']
     ImageThumbnails: typeof import('./src/components/ImageThumbnails.vue')['default']
     ImageUploader: typeof import('./src/components/ImageUploader.vue')['default']
     MaterialCodeSelector: typeof import('./src/components/MaterialCodeSelector.vue')['default']

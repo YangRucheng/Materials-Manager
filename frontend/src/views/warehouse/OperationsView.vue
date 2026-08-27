@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h } from 'vue'
+import { h, ref } from 'vue'
 import { NButton, NTag, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import type { StockOperation } from '@/api/generated'
@@ -12,10 +12,12 @@ import {
 import { formatShanghaiTime } from '@/utils/time'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { usePagedTable } from '@/composables/usePagedTable'
+import FilterExpandButton from '@/components/FilterExpandButton.vue'
 
 const router = useRouter()
 const message = useMessage()
 const rowClickGuard = createTableRowClickGuard()
+const filterExpanded = ref(false)
 type OperationFilters = {
   operation_no: string
   operation_type: string | null
@@ -150,32 +152,12 @@ function rowProps(row: StockOperation) {
 
     <n-card class="filter-card" :bordered="false">
       <div class="filter-heading">
-        <div>
-          <div class="filter-title">筛选条件</div>
+        <div class="filter-title">筛选条件</div>
+        <div class="filter-heading-actions">
+          <FilterExpandButton v-model:expanded="filterExpanded" />
         </div>
       </div>
       <div class="filter-grid">
-        <label class="filter-field">
-          <span>流水号</span>
-          <n-input
-            v-model:value="filters.operation_no"
-            clearable
-            placeholder="输入流水号"
-            @keyup.enter="query"
-          />
-        </label>
-        <label class="filter-field">
-          <span>操作类型</span>
-          <n-select
-            v-model:value="filters.operation_type"
-            clearable
-            :options="[
-              { label: '入库', value: 'INBOUND' },
-              { label: '出库', value: 'OUTBOUND' },
-            ]"
-            placeholder="选择操作类型"
-          />
-        </label>
         <label class="filter-field">
           <span>物资名称或型号规格</span>
           <n-input
@@ -185,19 +167,44 @@ function rowProps(row: StockOperation) {
             @keyup.enter="query"
           />
         </label>
-        <label class="filter-field">
-          <span>发生时间</span>
-          <n-date-picker
-            v-model:value="filters.dateRange"
-            type="datetimerange"
-            clearable
-            class="full-width"
-          />
-        </label>
       </div>
-      <div class="filter-actions">
-        <n-button @click="resetFilters">重置</n-button>
-        <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
+        <div class="filter-grid">
+          <label class="filter-field">
+            <span>流水号</span>
+            <n-input
+              v-model:value="filters.operation_no"
+              clearable
+              placeholder="输入流水号"
+              @keyup.enter="query"
+            />
+          </label>
+          <label class="filter-field">
+            <span>操作类型</span>
+            <n-select
+              v-model:value="filters.operation_type"
+              clearable
+              :options="[
+                { label: '入库', value: 'INBOUND' },
+                { label: '出库', value: 'OUTBOUND' },
+              ]"
+              placeholder="选择操作类型"
+            />
+          </label>
+          <label class="filter-field">
+            <span>发生时间</span>
+            <n-date-picker
+              v-model:value="filters.dateRange"
+              type="datetimerange"
+              clearable
+              class="full-width"
+            />
+          </label>
+        </div>
+        <div class="filter-actions">
+          <n-button @click="resetFilters">重置</n-button>
+          <n-button type="primary" :loading="loading" @click="query">查询</n-button>
+        </div>
       </div>
     </n-card>
 
