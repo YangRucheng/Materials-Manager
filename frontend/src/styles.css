@@ -189,6 +189,14 @@ a {
 .filter-collapse-btn {
   display: none;
 }
+/* 扩展筛选字段与操作栏：桌面端始终参与原布局（扩展字段以内联方式
+   参与外层筛选网格的自动填充，不额外换行），移动端默认收起由下方断点控制 */
+.filter-extras-fields {
+  display: contents;
+}
+.filter-extras-actions {
+  display: block;
+}
 .card-title {
   color: var(--color-text-strong);
   font-size: 16px;
@@ -278,14 +286,17 @@ a {
   .filter-collapse-btn {
     display: inline-flex;
   }
-  .filter-extras {
+  .filter-extras-fields {
     display: none;
   }
-  .filter-extras.filter-extras-open {
+  .filter-extras-fields.filter-extras-open {
+    display: contents;
+  }
+  .filter-extras-actions {
+    display: none;
+  }
+  .filter-extras-actions.filter-extras-open {
     display: block;
-    margin-top: 18px;
-    padding-top: 16px;
-    border-top: 1px solid var(--color-border-subtle);
   }
   /* 分页器过宽时允许横向滑动，避免挤压溢出 */
   .pagination-bar {

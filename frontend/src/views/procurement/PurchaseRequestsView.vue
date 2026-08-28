@@ -1116,9 +1116,7 @@ onMounted(() => {
             @keyup.enter="query"
           />
         </label>
-      </div>
-      <div class="filter-extras" :class="{ 'filter-extras-open': filterExpanded }">
-        <div class="filter-grid">
+        <div class="filter-extras-fields" :class="{ 'filter-extras-open': filterExpanded }">
           <label class="filter-field">
             <span>追溯号</span>
             <n-input
@@ -1188,6 +1186,8 @@ onMounted(() => {
             />
           </label>
         </div>
+      </div>
+      <div class="filter-extras-actions" :class="{ 'filter-extras-open': filterExpanded }">
         <div class="filter-actions">
           <ColumnVisibilityPicker
             :value="visibleColumnKeys"
