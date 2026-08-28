@@ -282,7 +282,8 @@ a {
   .filter-actions > button {
     width: 100%;
   }
-  /* 移动端筛选区默认收起：仅保留名称+型号等常用字段，其余经「更多筛选」展开 */
+  /* 移动端筛选区默认收起：仅保留名称+型号等常用字段与查询/重置操作栏，
+     其余字段经「更多筛选」展开 */
   .filter-collapse-btn {
     display: inline-flex;
   }
@@ -291,12 +292,6 @@ a {
   }
   .filter-extras-fields.filter-extras-open {
     display: contents;
-  }
-  .filter-extras-actions {
-    display: none;
-  }
-  .filter-extras-actions.filter-extras-open {
-    display: block;
   }
   /* 分页器过宽时允许横向滑动，避免挤压溢出 */
   .pagination-bar {

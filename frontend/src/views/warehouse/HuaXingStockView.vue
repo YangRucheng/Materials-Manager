@@ -279,7 +279,7 @@ function onFileChange(event: Event) {
           </label>
         </div>
       </div>
-      <div class="filter-extras-actions" :class="{ 'filter-extras-open': filterExpanded }">
+      <div class="filter-extras-actions">
         <div class="filter-actions">
           <span class="muted"
             >共 {{ total.toLocaleString() }} 条 · 上次导入：{{ lastImportAt || '—' }}</span

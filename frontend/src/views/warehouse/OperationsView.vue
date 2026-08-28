@@ -200,7 +200,7 @@ function rowProps(row: StockOperation) {
           </label>
         </div>
       </div>
-      <div class="filter-extras-actions" :class="{ 'filter-extras-open': filterExpanded }">
+      <div class="filter-extras-actions">
         <div class="filter-actions">
           <n-button @click="resetFilters">重置</n-button>
           <n-button type="primary" :loading="loading" @click="query">查询</n-button>
