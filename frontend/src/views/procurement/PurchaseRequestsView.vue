@@ -1187,7 +1187,7 @@ onMounted(() => {
           </label>
         </div>
       </div>
-      <div class="filter-extras-actions" :class="{ 'filter-extras-open': filterExpanded }">
+      <div class="filter-extras-actions">
         <div class="filter-actions">
           <ColumnVisibilityPicker
             :value="visibleColumnKeys"
