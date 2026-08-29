@@ -103,3 +103,11 @@ func FractionDigits(d decimal.Decimal) int {
 
 // Zero 常量。
 var Zero = decimal.NewFromInt(0)
+
+// Truncate 截断字符串到指定字节长度。
+func Truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max]
+}
