@@ -3652,6 +3652,58 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       security:
       - HTTPBearer: []
+  /api/v1/mini-program/purchase-records/{line_id}:
+    get:
+      tags:
+      - 小程序
+      summary: Mini Program Purchase Record Detail
+      operationId: mini_program_purchase_record_detail_api_v1_mini_program_purchase_records__line_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: line_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Line Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniProgramPurchaseRecordItemRead'
+        '400':
+          description: 业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 未认证或凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: 版本、状态或业务数据冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: 请求参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/mini-program/material-codes:
     get:
       tags:

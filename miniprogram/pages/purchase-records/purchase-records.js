@@ -1,36 +1,15 @@
 const toastModule = require('tdesign-miniprogram/toast/index');
 const { request } = require('../../utils/request');
 const { buildRedirectQuery } = require('../../utils/navigation');
-const { imageUrl } = require('../../utils/inventory');
 const { getMessages, setNavigationBarTitle, t } = require('../../utils/i18n');
 const Toast = toastModule.default || toastModule;
-
-function present(value, fallback) {
-  const text = String(value ?? '').trim();
-  return text && !['\\', '/', '-', '—'].includes(text) ? text : fallback;
-}
 
 function decorateRecord(item) {
   return {
     ...item,
     plan_date_label: String(item.plan_date || '').replace(/-/g, '/'),
-    purchase_date_label: String(item.purchase_date || '').replace(/-/g, '/'),
     quantity_label: `${item.purchase_qty} ${item.unit_name}`,
     purchase_order_no_label: item.purchase_order_no || t('notSet'),
-    material_code_label: present(item.material_code, t('notSet')),
-    demand_department_label: present(item.demand_department, t('notSet')),
-    actual_demand_person_label: present(item.actual_demand_person, t('notSet')),
-    usage_label: present(item.usage, t('notSet')),
-    salesperson_label: present(item.salesperson, t('notSet')),
-    remark_label: present(item.remark, t('noRemark')),
-    trace_no_label: present(item.trace_no, t('notSet')),
-    subitem_no_label: present(item.subitem_no, t('notSet')),
-    image_count_label: t('imageCount', { count: (item.images || []).length }),
-    images: (item.images || []).map((image) => ({
-      ...image,
-      preview_url: imageUrl(image.id, 192),
-      original_url: imageUrl(image.id),
-    })),
     status_theme:
       item.status === '已入库'
         ? 'success'
@@ -58,8 +37,6 @@ Page({
     loadingMore: false,
     resultCount: '',
     backTopVisible: false,
-    detailVisible: false,
-    detailItem: null,
     i18n: getMessages(),
   },
 
@@ -74,7 +51,6 @@ Page({
         wx.reLaunch({ url: `/pages/bind/bind?redirect=${redirect}` });
         return;
       }
-      await getApp().globalData.imageSettingsPromise;
       await this.loadFilterOptions();
       await this.loadPlans(true);
     } catch (error) {
@@ -194,19 +170,12 @@ Page({
     };
   },
 
-  openDetail(event) {
+  goDetail(event) {
     const item = this.data.items[event.currentTarget.dataset.index];
     if (!item) return;
-    this.setData({ detailItem: item, detailVisible: true });
-  },
-
-  onDetailVisibleChange(event) {
-    this.setData({ detailVisible: event.detail.visible });
-  },
-
-  previewImage(event) {
-    const urls = this.data.detailItem.images.map((image) => image.original_url);
-    wx.previewImage({ current: urls[event.currentTarget.dataset.index], urls });
+    wx.navigateTo({
+      url: `/pages/purchase-record-detail/purchase-record-detail?line_id=${item.line_id}`,
+    });
   },
 
   showError(error) {

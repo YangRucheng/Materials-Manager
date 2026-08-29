@@ -1058,6 +1058,31 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
     no_image = body["items"][1]
     assert no_image["images"] == []
 
+    # 详情接口：按 line_id 返回完整记录（对齐申购计划详情页）
+    detail = await client.get(
+        f"/api/v1/mini-program/purchase-records/{record_b['line_id']}",
+        headers=mini_headers,
+    )
+    assert detail.status_code == 200, detail.text
+    detail_body = detail.json()
+    assert detail_body["line_id"] == record_b["line_id"]
+    assert detail_body["material_name"] == "记录电机B"
+    assert detail_body["actual_demand_person"] == "张三"
+    assert detail_body["purchase_responsible"] == "李工"
+    assert detail_body["salesperson"] == "赵经理"
+    assert detail_body["purchase_date"] == "2026-08-02"
+    assert detail_body["remark"] == "申购记录测试"
+    assert len(detail_body["images"]) == 1
+    assert detail_body["images"][0]["id"] == file_id
+
+    # 不存在的 line_id → 400 + code=NOT_FOUND（本项目禁用 404）
+    missing = await client.get(
+        "/api/v1/mini-program/purchase-records/999999999",
+        headers=mini_headers,
+    )
+    assert missing.status_code == 400, missing.text
+    assert missing.json()["code"] == "NOT_FOUND"
+
     # keyword 分别命中名称/型号/追溯号/申购单号
     by_name = await client.get(
         "/api/v1/mini-program/purchase-records",
