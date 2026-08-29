@@ -235,8 +235,8 @@ func ProcessMaterialCodeImport(db *gorm.DB, filePath string) (map[string]any, *a
 		}
 	}
 	return map[string]any{
-		"imported_count":       len(rows),
-		"blank_name_count":     blankName,
+		"imported_count":         len(rows),
+		"blank_name_count":       blankName,
 		"blank_model_spec_count": blankModel,
 	}, nil
 }

@@ -21,16 +21,16 @@ var huaxingHeaderAliases = map[string]string{"首次入库时间": "首次入库
 
 // HuaXingRow 解析后的华星库存行。
 type HuaXingRow struct {
-	FirstInboundDate  *time.Time
-	Warehouse         *string
-	MaterialCode      string
-	Name              *string
-	ModelSpec         *string
-	Quantity          *decimal.Decimal
-	UnitName          *string
-	Purchaser         *string
+	FirstInboundDate   *time.Time
+	Warehouse          *string
+	MaterialCode       string
+	Name               *string
+	ModelSpec          *string
+	Quantity           *decimal.Decimal
+	UnitName           *string
+	Purchaser          *string
 	PurchaseDepartment *string
-	SubitemNoName     *string
+	SubitemNoName      *string
 }
 
 // ParseHuaXingFile 解析华星库存导入文件。
@@ -338,4 +338,3 @@ func SearchHuaXingInventory(db *gorm.DB, keyword, materialCode, name, modelSpec,
 	}
 	return items, int(total), nil
 }
-

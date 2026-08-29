@@ -4,6 +4,7 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	apperrors "github.com/yangrucheng/materials-manager/server/internal/errors"
+	"github.com/yangrucheng/materials-manager/server/internal/models"
 )
 
 // NormalizedText 复刻 Python normalized_text：NFKC + 空白折叠 + strip + casefold。
@@ -110,4 +112,9 @@ func Truncate(s string, max int) string {
 		return s
 	}
 	return s[:max]
+}
+
+// DecodeJSON 反序列化 JSON 列。
+func DecodeJSON(data models.JSON, dst any) error {
+	return json.Unmarshal(data, dst)
 }

@@ -48,4 +48,9 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	handler.RegisterStockMaterials(v1, app)
 	handler.RegisterInventory(v1, app)
 	handler.RegisterFiles(v1, app)
+	handler.RegisterPurchaseMaterials(v1, app)
+	handler.RegisterPurchaseRequests(v1, app)
+	handler.RegisterPurchasePlanTemplates(v1, app)
+	handler.RegisterPurchaseRecordSync(v1, app)
+	handler.RegisterShares(v1, app)
 }

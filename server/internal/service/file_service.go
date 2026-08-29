@@ -471,3 +471,25 @@ func CleanupOrphans(cfg *config.Config, db *gorm.DB, olderThanHours int) (cutoff
 	}
 	return cutoff, deletedRecordIDs, deletedFileNames, nil
 }
+
+// LoadImagesByIDs 按 file_id 顺序加载图片。
+func LoadImagesByIDs(db *gorm.DB, ids []string) ([]models.FileObject, *apperrors.AppError) {
+	var out []models.FileObject
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var files []models.FileObject
+	if err := db.Where("id IN ?", ids).Find(&files).Error; err != nil {
+		return nil, DatabaseError(err)
+	}
+	byID := map[string]models.FileObject{}
+	for _, f := range files {
+		byID[f.ID] = f
+	}
+	for _, id := range ids {
+		if f, ok := byID[id]; ok {
+			out = append(out, f)
+		}
+	}
+	return out, nil
+}
