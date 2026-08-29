@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -31,6 +31,7 @@ import {
 import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
 import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
+import { renderTwoLineText } from '@/utils/tableText'
 import { formatShanghaiTime } from '@/utils/time'
 import { routeQueryString } from '@/utils/routeQuery'
 
@@ -186,6 +187,7 @@ type TemplateColumnKey =
   | 'name'
   | 'model_spec'
   | 'planned_qty'
+  | 'unit_name'
   | 'usage'
   | 'actual_demand_person'
   | 'purchase_responsible'
@@ -205,7 +207,7 @@ const availableColumns: Array<{
       title: '名称',
       key: 'name',
       width: tableColumnWidths.name,
-      render: (row) => h('strong', row.name),
+      render: (row) => renderTwoLineText(row.name),
     },
   },
   {
@@ -215,7 +217,7 @@ const availableColumns: Array<{
       title: '型号规格',
       key: 'model_spec',
       width: tableColumnWidths.model,
-      ellipsis: { tooltip: true },
+      render: (row) => renderTwoLineText(row.model_spec),
     },
   },
   {
@@ -225,7 +227,7 @@ const availableColumns: Array<{
       title: '物料编码',
       key: 'material_code',
       width: tableColumnWidths.code,
-      render: (row) => row.material_code || '-',
+      render: (row) => renderTwoLineText(row.material_code, '-'),
     },
   },
   {
@@ -235,17 +237,27 @@ const availableColumns: Array<{
       title: '类别',
       key: 'category',
       width: tableColumnWidths.status,
-      render: (row) => row.category || '-',
+      render: (row) => renderTwoLineText(row.category, '-'),
     },
   },
   {
     key: 'planned_qty',
-    label: '计划数量 / 单位',
+    label: '计划数量',
     column: {
-      title: '计划数量 / 单位',
+      title: '计划数量',
       key: 'planned_qty',
-      width: tableColumnWidths.quantity + tableColumnWidths.unit,
-      render: (row) => `${String(row.planned_qty)} ${row.unit_name}`,
+      width: tableColumnWidths.quantity,
+      render: (row) => renderTwoLineText(row.planned_qty, '-'),
+    },
+  },
+  {
+    key: 'unit_name',
+    label: '计量单位',
+    column: {
+      title: '计量单位',
+      key: 'unit_name',
+      width: tableColumnWidths.unit,
+      render: (row) => renderTwoLineText(row.unit_name, '-'),
     },
   },
   {
@@ -255,7 +267,7 @@ const availableColumns: Array<{
       title: '用途',
       key: 'usage',
       width: tableColumnWidths.text,
-      ellipsis: { tooltip: true },
+      render: (row) => renderTwoLineText(row.usage, '-'),
     },
   },
   {
@@ -265,6 +277,7 @@ const availableColumns: Array<{
       title: '提报员工',
       key: 'actual_demand_person',
       width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.actual_demand_person, '-'),
     },
   },
   {
@@ -274,6 +287,7 @@ const availableColumns: Array<{
       title: '实际需求人',
       key: 'purchase_responsible',
       width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.purchase_responsible, '-'),
     },
   },
   {
@@ -283,6 +297,7 @@ const availableColumns: Array<{
       title: '紧急程度',
       key: 'urgency',
       width: tableColumnWidths.status,
+      render: (row) => renderTwoLineText(row.urgency, '-'),
     },
   },
   {
@@ -292,6 +307,7 @@ const availableColumns: Array<{
       title: '需求部门',
       key: 'demand_department',
       width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.demand_department, '-'),
     },
   },
   {
@@ -301,7 +317,7 @@ const availableColumns: Array<{
       title: '子项号',
       key: 'subitem_no',
       width: tableColumnWidths.person,
-      render: (row) => row.subitem_no || '-',
+      render: (row) => renderTwoLineText(row.subitem_no, '-'),
     },
   },
   {
@@ -311,8 +327,7 @@ const availableColumns: Array<{
       title: '备注',
       key: 'remark',
       width: tableColumnWidths.text,
-      ellipsis: { tooltip: true },
-      render: (row) => row.remark || '-',
+      render: (row) => renderTwoLineText(row.remark, '-'),
     },
   },
   {
@@ -786,7 +801,7 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--color-surface-soft);
+  background: #f6f8fb;
 }
 
 .create-advanced-fields :deep(.n-collapse-item) {
@@ -817,7 +832,7 @@ onBeforeUnmount(() => {
 .filter-actions {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid #edf1f6;
 }
 
 .filter-action-buttons {
