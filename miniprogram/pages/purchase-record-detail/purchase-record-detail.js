@@ -56,6 +56,7 @@ Page({
         quantity_label: `${result.purchase_qty} ${result.unit_name}`,
         purchase_order_no_label: result.purchase_order_no || t('notSet'),
         material_code_label: present(result.material_code, t('notSet')),
+        material_code_copyable: Boolean(present(result.material_code, '')),
         demand_department_label: present(result.demand_department, t('notSet')),
         actual_demand_person_label: present(result.actual_demand_person, t('notSet')),
         usage_label: present(result.usage, t('notSet')),
@@ -92,6 +93,23 @@ Page({
   previewImage(event) {
     const urls = this.data.record.images.map((image) => image.original_url);
     wx.previewImage({ current: urls[event.currentTarget.dataset.index], urls });
+  },
+
+  copyMaterialCode(event) {
+    const code = String(event.currentTarget.dataset.code || '').trim();
+    if (!code) return;
+    wx.setClipboardData({
+      data: code,
+      success: () => {
+        Toast({
+          context: this,
+          selector: '#purchase-record-detail-toast',
+          message: t('copied'),
+          theme: 'success',
+          direction: 'column',
+        });
+      },
+    });
   },
 
   onShareAppMessage() {
