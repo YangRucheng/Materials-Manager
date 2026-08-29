@@ -52,6 +52,21 @@ func (d *Decimal) Scan(v any) error {
 	case float64:
 		d.Decimal = decimal.NewFromFloat(src)
 		return nil
+	case int64:
+		d.Decimal = decimal.NewFromInt(src)
+		return nil
+	case int:
+		d.Decimal = decimal.NewFromInt(int64(src))
+		return nil
+	case int32:
+		d.Decimal = decimal.NewFromInt(int64(src))
+		return nil
+	case uint64:
+		d.Decimal = decimal.NewFromUint64(src)
+		return nil
+	case float32:
+		d.Decimal = decimal.NewFromFloat32(src)
+		return nil
 	default:
 		return fmt.Errorf("无法扫描 Decimal: %T", v)
 	}
