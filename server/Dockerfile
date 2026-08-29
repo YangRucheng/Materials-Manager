@@ -12,7 +12,8 @@ RUN CGO_ENABLED=1 GOOS=linux go build -ldflags "-s -w" \
 
 # 阶段二：运行镜像
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata
+# libwebp：CGO 动态链接的 WebP 预览编解码库（构建期已链接，运行期需同版本运行库）
+RUN apk add --no-cache ca-certificates tzdata libwebp
 WORKDIR /app
 COPY --from=builder /out/server /app/server
 COPY templates /app/templates
