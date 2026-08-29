@@ -90,16 +90,8 @@
   overflow-y: auto;
 }
 
-.detail-title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  margin-bottom: 22rpx;
-}
-
 .detail-title {
-  flex: 1;
-  min-width: 0;
+  margin-bottom: 20rpx;
   color: #172033;
   font-size: 32rpx;
   font-weight: 700;
@@ -113,38 +105,40 @@
   display: flex;
   align-items: flex-start;
   gap: 20rpx;
-  padding: 14rpx 0;
-  border-bottom: 2rpx solid #f0f2f6;
+  padding: 15rpx 0;
+  border-bottom: 2rpx solid #edf0f5;
 }
 
 .detail-row:last-child { border-bottom: 0; }
 
 .detail-label {
   flex: none;
-  width: 180rpx;
+  width: 160rpx;
   color: #8a94a5;
-  font-size: 24rpx;
-  line-height: 1.45;
+  font-size: 23rpx;
+  line-height: 1.5;
 }
 
 .detail-value {
   flex: 1;
   min-width: 0;
-  color: #172033;
-  font-size: 26rpx;
+  color: #30394a;
+  font-size: 24rpx;
   line-height: 1.5;
+  text-align: right;
   word-break: break-all;
 }
 
-.popup-divider { height: 2rpx; margin: 22rpx 0 18rpx; background: #f0f2f6; }
+.detail-section-divider { height: 2rpx; margin: 22rpx 0 18rpx; background: #edf0f5; }
 
-.image-section-head {
+.image-card .section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.image-section-title { color: #172033; font-size: 28rpx; font-weight: 650; }
+.image-card .section-title { color: #172033; font-size: 28rpx; font-weight: 650; }
+.image-card .section-divider { height: 2rpx; margin: 18rpx 0; background: #f0f2f6; }
 .image-count { color: #687386; font-size: 24rpx; }
 
 .image-grid {
