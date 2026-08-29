@@ -100,7 +100,9 @@ jobs:
       - name: 主流程 e2e 模拟（真实 MySQL）
         env:
           E2E_BASE_URL: "http://127.0.0.1:8000"
-        run: python server/scripts/e2e_simulation.py
+        run: |
+          python3 -m pip install --break-system-packages httpx
+          python3 server/scripts/e2e_simulation.py
 
       - name: 停止后端
         run: kill $(cat /tmp/mm-server.pid) 2>/dev/null || true
