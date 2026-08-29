@@ -317,3 +317,26 @@ type DashboardSummaryRead struct {
 	UncodedPurchaseMaterialCount int `json:"uncoded_purchase_material_count"`
 	PurchaseRecordCount          int `json:"purchase_record_count"`
 }
+
+// ============ 图片孤儿 ============
+
+type OrphanFileRead struct {
+	ID           string             `json:"id"`
+	OriginalName string             `json:"original_name"`
+	SizeBytes    int64              `json:"size_bytes"`
+	CreatedAt    serialize.UTCZTime `json:"created_at"`
+	FileExists   bool               `json:"file_exists"`
+}
+
+type OrphanFileReportRead struct {
+	Cutoff              serialize.UTCZTime `json:"cutoff"`
+	UnreferencedRecords []OrphanFileRead   `json:"unreferenced_records"`
+	UntrackedFileNames  []string           `json:"untracked_file_names"`
+	MissingFileIDs      []string           `json:"missing_file_ids"`
+}
+
+type OrphanFileCleanupRead struct {
+	Cutoff           serialize.UTCZTime `json:"cutoff"`
+	DeletedRecordIDs []string           `json:"deleted_record_ids"`
+	DeletedFileNames []string           `json:"deleted_file_names"`
+}

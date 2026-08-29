@@ -47,4 +47,5 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	handler.RegisterUsers(v1, app)
 	handler.RegisterStockMaterials(v1, app)
 	handler.RegisterInventory(v1, app)
+	handler.RegisterFiles(v1, app)
 }
