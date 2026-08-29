@@ -9039,6 +9039,52 @@ components:
           - type: string
           - type: 'null'
           title: Subitem No
+        material_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Material Code
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+        plan_no:
+          type: string
+          title: Plan No
+        demand_department:
+          type: string
+          title: Demand Department
+        actual_demand_person:
+          type: string
+          title: Actual Demand Person
+        purchase_responsible:
+          type: string
+          title: Purchase Responsible
+        usage:
+          type: string
+          title: Usage
+        remark:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Remark
+        purchase_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Purchase Date
+        salesperson:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Salesperson
+        images:
+          items:
+            $ref: '#/components/schemas/FileObjectRead'
+          type: array
+          title: Images
       type: object
       required:
       - line_id
@@ -9048,6 +9094,11 @@ components:
       - unit_name
       - purchase_qty
       - plan_date
+      - plan_no
+      - demand_department
+      - actual_demand_person
+      - purchase_responsible
+      - usage
       title: MiniProgramPurchaseRecordItemRead
     MiniProgramStockStatus:
       type: string

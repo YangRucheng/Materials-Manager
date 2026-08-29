@@ -2614,6 +2614,28 @@ export interface components {
             plan_date: string;
             /** Subitem No */
             subitem_no?: string | null;
+            /** Material Code */
+            material_code?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Plan No */
+            plan_no: string;
+            /** Demand Department */
+            demand_department: string;
+            /** Actual Demand Person */
+            actual_demand_person: string;
+            /** Purchase Responsible */
+            purchase_responsible: string;
+            /** Usage */
+            usage: string;
+            /** Remark */
+            remark?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Salesperson */
+            salesperson?: string | null;
+            /** Images */
+            images?: components["schemas"]["FileObjectRead"][];
         };
         /**
          * MiniProgramStockStatus
