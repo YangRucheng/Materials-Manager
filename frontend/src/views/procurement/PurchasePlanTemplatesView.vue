@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, reactive, ref } from 'vue'
 import {
+  type DataTableBaseColumn,
   type DataTableColumns,
   type FormInst,
   type FormRules,
@@ -10,6 +11,7 @@ import {
 import type { FileObject, MaterialCodeLibrary, PurchasePlanTemplate } from '@/api/generated'
 import { purchasePlanTemplateApi } from '@/api/purchasePlanTemplates'
 import { useAuthStore } from '@/stores/auth'
+import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import FilterExpandButton from '@/components/FilterExpandButton.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
@@ -175,57 +177,167 @@ const rules: FormRules = {
 
 useShiftWheelHorizontalScroll(tableAreaRef)
 
-const columns = computed<DataTableColumns<PurchasePlanTemplate>>(() =>
-  preventTableColumnCompression<PurchasePlanTemplate>([
-    {
+type TemplateColumnKey =
+  | 'material_code'
+  | 'category'
+  | 'urgency'
+  | 'demand_department'
+  | 'name'
+  | 'model_spec'
+  | 'planned_qty'
+  | 'usage'
+  | 'actual_demand_person'
+  | 'purchase_responsible'
+  | 'subitem_no'
+  | 'remark'
+  | 'created_at'
+
+const availableColumns: Array<{
+  key: TemplateColumnKey
+  label: string
+  column: DataTableBaseColumn<PurchasePlanTemplate>
+}> = [
+  {
+    key: 'name',
+    label: '名称',
+    column: {
       title: '名称',
       key: 'name',
       width: tableColumnWidths.name,
       render: (row) => h('strong', row.name),
     },
-    {
+  },
+  {
+    key: 'model_spec',
+    label: '型号规格',
+    column: {
       title: '型号规格',
       key: 'model_spec',
       width: tableColumnWidths.model,
       ellipsis: { tooltip: true },
     },
-    {
+  },
+  {
+    key: 'material_code',
+    label: '物料编码',
+    column: {
+      title: '物料编码',
+      key: 'material_code',
+      width: tableColumnWidths.code,
+      render: (row) => row.material_code || '-',
+    },
+  },
+  {
+    key: 'category',
+    label: '类别',
+    column: {
       title: '类别',
       key: 'category',
       width: tableColumnWidths.status,
       render: (row) => row.category || '-',
     },
-    {
+  },
+  {
+    key: 'planned_qty',
+    label: '计划数量 / 单位',
+    column: {
       title: '计划数量 / 单位',
       key: 'planned_qty',
       width: tableColumnWidths.quantity + tableColumnWidths.unit,
       render: (row) => `${String(row.planned_qty)} ${row.unit_name}`,
     },
-    {
+  },
+  {
+    key: 'usage',
+    label: '用途',
+    column: {
       title: '用途',
       key: 'usage',
       width: tableColumnWidths.text,
       ellipsis: { tooltip: true },
     },
-    {
+  },
+  {
+    key: 'actual_demand_person',
+    label: '提报员工',
+    column: {
       title: '提报员工',
       key: 'actual_demand_person',
       width: tableColumnWidths.person,
     },
-    {
+  },
+  {
+    key: 'purchase_responsible',
+    label: '实际需求人',
+    column: {
       title: '实际需求人',
       key: 'purchase_responsible',
       width: tableColumnWidths.person,
     },
-    {
+  },
+  {
+    key: 'urgency',
+    label: '紧急程度',
+    column: {
+      title: '紧急程度',
+      key: 'urgency',
+      width: tableColumnWidths.status,
+    },
+  },
+  {
+    key: 'demand_department',
+    label: '需求部门',
+    column: {
+      title: '需求部门',
+      key: 'demand_department',
+      width: tableColumnWidths.person,
+    },
+  },
+  {
+    key: 'subitem_no',
+    label: '子项号',
+    column: {
+      title: '子项号',
+      key: 'subitem_no',
+      width: tableColumnWidths.person,
+      render: (row) => row.subitem_no || '-',
+    },
+  },
+  {
+    key: 'remark',
+    label: '备注',
+    column: {
+      title: '备注',
+      key: 'remark',
+      width: tableColumnWidths.text,
+      ellipsis: { tooltip: true },
+      render: (row) => row.remark || '-',
+    },
+  },
+  {
+    key: 'created_at',
+    label: '创建时间',
+    column: {
       title: '创建时间',
       key: 'created_at',
       width: tableColumnWidths.datetime,
       render: (row) => formatShanghaiTime(row.created_at),
     },
-  ]),
+  },
+]
+const visibleColumnKeys = ref<TemplateColumnKey[]>(availableColumns.map((item) => item.key))
+const fieldOptions = availableColumns.map((item) => ({ label: item.label, value: item.key }))
+const columns = computed<DataTableColumns<PurchasePlanTemplate>>(() =>
+  preventTableColumnCompression(
+    availableColumns
+      .filter((item) => visibleColumnKeys.value.includes(item.key))
+      .map((item) => item.column),
+  ),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
+function setVisibleColumnKeys(value: string[]) {
+  visibleColumnKeys.value = value as TemplateColumnKey[]
+}
 
 function rowProps(row: PurchasePlanTemplate) {
   const interactive = auth.can('purchase:write')
@@ -449,6 +561,12 @@ function confirmGenerate(row: PurchasePlanTemplate) {
       </div>
       <div class="filter-extras-actions">
         <div class="filter-actions">
+          <ColumnVisibilityPicker
+            :value="visibleColumnKeys"
+            :options="fieldOptions"
+            storage-key="procurement.purchase-plan-templates.visible-columns.v1"
+            @update:value="setVisibleColumnKeys"
+          />
           <div class="filter-action-buttons">
             <n-button @click="resetFilters">重置</n-button>
             <n-button type="primary" @click="query">查询</n-button>
