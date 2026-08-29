@@ -112,6 +112,12 @@ const router = createRouter({
           meta: { title: '申购计划详情' },
         },
         {
+          path: 'procurement/purchase-plan-templates',
+          name: 'purchase-plan-templates',
+          component: () => import('@/views/procurement/PurchasePlanTemplatesView.vue'),
+          meta: { title: '周期性计划', keepAlive: true },
+        },
+        {
           path: 'procurement/uncoded-materials',
           name: 'uncoded-materials',
           component: () => import('@/views/procurement/UncodedMaterialsView.vue'),

@@ -410,6 +410,57 @@ class PurchaseMaterialImage(Base):
     file: Mapped[FileObject] = relationship(lazy="selectin")
 
 
+class PurchasePlanTemplate(AuditMixin, Base):
+    """周期性计划（申购计划模板）：字段与申购计划对齐，供手动一键生成申购计划。
+
+    生成时复制为 purchase_material（plan_no/plan_date/status 在生成时赋值），
+    模板本身不删除、可反复使用；生成日期取生成当天（北京时间）。
+    """
+
+    __tablename__ = "purchase_plan_template"
+
+    id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
+    material_code: Mapped[str | None] = mapped_column(String(64))
+    category: Mapped[str | None] = mapped_column(String(64))
+    urgency: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="正常", server_default="正常"
+    )
+    demand_department: Mapped[str] = mapped_column(
+        String(128), nullable=False, default="HXNI 检修维护部", server_default="HXNI 检修维护部"
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_spec: Mapped[str] = mapped_column(String(255), nullable=False)
+    unit_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    actual_demand_person: Mapped[str] = mapped_column(String(128), nullable=False)
+    purchase_responsible: Mapped[str] = mapped_column(String(128), nullable=False)
+    planned_qty: Mapped[Decimal] = mapped_column(QTY, nullable=False)
+    usage: Mapped[str] = mapped_column(String(500), nullable=False)
+    subitem_no: Mapped[str | None] = mapped_column(String(64))
+    remark: Mapped[str | None] = mapped_column(String(1000))
+    stock_material_id: Mapped[int | None] = mapped_column(
+        BIGINT_ID, ForeignKey("stock_material.id"), index=True
+    )
+    stock_material: Mapped[StockMaterial | None] = relationship(lazy="selectin")
+    images: Mapped[list[PurchasePlanTemplateImage]] = relationship(
+        back_populates="template",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        order_by="PurchasePlanTemplateImage.sort_order",
+    )
+
+
+class PurchasePlanTemplateImage(Base):
+    __tablename__ = "purchase_plan_template_image"
+
+    plan_id: Mapped[int] = mapped_column(
+        BIGINT_ID, ForeignKey("purchase_plan_template.id", ondelete="CASCADE"), primary_key=True
+    )
+    file_id: Mapped[str] = mapped_column(String(36), ForeignKey("file_object.id"), primary_key=True)
+    sort_order: Mapped[int] = mapped_column(UTINYINT, nullable=False, default=0)
+    template: Mapped[PurchasePlanTemplate] = relationship(back_populates="images")
+    file: Mapped[FileObject] = relationship(lazy="selectin")
+
+
 class PurchaseRequest(AuditMixin, Base):
     __tablename__ = "purchase_request"
 
@@ -683,6 +734,8 @@ __all__ = [
     "MiniProgramUser",
     "PurchaseMaterial",
     "PurchaseMaterialImage",
+    "PurchasePlanTemplate",
+    "PurchasePlanTemplateImage",
     "PurchaseRequest",
     "PurchaseRequestLine",
     "PurchaseRequestLineImage",

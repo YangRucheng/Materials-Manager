@@ -47,6 +47,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     key: 'procurement-group',
     children: [
       link('申购计划', 'purchase-materials'),
+      link('周期性计划', 'purchase-plan-templates'),
       link('未编码物资', 'uncoded-materials'),
       link('物料编码库', 'material-code-library'),
       link('申购记录', 'purchase-records'),

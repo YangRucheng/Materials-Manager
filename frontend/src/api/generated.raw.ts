@@ -1329,6 +1329,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-plan-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_api_v1_purchase_plan_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_api_v1_purchase_plan_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-plan-templates/filter-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filter Options */
+        get: operations["filter_options_api_v1_purchase_plan_templates_filter_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-plan-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Template Detail */
+        get: operations["template_detail_api_v1_purchase_plan_templates__template_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Template */
+        delete: operations["delete_template_api_v1_purchase_plan_templates__template_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Template */
+        patch: operations["update_template_api_v1_purchase_plan_templates__template_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/purchase-plan-templates/{template_id}/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Purchase Plan
+         * @description 把模板完整复制为一条今天的申购计划（plan_date=生成当天），模板本身不删除。
+         */
+        post: operations["generate_purchase_plan_api_v1_purchase_plan_templates__template_id__generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/purchase-record-sync/targets": {
         parameters: {
             query?: never;
@@ -2875,6 +2949,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PurchasePlanTemplateRead] */
+        Page_PurchasePlanTemplateRead_: {
+            /** Items */
+            items: components["schemas"]["PurchasePlanTemplateRead"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[PurchaseRecordRead] */
         Page_PurchaseRecordRead_: {
             /** Items */
@@ -3133,6 +3218,144 @@ export interface components {
          * @enum {string}
          */
         PurchasePlanStatus: "正常" | "暂不申购" | "已归档";
+        /** PurchasePlanTemplateCreate */
+        PurchasePlanTemplateCreate: {
+            /** Material Code */
+            material_code?: string | null;
+            /** Category */
+            category?: string | null;
+            /**
+             * Urgency
+             * @default 正常
+             */
+            urgency: string;
+            /**
+             * Demand Department
+             * @default HXNI 检修维护部
+             */
+            demand_department: string;
+            /** Name */
+            name: string;
+            /** Model Spec */
+            model_spec: string;
+            /** Unit Name */
+            unit_name: string;
+            /** Actual Demand Person */
+            actual_demand_person?: string | null;
+            /** Purchase Responsible */
+            purchase_responsible?: string | null;
+            /** Planned Qty */
+            planned_qty: number | string;
+            /** Usage */
+            usage: string;
+            /** Subitem No */
+            subitem_no?: string | null;
+            /** Remark */
+            remark?: string | null;
+            /** Stock Material Id */
+            stock_material_id?: number | null;
+            /** Image Ids */
+            image_ids?: string[];
+        };
+        /** PurchasePlanTemplateFilterOptions */
+        PurchasePlanTemplateFilterOptions: {
+            /** Actual Demand Persons */
+            actual_demand_persons: string[];
+            /** Purchase Responsibles */
+            purchase_responsibles: string[];
+            /** Categories */
+            categories: string[];
+        };
+        /** PurchasePlanTemplateRead */
+        PurchasePlanTemplateRead: {
+            /** Id */
+            id: number;
+            /** Material Code */
+            material_code?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Urgency */
+            urgency: string;
+            /** Demand Department */
+            demand_department: string;
+            /** Name */
+            name: string;
+            /** Model Spec */
+            model_spec: string;
+            /** Unit Name */
+            unit_name: string;
+            /** Actual Demand Person */
+            actual_demand_person: string;
+            /** Purchase Responsible */
+            purchase_responsible: string;
+            /** Planned Qty */
+            planned_qty: string;
+            /** Usage */
+            usage: string;
+            /** Subitem No */
+            subitem_no?: string | null;
+            /** Remark */
+            remark?: string | null;
+            /** Stock Material Id */
+            stock_material_id?: number | null;
+            /** Stock Material Name */
+            stock_material_name?: string | null;
+            /** Images */
+            images: components["schemas"]["FileObjectRead"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** PurchasePlanTemplateUpdate */
+        PurchasePlanTemplateUpdate: {
+            /** Material Code */
+            material_code?: string | null;
+            /** Category */
+            category?: string | null;
+            /**
+             * Urgency
+             * @default 正常
+             */
+            urgency: string;
+            /**
+             * Demand Department
+             * @default HXNI 检修维护部
+             */
+            demand_department: string;
+            /** Name */
+            name: string;
+            /** Model Spec */
+            model_spec: string;
+            /** Unit Name */
+            unit_name: string;
+            /** Actual Demand Person */
+            actual_demand_person?: string | null;
+            /** Purchase Responsible */
+            purchase_responsible?: string | null;
+            /** Planned Qty */
+            planned_qty: number | string;
+            /** Usage */
+            usage: string;
+            /** Subitem No */
+            subitem_no?: string | null;
+            /** Remark */
+            remark?: string | null;
+            /** Stock Material Id */
+            stock_material_id?: number | null;
+            /** Image Ids */
+            image_ids?: string[];
+            /** Version */
+            version: number;
+        };
         /** PurchasePlanVersion */
         PurchasePlanVersion: {
             /** Id */
@@ -9661,6 +9884,493 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseRecordRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_templates_api_v1_purchase_plan_templates_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
+                keyword?: string | null;
+                /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
+                name?: string | null;
+                /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
+                model_spec?: string | null;
+                /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
+                actual_demand_person?: string | null;
+                /** @description 可使用 | 或 ｜ 分隔多个关键词，同一参数内匹配任意关键词 */
+                purchase_responsible?: string | null;
+                category?: string | null;
+                sort_by?: string | null;
+                sort_order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PurchasePlanTemplateRead_"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    create_template_api_v1_purchase_plan_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchasePlanTemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchasePlanTemplateRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    filter_options_api_v1_purchase_plan_templates_filter_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchasePlanTemplateFilterOptions"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    template_detail_api_v1_purchase_plan_templates__template_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchasePlanTemplateRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    delete_template_api_v1_purchase_plan_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+            };
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    update_template_api_v1_purchase_plan_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchasePlanTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchasePlanTemplateRead"];
+                };
+            };
+            /** @description 业务校验失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 未认证或凭证无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 权限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 版本、状态或业务数据冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 请求参数校验失败 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    generate_purchase_plan_api_v1_purchase_plan_templates__template_id__generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseMaterialRead"];
                 };
             };
             /** @description 业务校验失败 */
