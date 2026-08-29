@@ -1,0 +1,106 @@
+name: Go 后端 MySQL 接口测试
+
+# 真实 MySQL 方言下的完整验证：初始化数据库 → 启动 Go 后端 → 逐接口扫描 + 集成测试 + e2e 主流程。
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "server/**"
+      - "example/database/**"
+      - ".github/workflows/go-mysql-test.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - "example/database/**"
+      - ".github/workflows/go-mysql-test.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-mysql-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: MySQL 逐接口测试
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: spare_parts
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebp-dev default-mysql-client
+
+      - name: 初始化数据库（init.sql）
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot spare_parts < example/database/init.sql
+          echo "数据库初始化完成"
+
+      - name: 构建 Go 后端
+        working-directory: server
+        run: CGO_ENABLED=1 go build -o /tmp/mm-server ./cmd/server
+
+      - name: 启动后端并健康检查
+        env:
+          APP_DATABASE_URL: "mysql+asyncmy://root:root@127.0.0.1:3306/spare_parts?charset=utf8mb4"
+          APP_JWT_SECRET: "mysql-test-secret-that-is-long-enough-123456"
+          APP_WECHAT_MINI_PROGRAM_APP_ID: "wx-test-primary,wx-test-secondary"
+          APP_WECHAT_MINI_PROGRAM_APP_SECRET: "test-primary-secret,test-secondary-secret"
+          APP_UPLOAD_DIR: "/tmp/mm-uploads"
+          APP_LOG_DIR: "/tmp/mm-logs"
+          APP_TEMPLATE_DIR: "${{ github.workspace }}/server/templates"
+        run: |
+          set -e
+          /tmp/mm-server > /tmp/mm-server.log 2>&1 &
+          echo $! > /tmp/mm-server.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then
+              echo "后端就绪"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/health > /dev/null
+
+      - name: 集成测试（MySQL 方言，每测试独立库 + init.sql 建表）
+        working-directory: server
+        env:
+          TEST_DATABASE_URL: "mysql+asyncmy://root:root@127.0.0.1:3306/spare_parts?charset=utf8mb4"
+        run: go test ./... -count=1
+
+      - name: 逐接口扫描（openapi 全路由真实请求）
+        working-directory: server
+        env:
+          DSH_CONTRACT_URL: "http://127.0.0.1:8000"
+        run: go test ./test/ -run TestMySQLContractSweep -v -count=1
+
+      - name: 主流程 e2e 模拟（真实 MySQL）
+        env:
+          E2E_BASE_URL: "http://127.0.0.1:8000"
+        run: python server/scripts/e2e_simulation.py
+
+      - name: 停止后端
+        run: kill $(cat /tmp/mm-server.pid) 2>/dev/null || true
