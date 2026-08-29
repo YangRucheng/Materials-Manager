@@ -11,6 +11,7 @@ from app.api.v1 import (
     material_code_library,
     mini_program,
     purchase_materials,
+    purchase_plan_templates,
     purchase_record_sync,
     purchase_requests,
     secondary_warehouse,
@@ -41,6 +42,7 @@ router.include_router(secondary_warehouse.router)
 router.include_router(mini_program.management_router)
 router.include_router(mini_program.mini_router)
 router.include_router(purchase_materials.router)
+router.include_router(purchase_plan_templates.router)
 router.include_router(purchase_record_sync.router)
 router.include_router(purchase_requests.router)
 router.include_router(share.router)

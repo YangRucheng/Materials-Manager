@@ -10,6 +10,9 @@ import type {
   PurchaseMaterial,
   PurchaseMaterialBatchUpdate,
   PurchaseMaterialWrite,
+  PurchasePlanTemplate,
+  PurchasePlanTemplateUpdate,
+  PurchasePlanTemplateWrite,
   PurchaseRecordBatchUpdate,
   PurchaseRecordWrite,
   ReplenishmentDraftWrite,
@@ -35,6 +38,7 @@ import {
   nextIds,
   operations,
   purchaseMaterials,
+  purchasePlanTemplates,
   purchaseRequests,
   stockMaterials,
   users,
@@ -1667,5 +1671,128 @@ export const handlers = [
     if (!request.headers.get('Authorization')) return error(401, 'UNAUTHORIZED', '请先登录')
     if (!shares.delete(String(params.token))) return error(400, 'NOT_FOUND', '分享链接不存在')
     return new HttpResponse(null, { status: 204 })
+  }),
+  http.get(`${api}/purchase-plan-templates`, ({ request }) => {
+    const url = new URL(request.url)
+    const name = url.searchParams.get('name')
+    const modelSpec = url.searchParams.get('model_spec')
+    const actualDemandPerson = url.searchParams.get('actual_demand_person')
+    const purchaseResponsible = url.searchParams.get('purchase_responsible')
+    const category = url.searchParams.get('category')
+    const sortBy = url.searchParams.get('sort_by')
+    const sortOrder = url.searchParams.get('sort_order') || 'asc'
+    const filtered = purchasePlanTemplates.filter(
+      (x) =>
+        matchesOrSearch(x.name, name) &&
+        matchesOrSearch(x.model_spec, modelSpec) &&
+        matchesOrSearch(x.actual_demand_person, actualDemandPerson) &&
+        matchesOrSearch(x.purchase_responsible, purchaseResponsible) &&
+        (!category || x.category === category),
+    )
+    return HttpResponse.json(
+      page(sortBy ? sortResultBy(filtered, sortBy, sortOrder) : filtered, url),
+    )
+  }),
+  http.get(`${api}/purchase-plan-templates/filter-options`, () =>
+    HttpResponse.json({
+      actual_demand_persons: [...new Set(purchasePlanTemplates.map((x) => x.actual_demand_person))],
+      purchase_responsibles: [...new Set(purchasePlanTemplates.map((x) => x.purchase_responsible))],
+      categories: [
+        ...new Set(
+          purchasePlanTemplates.map((x) => x.category).filter((value): value is string => !!value),
+        ),
+      ],
+    }),
+  ),
+  http.get(`${api}/purchase-plan-templates/:id`, ({ params }) => {
+    const item = purchasePlanTemplates.find((x) => x.id === Number(params.id))
+    return item ? HttpResponse.json(item) : error(400, 'NOT_FOUND', '周期性计划不存在')
+  }),
+  http.post(`${api}/purchase-plan-templates`, async ({ request }) => {
+    const body = (await request.json()) as PurchasePlanTemplateWrite
+    const responsible = body.purchase_responsible || '\\'
+    const item: PurchasePlanTemplate = {
+      id: nextIds.template++,
+      material_code: body.material_code || undefined,
+      category: body.category || undefined,
+      urgency: body.urgency || '正常',
+      demand_department: body.demand_department || 'HXNI 检修维护部',
+      name: body.name,
+      model_spec: body.model_spec,
+      unit_name: body.unit_name.trim(),
+      actual_demand_person: body.actual_demand_person || responsible,
+      purchase_responsible: responsible,
+      planned_qty: String(body.planned_qty),
+      usage: body.usage,
+      subitem_no: body.subitem_no,
+      remark: body.remark,
+      stock_material_id: body.stock_material_id,
+      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)
+        ?.name,
+      images: [],
+      created_at: now(),
+      updated_at: now(),
+      version: 1,
+    }
+    purchasePlanTemplates.push(item)
+    return HttpResponse.json(item, { status: 201 })
+  }),
+  http.patch(`${api}/purchase-plan-templates/:id`, async ({ params, request }) => {
+    const item = purchasePlanTemplates.find((x) => x.id === Number(params.id))
+    if (!item) return error(400, 'NOT_FOUND', '周期性计划不存在')
+    const body = (await request.json()) as PurchasePlanTemplateUpdate
+    if (body.version !== item.version)
+      return error(409, 'VERSION_CONFLICT', '数据已被其他用户修改，请刷新后重试')
+    const responsible = body.purchase_responsible || item.purchase_responsible
+    Object.assign(item, body, {
+      unit_name: body.unit_name.trim(),
+      actual_demand_person: body.actual_demand_person || responsible,
+      purchase_responsible: responsible,
+      stock_material_name: stockMaterials.find((stock) => stock.id === body.stock_material_id)
+        ?.name,
+      version: item.version + 1,
+      updated_at: now(),
+    })
+    return HttpResponse.json(item)
+  }),
+  http.delete(`${api}/purchase-plan-templates/:id`, ({ params }) => {
+    const index = purchasePlanTemplates.findIndex((x) => x.id === Number(params.id))
+    if (index < 0) return error(400, 'NOT_FOUND', '周期性计划不存在')
+    purchasePlanTemplates.splice(index, 1)
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.post(`${api}/purchase-plan-templates/:id/generate`, ({ params }) => {
+    const template = purchasePlanTemplates.find((x) => x.id === Number(params.id))
+    if (!template) return error(400, 'NOT_FOUND', '周期性计划不存在')
+    const today = new Date().toISOString().slice(0, 10)
+    const planIndex = purchaseMaterials.filter((item) => item.plan_date === today).length + 1
+    const material: PurchaseMaterial = {
+      id: nextIds.purchase++,
+      plan_no: `PLAN-${today.replace(/-/g, '')}-${String(planIndex).padStart(3, '0')}`,
+      plan_date: today,
+      material_code: template.material_code,
+      category: template.category,
+      urgency: template.urgency,
+      demand_department: template.demand_department,
+      name: template.name,
+      model_spec: template.model_spec,
+      unit_name: template.unit_name,
+      actual_demand_person: template.actual_demand_person,
+      purchase_responsible: template.purchase_responsible,
+      planned_qty: template.planned_qty,
+      usage: template.usage,
+      subitem_no: template.subitem_no,
+      remark: template.remark,
+      stock_material_id: template.stock_material_id,
+      stock_material_name: template.stock_material_name,
+      status: '正常',
+      moved_to_record: false,
+      images: template.images,
+      created_at: now(),
+      updated_at: now(),
+      version: 1,
+    }
+    purchaseMaterials.push(material)
+    return HttpResponse.json(material)
   }),
 ]

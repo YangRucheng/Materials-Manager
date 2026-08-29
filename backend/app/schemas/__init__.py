@@ -1048,6 +1048,93 @@ class PurchaseMaterialRead(ReadModel):
     version: int
 
 
+class PurchasePlanTemplateBase(RequestModel):
+    """周期性计划（申购计划模板）公共字段：与申购计划业务字段一致，无 plan_no/plan_date/status。"""
+
+    material_code: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    category: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    urgency: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)
+    ] = "正常"
+    demand_department: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ] = "HXNI 检修维护部"
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+    model_spec: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+    ]
+    unit_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)
+    ]
+    actual_demand_person: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    purchase_responsible: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+        | None
+    ) = None
+    planned_qty: PositiveQuantity
+    usage: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+    subitem_no: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None
+    ) = None
+    remark: str | None = Field(default=None, max_length=1000)
+    stock_material_id: int | None = None
+    image_ids: list[FileId] = Field(default_factory=list, max_length=9)
+
+    @field_validator("image_ids")
+    @classmethod
+    def unique_images(cls, value: list[str]) -> list[str]:
+        return _ensure_unique_image_ids(value)
+
+    @field_validator("material_code", "category", mode="before")
+    @classmethod
+    def empty_optional_text_to_none(cls, value: object) -> object:
+        return _empty_string_to_none(value)
+
+
+class PurchasePlanTemplateCreate(PurchasePlanTemplateBase):
+    pass
+
+
+class PurchasePlanTemplateUpdate(PurchasePlanTemplateBase):
+    version: int
+
+
+class PurchasePlanTemplateRead(ReadModel):
+    id: int
+    material_code: str | None = None
+    category: str | None = None
+    urgency: str
+    demand_department: str
+    name: str
+    model_spec: str
+    unit_name: str
+    actual_demand_person: str
+    purchase_responsible: str
+    planned_qty: Decimal
+    usage: str
+    subitem_no: str | None = None
+    remark: str | None = None
+    stock_material_id: int | None = None
+    stock_material_name: str | None = None
+    images: list[FileObjectRead]
+    created_at: datetime
+    updated_at: datetime
+    version: int
+
+
+class PurchasePlanTemplateFilterOptions(ReadModel):
+    actual_demand_persons: list[str]
+    purchase_responsibles: list[str]
+    categories: list[str]
+
+
 class LinkStockMaterialRequest(RequestModel):
     stock_material_id: int
     version: int | None = None

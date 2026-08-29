@@ -69,6 +69,11 @@ export type PurchaseRecordResultExportRequest =
   components['schemas']['PurchaseRecordResultExportRequest']
 export type PurchaseMaterial = components['schemas']['PurchaseMaterialRead']
 export type PurchaseRecord = components['schemas']['PurchaseRecordRead']
+export type PurchasePlanTemplate = components['schemas']['PurchasePlanTemplateRead']
+export type PurchasePlanTemplateWrite = components['schemas']['PurchasePlanTemplateCreate']
+export type PurchasePlanTemplateUpdate = components['schemas']['PurchasePlanTemplateUpdate']
+export type PurchasePlanTemplateFilterOptions =
+  components['schemas']['PurchasePlanTemplateFilterOptions']
 export type VersionInfo = components['schemas']['VersionInfoRead']
 export type ShareType = components['schemas']['ShareType']
 export type ShareExpiryOption = components['schemas']['ShareExpiryOption']
