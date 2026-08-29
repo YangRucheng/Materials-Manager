@@ -196,30 +196,33 @@ func SearchPurchaseMaterials(db *gorm.DB, keyword, searchField, searchValue, nam
 
 // PurchaseFilterOptions 计划筛选下拉。
 func PurchaseFilterOptions(db *gorm.DB, moved *bool, status []string) ([]string, []string, []string, []string, *apperrors.AppError) {
-	q := db.Model(&models.PurchaseMaterial{})
-	if moved != nil {
-		sub := db.Model(&models.PurchaseRequestLine{}).
-			Select("1").Where("purchase_material_id = purchase_material.id")
-		if *moved {
-			q = q.Where("EXISTS (?)", sub)
-		} else {
-			q = q.Where("NOT EXISTS (?)", sub)
+	build := func() *gorm.DB {
+		q := db.Model(&models.PurchaseMaterial{})
+		if moved != nil {
+			sub := db.Model(&models.PurchaseRequestLine{}).
+				Select("1").Where("purchase_material_id = purchase_material.id")
+			if *moved {
+				q = q.Where("EXISTS (?)", sub)
+			} else {
+				q = q.Where("NOT EXISTS (?)", sub)
+			}
 		}
-	}
-	if len(status) > 0 {
-		q = q.Where("status IN ?", status)
+		if len(status) > 0 {
+			q = q.Where("status IN ?", status)
+		}
+		return q
 	}
 	var persons, responsibles, subitems, categories []string
-	if err := q.Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
+	if err := build().Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
 		return nil, nil, nil, nil, DatabaseError(err)
 	}
-	if err := q.Distinct().Order("purchase_responsible").Pluck("purchase_responsible", &responsibles).Error; err != nil {
+	if err := build().Distinct().Order("purchase_responsible").Pluck("purchase_responsible", &responsibles).Error; err != nil {
 		return nil, nil, nil, nil, DatabaseError(err)
 	}
-	if err := q.Distinct().Order("subitem_no").Pluck("subitem_no", &subitems).Error; err != nil {
+	if err := build().Distinct().Order("subitem_no").Pluck("subitem_no", &subitems).Error; err != nil {
 		return nil, nil, nil, nil, DatabaseError(err)
 	}
-	if err := q.Distinct().Order("category").Pluck("category", &categories).Error; err != nil {
+	if err := build().Distinct().Order("category").Pluck("category", &categories).Error; err != nil {
 		return nil, nil, nil, nil, DatabaseError(err)
 	}
 	return persons, responsibles, subitems, categories, nil
@@ -922,14 +925,14 @@ func SearchTemplates(db *gorm.DB, keyword, name, modelSpec, actualDemandPerson, 
 // TemplateFilterOptions 模板筛选下拉。
 func TemplateFilterOptions(db *gorm.DB) ([]string, []string, []string, *apperrors.AppError) {
 	var persons, responsibles, categories []string
-	q := db.Model(&models.PurchasePlanTemplate{})
-	if err := q.Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
+	build := func() *gorm.DB { return db.Model(&models.PurchasePlanTemplate{}) }
+	if err := build().Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
 		return nil, nil, nil, DatabaseError(err)
 	}
-	if err := q.Distinct().Order("purchase_responsible").Pluck("purchase_responsible", &responsibles).Error; err != nil {
+	if err := build().Distinct().Order("purchase_responsible").Pluck("purchase_responsible", &responsibles).Error; err != nil {
 		return nil, nil, nil, DatabaseError(err)
 	}
-	if err := q.Distinct().Order("category").Pluck("category", &categories).Error; err != nil {
+	if err := build().Distinct().Order("category").Pluck("category", &categories).Error; err != nil {
 		return nil, nil, nil, DatabaseError(err)
 	}
 	return persons, responsibles, categories, nil
@@ -1132,6 +1135,27 @@ var shareRecordKeys = map[string]bool{
 	"subitem_no": true, "usage": true, "status": true, "images": true,
 }
 
+// ShareTypeValue 把 DB 存的枚举名（如 PURCHASE_PLAN）转为 API 值（purchase_plan）；值本身则原样。
+func ShareTypeValue(name string) string {
+	if name == domain.SharePurchasePlan || name == domain.SharePurchaseRecord {
+		return name
+	}
+	return strings.ToLower(name)
+}
+
+// shareTypeValue 把 DB 存的枚举名（如 PURCHASE_PLAN）转为 API 值（purchase_plan）；值本身则原样。
+func shareTypeValue(name string) string {
+	if name == domain.SharePurchasePlan || name == domain.SharePurchaseRecord {
+		return name
+	}
+	return strings.ToLower(name)
+}
+
+// shareTypeName 把 API 值转 DB 枚举名（MySQL ENUM 存大写名）。
+func shareTypeName(value string) string {
+	return strings.ToUpper(value)
+}
+
 func shareAllowedKeys(shareType string) map[string]bool {
 	if shareType == domain.SharePurchasePlan {
 		return sharePlanKeys
@@ -1181,7 +1205,7 @@ func CreateShare(db *gorm.DB, shareType string, itemIDs []int64, expiresIn strin
 	}
 	share := models.ShareLink{
 		Token:     security.UUID7String(),
-		ShareType: shareType,
+		ShareType: shareTypeName(shareType),
 		ItemIDs:   mustJSON(ids),
 		Columns:   columnsJSON,
 		ExpiresAt: expiresAt,
@@ -1238,8 +1262,9 @@ func GetPublicShare(db *gorm.DB, token string) (*models.ShareLink, map[string]an
 	var ids []int64
 	_ = jsonUnmarshal(share.ItemIDs, &ids)
 	// 组装 items（实时快照）
+	storedType := shareTypeValue(share.ShareType)
 	var items []map[string]any
-	if share.ShareType == domain.SharePurchasePlan {
+	if storedType == domain.SharePurchasePlan {
 		var materials []models.PurchaseMaterial
 		db.Where("id IN ?", ids).Find(&materials)
 		byID := map[int64]models.PurchaseMaterial{}
@@ -1305,7 +1330,7 @@ func UpdateShare(db *gorm.DB, token string, userID int64, isSuper bool, columns 
 	if !isSuper && (share.CreatedBy == nil || *share.CreatedBy != userID) {
 		return nil, apperrors.New("FORBIDDEN", "没有执行此操作的权限", 403, nil)
 	}
-	if appErr := validateShareColumns(share.ShareType, columns); appErr != nil {
+	if appErr := validateShareColumns(shareTypeValue(share.ShareType), columns); appErr != nil {
 		return nil, appErr
 	}
 	updates := map[string]any{"columns": mustJSON(columns), "updated_at": models.UTCNow()}

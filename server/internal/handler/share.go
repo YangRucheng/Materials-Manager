@@ -30,7 +30,7 @@ func shareRead(share *modelsShareLink) *dto.ShareRead {
 	var columns []string
 	_ = service.DecodeJSON(share.Columns, &columns)
 	return &dto.ShareRead{
-		Token: share.Token, ShareType: share.ShareType,
+		Token: share.Token, ShareType: service.ShareTypeValue(share.ShareType),
 		ItemCount: shareItemCount(share), ExpiresAt: expires,
 		CreatedAt: serialize.UTCZTime(share.CreatedAt), Columns: columns,
 	}
@@ -75,7 +75,7 @@ func (h *ShareHandler) List(c *gin.Context) {
 			createdBy = share.CreatedBy
 		}
 		items = append(items, dto.ShareListRead{
-			Token: share.Token, ShareType: share.ShareType,
+			Token: share.Token, ShareType: service.ShareTypeValue(share.ShareType),
 			ItemCount: shareItemCount(&share), ExpiresAt: expires,
 			CreatedAt: serialize.UTCZTime(share.CreatedAt), CreatedBy: createdBy,
 			CreatedByName: names[i], Columns: columns,
@@ -113,7 +113,7 @@ func (h *ShareHandler) GetPublic(c *gin.Context) {
 	columns := resolveShareColumns(share)
 	items := extra["items"].([]map[string]any)
 	respond.JSON(c, http.StatusOK, dto.SharePublicView{
-		ShareType: share.ShareType, Columns: columns, Items: toAnySlice(items),
+		ShareType: service.ShareTypeValue(share.ShareType), Columns: columns, Items: toAnySlice(items),
 	})
 }
 
@@ -124,7 +124,7 @@ func resolveShareColumns(share *modelsShareLink) []string {
 		return columns
 	}
 	// 默认集合：全部列去掉「状态」
-	allowed := shareAllowedKeys(share.ShareType)
+	allowed := shareAllowedKeys(service.ShareTypeValue(share.ShareType))
 	out := make([]string, 0, len(allowed))
 	for key := range allowed {
 		if key == "status" {

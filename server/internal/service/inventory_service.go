@@ -464,40 +464,42 @@ func mapTxError(err error) *apperrors.AppError {
 
 // SearchOperations 流水列表筛选。
 func SearchOperations(db *gorm.DB, operationNo, operationType, materialName, sourceType string, startAt, endAt *time.Time, page, pageSize int) ([]models.StockOperation, int, *apperrors.AppError) {
-	q := db.Model(&models.StockOperation{})
-	if operationNo != "" {
-		q = q.Where("operation_no LIKE ?", "%"+operationNo+"%")
-	}
-	if operationType != "" {
-		q = q.Where("operation_type = ?", operationType)
-	}
-	if materialName != "" {
-		if clause, args := ContainsAnyClause(
-			[]string{"l.material_name_snapshot", "l.model_spec_snapshot"}, materialName); clause != "" {
-			q = q.Joins("JOIN stock_operation_line l ON l.operation_id = stock_operation.id").
-				Where(clause, args...)
+	build := func() *gorm.DB {
+		q2 := db.Model(&models.StockOperation{})
+		if operationNo != "" {
+			q2 = q2.Where("operation_no LIKE ?", "%"+operationNo+"%")
 		}
+		if operationType != "" {
+			q2 = q2.Where("operation_type = ?", operationType)
+		}
+		if materialName != "" {
+			if clause, args := ContainsAnyClause(
+				[]string{"l.material_name_snapshot", "l.model_spec_snapshot"}, materialName); clause != "" {
+				q2 = q2.Joins("JOIN stock_operation_line l ON l.operation_id = stock_operation.id").
+					Where(clause, args...)
+			}
+		}
+		if sourceType == domain.SourceMiniProgram {
+			q2 = q2.Where("mini_program_user_name_snapshot IS NOT NULL")
+		} else if sourceType == domain.SourceManual {
+			q2 = q2.Where("source_type = ? AND mini_program_user_name_snapshot IS NULL", domain.SourceManual)
+		} else if sourceType != "" {
+			q2 = q2.Where("source_type = ?", sourceType)
+		}
+		if startAt != nil {
+			q2 = q2.Where("occurred_at >= ?", *startAt)
+		}
+		if endAt != nil {
+			q2 = q2.Where("occurred_at <= ?", *endAt)
+		}
+		return q2.Distinct("stock_operation.id")
 	}
-	if sourceType == domain.SourceMiniProgram {
-		q = q.Where("mini_program_user_name_snapshot IS NOT NULL")
-	} else if sourceType == domain.SourceManual {
-		q = q.Where("source_type = ? AND mini_program_user_name_snapshot IS NULL", domain.SourceManual)
-	} else if sourceType != "" {
-		q = q.Where("source_type = ?", sourceType)
-	}
-	if startAt != nil {
-		q = q.Where("occurred_at >= ?", *startAt)
-	}
-	if endAt != nil {
-		q = q.Where("occurred_at <= ?", *endAt)
-	}
-	q = q.Distinct("stock_operation.id")
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := build().Count(&total).Error; err != nil {
 		return nil, 0, DatabaseError(err)
 	}
 	var items []models.StockOperation
-	if err := q.Preload("Lines").
+	if err := build().Preload("Lines").
 		Order("occurred_at DESC, id DESC").
 		Offset((page - 1) * pageSize).Limit(pageSize).Find(&items).Error; err != nil {
 		return nil, 0, DatabaseError(err)
@@ -521,29 +523,31 @@ type InventoryBalanceItem struct {
 
 // InventoryBalances 库存余额分页查询。
 func InventoryBalances(db *gorm.DB, keyword string, minimumQty, maximumQty *decimal.Decimal, lowStockOnly bool, page, pageSize int, materialID *int64) ([]InventoryBalanceItem, int, *apperrors.AppError) {
-	q := db.Model(&models.StockMaterial{}).
-		Joins("JOIN stock_balance ON stock_balance.stock_material_id = stock_material.id").
-		Joins("LEFT JOIN stock_replenishment_policy ON stock_replenishment_policy.stock_material_id = stock_material.id")
-	if materialID != nil {
-		q = q.Where("stock_material.id = ?", *materialID)
+	build := func() *gorm.DB {
+		q2 := db.Model(&models.StockMaterial{}).
+			Joins("JOIN stock_balance ON stock_balance.stock_material_id = stock_material.id").
+			Joins("LEFT JOIN stock_replenishment_policy ON stock_replenishment_policy.stock_material_id = stock_material.id")
+		if materialID != nil {
+			q2 = q2.Where("stock_material.id = ?", *materialID)
+		}
+		if clause, args := ContainsAnyClause(
+			[]string{"stock_material.name", "stock_material.alias", "stock_material.model_spec"}, keyword); clause != "" {
+			q2 = q2.Where(clause, args...)
+		}
+		if minimumQty != nil {
+			q2 = q2.Where("stock_balance.quantity >= ?", minimumQty.String())
+		}
+		if maximumQty != nil {
+			q2 = q2.Where("stock_balance.quantity <= ?", maximumQty.String())
+		}
+		if lowStockOnly {
+			q2 = q2.Where("stock_replenishment_policy.enabled = ?", true).
+				Where("stock_balance.quantity <= stock_replenishment_policy.minimum_qty")
+		}
+		return q2.Distinct("stock_material.id")
 	}
-	if clause, args := ContainsAnyClause(
-		[]string{"stock_material.name", "stock_material.alias", "stock_material.model_spec"}, keyword); clause != "" {
-		q = q.Where(clause, args...)
-	}
-	if minimumQty != nil {
-		q = q.Where("stock_balance.quantity >= ?", minimumQty.String())
-	}
-	if maximumQty != nil {
-		q = q.Where("stock_balance.quantity <= ?", maximumQty.String())
-	}
-	if lowStockOnly {
-		q = q.Where("stock_replenishment_policy.enabled = ?", true).
-			Where("stock_balance.quantity <= stock_replenishment_policy.minimum_qty")
-	}
-	q = q.Distinct("stock_material.id")
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := build().Count(&total).Error; err != nil {
 		return nil, 0, DatabaseError(err)
 	}
 	type balanceRow struct {
@@ -558,7 +562,7 @@ func InventoryBalances(db *gorm.DB, keyword string, minimumQty, maximumQty *deci
 		BalanceUpdated  time.Time
 	}
 	var rows []balanceRow
-	err := q.Select(`stock_material.id AS stock_material_id, stock_material.name, stock_material.alias,
+	err := build().Select(`stock_material.id AS stock_material_id, stock_material.name, stock_material.alias,
 		stock_material.model_spec, stock_material.unit_name,
 		stock_balance.quantity, stock_replenishment_policy.minimum_qty,
 		COALESCE(stock_replenishment_policy.enabled, 0) AS policy_enabled,
