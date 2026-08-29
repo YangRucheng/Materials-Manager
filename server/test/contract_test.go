@@ -15,7 +15,7 @@ import (
 
 // TestOpenAPIContractDrift 校验内嵌 openapi 与 docs/openapi.yaml 一致。
 func TestOpenAPIContractDrift(t *testing.T) {
-	repoDoc, err := os.ReadFile(filepath.Join("..", "docs", "openapi.yaml"))
+	repoDoc, err := os.ReadFile(filepath.Join("..", "..", "docs", "openapi.yaml"))
 	if err != nil {
 		t.Skipf("无法读取 docs/openapi.yaml: %v", err)
 	}
