@@ -8,6 +8,7 @@ import (
 
 	apperrors "github.com/yangrucheng/materials-manager/server/internal/errors"
 	"github.com/yangrucheng/materials-manager/server/internal/handler"
+	"github.com/yangrucheng/materials-manager/server/internal/mcp"
 	"github.com/yangrucheng/materials-manager/server/internal/middleware"
 	"github.com/yangrucheng/materials-manager/server/internal/respond"
 )
@@ -38,6 +39,10 @@ func New(app *handler.App) *gin.Engine {
 }
 
 // RegisterAPI 注册 /api/v1 下的路由（子系统逐步挂载）。
+func mountMCP(r *gin.Engine, app *handler.App) {
+	r.Any("/api/v1/mcp/*path", gin.WrapH(mcp.New(app.Cfg, app.DB, r)))
+	r.Any("/api/v1/mcp", gin.WrapH(mcp.New(app.Cfg, app.DB, r)))
+}
 func RegisterAPI(r *gin.Engine, app *handler.App) {
 	v1 := r.Group("/api/v1")
 	v1.GET("/openapi.json", app.OpenAPIJSON)
@@ -57,4 +62,5 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	handler.RegisterExportJobs(v1, app)
 	handler.RegisterMini(v1, app)
 	handler.RegisterSettings(v1, app)
+	mountMCP(r, app)
 }
