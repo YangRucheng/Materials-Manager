@@ -38,6 +38,9 @@ jobs:
         with:
           go-version-file: server/go.mod
 
+      - name: 安装 libwebp（WebP 预览编码 CGO 依赖）
+        run: sudo apt-get update && sudo apt-get install -y libwebp-dev
+
       - name: 契约漂移测试（内嵌 openapi == docs/openapi.yaml）
         working-directory: server
         run: go test ./test/ -run TestOpenAPIContractDrift -v
