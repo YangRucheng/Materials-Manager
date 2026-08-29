@@ -1,5 +1,5 @@
 // Package database 建立 GORM 连接（MySQL 生产 / SQLite 测试），
-// 语义对齐 backend/app/core/database.py。
+// 与原 Python 实现（backend/app/core/database.py）语义对齐。
 package database
 
 import (

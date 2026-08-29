@@ -1,5 +1,5 @@
 // Package config 加载后端运行配置。环境变量前缀 APP_，变量名与 Python 后端
-// （backend/app/core/config.py）完全一致，保证 docker-compose 环境变量零改动。
+// 与原 Python 实现（backend/app/core/config.py）完全一致，保证 docker-compose 环境变量零改动。
 package config
 
 import (

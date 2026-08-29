@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// UUIDv7 生成单调递增的 UUIDv7（复刻 backend/app/core/identifiers.py 的布局）。
+// UUIDv7 生成单调递增的 UUIDv7（与原 Python 实现的 UUIDv7 布局一致）。
 var (
 	uuid7Mu       sync.Mutex
 	uuid7LastMs   int64 = -1

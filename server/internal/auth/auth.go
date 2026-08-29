@@ -1,4 +1,4 @@
-// Package auth 提供认证与鉴权中间件，复刻 backend/app/core/permissions.py 语义。
+// Package auth 提供认证与鉴权中间件，与原 Python 实现语义一致。
 package auth
 
 import (

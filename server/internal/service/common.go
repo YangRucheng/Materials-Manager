@@ -1,4 +1,4 @@
-// Package service 通用工具函数（等价 backend/app/services/common.py）。
+// Package service 通用工具函数（与原 Python 实现等价）。
 package service
 
 import (

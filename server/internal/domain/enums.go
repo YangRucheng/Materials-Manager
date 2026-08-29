@@ -1,4 +1,4 @@
-// Package domain 提供与 Python backend/app/domain/enums.py 对应的枚举常量。
+// Package domain 提供业务枚举常量（与原 Python 实现对应）。
 // DB 存枚举 NAME；API 输出/入参用 VALUE（部分为中文）。
 package domain
 

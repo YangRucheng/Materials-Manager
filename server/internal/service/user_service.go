@@ -1,4 +1,4 @@
-// Package service 实现业务逻辑（等价 backend/app/services/*.py）。
+// Package service 实现业务逻辑。
 package service
 
 import (

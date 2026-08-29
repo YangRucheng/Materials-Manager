@@ -1,5 +1,5 @@
 // Package errors 定义统一业务错误类型与状态码映射，等价于
-// backend/app/core/errors.py 的 _DEFAULT_STATUS_BY_CODE 与 AppError。
+// 与原 Python 实现 _DEFAULT_STATUS_BY_CODE 与 AppError 语义一致。
 package errors
 
 import (

@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 复刻 backend/app/core/middleware.py 的 RefererCORSMiddleware：
+// 与原 Python 实现的 RefererCORSMiddleware 语义一致：
 // Referer 优先，Origin 回退；仅回显白名单内的来源；OPTIONS 预检直接返回。
 var allowMethods = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
 var exposeHeaders = "Content-Disposition, X-Request-ID, X-Response-Time"
