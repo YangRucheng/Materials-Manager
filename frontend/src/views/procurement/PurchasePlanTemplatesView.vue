@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -13,6 +13,7 @@ import { purchasePlanTemplateApi } from '@/api/purchasePlanTemplates'
 import { useAuthStore } from '@/stores/auth'
 import ColumnVisibilityPicker from '@/components/ColumnVisibilityPicker.vue'
 import FilterExpandButton from '@/components/FilterExpandButton.vue'
+import ImageThumbnails from '@/components/ImageThumbnails.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import MaterialCodeSelector from '@/components/MaterialCodeSelector.vue'
 import MaterialSelector from '@/components/MaterialSelector.vue'
@@ -188,10 +189,11 @@ type TemplateColumnKey =
   | 'model_spec'
   | 'planned_qty'
   | 'unit_name'
-  | 'usage'
   | 'actual_demand_person'
   | 'purchase_responsible'
   | 'subitem_no'
+  | 'usage'
+  | 'images'
   | 'remark'
   | 'created_at'
 
@@ -200,26 +202,6 @@ const availableColumns: Array<{
   label: string
   column: DataTableBaseColumn<PurchasePlanTemplate>
 }> = [
-  {
-    key: 'name',
-    label: '名称',
-    column: {
-      title: '名称',
-      key: 'name',
-      width: tableColumnWidths.name,
-      render: (row) => renderTwoLineText(row.name),
-    },
-  },
-  {
-    key: 'model_spec',
-    label: '型号规格',
-    column: {
-      title: '型号规格',
-      key: 'model_spec',
-      width: tableColumnWidths.model,
-      render: (row) => renderTwoLineText(row.model_spec),
-    },
-  },
   {
     key: 'material_code',
     label: '物料编码',
@@ -238,56 +220,6 @@ const availableColumns: Array<{
       key: 'category',
       width: tableColumnWidths.status,
       render: (row) => renderTwoLineText(row.category, '-'),
-    },
-  },
-  {
-    key: 'planned_qty',
-    label: '计划数量',
-    column: {
-      title: '计划数量',
-      key: 'planned_qty',
-      width: tableColumnWidths.quantity,
-      render: (row) => renderTwoLineText(row.planned_qty, '-'),
-    },
-  },
-  {
-    key: 'unit_name',
-    label: '计量单位',
-    column: {
-      title: '计量单位',
-      key: 'unit_name',
-      width: tableColumnWidths.unit,
-      render: (row) => renderTwoLineText(row.unit_name, '-'),
-    },
-  },
-  {
-    key: 'usage',
-    label: '用途',
-    column: {
-      title: '用途',
-      key: 'usage',
-      width: tableColumnWidths.text,
-      render: (row) => renderTwoLineText(row.usage, '-'),
-    },
-  },
-  {
-    key: 'actual_demand_person',
-    label: '提报员工',
-    column: {
-      title: '提报员工',
-      key: 'actual_demand_person',
-      width: tableColumnWidths.person,
-      render: (row) => renderTwoLineText(row.actual_demand_person, '-'),
-    },
-  },
-  {
-    key: 'purchase_responsible',
-    label: '实际需求人',
-    column: {
-      title: '实际需求人',
-      key: 'purchase_responsible',
-      width: tableColumnWidths.person,
-      render: (row) => renderTwoLineText(row.purchase_responsible, '-'),
     },
   },
   {
@@ -311,6 +243,66 @@ const availableColumns: Array<{
     },
   },
   {
+    key: 'name',
+    label: '名称',
+    column: {
+      title: '名称',
+      key: 'name',
+      width: tableColumnWidths.name,
+      render: (row) => renderTwoLineText(row.name),
+    },
+  },
+  {
+    key: 'model_spec',
+    label: '型号规格',
+    column: {
+      title: '型号规格',
+      key: 'model_spec',
+      width: tableColumnWidths.model,
+      render: (row) => renderTwoLineText(row.model_spec),
+    },
+  },
+  {
+    key: 'planned_qty',
+    label: '计划数量',
+    column: {
+      title: '计划数量',
+      key: 'planned_qty',
+      width: tableColumnWidths.quantity,
+      render: (row) => renderTwoLineText(row.planned_qty, '-'),
+    },
+  },
+  {
+    key: 'unit_name',
+    label: '计量单位',
+    column: {
+      title: '计量单位',
+      key: 'unit_name',
+      width: tableColumnWidths.unit,
+      render: (row) => renderTwoLineText(row.unit_name, '-'),
+    },
+  },
+  {
+    key: 'actual_demand_person',
+    label: '提报员工',
+    column: {
+      title: '提报员工',
+      key: 'actual_demand_person',
+      width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.actual_demand_person, '-'),
+    },
+  },
+  {
+    key: 'purchase_responsible',
+    label: '实际需求人',
+    column: {
+      title: '实际需求人',
+      key: 'purchase_responsible',
+      width: tableColumnWidths.person,
+      render: (row) => renderTwoLineText(row.purchase_responsible, '-'),
+    },
+  },
+  {
     key: 'subitem_no',
     label: '子项号',
     column: {
@@ -318,6 +310,26 @@ const availableColumns: Array<{
       key: 'subitem_no',
       width: tableColumnWidths.person,
       render: (row) => renderTwoLineText(row.subitem_no, '-'),
+    },
+  },
+  {
+    key: 'usage',
+    label: '用途',
+    column: {
+      title: '用途',
+      key: 'usage',
+      width: tableColumnWidths.text,
+      render: (row) => renderTwoLineText(row.usage, '-'),
+    },
+  },
+  {
+    key: 'images',
+    label: '图片',
+    column: {
+      title: '图片',
+      key: 'images',
+      width: 140,
+      render: (row) => h(ImageThumbnails, { images: row.images }),
     },
   },
   {
