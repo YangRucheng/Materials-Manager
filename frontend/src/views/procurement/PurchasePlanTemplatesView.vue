@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   type DataTableBaseColumn,
   type DataTableColumns,
@@ -139,6 +139,7 @@ const saving = ref(false)
 const deleting = ref(false)
 const generating = ref(false)
 const tableAreaRef = ref<HTMLElement | null>(null)
+const isTableFullscreen = ref(false)
 const formRef = ref<FormInst | null>(null)
 const images = ref<FileObject[]>([])
 const createAdvancedSections = ref<string[]>([])
@@ -351,6 +352,22 @@ function rowProps(row: PurchasePlanTemplate) {
     },
   }
 }
+function syncTableFullscreen() {
+  isTableFullscreen.value = document.fullscreenElement === tableAreaRef.value
+}
+async function toggleTableFullscreen() {
+  const tableArea = tableAreaRef.value
+  if (!tableArea?.requestFullscreen) {
+    message.warning('当前浏览器不支持全屏显示')
+    return
+  }
+  try {
+    if (document.fullscreenElement === tableArea) await document.exitFullscreen()
+    else await tableArea.requestFullscreen()
+  } catch {
+    message.error('切换全屏失败')
+  }
+}
 
 function openCreate() {
   editing.value = null
@@ -483,6 +500,13 @@ function confirmGenerate(row: PurchasePlanTemplate) {
     onPositiveClick: () => void generatePlan(row),
   })
 }
+onMounted(() => {
+  document.addEventListener('fullscreenchange', syncTableFullscreen)
+  void loadFilterOptions()
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', syncTableFullscreen)
+})
 </script>
 
 <template>
@@ -574,7 +598,17 @@ function confirmGenerate(row: PurchasePlanTemplate) {
         </div>
       </div>
     </n-card>
-    <div ref="tableAreaRef" class="template-table-area">
+    <div ref="tableAreaRef" class="purchase-plan-table-area">
+      <n-button
+        class="table-fullscreen-toggle"
+        :class="{ 'is-fullscreen': isTableFullscreen }"
+        quaternary
+        circle
+        size="small"
+        :title="isTableFullscreen ? '退出表格全屏' : '表格全屏'"
+        :aria-label="isTableFullscreen ? '退出表格全屏' : '表格全屏'"
+        @click="toggleTableFullscreen"
+      />
       <n-card class="data-card">
         <n-data-table
           :bordered="false"
@@ -796,8 +830,49 @@ function confirmGenerate(row: PurchasePlanTemplate) {
   min-width: 88px;
 }
 
-.template-table-area {
+.purchase-plan-table-area {
   position: relative;
+}
+
+.table-fullscreen-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  color: #aeb7c4;
+}
+
+.table-fullscreen-toggle::before {
+  width: 13px;
+  height: 13px;
+  border-top: 2px solid currentcolor;
+  border-right: 2px solid currentcolor;
+  border-top-right-radius: 1px;
+  content: '';
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.table-fullscreen-toggle.is-fullscreen::before {
+  transform: rotate(180deg);
+}
+
+.table-fullscreen-toggle:hover {
+  background: rgb(148 163 184 / 10%);
+  color: #8e99a8;
+}
+
+.purchase-plan-table-area:fullscreen {
+  overflow: auto;
+  padding: 16px;
+  background: var(--color-bg);
+}
+
+.purchase-plan-table-area:fullscreen :deep(.n-card) {
+  min-height: 100%;
 }
 
 @media (max-width: 900px) {
