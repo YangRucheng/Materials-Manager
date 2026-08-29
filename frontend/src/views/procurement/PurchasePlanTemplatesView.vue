@@ -28,12 +28,14 @@ import {
 } from '@/constants/table'
 import { usePagedTable } from '@/composables/usePagedTable'
 import { useShiftWheelHorizontalScroll } from '@/composables/useShiftWheelHorizontalScroll'
+import { createTableRowClickGuard } from '@/utils/tableRowNavigation'
 import { formatShanghaiTime } from '@/utils/time'
 import { routeQueryString } from '@/utils/routeQuery'
 
 const auth = useAuthStore()
 const message = useMessage()
 const dialog = useDialog()
+const rowClickGuard = createTableRowClickGuard()
 const filterExpanded = ref(false)
 
 interface TemplateFilters {
@@ -221,51 +223,22 @@ const columns = computed<DataTableColumns<PurchasePlanTemplate>>(() =>
       width: tableColumnWidths.datetime,
       render: (row) => formatShanghaiTime(row.created_at),
     },
-    {
-      title: '操作',
-      key: 'actions',
-      width: tableColumnWidths.action + 40,
-      fixed: 'right',
-      render: (row) =>
-        h('div', { class: 'row-actions' }, [
-          auth.can('purchase:write')
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'action-link action-primary',
-                  onClick: () => confirmGenerate(row),
-                },
-                '生成申购计划',
-              )
-            : null,
-          auth.can('purchase:write')
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'action-link',
-                  onClick: () => openEdit(row),
-                },
-                '编辑',
-              )
-            : null,
-          auth.can('purchase:write')
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'action-link action-danger',
-                  onClick: () => confirmDelete(row),
-                },
-                '删除',
-              )
-            : null,
-        ]),
-    },
   ]),
 )
 const tableScrollX = computed(() => getTableScrollX(columns.value))
+
+function rowProps(row: PurchasePlanTemplate) {
+  const interactive = auth.can('purchase:write')
+  return {
+    style: interactive ? 'cursor: pointer' : undefined,
+    onMousedown: rowClickGuard.onMouseDown,
+    onClick: (event: MouseEvent) => {
+      if (!interactive) return
+      if (rowClickGuard.shouldIgnore(event)) return
+      openEdit(row)
+    },
+  }
+}
 
 function openCreate() {
   editing.value = null
@@ -491,6 +464,7 @@ function confirmGenerate(row: PurchasePlanTemplate) {
           :data="items"
           :loading="loading"
           :remote="true"
+          :row-props="rowProps"
           :row-key="(row: PurchasePlanTemplate) => row.id"
           :scroll-x="tableScrollX"
         />
@@ -608,6 +582,15 @@ function confirmGenerate(row: PurchasePlanTemplate) {
           <n-space justify="start">
             <n-button
               v-if="editing && auth.can('purchase:write')"
+              type="primary"
+              secondary
+              :loading="generating"
+              @click="confirmGenerate(editing)"
+            >
+              生成申购计划
+            </n-button>
+            <n-button
+              v-if="editing && auth.can('purchase:write')"
               type="error"
               ghost
               :loading="deleting"
@@ -633,36 +616,6 @@ function confirmGenerate(row: PurchasePlanTemplate) {
 
 .quantity-unit-select {
   width: 160px;
-}
-
-.row-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.action-link {
-  border: none;
-  padding: 0;
-  color: var(--color-primary);
-  background: transparent;
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.action-link:hover,
-.action-link:focus-visible {
-  text-decoration: underline;
-  outline: none;
-}
-
-.action-primary {
-  font-weight: 600;
-}
-
-.action-danger {
-  color: var(--color-danger);
 }
 
 .filter-heading,
