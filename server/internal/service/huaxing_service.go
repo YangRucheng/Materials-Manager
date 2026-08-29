@@ -338,3 +338,216 @@ func SearchHuaXingInventory(db *gorm.DB, keyword, materialCode, name, modelSpec,
 	}
 	return items, int(total), nil
 }
+
+// ============ 精简二级库（lite） ============
+
+var liteExpectedHeaders = []string{"物资名称", "型号规格", "单位", "数量", "备注"}
+
+// LiteRow 解析后的精简二级库行。
+type LiteRow struct {
+	Name      string
+	ModelSpec *string
+	UnitName  *string
+	Quantity  *decimal.Decimal
+	Remark    *string
+}
+
+// ParseLiteFile 解析精简二级库导入文件。
+func ParseLiteFile(path string) ([]LiteRow, *apperrors.AppError) {
+	rows, appErr := excel.ReadTabularRows(path)
+	if appErr != nil {
+		return nil, appErr
+	}
+	return parseLite(rows)
+}
+
+func parseLite(rows [][]any) ([]LiteRow, *apperrors.AppError) {
+	headerRowIndex := -1
+	headerIndexes := map[string]int{}
+	limit := len(rows)
+	if limit > 20 {
+		limit = 20
+	}
+	for index := 0; index < limit; index++ {
+		headers := make([]string, len(rows[index]))
+		for i, cell := range rows[index] {
+			headers[i] = cellText(cell)
+		}
+		indexes := map[string]int{}
+		for i, h := range headers {
+			if h != "" {
+				indexes[h] = i
+			}
+		}
+		allPresent := true
+		for _, h := range liteExpectedHeaders {
+			if _, ok := indexes[h]; !ok {
+				allPresent = false
+				break
+			}
+		}
+		if allPresent {
+			headerRowIndex = index
+			for _, h := range liteExpectedHeaders {
+				headerIndexes[h] = indexes[h]
+			}
+			break
+		}
+	}
+	if headerRowIndex == -1 {
+		return nil, apperrors.New("LITE_IMPORT_HEADERS_MISSING",
+			"表格缺少必需列：物资名称、型号规格、单位、数量、备注", 0, nil)
+	}
+	quantityIndex := headerIndexes["数量"]
+	var parsed []LiteRow
+	for index := headerRowIndex + 1; index < len(rows); index++ {
+		rowNumber := index + 1
+		row := rows[index]
+		values := map[string]string{}
+		for _, header := range liteExpectedHeaders {
+			col := headerIndexes[header]
+			if col < len(row) {
+				values[header] = cellText(row[col])
+			} else {
+				values[header] = ""
+			}
+		}
+		anyValue := false
+		for _, v := range values {
+			if v != "" {
+				anyValue = true
+				break
+			}
+		}
+		if !anyValue {
+			continue
+		}
+		name := values["物资名称"]
+		if name == "" {
+			return nil, apperrors.New("LITE_IMPORT_NAME_REQUIRED",
+				fmt.Sprintf("第 %d 行缺少物资名称", rowNumber), 0, map[string]any{"row": rowNumber})
+		}
+		lengthChecks := []struct {
+			header string
+			max    int
+		}{{"物资名称", 128}, {"型号规格", 255}, {"单位", 32}, {"备注", 1000}}
+		for _, lc := range lengthChecks {
+			if appErr := liteLength(values[lc.header], lc.max, rowNumber, lc.header); appErr != nil {
+				return nil, appErr
+			}
+		}
+		var qty *decimal.Decimal
+		if quantityIndex < len(row) {
+			q, appErr := liteQuantity(row[quantityIndex], rowNumber)
+			if appErr != nil {
+				return nil, appErr
+			}
+			qty = q
+		}
+		parsed = append(parsed, LiteRow{
+			Name: name, ModelSpec: nilOrValue(values["型号规格"]),
+			UnitName: nilOrValue(values["单位"]), Quantity: qty, Remark: nilOrValue(values["备注"]),
+		})
+	}
+	if len(parsed) == 0 {
+		return nil, apperrors.New("LITE_IMPORT_EMPTY", "表格中没有可导入的二级库数据", 0, nil)
+	}
+	return parsed, nil
+}
+
+func liteLength(value string, maximum, rowNumber int, header string) *apperrors.AppError {
+	if len(value) > maximum {
+		return apperrors.New("LITE_IMPORT_VALUE_TOO_LONG",
+			fmt.Sprintf("第 %d 行“%s”超过 %d 个字符", rowNumber, header, maximum), 0,
+			map[string]any{"row": rowNumber, "column": header, "max_length": maximum})
+	}
+	return nil
+}
+
+func liteQuantity(value any, rowNumber int) (*decimal.Decimal, *apperrors.AppError) {
+	if value == nil {
+		return nil, nil
+	}
+	text := strings.TrimSpace(fmt.Sprint(value))
+	if text == "" {
+		return nil, nil
+	}
+	dec, err := decimal.NewFromString(text)
+	if err != nil {
+		return nil, apperrors.New("LITE_IMPORT_INVALID_QUANTITY",
+			fmt.Sprintf("第 %d 行数量不是有效数值", rowNumber), 0, map[string]any{"row": rowNumber})
+	}
+	return &dec, nil
+}
+
+// ProcessLiteImport 解析 + 去重 + 全量替换。
+func ProcessLiteImport(db *gorm.DB, filePath string) (map[string]any, *apperrors.AppError) {
+	rows, appErr := ParseLiteFile(filePath)
+	if appErr != nil {
+		return nil, appErr
+	}
+	seen := map[string]bool{}
+	var deduped []LiteRow
+	for _, row := range rows {
+		key := fmt.Sprint(row.Name, row.ModelSpec, row.UnitName, row.Quantity, row.Remark)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		deduped = append(deduped, row)
+	}
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("1 = 1").Delete(&models.LiteInventory{}).Error; err != nil {
+			return err
+		}
+		for offset := 0; offset < len(deduped); offset += 2000 {
+			end := offset + 2000
+			if end > len(deduped) {
+				end = len(deduped)
+			}
+			batch := make([]models.LiteInventory, 0, end-offset)
+			for i := offset; i < end; i++ {
+				r := deduped[i]
+				var qty *models.Decimal
+				if r.Quantity != nil {
+					d := models.Decimal{Decimal: *r.Quantity}
+					qty = &d
+				}
+				batch = append(batch, models.LiteInventory{
+					Name: r.Name, ModelSpec: r.ModelSpec, UnitName: r.UnitName,
+					Quantity: qty, Remark: r.Remark, CreatedAt: models.UTCNow(),
+				})
+			}
+			if err := tx.Create(&batch).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, DatabaseError(err)
+	}
+	return map[string]any{
+		"imported_count": len(deduped), "deduplicated_count": len(rows) - len(deduped),
+	}, nil
+}
+
+// SearchLiteInventory 精简二级库列表。
+func SearchLiteInventory(db *gorm.DB, name, modelSpec string, page, pageSize int) ([]models.LiteInventory, int, *apperrors.AppError) {
+	q := db.Model(&models.LiteInventory{})
+	if clause, args := ContainsAnyClause([]string{"name"}, name); clause != "" {
+		q = q.Where(clause, args...)
+	}
+	if clause, args := ContainsAnyClause([]string{"model_spec"}, modelSpec); clause != "" {
+		q = q.Where(clause, args...)
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, DatabaseError(err)
+	}
+	var items []models.LiteInventory
+	if err := q.Order("id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&items).Error; err != nil {
+		return nil, 0, DatabaseError(err)
+	}
+	return items, int(total), nil
+}

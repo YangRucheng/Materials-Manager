@@ -20,6 +20,7 @@ type modelsPurchaseMaterial = models.PurchaseMaterial
 type modelsPurchaseRequestLine = models.PurchaseRequestLine
 type modelsPurchasePlanTemplate = models.PurchasePlanTemplate
 type modelsShareLink = models.ShareLink
+type modelsExcelImportJob = models.ExcelImportJob
 type appErr = apperrors.AppError
 
 func appErrNew(code, msg string, status int, details map[string]any) *appErr {

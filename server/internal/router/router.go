@@ -53,4 +53,5 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	handler.RegisterPurchasePlanTemplates(v1, app)
 	handler.RegisterPurchaseRecordSync(v1, app)
 	handler.RegisterShares(v1, app)
+	handler.RegisterCodes(v1, app)
 }
