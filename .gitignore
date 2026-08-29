@@ -24,3 +24,8 @@ backend/*.db
 # other
 outputs/
 *.log
+# Go backend
+server/bin/
+server/coverage.out
+server/*.log
+server/data/
