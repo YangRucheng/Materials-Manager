@@ -4,6 +4,7 @@ package testutil
 
 import (
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +28,7 @@ func NewTestConfig(t *testing.T) *config.Config {
 	cfg.UploadDirPath = cfg.UploadDir
 	cfg.LogDir = t.TempDir()
 	cfg.LogDirPath = cfg.LogDir
-	cfg.TemplateDir = t.TempDir()
+	cfg.TemplateDir = filepath.Join("..", "templates")
 	cfg.WechatMiniProgramAppID = "wx-test-primary,wx-test-secondary"
 	cfg.WechatMiniProgramAppSecret = "test-primary-secret,test-secondary-secret"
 	cfg.CORSOrigins = nil

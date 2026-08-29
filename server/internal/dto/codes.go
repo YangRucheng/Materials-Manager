@@ -51,6 +51,21 @@ type LastImportRead struct {
 	LastImportAt *serialize.OffsetTime `json:"last_import_at"`
 }
 
+type ExcelExportJobRead struct {
+	ID               int64                 `json:"id"`
+	ExportType       string                `json:"export_type"`
+	Status           string                `json:"status"`
+	DownloadFilename *string               `json:"download_filename"`
+	FileUUID         *string               `json:"file_uuid"`
+	Params           map[string]any        `json:"params"`
+	Result           map[string]any        `json:"result"`
+	ErrorCode        *string               `json:"error_code"`
+	ErrorMessage     *string               `json:"error_message"`
+	CreatedAt        serialize.OffsetTime  `json:"created_at"`
+	StartedAt        *serialize.OffsetTime `json:"started_at"`
+	FinishedAt       *serialize.OffsetTime `json:"finished_at"`
+}
+
 type ExcelImportJobRead struct {
 	ID               int64                 `json:"id"`
 	ImportType       string                `json:"import_type"`

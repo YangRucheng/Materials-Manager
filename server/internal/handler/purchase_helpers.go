@@ -6,6 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"path/filepath"
+
+	"github.com/yangrucheng/materials-manager/server/internal/config"
 
 	"github.com/yangrucheng/materials-manager/server/internal/dto"
 	apperrors "github.com/yangrucheng/materials-manager/server/internal/errors"
@@ -21,6 +24,7 @@ type modelsPurchaseRequestLine = models.PurchaseRequestLine
 type modelsPurchasePlanTemplate = models.PurchasePlanTemplate
 type modelsShareLink = models.ShareLink
 type modelsExcelImportJob = models.ExcelImportJob
+type modelsExcelExportJob = models.ExcelExportJob
 type appErr = apperrors.AppError
 
 func appErrNew(code, msg string, status int, details map[string]any) *appErr {
@@ -110,4 +114,38 @@ func recordRead(db *gorm.DB, line *models.PurchaseRequestLine) *dto.PurchaseReco
 		CreatedAt:    serialize.UTCZTime(request.CreatedAt), UpdatedAt: serialize.UTCZTime(updatedAt),
 		Version: request.Version,
 	}
+}
+
+type configCfg = config.Config
+
+func filePathOf(cfg *configCfg, fileID string) string {
+	return filepath.Join(cfg.UploadDirPath, fileID+".png")
+}
+
+func strOf(data map[string]any, key string) string {
+	if v, ok := data[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func boolOf(data map[string]any, key string) bool {
+	if v, ok := data[key].(bool); ok {
+		return v
+	}
+	return false
+}
+
+func boolPtr(v bool) *bool { return &v }
+
+func statusNames(data map[string]any) []string {
+	var out []string
+	if list, ok := data["status"].([]any); ok {
+		for _, item := range list {
+			if s, ok := item.(string); ok {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
 }

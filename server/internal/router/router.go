@@ -54,4 +54,5 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	handler.RegisterPurchaseRecordSync(v1, app)
 	handler.RegisterShares(v1, app)
 	handler.RegisterCodes(v1, app)
+	handler.RegisterExportJobs(v1, app)
 }

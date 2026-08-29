@@ -1608,3 +1608,95 @@ func keys(m map[int64]bool) []int64 {
 	}
 	return out
 }
+
+// UncodedMaterialRows 未编码计划导出行（物料编码申请模板）。
+func UncodedMaterialRows(db *gorm.DB, keyword string) []map[string]any {
+	var materials []models.PurchaseMaterial
+	q := db.Where("material_code IS NULL AND status = ?", domain.PlanNormal)
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		q = q.Where("name LIKE ? OR model_spec LIKE ? OR material_code LIKE ? OR plan_no LIKE ?", like, like, like, like)
+	}
+	q.Order("id").Find(&materials)
+	rows := make([]map[string]any, 0, len(materials))
+	for i, item := range materials {
+		rows = append(rows, map[string]any{
+			"serial": i + 1, "name": item.Name, "model_spec": item.ModelSpec,
+			"unit_name": item.UnitName, "warranty_managed": "否", "asset_category": "非资产",
+			"application_reason": "当前无准确编码对应，需要新增编码", "department": "HXNI 检修维护部",
+			"actual_demand_person": item.ActualDemandPerson,
+		})
+	}
+	return rows
+}
+
+// PurchaseApplicationRows 采购申请/审批导出行。
+func PurchaseApplicationRows(db *gorm.DB, materialIDs []int64, kind string) ([]map[string]any, *apperrors.AppError) {
+	var materials []models.PurchaseMaterial
+	q := db.Where("status = ?", domain.PlanNormal)
+	if len(materialIDs) > 0 {
+		q = q.Where("id IN ?", materialIDs)
+	}
+	q.Order("id").Find(&materials)
+	if len(materialIDs) > 0 && len(materials) != len(dedupeIDs(materialIDs)) {
+		return nil, apperrors.NotFound("申购计划")
+	}
+	missingLabels := map[string]bool{}
+	for _, item := range materials {
+		if deref2(item.MaterialCode) == "" {
+			missingLabels["编码"] = true
+		}
+		if deref2(item.SubitemNo) == "" {
+			missingLabels["子项号"] = true
+		}
+		if strings.TrimSpace(item.Usage) == "" {
+			missingLabels["用途"] = true
+		}
+	}
+	if len(missingLabels) > 0 && kind == "application" {
+		return nil, apperrors.New("PURCHASE_APPLICATION_EXPORT_FIELDS_REQUIRED",
+			"导出采购申请表前请补全："+joinSortedKeys(missingLabels), http.StatusConflict, nil)
+	}
+	rows := make([]map[string]any, 0, len(materials))
+	today := time.Now().In(ShanghaiTZ)
+	for i, item := range materials {
+		if kind == "application" {
+			rows = append(rows, map[string]any{
+				"material_code": item.MaterialCode, "name": item.Name,
+				"planned_qty":           serialize.DecimalToString(item.PlannedQty.Decimal),
+				"purchase_responsible":  item.PurchaseResponsible,
+				"demand_department":     item.DemandDepartment,
+				"required_arrival_date": serialize.FormatDate(today.Add(90 * 24 * time.Hour)),
+				"urgency":               item.Urgency, "usage": item.Usage, "remark": item.Remark,
+				"subitem_no": item.SubitemNo,
+			})
+		} else {
+			rows = append(rows, map[string]any{
+				"serial": i + 1, "material_code": item.MaterialCode, "name": item.Name,
+				"model_spec":  item.ModelSpec,
+				"planned_qty": serialize.DecimalToString(item.PlannedQty.Decimal),
+				"unit_name":   item.UnitName, "purchase_responsible": item.PurchaseResponsible,
+				"department": "HXNI 检修维护部", "usage": item.Usage,
+				"required_arrival_date": serialize.FormatDate(today.Add(80 * 24 * time.Hour)),
+				"urgency":               item.Urgency, "remark": item.Remark, "subitem_no": item.SubitemNo,
+			})
+		}
+	}
+	return rows, nil
+}
+
+func deref2(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func joinSortedKeys(m map[string]bool) string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "、")
+}

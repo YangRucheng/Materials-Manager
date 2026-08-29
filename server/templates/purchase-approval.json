@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "template_name": "申购审批表模板",
+  "output_filename": "采购申请（审批）_{date_compact}.xlsx",
+  "sheet": {
+    "title": "申购审批表",
+    "header_row": 1,
+    "data_start_row": 2,
+    "freeze_panes": "A2",
+    "column_widths": {
+      "A": 6.0,
+      "B": 16.0,
+      "C": 24.0,
+      "D": 18.0,
+      "E": 11.0,
+      "F": 8.0,
+      "G": 14.0,
+      "H": 18.0,
+      "I": 26.0,
+      "J": 9.0,
+      "K": 9.0,
+      "L": 14.0,
+      "M": 11.0,
+      "N": 24.0,
+      "O": 16.0
+    }
+  },
+  "styles": {
+    "header": {
+      "font_name": "等线",
+      "font_size": 11,
+      "bold": true,
+      "fill": "D9EAD3",
+      "horizontal": "center",
+      "vertical": "center",
+      "wrap_text": true,
+      "border": true
+    },
+    "data": {
+      "font_name": "等线",
+      "font_size": 11,
+      "horizontal": "center",
+      "vertical": "center",
+      "wrap_text": true,
+      "border": true
+    },
+    "date": {
+      "font_name": "等线",
+      "font_size": 11,
+      "horizontal": "center",
+      "vertical": "center",
+      "number_format": "yyyy/m/d",
+      "border": true
+    }
+  },
+  "columns": [
+    { "column": "A", "header": "序号", "field": "serial" },
+    { "column": "B", "header": "物料编码", "field": "material_code" },
+    { "column": "C", "header": "物料名称", "field": "name" },
+    { "column": "D", "header": "型号", "field": "model_spec" },
+    { "column": "E", "header": "申请数量", "field": "planned_qty" },
+    { "column": "F", "header": "单位", "field": "unit_name" },
+    { "column": "G", "header": "实际需求人", "field": "purchase_responsible" },
+    { "column": "H", "header": "使用部门", "field": "department" },
+    { "column": "I", "header": "用途", "field": "usage" },
+    { "column": "J", "header": "库存量" },
+    { "column": "K", "header": "在途量" },
+    {
+      "column": "L",
+      "header": "到现场日期",
+      "field": "required_arrival_date",
+      "style": "date"
+    },
+    { "column": "M", "header": "紧急程度", "field": "urgency" },
+    { "column": "N", "header": "备注", "field": "remark" },
+    { "column": "O", "header": "子项号", "field": "subitem_no" }
+  ]
+}
