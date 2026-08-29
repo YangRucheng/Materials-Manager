@@ -287,6 +287,18 @@ async def mini_program_purchase_record_filter_options(
     return MiniProgramPurchaseRecordFilterOptions(statuses=statuses, subitem_nos=subitem_nos)
 
 
+@mini_router.get(
+    "/purchase-records/{line_id}",
+    response_model=MiniProgramPurchaseRecordItemRead,
+)
+async def mini_program_purchase_record_detail(
+    line_id: int,
+    session: DbSession,
+    user: CurrentMiniProgramUser,
+) -> MiniProgramPurchaseRecordItemRead:
+    return await mini_program_service.purchase_record_detail(session, line_id)
+
+
 @mini_router.get("/material-codes", response_model=Page[MiniProgramMaterialCodeRead])
 async def mini_program_material_codes(
     session: DbSession,

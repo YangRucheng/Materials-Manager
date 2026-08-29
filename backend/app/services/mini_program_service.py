@@ -309,6 +309,17 @@ def purchase_record_item_read(line: PurchaseRequestLine) -> MiniProgramPurchaseR
     )
 
 
+async def purchase_record_detail(
+    session: AsyncSession, line_id: int
+) -> MiniProgramPurchaseRecordItemRead:
+    line = await session.scalar(
+        select(PurchaseRequestLine).where(PurchaseRequestLine.id == line_id)
+    )
+    if line is None:
+        raise not_found("申购记录")
+    return purchase_record_item_read(line)
+
+
 async def purchase_plan_detail(
     session: AsyncSession, material_id: int
 ) -> MiniProgramPurchasePlanDetailRead:

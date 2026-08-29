@@ -12,6 +12,7 @@ const pages = [
   'material-codes/material-codes',
   'huaxing-inventory/huaxing-inventory',
   'purchase-plan-detail/purchase-plan-detail',
+  'purchase-record-detail/purchase-record-detail',
   'bind/bind',
   'disabled/disabled',
   'registration-closed/registration-closed',
