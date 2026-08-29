@@ -7,14 +7,14 @@
 - 库存流水可修正、冲销并自动重算后续余额，完整保留业务轨迹。
 - 申购计划可暂缺编码，到货时可关联或新建二级库物资。
 - 前后端契约统一维护在 [docs/openapi.yaml](docs/openapi.yaml)，Excel 模板随后端代码版本管理，初始化数据集中在 [example](example)。
-- FastAPI + SQLAlchemy 异步后端、Vue 3 + TypeScript 前端，支持 Docker 镜像部署。
+- Go + Gin 后端（`server/`）、Vue 3 + TypeScript 前端，支持 Docker 镜像部署。
 
 ## 部署
 
 前端由独立 CI/CD 构建并与后端分离部署时，参见 [前后端分离部署](docs/frontend-separated-deployment.md)，通过构建变量注入后端和图片 CDN 地址。
 
 Docker Compose 方案依赖外部 MySQL 8.0+ 和外部网络 `1panel-network`。配置示例、初始化
-SQL 位于 `example/`；Excel 模板位于 `backend/app/templates/`，随代码一同构建和发布。
+SQL 位于 `example/`；Excel 模板位于 `server/templates/`，随代码一同构建和发布。
 
 ```bash
 cp example/.env.example .env
