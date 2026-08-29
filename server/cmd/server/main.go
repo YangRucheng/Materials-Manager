@@ -16,7 +16,22 @@ import (
 	"github.com/yangrucheng/materials-manager/server/internal/handler"
 	"github.com/yangrucheng/materials-manager/server/internal/logging"
 	"github.com/yangrucheng/materials-manager/server/internal/router"
+	"github.com/yangrucheng/materials-manager/server/internal/service"
+	"gorm.io/gorm"
 )
+
+// startupCleanup 启动时清理残留任务与过期数据。
+func startupCleanup(db *gorm.DB) {
+	if n := service.MarkStaleImportJobsFailed(db); n > 0 {
+		slog.Info("marked stale import jobs failed", "count", n)
+	}
+	if n := service.CleanupFinishedImportJobs(db, 30); n > 0 {
+		slog.Info("purged old import jobs", "count", n)
+	}
+	if n := service.CleanupExpiredShares(db); n > 0 {
+		slog.Info("purged expired share links", "count", n)
+	}
+}
 
 func main() {
 	// 工作目录：优先取 /app（容器），否则二进制所在目录。
@@ -51,6 +66,13 @@ func main() {
 	app := handler.NewApp(cfg, db)
 	r := router.New(app)
 	router.RegisterAPI(r, app)
+
+	// 后台任务：启动清理 + 周期 worker
+	startupCleanup(db)
+	stopWorkers := make(chan struct{})
+	go service.RunWebhookDeliveryWorker(cfg, db, stopWorkers)
+	go service.RunPeriodicCleanupWorker(db, stopWorkers)
+	defer close(stopWorkers)
 
 	addr := "0.0.0.0:8000"
 	if port := os.Getenv("APP_PORT"); port != "" {

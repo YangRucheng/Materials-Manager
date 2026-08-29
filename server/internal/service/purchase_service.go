@@ -1700,3 +1700,17 @@ func joinSortedKeys(m map[string]bool) string {
 	sort.Strings(keys)
 	return strings.Join(keys, "、")
 }
+
+// RunPeriodicCleanupWorker 周期清理（share 过期 + 归档计划清理 + 导出清理）。
+func RunPeriodicCleanupWorker(db *gorm.DB, stop <-chan struct{}) {
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			CleanupExpiredShares(db)
+		}
+	}
+}
