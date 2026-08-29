@@ -287,6 +287,9 @@ suggested_purchase_qty = 近 6 个自然月内未被冲销的 OUTBOUND 流水数
 
 ## 7. 后端技术方案
 
+> 注：原方案采用 Python（FastAPI）实现，已于 2026-08 迁移为 Go + Gin + GORM（见 `server/`）。
+> 本节保留初始设计意图供追溯；实际实现以 `server/` 与 `docs/openapi.yaml` 为准。
+
 ### 7.1 技术栈
 
 - Python 3.12
