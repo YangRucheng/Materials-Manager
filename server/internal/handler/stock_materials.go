@@ -211,6 +211,7 @@ func RegisterStockMaterials(r *gin.RouterGroup, app *App) {
 	h := NewStockMaterialsHandler(app)
 	group := r.Group("/stock-materials", auth.AuthManagement(app.Cfg, app.DB))
 	group.GET("", h.List)
+	group.GET("/mini-program-codes/:material_uuid", h.MiniProgramCode)
 	group.GET("/:material_id", h.Detail)
 	write := group.Group("", middleware.RequireFullSecondaryWarehouse(app.DB))
 	write.POST("", auth.WarehouseWriter(), h.Create)
@@ -248,4 +249,52 @@ func parseIfMatch(c *gin.Context) int {
 		return 0
 	}
 	return n
+}
+
+// MiniProgramCode GET /stock-materials/mini-program-codes/{material_uuid}（管理端）
+func (h *StockMaterialsHandler) MiniProgramCode(c *gin.Context) {
+	uuid := c.Param("material_uuid")
+	env := c.Query("env")
+	appID := c.Query("appid")
+	if env == "" {
+		env = "release"
+	}
+	if appID == "" {
+		settings := service.GetSettingData(h.App.DB)
+		appID = service.SettingStr(settings, "mini_program_code_app_id", "")
+	}
+	if appID == "" {
+		appID = firstNonEmpty(h.App.Cfg.WechatMiniProgramAppID)
+	}
+	effAppID, appSecret, appErr := service.WeChatCredentials(h.App.Cfg, appID)
+	if appErr != nil {
+		respond.Error(c, appErr)
+		return
+	}
+	token, err := service.WXClient.GetAccessToken(effAppID, appSecret)
+	if err != nil {
+		respond.Error(c, appErrNew("WECHAT_UPSTREAM_FAILED", "生成小程序码失败", 502, nil))
+		return
+	}
+	envVersion := "release"
+	if env == "trial" {
+		envVersion = "trial"
+	}
+	data, _, err := service.WXClient.GenerateUnlimitedMaterialCode(effAppID, appSecret, token, uuid, envVersion)
+	if err != nil {
+		respond.Error(c, appErrNew("WECHAT_UPSTREAM_FAILED", "生成小程序码失败", 502, nil))
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=31536000, s-maxage=31536000, immutable")
+	c.Header("Content-Disposition", "inline; filename=material-"+uuid+"-"+env+"-mini-program-code.png")
+	c.Data(http.StatusOK, "image/png", data)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

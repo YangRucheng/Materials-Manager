@@ -55,4 +55,5 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	handler.RegisterShares(v1, app)
 	handler.RegisterCodes(v1, app)
 	handler.RegisterExportJobs(v1, app)
+	handler.RegisterMini(v1, app)
 }
