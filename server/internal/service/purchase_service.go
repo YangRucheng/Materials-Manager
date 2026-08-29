@@ -212,7 +212,7 @@ func PurchaseFilterOptions(db *gorm.DB, moved *bool, status []string) ([]string,
 		}
 		return q
 	}
-	var persons, responsibles, subitems, categories []string
+	var persons, responsibles, subitems, categories []*string
 	if err := build().Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
 		return nil, nil, nil, nil, DatabaseError(err)
 	}
@@ -225,7 +225,18 @@ func PurchaseFilterOptions(db *gorm.DB, moved *bool, status []string) ([]string,
 	if err := build().Distinct().Order("category").Pluck("category", &categories).Error; err != nil {
 		return nil, nil, nil, nil, DatabaseError(err)
 	}
-	return persons, responsibles, subitems, categories, nil
+	return derefNonEmpty(persons), derefNonEmpty(responsibles), derefNonEmpty(subitems), derefNonEmpty(categories), nil
+}
+
+// derefNonEmpty 把可空字符串指针列表转为非空字符串列表。
+func derefNonEmpty(list []*string) []string {
+	out := make([]string, 0, len(list))
+	for _, p := range list {
+		if p != nil && *p != "" {
+			out = append(out, *p)
+		}
+	}
+	return out
 }
 
 // CreatePurchaseMaterialFull 完整创建申购计划（含计划号重试）。
@@ -924,7 +935,7 @@ func SearchTemplates(db *gorm.DB, keyword, name, modelSpec, actualDemandPerson, 
 
 // TemplateFilterOptions 模板筛选下拉。
 func TemplateFilterOptions(db *gorm.DB) ([]string, []string, []string, *apperrors.AppError) {
-	var persons, responsibles, categories []string
+	var persons, responsibles, categories []*string
 	build := func() *gorm.DB { return db.Model(&models.PurchasePlanTemplate{}) }
 	if err := build().Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
 		return nil, nil, nil, DatabaseError(err)
@@ -935,7 +946,7 @@ func TemplateFilterOptions(db *gorm.DB) ([]string, []string, []string, *apperror
 	if err := build().Distinct().Order("category").Pluck("category", &categories).Error; err != nil {
 		return nil, nil, nil, DatabaseError(err)
 	}
-	return persons, responsibles, categories, nil
+	return derefNonEmpty(persons), derefNonEmpty(responsibles), derefNonEmpty(categories), nil
 }
 
 // CreateTemplate 创建模板。
