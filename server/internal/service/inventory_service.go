@@ -464,8 +464,9 @@ func mapTxError(err error) *apperrors.AppError {
 
 // SearchOperations 流水列表筛选。
 func SearchOperations(db *gorm.DB, operationNo, operationType, materialName, sourceType string, startAt, endAt *time.Time, page, pageSize int) ([]models.StockOperation, int, *apperrors.AppError) {
+	// 每个查询独立 Statement：Count 的 Distinct("stock_operation.id") 不能污染 Find 的 Selects（MySQL 3065）。
 	build := func() *gorm.DB {
-		q2 := db.Model(&models.StockOperation{})
+		q2 := db.Session(&gorm.Session{NewDB: true}).Model(&models.StockOperation{})
 		if operationNo != "" {
 			q2 = q2.Where("operation_no LIKE ?", "%"+operationNo+"%")
 		}
@@ -492,14 +493,16 @@ func SearchOperations(db *gorm.DB, operationNo, operationType, materialName, sou
 		if endAt != nil {
 			q2 = q2.Where("occurred_at <= ?", *endAt)
 		}
-		return q2.Distinct("stock_operation.id")
+		return q2
 	}
 	var total int64
-	if err := build().Count(&total).Error; err != nil {
+	// 计数：只 DISTINCT id
+	if err := build().Distinct("stock_operation.id").Count(&total).Error; err != nil {
 		return nil, 0, DatabaseError(err)
 	}
 	var items []models.StockOperation
-	if err := build().Preload("Lines").
+	// 列表：DISTINCT 全列（JOIN 去重且 ORDER BY 列在选择集中，兼容 MySQL 3065）
+	if err := build().Distinct().Preload("Lines").
 		Order("occurred_at DESC, id DESC").
 		Offset((page - 1) * pageSize).Limit(pageSize).Find(&items).Error; err != nil {
 		return nil, 0, DatabaseError(err)
@@ -523,8 +526,9 @@ type InventoryBalanceItem struct {
 
 // InventoryBalances 库存余额分页查询。
 func InventoryBalances(db *gorm.DB, keyword string, minimumQty, maximumQty *decimal.Decimal, lowStockOnly bool, page, pageSize int, materialID *int64) ([]InventoryBalanceItem, int, *apperrors.AppError) {
+	// 每个查询独立 Statement，避免 Count/Find 相互污染（MySQL 3065）。
 	build := func() *gorm.DB {
-		q2 := db.Model(&models.StockMaterial{}).
+		q2 := db.Session(&gorm.Session{NewDB: true}).Model(&models.StockMaterial{}).
 			Joins("JOIN stock_balance ON stock_balance.stock_material_id = stock_material.id").
 			Joins("LEFT JOIN stock_replenishment_policy ON stock_replenishment_policy.stock_material_id = stock_material.id")
 		if materialID != nil {

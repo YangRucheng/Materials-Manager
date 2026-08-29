@@ -196,8 +196,9 @@ func SearchPurchaseMaterials(db *gorm.DB, keyword, searchField, searchValue, nam
 
 // PurchaseFilterOptions 计划筛选下拉。
 func PurchaseFilterOptions(db *gorm.DB, moved *bool, status []string) ([]string, []string, []string, []string, *apperrors.AppError) {
+	// 每个 Pluck 独立 Statement，避免 Selects 跨查询污染（MySQL 3065）。
 	build := func() *gorm.DB {
-		q := db.Model(&models.PurchaseMaterial{})
+		q := db.Session(&gorm.Session{NewDB: true}).Model(&models.PurchaseMaterial{})
 		if moved != nil {
 			sub := db.Model(&models.PurchaseRequestLine{}).
 				Select("1").Where("purchase_material_id = purchase_material.id")
@@ -926,7 +927,7 @@ func SearchTemplates(db *gorm.DB, keyword, name, modelSpec, actualDemandPerson, 
 // TemplateFilterOptions 模板筛选下拉。
 func TemplateFilterOptions(db *gorm.DB) ([]string, []string, []string, *apperrors.AppError) {
 	var persons, responsibles, categories []string
-	build := func() *gorm.DB { return db.Model(&models.PurchasePlanTemplate{}) }
+	build := func() *gorm.DB { return db.Session(&gorm.Session{NewDB: true}).Model(&models.PurchasePlanTemplate{}) }
 	nonEmpty := func(col string) *gorm.DB { return build().Where(col + " IS NOT NULL AND TRIM(" + col + ") != ''") }
 	if err := nonEmpty("actual_demand_person").Distinct().Order("actual_demand_person").Pluck("actual_demand_person", &persons).Error; err != nil {
 		return nil, nil, nil, DatabaseError(err)
