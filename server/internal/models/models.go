@@ -61,8 +61,8 @@ func (d *Decimal) GormDataType() string { return "decimal" }
 
 // Audit 提供 created_at / updated_at / version 字段（对应 Python AuditMixin）。
 type Audit struct {
-	CreatedAt time.Time `json:"created_at" gorm:"type:datetime(6);not null"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"type:datetime(6);not null"`
+	CreatedAt time.Time `json:"created_at" gorm:"type:datetime;not null"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"type:datetime;not null"`
 	Version   int       `json:"version" gorm:"type:int unsigned;not null;default:1"`
 }
 

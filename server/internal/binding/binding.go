@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -199,4 +200,34 @@ func ParseQuery(c *gin.Context, name string, fn func(value string) error) *apper
 		}
 	}
 	return nil
+}
+
+// QueryInt 解析整型查询参数；缺失用默认值。范围校验失败生成 422。
+func QueryInt(c *gin.Context, name string, def, min, max int) (int, *apperrors.AppError) {
+	value := c.Query(name)
+	if value == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, ValidationError([]ErrorItem{
+			{Type: "int_parsing", Loc: []any{"query", name},
+				Msg: "Input should be a valid integer, unable to parse string as an integer", Input: value},
+		})
+	}
+	if n < min {
+		return 0, ValidationError([]ErrorItem{
+			{Type: "greater_than_equal", Loc: []any{"query", name},
+				Msg: "Input should be greater than or equal to " + strconv.Itoa(min), Input: value,
+				Ctx: map[string]any{"ge": min}},
+		})
+	}
+	if n > max {
+		return 0, ValidationError([]ErrorItem{
+			{Type: "less_than_equal", Loc: []any{"query", name},
+				Msg: "Input should be less than or equal to " + strconv.Itoa(max), Input: value,
+				Ctx: map[string]any{"le": max}},
+		})
+	}
+	return n, nil
 }

@@ -42,4 +42,7 @@ func RegisterAPI(r *gin.Engine, app *handler.App) {
 	v1 := r.Group("/api/v1")
 	v1.GET("/openapi.json", app.OpenAPIJSON)
 	v1.GET("/version", app.Version)
+
+	handler.RegisterAuth(v1, app)
+	handler.RegisterUsers(v1, app)
 }

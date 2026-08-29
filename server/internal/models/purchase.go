@@ -4,7 +4,7 @@ import "time"
 
 // PurchaseMaterial 对应 purchase_material 表（申购计划）。status 存枚举 NAME（NORMAL/DEFERRED/ARCHIVED）。
 type PurchaseMaterial struct {
-	ID                  int64     `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID                  int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	PlanNo              string    `json:"plan_no" gorm:"type:varchar(32);not null;uniqueIndex"`
 	PlanDate            time.Time `json:"plan_date" gorm:"type:date;not null"`
 	MaterialCode        *string   `json:"material_code" gorm:"type:varchar(64)"`
@@ -41,7 +41,7 @@ func (PurchaseMaterialImage) TableName() string { return "purchase_material_imag
 
 // PurchasePlanTemplate 对应 purchase_plan_template 表（周期性计划）。
 type PurchasePlanTemplate struct {
-	ID                  int64   `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID                  int64   `json:"id" gorm:"primaryKey;autoIncrement"`
 	MaterialCode        *string `json:"material_code" gorm:"type:varchar(64)"`
 	Category            *string `json:"category" gorm:"type:varchar(64)"`
 	Urgency             string  `json:"urgency" gorm:"type:varchar(32);not null;default:正常"`
@@ -75,7 +75,7 @@ func (PurchasePlanTemplateImage) TableName() string { return "purchase_plan_temp
 
 // PurchaseRequest 对应 purchase_request 表（申购记录头部）。
 type PurchaseRequest struct {
-	ID                int64      `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID                int64      `json:"id" gorm:"primaryKey;autoIncrement"`
 	PurchaseOrderNo   *string    `json:"purchase_order_no" gorm:"type:varchar(128)"`
 	ContractNo        *string    `json:"contract_no" gorm:"type:varchar(128)"`
 	VesselNo          *string    `json:"vessel_no" gorm:"type:varchar(128)"`
@@ -93,7 +93,7 @@ func (PurchaseRequest) TableName() string { return "purchase_request" }
 
 // PurchaseRequestLine 对应 purchase_request_line 表（申购记录行，自包含快照）。
 type PurchaseRequestLine struct {
-	ID                          int64     `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID                          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	PurchaseRequestID           int64     `json:"purchase_request_id" gorm:"type:bigint unsigned;not null"`
 	PurchaseMaterialID          *int64    `json:"purchase_material_id" gorm:"type:bigint unsigned"`
 	PlanNoSnapshot              string    `json:"plan_no_snapshot" gorm:"type:varchar(32);not null"`

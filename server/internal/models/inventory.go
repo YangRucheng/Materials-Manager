@@ -4,7 +4,7 @@ import "time"
 
 // StockMaterial 对应 stock_material 表（二级库物资）。
 type StockMaterial struct {
-	ID           int64   `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID           int64   `json:"id" gorm:"primaryKey;autoIncrement"`
 	UUID         string  `json:"uuid" gorm:"type:varchar(36);not null;uniqueIndex"`
 	Name         string  `json:"name" gorm:"type:varchar(128);not null"`
 	NameID       *string `json:"name_id" gorm:"type:varchar(128)"`
@@ -36,7 +36,7 @@ type StockBalance struct {
 	StockMaterialID int64     `json:"stock_material_id" gorm:"primaryKey;type:bigint unsigned"`
 	Quantity        Decimal   `json:"quantity" gorm:"type:decimal(18,1);not null;default:0"`
 	Version         int       `json:"version" gorm:"type:int unsigned;not null;default:1"`
-	UpdatedAt       time.Time `json:"updated_at" gorm:"type:datetime(6);not null"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"type:datetime;not null"`
 }
 
 func (StockBalance) TableName() string { return "stock_balance" }
@@ -46,8 +46,8 @@ type StockReplenishmentPolicy struct {
 	StockMaterialID int64     `json:"stock_material_id" gorm:"primaryKey;type:bigint unsigned"`
 	MinimumQty      Decimal   `json:"minimum_qty" gorm:"type:decimal(18,1);not null"`
 	Enabled         bool      `json:"enabled" gorm:"type:tinyint(1);not null;default:1"`
-	CreatedAt       time.Time `json:"created_at" gorm:"type:datetime(6);not null"`
-	UpdatedAt       time.Time `json:"updated_at" gorm:"type:datetime(6);not null"`
+	CreatedAt       time.Time `json:"created_at" gorm:"type:datetime;not null"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"type:datetime;not null"`
 	Version         int       `json:"version" gorm:"type:int unsigned;not null;default:1"`
 }
 
@@ -55,10 +55,10 @@ func (StockReplenishmentPolicy) TableName() string { return "stock_replenishment
 
 // StockOperation 对应 stock_operation 表（库存流水）。operation_type/source_type 存枚举 NAME。
 type StockOperation struct {
-	ID                          int64     `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID                          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	OperationNo                 string    `json:"operation_no" gorm:"type:varchar(32);not null;uniqueIndex"`
 	OperationType               string    `json:"operation_type" gorm:"type:varchar(16);not null"`
-	OccurredAt                  time.Time `json:"occurred_at" gorm:"type:datetime(6);not null"`
+	OccurredAt                  time.Time `json:"occurred_at" gorm:"type:datetime;not null"`
 	BusinessReason              string    `json:"business_reason" gorm:"type:varchar(500);not null"`
 	ReceiverUnit                *string   `json:"receiver_unit" gorm:"type:varchar(128)"`
 	ReceiverName                *string   `json:"receiver_name" gorm:"type:varchar(64)"`
@@ -76,7 +76,7 @@ func (StockOperation) TableName() string { return "stock_operation" }
 
 // StockOperationLine 对应 stock_operation_line 表。
 type StockOperationLine struct {
-	ID                   int64   `json:"id" gorm:"primaryKey;autoIncrement;type:bigint unsigned"`
+	ID                   int64   `json:"id" gorm:"primaryKey;autoIncrement"`
 	OperationID          int64   `json:"operation_id" gorm:"type:bigint unsigned;not null"`
 	StockMaterialID      int64   `json:"stock_material_id" gorm:"type:bigint unsigned;not null"`
 	Quantity             Decimal `json:"quantity" gorm:"type:decimal(18,1);not null"`
