@@ -28,6 +28,27 @@ import (
 // TestDatabaseURL 环境变量：设置为 MySQL URL 时按 MySQL 方言跑测试。
 const TestDatabaseURL = "TEST_DATABASE_URL"
 
+// repoRoot 从当前工作目录向上查找仓库根目录（example/database/init.sql 所在目录）。
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("获取工作目录失败: %v", err)
+	}
+	for i := 0; i < 6; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "example", "database", "init.sql")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	t.Fatalf("无法定位仓库根目录（example/database/init.sql 未找到）")
+	return ""
+}
+
 // MySQLMode 是否启用 MySQL 测试模式。
 func MySQLMode() bool {
 	return os.Getenv(TestDatabaseURL) != ""
@@ -47,7 +68,7 @@ func NewTestConfig(t *testing.T) *config.Config {
 	cfg.UploadDirPath = cfg.UploadDir
 	cfg.LogDir = t.TempDir()
 	cfg.LogDirPath = cfg.LogDir
-	cfg.TemplateDir = filepath.Join("..", "templates")
+	cfg.TemplateDir = filepath.Join(repoRoot(t), "server", "templates")
 	cfg.WechatMiniProgramAppID = "wx-test-primary,wx-test-secondary"
 	cfg.WechatMiniProgramAppSecret = "test-primary-secret,test-secondary-secret"
 	cfg.CORSOrigins = nil
@@ -139,7 +160,7 @@ func openMySQLIsolated(t *testing.T, cfg *config.Config) *gorm.DB {
 		t.Fatalf("创建测试库失败: %v", err)
 	}
 	// 在测试库上执行 init.sql
-	initSQL, err := os.ReadFile(filepath.Join("..", "..", "..", "example", "database", "init.sql"))
+	initSQL, err := os.ReadFile(filepath.Join(repoRoot(t), "example", "database", "init.sql"))
 	if err != nil {
 		_ = adminSQL.Close()
 		t.Fatalf("读取 init.sql 失败: %v", err)
