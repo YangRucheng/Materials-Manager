@@ -943,7 +943,17 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
     )
     mini_headers = {"Authorization": f"Bearer {profile.json()['access_token']}"}
 
-    async def create_plan(name: str, code: str) -> dict[str, object]:
+    source = io.BytesIO()
+    Image.new("RGB", (32, 24), "blue").save(source, format="PNG")
+    uploaded = await client.post(
+        "/api/v1/files/images",
+        headers=purchase_headers,
+        files={"file": ("purchase-record.png", source.getvalue(), "image/png")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    file_id = uploaded.json()["id"]
+
+    async def create_plan(name: str, code: str, image_ids: list[str] | None = None) -> dict[str, object]:
         response = await client.post(
             "/api/v1/purchase-materials",
             headers=purchase_headers,
@@ -960,7 +970,7 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
                 "usage": "检修备用",
                 "subitem_no": "01-01",
                 "remark": "申购记录测试",
-                "image_ids": [],
+                "image_ids": image_ids or [],
             },
         )
         assert response.status_code == 201, response.text
@@ -988,7 +998,7 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
         return response.json()
 
     plan_a = await create_plan("记录电机A", "DQ-REC-A")
-    plan_b = await create_plan("记录电机B", "DQ-REC-B")
+    plan_b = await create_plan("记录电机B", "DQ-REC-B", image_ids=[file_id])
     record_a = await move(plan_a, "SG-2026-100", "ZS-2026-100", "已申购")
     record_b = await move(plan_b, "SG-2026-200", "ZS-2026-200", "已采购")
 
@@ -1013,10 +1023,40 @@ async def test_mini_program_purchase_records_search_status_and_pagination(
         "purchase_qty",
         "plan_date",
         "subitem_no",
+        "material_code",
+        "category",
+        "plan_no",
+        "demand_department",
+        "actual_demand_person",
+        "purchase_responsible",
+        "usage",
+        "remark",
+        "purchase_date",
+        "salesperson",
+        "images",
     }
     assert item["purchase_qty"] == "3"
     assert item["plan_date"] == "2026-08-04"
     assert item["subitem_no"] == "01-01"
+    # 详情弹窗所需字段：提报员工 / 实际需求人 / 图片 等快照与单据信息
+    assert item["actual_demand_person"] == "张三"
+    assert item["purchase_responsible"] == "李工"
+    assert item["material_code"] == "DQ-REC-B"
+    assert item["category"] == "备品备件"
+    assert item["plan_no"]
+    assert item["demand_department"] == "HXNI 检修维护部"
+    assert item["usage"] == "检修备用"
+    assert item["remark"] == "申购记录测试"
+    assert item["purchase_date"] == "2026-08-02"
+    assert item["salesperson"] == "赵经理"
+    assert len(item["images"]) == 1
+    assert item["images"][0]["id"] == file_id
+    assert item["images"][0]["original_name"] == "purchase-record.png"
+    assert item["images"][0]["width"] == 32
+    assert item["images"][0]["height"] == 24
+    # 无图片记录返回空列表
+    no_image = body["items"][1]
+    assert no_image["images"] == []
 
     # keyword 分别命中名称/型号/追溯号/申购单号
     by_name = await client.get(

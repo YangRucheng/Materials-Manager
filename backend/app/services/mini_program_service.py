@@ -295,6 +295,17 @@ def purchase_record_item_read(line: PurchaseRequestLine) -> MiniProgramPurchaseR
         purchase_qty=line.purchase_qty,
         plan_date=line.plan_date_snapshot,
         subitem_no=line.subitem_no,
+        material_code=line.material_code_snapshot,
+        category=line.category_snapshot,
+        plan_no=line.plan_no_snapshot,
+        demand_department=line.demand_department_snapshot,
+        actual_demand_person=line.actual_demand_person_snapshot,
+        purchase_responsible=line.purchase_responsible_snapshot,
+        usage=line.usage,
+        remark=request.remark,
+        purchase_date=request.purchase_date,
+        salesperson=line.salesperson,
+        images=[file_read(link.file) for link in line.images],
     )
 
 

@@ -702,6 +702,17 @@ class MiniProgramPurchaseRecordItemRead(ReadModel):
     purchase_qty: Decimal
     plan_date: date
     subitem_no: str | None = None
+    material_code: str | None = None
+    category: str | None = None
+    plan_no: str
+    demand_department: str
+    actual_demand_person: str
+    purchase_responsible: str
+    usage: str
+    remark: str | None = None
+    purchase_date: date | None = None
+    salesperson: str | None = None
+    images: list[FileObjectRead] = Field(default_factory=list)
 
 
 class MiniProgramPurchaseRecordFilterOptions(ReadModel):

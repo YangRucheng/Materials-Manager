@@ -31,7 +31,14 @@
     <t-empty icon="file" description="{{keyword || status ? i18n.purchaseRecordsEmptyFiltered : i18n.purchaseRecordsEmpty}}" />
   </view>
   <view wx:else class="record-list">
-    <view wx:for="{{items}}" wx:key="line_id" class="record-card">
+    <view
+      wx:for="{{items}}"
+      wx:key="line_id"
+      class="record-card"
+      hover-class="record-card-active"
+      bind:tap="openDetail"
+      data-index="{{index}}"
+    >
       <view class="card-topline">
         <view class="plan-date">{{item.plan_date_label}}</view>
         <view class="topline-right">
@@ -70,4 +77,50 @@
   >
     <t-icon name="backtop" size="52rpx" color="#ffffff" />
   </button>
+
+  <t-popup
+    visible="{{detailVisible}}"
+    placement="center"
+    close-btn
+    close-on-overlay-click
+    bind:visible-change="onDetailVisibleChange"
+  >
+    <view class="detail-popup" wx:if="{{detailItem}}">
+      <view class="detail-title-row">
+        <view class="detail-title">{{detailItem.material_name}}</view>
+        <t-tag theme="{{detailItem.status_theme}}" variant="light" size="small">{{detailItem.status}}</t-tag>
+      </view>
+      <view class="detail-rows">
+        <view class="detail-row"><view class="detail-label">{{i18n.modelSpec}}</view><view class="detail-value">{{detailItem.model_spec}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.materialCode}}</view><view class="detail-value">{{detailItem.material_code_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.category}}</view><view class="detail-value">{{detailItem.category_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.planNoLabel}}</view><view class="detail-value">{{detailItem.plan_no_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.planDate}}</view><view class="detail-value">{{detailItem.plan_date_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.purchaseQuantity}}</view><view class="detail-value">{{detailItem.quantity_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.purchaseOrderNo}}</view><view class="detail-value">{{detailItem.purchase_order_no_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.traceNo}}</view><view class="detail-value">{{detailItem.trace_no_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.subitemNo}}</view><view class="detail-value">{{detailItem.subitem_no_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.actualDemandPerson}}</view><view class="detail-value">{{detailItem.actual_demand_person_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.purchaseResponsible}}</view><view class="detail-value">{{detailItem.purchase_responsible_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.demandDepartment}}</view><view class="detail-value">{{detailItem.demand_department_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.usage}}</view><view class="detail-value">{{detailItem.usage_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.purchaseDateLabel}}</view><view class="detail-value">{{detailItem.purchase_date_label || i18n.notSet}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.salespersonLabel}}</view><view class="detail-value">{{detailItem.salesperson_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.remark}}</view><view class="detail-value">{{detailItem.remark_label}}</view></view>
+      </view>
+      <view class="popup-divider"></view>
+      <view class="image-section">
+        <view class="image-section-head">
+          <view class="image-section-title">{{i18n.imageAttachments}}</view>
+          <view class="image-count">{{detailItem.image_count_label}}</view>
+        </view>
+        <view wx:if="{{detailItem.images.length}}" class="image-grid">
+          <view wx:for="{{detailItem.images}}" wx:key="id" class="image-item" data-index="{{index}}" bind:tap="previewImage">
+            <image class="record-image" src="{{item.preview_url}}" mode="aspectFill" lazy-load webp />
+          </view>
+        </view>
+        <view wx:else class="no-image">{{i18n.noImages}}</view>
+      </view>
+    </view>
+  </t-popup>
 </view>
