@@ -29,17 +29,18 @@
       <view class="section-heading"><view class="section-title">{{i18n.purchaseRecordInfo}}</view></view>
       <view class="section-divider"></view>
       <view class="detail-list">
-        <view class="detail-row"><view class="detail-label">{{i18n.modelSpec}}</view><view class="detail-value">{{record.model_spec}}</view></view>
-        <view class="detail-row"><view class="detail-label">{{i18n.materialCode}}</view><view class="detail-value">{{record.material_code_label}}</view></view>
-        <view class="detail-row"><view class="detail-label">{{i18n.planDate}}</view><view class="detail-value">{{record.plan_date_label}}</view></view>
-        <view class="detail-row"><view class="detail-label">{{i18n.purchaseQuantity}}</view><view class="detail-value">{{record.quantity_label}}</view></view>
+        <view class="detail-row">
+          <view class="detail-label">{{i18n.materialCode}}</view>
+          <view wx:if="{{record.material_code_copyable}}" class="detail-value copy-value" data-code="{{record.material_code}}" bind:tap="copyMaterialCode">{{record.material_code_label}}</view>
+          <view wx:else class="detail-value">{{record.material_code_label}}</view>
+        </view>
+        <view class="detail-row"><view class="detail-label">{{i18n.purchaseDateLabel}}</view><view class="detail-value">{{record.purchase_date_label || i18n.notSet}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.purchaseOrderNo}}</view><view class="detail-value">{{record.purchase_order_no_label}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.traceNo}}</view><view class="detail-value">{{record.trace_no_label}}</view></view>
-        <view class="detail-row"><view class="detail-label">{{i18n.subitemNo}}</view><view class="detail-value">{{record.subitem_no_label}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.actualDemandPerson}}</view><view class="detail-value">{{record.actual_demand_person_label}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.demandDepartment}}</view><view class="detail-value">{{record.demand_department_label}}</view></view>
+        <view class="detail-row"><view class="detail-label">{{i18n.subitemNo}}</view><view class="detail-value">{{record.subitem_no_label}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.usage}}</view><view class="detail-value">{{record.usage_label}}</view></view>
-        <view class="detail-row"><view class="detail-label">{{i18n.purchaseDateLabel}}</view><view class="detail-value">{{record.purchase_date_label || i18n.notSet}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.salespersonLabel}}</view><view class="detail-value">{{record.salesperson_label}}</view></view>
         <view class="detail-row"><view class="detail-label">{{i18n.remark}}</view><view class="detail-value">{{record.remark_label}}</view></view>
       </view>
