@@ -61,6 +61,7 @@
           <view class="meta-label">{{i18n.purchaseOrderNo}}</view>
           <view class="meta-value">{{item.purchase_order_no_label}}</view>
         </view>
+        <t-icon name="chevron-right" size="36rpx" color="#a1a9b7" />
       </view>
     </view>
   </view>
