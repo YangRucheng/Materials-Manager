@@ -52,42 +52,42 @@ func (h *SettingsHandler) AIGetSettings(c *gin.Context) {
 	settings := service.AISettingsRead(h.App.Cfg, h.App.DB)
 	respond.JSON(c, http.StatusOK, map[string]any{
 		"endpoint": settings.Endpoint, "api_key": settings.APIKey, "model": settings.Model,
-		"enabled": settings.Enabled,
-		"mini_program_code_env": settings.MiniProgramCodeEnv,
-		"mini_program_code_app_id": settings.MiniProgramCodeAppID,
-		"mini_program_app_ids": settings.MiniProgramAppIDs,
+		"enabled":                           settings.Enabled,
+		"mini_program_code_env":             settings.MiniProgramCodeEnv,
+		"mini_program_code_app_id":          settings.MiniProgramCodeAppID,
+		"mini_program_app_ids":              settings.MiniProgramAppIDs,
 		"mini_program_registration_enabled": settings.RegistrationEnabled,
-		"mini_program_new_user_enabled": settings.NewUserEnabled,
-		"image_acceleration_server_url": settings.ImageAccelerationURL,
-		"inventory_mode": settings.InventoryMode,
-		"huaxing_inventory_mode": settings.HuaXingInventoryMode,
-		"purchase_plans_mode": settings.PurchasePlansMode,
-		"purchase_records_mode": settings.PurchaseRecordsMode,
-		"material_codes_mode": settings.MaterialCodesMode,
-		"secondary_warehouse_mode": settings.SecondaryWarehouseMode,
-		"version": settings.Version,
+		"mini_program_new_user_enabled":     settings.NewUserEnabled,
+		"image_acceleration_server_url":     settings.ImageAccelerationURL,
+		"inventory_mode":                    settings.InventoryMode,
+		"huaxing_inventory_mode":            settings.HuaXingInventoryMode,
+		"purchase_plans_mode":               settings.PurchasePlansMode,
+		"purchase_records_mode":             settings.PurchaseRecordsMode,
+		"material_codes_mode":               settings.MaterialCodesMode,
+		"secondary_warehouse_mode":          settings.SecondaryWarehouseMode,
+		"version":                           settings.Version,
 	})
 }
 
 // AIUpdateSettings PUT /ai-search/settings（超管）
 func (h *SettingsHandler) AIUpdateSettings(c *gin.Context) {
 	var req struct {
-		Endpoint          string `json:"endpoint"`
-		APIKey            string `json:"api_key"`
-		Model             string `json:"model"`
-		Enabled           bool   `json:"enabled"`
-		MiniProgramCodeEnv string `json:"mini_program_code_env"`
-		MiniProgramCodeAppID string `json:"mini_program_code_app_id"`
-		RegistrationEnabled bool `json:"mini_program_registration_enabled"`
-		NewUserEnabled      bool `json:"mini_program_new_user_enabled"`
+		Endpoint                   string `json:"endpoint"`
+		APIKey                     string `json:"api_key"`
+		Model                      string `json:"model"`
+		Enabled                    bool   `json:"enabled"`
+		MiniProgramCodeEnv         string `json:"mini_program_code_env"`
+		MiniProgramCodeAppID       string `json:"mini_program_code_app_id"`
+		RegistrationEnabled        bool   `json:"mini_program_registration_enabled"`
+		NewUserEnabled             bool   `json:"mini_program_new_user_enabled"`
 		ImageAccelerationServerURL string `json:"image_acceleration_server_url"`
-		InventoryMode      string `json:"inventory_mode"`
-		HuaXingInventoryMode string `json:"huaxing_inventory_mode"`
-		PurchasePlansMode  string `json:"purchase_plans_mode"`
-		PurchaseRecordsMode string `json:"purchase_records_mode"`
-		MaterialCodesMode  string `json:"material_codes_mode"`
-		SecondaryWarehouseMode string `json:"secondary_warehouse_mode"`
-		Version            int `json:"version"`
+		InventoryMode              string `json:"inventory_mode"`
+		HuaXingInventoryMode       string `json:"huaxing_inventory_mode"`
+		PurchasePlansMode          string `json:"purchase_plans_mode"`
+		PurchaseRecordsMode        string `json:"purchase_records_mode"`
+		MaterialCodesMode          string `json:"material_codes_mode"`
+		SecondaryWarehouseMode     string `json:"secondary_warehouse_mode"`
+		Version                    int    `json:"version"`
 	}
 	if appErr := binding.Body(c, &req); appErr != nil {
 		respond.Error(c, appErr)
@@ -136,11 +136,11 @@ func (h *SettingsHandler) ImageAcceleration(c *gin.Context) {
 func (h *SettingsHandler) MiniProgramFeatures(c *gin.Context) {
 	settings := service.AISettingsRead(h.App.Cfg, h.App.DB)
 	respond.JSON(c, http.StatusOK, map[string]any{
-		"inventory_mode": settings.InventoryMode,
-		"huaxing_inventory_mode": settings.HuaXingInventoryMode,
-		"purchase_plans_mode": settings.PurchasePlansMode,
-		"purchase_records_mode": settings.PurchaseRecordsMode,
-		"material_codes_mode": settings.MaterialCodesMode,
+		"inventory_mode":           settings.InventoryMode,
+		"huaxing_inventory_mode":   settings.HuaXingInventoryMode,
+		"purchase_plans_mode":      settings.PurchasePlansMode,
+		"purchase_records_mode":    settings.PurchaseRecordsMode,
+		"material_codes_mode":      settings.MaterialCodesMode,
 		"secondary_warehouse_mode": settings.SecondaryWarehouseMode,
 	})
 }
@@ -171,11 +171,11 @@ func (h *SettingsHandler) Webhooks(c *gin.Context) {
 func (h *SettingsHandler) WebhookUpdate(c *gin.Context) {
 	platform := strings.ToUpper(c.Param("platform"))
 	var req struct {
-		WebhookURL        string   `json:"webhook_url"`
-		Secret            string   `json:"secret"`
-		Enabled           bool     `json:"enabled"`
-		SubscribedEvents  []string `json:"subscribed_events"`
-		Version           int      `json:"version"`
+		WebhookURL       string   `json:"webhook_url"`
+		Secret           string   `json:"secret"`
+		Enabled          bool     `json:"enabled"`
+		SubscribedEvents []string `json:"subscribed_events"`
+		Version          int      `json:"version"`
 	}
 	if appErr := binding.Body(c, &req); appErr != nil {
 		respond.Error(c, appErr)

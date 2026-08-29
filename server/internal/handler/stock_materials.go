@@ -206,12 +206,35 @@ func (h *StockMaterialsHandler) SavePolicy(c *gin.Context) {
 	respond.JSON(c, http.StatusOK, h.stockRead(full))
 }
 
+// MiniProgramCodeRedirect GET /stock-materials/{material_id}/mini-program-code（307）
+func (h *StockMaterialsHandler) MiniProgramCodeRedirect(c *gin.Context) {
+	materialID, ok := parseIDParam(c, "material_id")
+	if !ok {
+		return
+	}
+	item, appErr := service.GetStockMaterial(h.App.DB, materialID)
+	if appErr != nil {
+		respond.Error(c, appErr)
+		return
+	}
+	settings := service.GetSettingData(h.App.DB)
+	env := service.SettingStr(settings, "mini_program_code_env", "release")
+	appID := service.SettingStr(settings, "mini_program_code_app_id", "")
+	if appID == "" {
+		appID = firstNonEmpty(h.App.Cfg.WechatMiniProgramAppID)
+	}
+	target := "/api/v1/stock-materials/mini-program-codes/" + item.UUID + "?env=" + env + "&appid=" + appID
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusTemporaryRedirect, target)
+}
+
 // RegisterStockMaterials 注册 /stock-materials 路由。
 func RegisterStockMaterials(r *gin.RouterGroup, app *App) {
 	h := NewStockMaterialsHandler(app)
 	group := r.Group("/stock-materials", auth.AuthManagement(app.Cfg, app.DB))
 	group.GET("", h.List)
 	group.GET("/mini-program-codes/:material_uuid", h.MiniProgramCode)
+	group.GET("/:material_id/mini-program-code", h.MiniProgramCodeRedirect)
 	group.GET("/:material_id", h.Detail)
 	write := group.Group("", middleware.RequireFullSecondaryWarehouse(app.DB))
 	write.POST("", auth.WarehouseWriter(), h.Create)

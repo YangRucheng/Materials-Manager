@@ -346,7 +346,7 @@ func RegisterPurchaseMaterials(r *gin.RouterGroup, app *App) {
 	write.POST("", h.Create)
 	write.PATCH("/:material_id", h.Update)
 	write.DELETE("/:material_id", h.Delete)
-	write.POST("/batch", h.BatchUpdate)
+	write.PATCH("/batch", h.BatchUpdate)
 	write.POST("/batch-move-to-record", h.BatchMoveToRecord)
 	write.POST("/:material_id/move-to-record", h.MoveToRecord)
 	linkWriter := auth.RequireRoles("SUPER_ADMIN", "WAREHOUSE_ADMIN", "PURCHASE_ADMIN")

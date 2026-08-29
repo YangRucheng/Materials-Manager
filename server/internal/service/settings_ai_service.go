@@ -2,39 +2,39 @@ package service
 
 import (
 	"encoding/json"
-	"time"
 	"net/http"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/yangrucheng/materials-manager/server/internal/aiclient"
-	apperrors "github.com/yangrucheng/materials-manager/server/internal/errors"
 	"github.com/yangrucheng/materials-manager/server/internal/config"
+	apperrors "github.com/yangrucheng/materials-manager/server/internal/errors"
 	"github.com/yangrucheng/materials-manager/server/internal/models"
 	"github.com/yangrucheng/materials-manager/server/internal/security"
 )
 
 // AISettings AI 搜索配置（读模型）。
 type AISettings struct {
-	Endpoint    string
-	APIKey      string
-	Model       string
-	Enabled     bool
-	MiniProgramCodeEnv    string
-	MiniProgramCodeAppID  string
-	MiniProgramAppIDs     []string
-	RegistrationEnabled   bool
-	NewUserEnabled        bool
-	ImageAccelerationURL  string
-	InventoryMode         string
-	HuaXingInventoryMode  string
-	PurchasePlansMode     string
-	PurchaseRecordsMode   string
-	MaterialCodesMode     string
+	Endpoint               string
+	APIKey                 string
+	Model                  string
+	Enabled                bool
+	MiniProgramCodeEnv     string
+	MiniProgramCodeAppID   string
+	MiniProgramAppIDs      []string
+	RegistrationEnabled    bool
+	NewUserEnabled         bool
+	ImageAccelerationURL   string
+	InventoryMode          string
+	HuaXingInventoryMode   string
+	PurchasePlansMode      string
+	PurchaseRecordsMode    string
+	MaterialCodesMode      string
 	SecondaryWarehouseMode string
-	UpdatedAt             *time.Time
-	Version               int
+	UpdatedAt              *time.Time
+	Version                int
 }
 
 // AISettingsRead 读取 AI 配置（含解密明文 api_key）。
@@ -83,19 +83,19 @@ func configFromData(cfg *config.Config, data map[string]any, version int, update
 	appIDs := splitNonEmpty(cfg.WechatMiniProgramAppID)
 	return &AISettings{
 		Endpoint: endpoint, APIKey: apiKey, Model: model, Enabled: enabled,
-		MiniProgramCodeEnv:   settingStrDefault(data, "mini_program_code_env", "release"),
-		MiniProgramCodeAppID: settingStrDefault(data, "mini_program_code_app_id", ""),
-		MiniProgramAppIDs:    appIDs,
-		RegistrationEnabled:  settingBoolDefault(data, "mini_program_registration_enabled", true),
-		NewUserEnabled:       settingBoolDefault(data, "mini_program_new_user_enabled", true),
-		ImageAccelerationURL: settingStrDefault(data, "image_acceleration_server_url", ""),
-		InventoryMode:        settingStrDefault(data, "inventory_mode", "read_write"),
-		HuaXingInventoryMode: settingStrDefault(data, "huaxing_inventory_mode", "query_only"),
-		PurchasePlansMode:    settingStrDefault(data, "purchase_plans_mode", "query_only"),
-		PurchaseRecordsMode:  settingStrDefault(data, "purchase_records_mode", "query_only"),
-		MaterialCodesMode:    settingStrDefault(data, "material_codes_mode", "query_only"),
+		MiniProgramCodeEnv:     settingStrDefault(data, "mini_program_code_env", "release"),
+		MiniProgramCodeAppID:   settingStrDefault(data, "mini_program_code_app_id", ""),
+		MiniProgramAppIDs:      appIDs,
+		RegistrationEnabled:    settingBoolDefault(data, "mini_program_registration_enabled", true),
+		NewUserEnabled:         settingBoolDefault(data, "mini_program_new_user_enabled", true),
+		ImageAccelerationURL:   settingStrDefault(data, "image_acceleration_server_url", ""),
+		InventoryMode:          settingStrDefault(data, "inventory_mode", "read_write"),
+		HuaXingInventoryMode:   settingStrDefault(data, "huaxing_inventory_mode", "query_only"),
+		PurchasePlansMode:      settingStrDefault(data, "purchase_plans_mode", "query_only"),
+		PurchaseRecordsMode:    settingStrDefault(data, "purchase_records_mode", "query_only"),
+		MaterialCodesMode:      settingStrDefault(data, "material_codes_mode", "query_only"),
 		SecondaryWarehouseMode: settingStrDefault(data, "secondary_warehouse_mode", "full"),
-		Version:              version,
+		Version:                version,
 	}
 }
 
@@ -137,7 +137,7 @@ func UpdateAISettings(cfg *config.Config, db *gorm.DB, version int, endpoint, ap
 		"mini_program_registration_enabled": registrationEnabled,
 		"mini_program_new_user_enabled":     newUserEnabled,
 		"image_acceleration_server_url":     imageURL,
-		"inventory_mode": inventoryMode, "huaxing_inventory_mode": huaXingMode,
+		"inventory_mode":                    inventoryMode, "huaxing_inventory_mode": huaXingMode,
 		"purchase_plans_mode": plansMode, "purchase_records_mode": recordsMode,
 		"material_codes_mode": codesMode, "secondary_warehouse_mode": warehouseMode,
 	}

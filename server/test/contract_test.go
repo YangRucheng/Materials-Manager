@@ -97,11 +97,10 @@ func TestOpenAPIRouteCoverage(t *testing.T) {
 		missing = append(missing, route)
 	}
 	if len(missing) > 0 {
-		t.Logf("尚未注册的 openapi 路由（%d 个）：", len(missing))
+		t.Errorf("openapi 中存在未注册的路由（%d 个）：", len(missing))
 		for _, m := range missing {
-			t.Logf("  MISSING %s", m)
+			t.Errorf("  MISSING %s", m)
 		}
 	}
-	// 注意：该测试在全部阶段完成前允许缺漏（仅报告），P10 收尾时改为断言空。
 	_ = gin.Mode
 }

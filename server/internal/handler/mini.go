@@ -8,6 +8,7 @@ import (
 
 	"github.com/yangrucheng/materials-manager/server/internal/auth"
 	"github.com/yangrucheng/materials-manager/server/internal/binding"
+	"github.com/yangrucheng/materials-manager/server/internal/domain"
 	"github.com/yangrucheng/materials-manager/server/internal/dto"
 	"github.com/yangrucheng/materials-manager/server/internal/models"
 	"github.com/yangrucheng/materials-manager/server/internal/respond"
@@ -494,6 +495,91 @@ func (h *MiniHandler) MiniUserMerge(c *gin.Context) {
 	respond.JSON(c, http.StatusOK, miniUserRead(updated))
 }
 
+// PlanFilterOptions GET /mini-program/purchase-plans/filter-options
+func (h *MiniHandler) PlanFilterOptions(c *gin.Context) {
+	persons, responsibles, _, _, _ := service.PurchaseFilterOptions(h.App.DB, boolPtr(false), []string{domain.PlanNormal})
+	respond.JSON(c, http.StatusOK, map[string]any{
+		"actual_demand_persons": persons, "purchase_responsibles": responsibles,
+	})
+}
+
+// RecordFilterOptions GET /mini-program/purchase-records/filter-options
+func (h *MiniHandler) RecordFilterOptions(c *gin.Context) {
+	salespersons, statuses, _ := service.RecordFilterOptions(h.App.DB)
+	respond.JSON(c, http.StatusOK, map[string]any{
+		"salespersons": salespersons, "statuses": statuses,
+	})
+}
+
+// RecordDetail GET /mini-program/purchase-records/{line_id}
+func (h *MiniHandler) RecordDetail(c *gin.Context) {
+	lineID, ok := parseIDParam(c, "line_id")
+	if !ok {
+		return
+	}
+	line, appErr := service.GetPurchaseRecord(h.App.DB, lineID, false)
+	if appErr != nil {
+		respond.Error(c, appErr)
+		return
+	}
+	read := recordRead(h.App.DB, line)
+	respond.JSON(c, http.StatusOK, map[string]any{
+		"id": read.LineID, "material_name": read.MaterialName, "model_spec": read.ModelSpec,
+		"unit_name": read.UnitName, "purchase_qty": read.PurchaseQty, "status": read.Status,
+		"plan_no": read.PlanNo, "trace_no": read.TraceNo, "purchase_order_no": read.PurchaseOrderNo,
+	})
+}
+
+// MaterialDetail GET /mini-program/materials/{material_uuid}
+func (h *MiniHandler) MaterialDetail(c *gin.Context) {
+	uuid := c.Param("material_uuid")
+	material, appErr := service.GetStockMaterialByUUID(h.App.DB, uuid)
+	if appErr != nil {
+		respond.Error(c, appErr)
+		return
+	}
+	full, appErr := service.LoadStockMaterialDetail(h.App.DB, material.ID)
+	if appErr != nil {
+		respond.Error(c, appErr)
+		return
+	}
+	name := full.Material.Name
+	if full.Material.NameID != nil && *full.Material.NameID != "" {
+		name = *full.Material.NameID
+	} else if full.Material.Alias != nil && *full.Material.Alias != "" {
+		name = name + "（" + *full.Material.Alias + "）"
+	}
+	respond.JSON(c, http.StatusOK, map[string]any{
+		"material_id": full.Material.ID, "uuid": full.Material.UUID, "name": name,
+		"model_spec": full.Material.ModelSpec, "unit_name": full.Material.UnitName,
+		"quantity": serialize.DecimalToString(full.BalanceQty), "remark": full.Material.Remark,
+	})
+}
+
+// PlanDetail GET /mini-program/purchase-plans/{material_id}
+func (h *MiniHandler) PlanDetail(c *gin.Context) {
+	materialID, ok := parseIDParam(c, "material_id")
+	if !ok {
+		return
+	}
+	item, appErr := service.GetPurchaseMaterial(h.App.DB, materialID)
+	if appErr != nil {
+		respond.Error(c, appErr)
+		return
+	}
+	var nextID *int64
+	var prev models.PurchaseMaterial
+	if err := h.App.DB.Where("id > ?", materialID).Order("id").First(&prev).Error; err == nil {
+		nextID = &prev.ID
+	}
+	respond.JSON(c, http.StatusOK, map[string]any{
+		"id": item.ID, "name": item.Name, "model_spec": item.ModelSpec, "unit_name": item.UnitName,
+		"planned_qty":          serialize.DecimalToString(item.PlannedQty.Decimal),
+		"actual_demand_person": item.ActualDemandPerson, "plan_no": item.PlanNo,
+		"usage": item.Usage, "next_id": nextID,
+	})
+}
+
 // RegisterMini 注册小程序路由。
 func RegisterMini(r *gin.RouterGroup, app *App) {
 	h := NewMiniHandler(app)
@@ -512,7 +598,13 @@ func RegisterMini(r *gin.RouterGroup, app *App) {
 	authMini.POST("/outbound", h.Outbound)
 	authMini.GET("/operations", h.Operations)
 	authMini.GET("/outbound/:operation_no", h.OutboundByNo)
+	authMini.GET("/purchase-plans/filter-options", h.PlanFilterOptions)
+	authMini.GET("/purchase-records/filter-options", h.RecordFilterOptions)
+	authMini.GET("/purchase-records/:line_id", h.RecordDetail)
+	authMini.GET("/materials/:material_uuid", h.MaterialDetail)
+	authMini.GET("/purchase-plans/:material_id", h.PlanDetail)
 	authMini.GET("/inventory/last-import", setType("LITE_INVENTORY"), h.LastImport)
+	authMini.GET("/lite-inventory/last-import", setType("LITE_INVENTORY"), h.LastImport)
 	authMini.GET("/material-codes/last-import", setType("MATERIAL_CODE_LIBRARY"), h.LastImport)
 	authMini.GET("/huaxing-inventory/last-import", setType("HUAXING_INVENTORY"), h.LastImport)
 

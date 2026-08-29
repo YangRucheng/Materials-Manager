@@ -130,12 +130,12 @@ func operationCatalog() (map[string]map[string]any, error) {
 			}
 			catalog[opID] = map[string]any{
 				"operation_id": opID, "method": strings.ToUpper(method), "path": p,
-				"summary":     opMap["summary"],
-				"description": opMap["description"],
-				"tags":        opMap["tags"],
-				"parameters":  opMap["parameters"],
+				"summary":      opMap["summary"],
+				"description":  opMap["description"],
+				"tags":         opMap["tags"],
+				"parameters":   opMap["parameters"],
 				"request_body": opMap["requestBody"],
-				"responses":   opMap["responses"],
+				"responses":    opMap["responses"],
 			}
 		}
 	}
