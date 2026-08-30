@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/yangrucheng/materials-manager/server/internal/config"
+	"github.com/yangrucheng/materials-manager/server/internal/domain"
 
 	"github.com/yangrucheng/materials-manager/server/internal/dto"
 	apperrors "github.com/yangrucheng/materials-manager/server/internal/errors"
@@ -143,7 +144,10 @@ func statusNames(data map[string]any) []string {
 	if list, ok := data["status"].([]any); ok {
 		for _, item := range list {
 			if s, ok := item.(string); ok {
-				out = append(out, s)
+				// 前端传状态 VALUE（中文，如"正常"），DB 存 NAME（NORMAL）——先转 name 再查询。
+				if name, ok := domain.PlanStatusName[s]; ok {
+					out = append(out, name)
+				}
 			}
 		}
 	}

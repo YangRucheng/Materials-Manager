@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/yangrucheng/materials-manager/server/internal/auth"
+	"github.com/yangrucheng/materials-manager/server/internal/domain"
 	"github.com/yangrucheng/materials-manager/server/internal/dto"
 	"github.com/yangrucheng/materials-manager/server/internal/excel"
 	"github.com/yangrucheng/materials-manager/server/internal/respond"
@@ -105,6 +106,17 @@ func (h *ExportJobsHandler) ExportPlanResults(c *gin.Context) {
 	if user != nil {
 		createdBy = &user.ID
 	}
+	// 与 Python 端点一致：状态 VALUE→NAME 归一化；非超管默认 NORMAL、禁 ARCHIVED。
+	exportStatus := statusNames(params)
+	if user != nil && user.Role != domain.RoleSuperAdmin {
+		if contains(exportStatus, domain.PlanArchived) {
+			respond.Error(c, archivedForbidden())
+			return
+		}
+		if len(exportStatus) == 0 {
+			exportStatus = []string{domain.PlanNormal}
+		}
+	}
 	paramsJSON, _ := json.Marshal(params)
 	processor := func(db *gormDB, target, paramsJSON string) (map[string]any, string, *appErr) {
 		var data map[string]any
@@ -113,7 +125,7 @@ func (h *ExportJobsHandler) ExportPlanResults(c *gin.Context) {
 			"", "", "", strOf(data, "name"), strOf(data, "model_spec"),
 			strOf(data, "actual_demand_person"), boolOf(data, "empty_actual_demand_person"),
 			"", strOf(data, "subitem_no"), boolOf(data, "empty_subitem_no"),
-			strOf(data, "category"), statusNames(data), nil, boolPtr(false),
+			strOf(data, "category"), exportStatus, nil, boolPtr(false),
 			1, exportRowLimit+1, strOf(data, "sort_by"), strOf(data, "sort_order"))
 		if appErr != nil {
 			return nil, "", appErr
