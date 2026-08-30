@@ -21,12 +21,18 @@ import (
 )
 
 // startupCleanup 启动时清理残留任务与过期数据。
-func startupCleanup(db *gorm.DB) {
+func startupCleanup(cfg *config.Config, db *gorm.DB) {
 	if n := service.MarkStaleImportJobsFailed(db); n > 0 {
 		slog.Info("marked stale import jobs failed", "count", n)
 	}
 	if n := service.CleanupFinishedImportJobs(db, 30); n > 0 {
 		slog.Info("purged old import jobs", "count", n)
+	}
+	if n := service.MarkStaleExportsFailed(cfg, db); n > 0 {
+		slog.Info("marked stale export jobs failed", "count", n)
+	}
+	if n := service.CleanupFinishedExports(cfg, db); n > 0 {
+		slog.Info("purged expired excel export jobs", "count", n)
 	}
 	if n := service.CleanupExpiredShares(db); n > 0 {
 		slog.Info("purged expired share links", "count", n)
@@ -68,10 +74,11 @@ func main() {
 	router.RegisterAPI(r, app)
 
 	// 后台任务：启动清理 + 周期 worker
-	startupCleanup(db)
+	startupCleanup(cfg, db)
 	stopWorkers := make(chan struct{})
 	go service.RunWebhookDeliveryWorker(cfg, db, stopWorkers)
 	go service.RunPeriodicCleanupWorker(db, stopWorkers)
+	go service.RunExportCleanupWorker(cfg, db, stopWorkers)
 	defer close(stopWorkers)
 
 	addr := "0.0.0.0:8000"

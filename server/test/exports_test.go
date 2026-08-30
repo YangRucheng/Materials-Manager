@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xuri/excelize/v2"
 
+	"github.com/yangrucheng/materials-manager/server/internal/service"
 	"github.com/yangrucheng/materials-manager/server/test/testutil"
 )
 
@@ -163,6 +165,56 @@ func TestExportResultsStatusValueConversion(t *testing.T) {
 	if len(rows) < 2 {
 		t.Fatalf("导出为空表：仅 %d 行（状态 VALUE 导出应有数据）", len(rows))
 	}
+}
+
+// 回归：导出任务/文件须按保留期清理（3 天），防磁盘无限增长。
+// 曾因 Go 重构未接线清理函数，导出文件永不删除。
+func TestExportCleanupRetention(t *testing.T) {
+	cfg := testutil.NewTestConfig(t)
+	db := testutil.OpenTestDB(t, cfg)
+
+	// 构造两个导出任务：一个 4 天前完成（过期）、一个刚完成（保留）
+	write := func(id int64, status, finishedAt string, file string) {
+		if err := db.Exec(
+			`INSERT INTO excel_export_job (id, export_type, status, download_filename, file_path, result, created_at, updated_at, finished_at)
+			 VALUES (?, 'PURCHASE_PLAN_RESULTS', ?, NULL, ?, NULL, ?, ?, ?)`,
+			id, status, file, finishedAt, finishedAt, finishedAt,
+		).Error; err != nil {
+			t.Fatalf("插入任务失败: %v", err)
+		}
+	}
+	old := time.Now().UTC().Add(-4 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	write(1, "SUCCEEDED", old, "/tmp/exports/old-file.xlsx")
+	write(2, "SUCCEEDED", now, "/tmp/exports/new-file.xlsx")
+
+	// 造对应文件
+	os.MkdirAll("/tmp/exports", 0o755)
+	os.WriteFile("/tmp/exports/old-file.xlsx", []byte("old"), 0o644)
+	os.WriteFile("/tmp/exports/new-file.xlsx", []byte("new"), 0o644)
+
+	// 清理后：旧任务（1）应被删除，新任务（2）保留
+	n := service.CleanupFinishedExports(cfg, db)
+	if n < 1 {
+		t.Fatalf("应清理 >=1 个过期导出任务，实际 %d", n)
+	}
+	var cnt int64
+	db.Table("excel_export_job").Where("id = 1").Count(&cnt)
+	if cnt != 0 {
+		t.Fatalf("过期任务 id=1 应被删除，仍存在 %d 条", cnt)
+	}
+	db.Table("excel_export_job").Where("id = 2").Count(&cnt)
+	if cnt != 1 {
+		t.Fatalf("新任务 id=2 应保留，实际 %d 条", cnt)
+	}
+	if _, err := os.Stat("/tmp/exports/old-file.xlsx"); err == nil {
+		t.Fatal("过期文件应被删除")
+	}
+	if _, err := os.Stat("/tmp/exports/new-file.xlsx"); err != nil {
+		t.Fatal("新文件应保留")
+	}
+	// 清理测试残留文件
+	os.RemoveAll("/tmp/exports")
 }
 
 var _ = gin.Mode
