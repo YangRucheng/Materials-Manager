@@ -135,12 +135,30 @@ func MarkStaleExportsFailed(cfg *config.Config, db *gorm.DB) int {
 }
 
 // CleanupFinishedExports 清理过期导出（3 天）与 .tmp 孤儿。
+// 任务行与文件同生共死：删除行即删除对应 xlsx（对齐 Python 清理 worker）。
 func CleanupFinishedExports(cfg *config.Config, db *gorm.DB) int {
 	cutoff := models.UTCNow().Add(-time.Duration(exportRetentionDays) * 24 * time.Hour)
-	res := db.Where("status IN ? AND finished_at < ?",
-		[]string{domain.JobSucceeded, domain.JobFailed}, cutoff).Delete(&models.ExcelExportJob{})
-	if res.Error != nil {
+	// 先收集过期任务的 file_path，再删除行
+	var expired []models.ExcelExportJob
+	if err := db.Where("status IN ? AND finished_at < ?",
+		[]string{domain.JobSucceeded, domain.JobFailed}, cutoff).Find(&expired).Error; err != nil {
 		return 0
+	}
+	if len(expired) == 0 {
+		return 0
+	}
+	ids := make([]int64, 0, len(expired))
+	for _, job := range expired {
+		ids = append(ids, job.ID)
+	}
+	if err := db.Where("id IN ?", ids).Delete(&models.ExcelExportJob{}).Error; err != nil {
+		return 0
+	}
+	// 删除对应导出文件（失败静默：文件缺失/权限问题不阻断）
+	for _, job := range expired {
+		if job.FilePath != nil {
+			_ = os.Remove(*job.FilePath)
+		}
 	}
 	// 清扫 24h 前的 .tmp 孤儿
 	entries, _ := os.ReadDir(ExportsDir(cfg))
@@ -152,5 +170,5 @@ func CleanupFinishedExports(cfg *config.Config, db *gorm.DB) int {
 			}
 		}
 	}
-	return int(res.RowsAffected)
+	return len(expired)
 }

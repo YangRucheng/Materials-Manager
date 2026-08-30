@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/yangrucheng/materials-manager/server/internal/config"
 	"github.com/yangrucheng/materials-manager/server/internal/database"
 	"github.com/yangrucheng/materials-manager/server/internal/domain"
 	"github.com/yangrucheng/materials-manager/server/internal/dto"
@@ -1729,7 +1730,7 @@ func joinSortedKeys(m map[string]bool) string {
 	return strings.Join(keys, "、")
 }
 
-// RunPeriodicCleanupWorker 周期清理（share 过期 + 归档计划清理 + 导出清理）。
+// RunPeriodicCleanupWorker 周期清理（share 过期 + 归档计划清理）。
 func RunPeriodicCleanupWorker(db *gorm.DB, stop <-chan struct{}) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
@@ -1739,6 +1740,22 @@ func RunPeriodicCleanupWorker(db *gorm.DB, stop <-chan struct{}) {
 			return
 		case <-ticker.C:
 			CleanupExpiredShares(db)
+		}
+	}
+}
+
+// RunExportCleanupWorker 每日导出文件清理（对齐 Python run_cleanup_worker：24h 一次）。
+func RunExportCleanupWorker(cfg *config.Config, db *gorm.DB, stop <-chan struct{}) {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if n := CleanupFinishedExports(cfg, db); n > 0 {
+				// 清理结果由调用方日志体现
+			}
 		}
 	}
 }
