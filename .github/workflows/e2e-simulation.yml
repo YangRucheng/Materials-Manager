@@ -43,6 +43,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
 
       - name: 构建 Go 后端
         working-directory: server
