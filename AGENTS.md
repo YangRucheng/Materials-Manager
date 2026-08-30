@@ -6,7 +6,7 @@
 ## 项目概况
 
 - 前端：Vue 3 + TypeScript + Vite + Naive UI + Pinia，位于 `frontend/`。
-- 后端：FastAPI + SQLAlchemy 异步，位于 `backend/`。
+- 后端：Go + Gin（GORM），位于 `server/`。
 - 小程序：微信小程序，位于 `miniprogram/`。
 - 前后端契约统一维护在 `docs/openapi.yaml`，前端类型由它生成（`src/api/generated.raw.ts`、`src/api/generated.ts`），**禁止手改生成文件**。
 - 部署：Docker Compose（后端 + nginx 托管前端静态产物）。前端/后端镜像由 CI 在合并后构建。
@@ -32,8 +32,8 @@ npm run test              # vitest 单测（如有涉及组件）
 npm run build             # 类型检查 + 生产构建
 ```
 
-后端在 `backend/` 目录：`pytest`。
-注意 CI 含「校验 openapi / generated.ts 未漂移」：改接口契约后必须重新生成并提交生成文件，否则 CI 失败。
+后端在 `server/` 目录：`go test ./...`。
+注意 CI 含「校验 openapi / generated.ts 未漂移」：契约源为 `docs/openapi.yaml`，改动后需同步 `server/internal/openapi/openapi.yaml`（跑 `TestOpenAPIContractDrift` 校验），并重新生成前端类型。
 
 ## 代码与提交规范
 

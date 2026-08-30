@@ -5,12 +5,12 @@ on:
     branches: ["**"]
     tags: ["v*"]
     paths:
-      - "backend/**"
+      - "server/**"
       - "frontend/**"
       - ".github/workflows/build-images.yml"
   pull_request:
     paths:
-      - "backend/**"
+      - "server/**"
       - "frontend/**"
       - ".github/workflows/build-images.yml"
   workflow_dispatch:
@@ -49,7 +49,7 @@ jobs:
           list-files: none
           filters: |
             backend:
-              - 'backend/**'
+              - 'server/**'
               - '.github/workflows/build-images.yml'
             frontend:
               - 'frontend/**'
@@ -94,8 +94,8 @@ jobs:
         id: settings
         run: |
           if [ "${{ matrix.component }}" = "backend" ]; then
-            echo "context=." >> "$GITHUB_OUTPUT"
-            echo "dockerfile=./backend/Dockerfile" >> "$GITHUB_OUTPUT"
+            echo "context=./server" >> "$GITHUB_OUTPUT"
+            echo "dockerfile=./server/Dockerfile" >> "$GITHUB_OUTPUT"
             echo "build_args<<EOF" >> "$GITHUB_OUTPUT"
             echo "BUILD_TIME=${{ steps.buildinfo.outputs.build_time }}" >> "$GITHUB_OUTPUT"
             echo "GIT_SHA=${{ github.sha }}" >> "$GITHUB_OUTPUT"

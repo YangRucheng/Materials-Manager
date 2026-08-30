@@ -1,16 +1,19 @@
 name: 契约一致性校验
 
+# openapi.yaml 是唯一契约源。校验：
+# 1) Go 后端内嵌副本与 docs/openapi.yaml 一致（契约漂移测试）
+# 2) 前端 generated.raw.ts 与 openapi.yaml 一致
 on:
   push:
     branches: ["**"]
     paths:
-      - "backend/**"
+      - "server/**"
       - "docs/**"
       - "frontend/**"
       - ".github/workflows/contract-check.yml"
   pull_request:
     paths:
-      - "backend/**"
+      - "server/**"
       - "docs/**"
       - "frontend/**"
       - ".github/workflows/contract-check.yml"
@@ -24,35 +27,23 @@ concurrency:
 
 jobs:
   check:
-    name: 校验 openapi / generated.ts 未漂移
+    name: 校验 openapi 未漂移
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 配置 Python
-        uses: actions/setup-python@v5
+      - name: 配置 Go
+        uses: actions/setup-go@v5
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          go-version-file: server/go.mod
 
-      - name: 安装后端依赖
-        working-directory: backend
-        run: |
-          pip install -e ".[dev]" || pip install -e .
+      - name: 安装 libwebp（WebP 预览编码 CGO 依赖）
+        run: sudo apt-get update && sudo apt-get install -y libwebp-dev
 
-      - name: 重新导出 openapi.yaml，校验与后端一致
-        working-directory: backend
-        run: |
-          python scripts/export_openapi.py
-          cd ..
-          if ! git diff --exit-code docs/openapi.yaml; then
-            echo "❌ docs/openapi.yaml 与后端契约不一致。"
-            echo "请在 backend 目录运行：python scripts/export_openapi.py 并提交结果。"
-            exit 1
-          fi
-          echo "✅ docs/openapi.yaml 与后端契约一致"
+      - name: 契约漂移测试（内嵌 openapi == docs/openapi.yaml）
+        working-directory: server
+        run: go test ./test/ -run TestOpenAPIContractDrift -v
 
       - name: 配置 Node.js
         uses: actions/setup-node@v4
