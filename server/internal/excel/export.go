@@ -182,8 +182,8 @@ func RenderTemplate(templateDir, templateFile string, rows []map[string]any) ([]
 		return nil, "", appErr
 	}
 	f := excelize.NewFile()
-	sheet := f.GetSheetName(0)
-	_ = f.SetSheetName(sheet, spec.Sheet.Title)
+	_ = f.SetSheetName(f.GetSheetName(0), spec.Sheet.Title)
+	sheet := spec.Sheet.Title
 	_ = f.SetSheetRow(sheet, "A1", []any{})
 	setDimensions(f, sheet, spec.Sheet)
 	if spec.Sheet.FreezePanes != "" {
@@ -315,8 +315,8 @@ func columnLetter(n int) string {
 // RenderResultExcel 结果导出（动态列 + 图片）。
 func RenderResultExcel(title string, columns [][2]string, rows []map[string]any) ([]byte, string, *apperrors.AppError) {
 	f := excelize.NewFile()
-	sheet := f.GetSheetName(0)
-	_ = f.SetSheetName(sheet, title)
+	_ = f.SetSheetName(f.GetSheetName(0), title)
+	sheet := title
 	headerStyle, _ := f.NewStyle(&excelize.Style{
 		Font:      &excelize.Font{Bold: true, Family: "等线", Size: 11, Color: "#000000"},
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"FFD9EAD3"}, Pattern: 1},

@@ -1,12 +1,14 @@
 package test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 
 	"github.com/yangrucheng/materials-manager/server/test/testutil"
 )
@@ -91,6 +93,22 @@ func TestExportResultsJobAndDownload(t *testing.T) {
 	}
 	if len(dl.Body.Bytes()) == 0 {
 		t.Fatal("下载内容为空")
+	}
+	// 回归：解析 xlsx，必须包含表头与至少一行数据（防"空表"回归）
+	f, err := excelize.OpenReader(bytes.NewReader(dl.Body.Bytes()))
+	if err != nil {
+		t.Fatalf("解析导出 xlsx 失败: %v", err)
+	}
+	defer f.Close()
+	rows, err := f.GetRows(f.GetSheetList()[0])
+	if err != nil {
+		t.Fatalf("读取导出 sheet 失败: %v", err)
+	}
+	if len(rows) < 2 {
+		t.Fatalf("导出为空表：仅 %d 行（应含表头+数据）", len(rows))
+	}
+	if rows[1][0] == "" {
+		t.Fatalf("导出数据行首列空: %v", rows[1])
 	}
 }
 
