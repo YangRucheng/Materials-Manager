@@ -37,10 +37,10 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 配置 Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
 
@@ -82,5 +82,6 @@ jobs:
             sleep 1
           done
           curl -sf http://127.0.0.1:8000/health > /dev/null
-          cd "${{ github.workspace }}" && python server/scripts/e2e_simulation.py
+          python3 -m pip install --break-system-packages httpx
+          cd "${{ github.workspace }}" && python3 server/scripts/e2e_simulation.py
           kill "$BACKEND_PID" 2>/dev/null || true
