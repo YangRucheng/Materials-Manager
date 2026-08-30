@@ -37,6 +37,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
 
       - name: 安装 libwebp（WebP 预览编码 CGO 依赖）
         run: sudo apt-get update && sudo apt-get install -y libwebp-dev
