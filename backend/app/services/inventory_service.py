@@ -1,0 +1,518 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from typing import cast
+from uuid import uuid4
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.errors import AppError, not_found
+from app.domain.enums import OperationType, SourceType, WebhookEventType
+from app.models import (
+    MiniProgramUser,
+    StockBalance,
+    StockMaterial,
+    StockOperation,
+    StockOperationLine,
+)
+from app.repositories import inventory_repository
+from app.schemas import (
+    InventoryBalanceRead,
+    OperationCreate,
+    OperationLineWrite,
+    OperationUpdate,
+    ReverseOperationRequest,
+    StockOperationLineRead,
+    StockOperationRead,
+)
+from app.services import webhook_service
+from app.services.common import (
+    log_event,
+    operation_source_type,
+    utc_aware,
+    utc_naive,
+    utcnow,
+    validate_quantity_precision,
+    validate_version,
+)
+
+ZERO = Decimal("0")
+
+
+async def recent_outbound_consumption(
+    session: AsyncSession,
+    material_ids: Iterable[int],
+    *,
+    now: datetime | None = None,
+) -> dict[int, Decimal]:
+    return await inventory_repository.recent_outbound_consumption(
+        session, material_ids, now=now
+    )
+
+
+async def get_operation(
+    session: AsyncSession, operation_id: int, *, for_update: bool = False
+) -> StockOperation:
+    item = await inventory_repository.get_operation(session, operation_id, for_update=for_update)
+    if item is None:
+        raise not_found("库存流水")
+    return item
+
+
+async def operation_read(session: AsyncSession, item: StockOperation) -> StockOperationRead:
+    return StockOperationRead(
+        id=item.id,
+        operation_no=item.operation_no,
+        operation_type=item.operation_type,
+        occurred_at=utc_aware(item.occurred_at),
+        business_reason=item.business_reason,
+        receiver_unit=item.receiver_unit,
+        receiver_name=item.receiver_name,
+        subitem_no=item.subitem_no,
+        source_type=_operation_source_type(item),
+        reversal_of_id=item.reversal_of_id,
+        is_reversed=item.reversal_of_id is not None,
+        client_request_id=item.client_request_id,
+        mini_program_user_name=item.mini_program_user_name_snapshot,
+        lines=[
+            StockOperationLineRead(
+                id=line.id,
+                stock_material_id=line.stock_material_id,
+                material_name=line.material_name_snapshot,
+                model_spec=line.model_spec_snapshot,
+                unit_name=line.unit_name_snapshot,
+                quantity=line.quantity,
+                remaining_qty=line.remaining_qty,
+                before_qty=line.before_qty,
+                after_qty=line.after_qty,
+            )
+            for line in item.lines
+        ],
+        created_at=utc_aware(item.created_at),
+        version=item.version,
+    )
+
+
+def _operation_snapshot(item: StockOperation) -> dict[str, object]:
+    return {
+        "operation_type": item.operation_type.value,
+        "occurred_at": item.occurred_at.isoformat(),
+        "source_type": _operation_source_type(item).value,
+        "business_reason": item.business_reason,
+        "receiver_unit": item.receiver_unit,
+        "receiver_name": item.receiver_name,
+        "subitem_no": item.subitem_no,
+        "mini_program_user_name": item.mini_program_user_name_snapshot,
+        "lines": [
+            {
+                "stock_material_id": line.stock_material_id,
+                "quantity": str(line.quantity),
+            }
+            for line in item.lines
+        ],
+    }
+
+
+def _operation_source_type(item: StockOperation) -> SourceType:
+    # 业务读路径的来源判定统一由 common.operation_source_type 提供。
+    return operation_source_type(item)
+
+
+async def _lock_and_validate_materials(
+    session: AsyncSession,
+    lines: Iterable[OperationLineWrite],
+    additional_material_ids: Iterable[int] = (),
+) -> dict[int, StockMaterial]:
+    lines = list(lines)
+    new_material_ids = {line.stock_material_id for line in lines}
+    material_ids = sorted(new_material_ids | set(additional_material_ids))
+    balances = list(
+        (
+            await session.scalars(
+                select(StockBalance)
+                .where(StockBalance.stock_material_id.in_(material_ids))
+                .order_by(StockBalance.stock_material_id)
+                .with_for_update()
+            )
+        ).all()
+    )
+    if len(balances) != len(material_ids):
+        raise AppError("BALANCE_MISSING", "库存余额记录不存在", status_code=409)
+    materials = list(
+        (
+            await session.scalars(
+                select(StockMaterial)
+                .where(StockMaterial.id.in_(material_ids))
+                .order_by(StockMaterial.id)
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
+    )
+    by_id = {item.id: item for item in materials}
+    missing = [item_id for item_id in material_ids if item_id not in by_id]
+    if missing:
+        raise AppError("NOT_FOUND", "二级库物资不存在", details={"ids": missing})
+    for line in lines:
+        validate_quantity_precision(line.quantity)
+    return by_id
+
+
+def _validate_operation_semantics(
+    operation_type: OperationType,
+    source_type: SourceType,
+    receiver_unit: str | None,
+    receiver_name: str | None,
+) -> None:
+    if source_type == SourceType.INITIALIZATION and operation_type != OperationType.INBOUND:
+        raise AppError("INVALID_SOURCE_TYPE", "初始化业务只能是入库")
+    if source_type == SourceType.MINI_PROGRAM and operation_type != OperationType.OUTBOUND:
+        raise AppError("INVALID_SOURCE_TYPE", "小程序来源只能是出库")
+    if operation_type == OperationType.INBOUND and receiver_name:
+        raise AppError("INVALID_RECEIVER", "只有出库业务可以填写领用人")
+    if operation_type == OperationType.INBOUND and receiver_unit:
+        raise AppError("INVALID_RECEIVER_UNIT", "只有出库业务可以填写领用单位")
+    if (
+        operation_type == OperationType.OUTBOUND
+        and source_type != SourceType.REVERSAL
+        and not receiver_name
+    ):
+        raise AppError("RECEIVER_REQUIRED", "出库必须填写领用人")
+
+
+async def replay_materials(session: AsyncSession, material_ids: Iterable[int]) -> None:
+    for material_id in sorted(set(material_ids)):
+        balance = await session.get(StockBalance, material_id)
+        if balance is None:
+            raise AppError("BALANCE_MISSING", "库存余额记录不存在", status_code=409)
+        running = ZERO
+        rows = (
+            await session.execute(
+                select(StockOperationLine, StockOperation.operation_type)
+                .join(StockOperation, StockOperation.id == StockOperationLine.operation_id)
+                .where(StockOperationLine.stock_material_id == material_id)
+                .order_by(StockOperation.occurred_at, StockOperation.id, StockOperationLine.id)
+            )
+        ).all()
+        for line, operation_type in rows:
+            before = running
+            running = (
+                running + line.quantity
+                if operation_type == OperationType.INBOUND
+                else running - line.quantity
+            )
+            line.before_qty = before
+            line.after_qty = running
+        balance.quantity = running
+        balance.version += 1
+        balance.updated_at = utcnow()
+
+
+async def create_operation(
+    session: AsyncSession,
+    data: OperationCreate,
+    operation_type: OperationType,
+    *,
+    reversal_of_id: int | None = None,
+    reversal_of: StockOperation | None = None,
+    mini_program_user: MiniProgramUser | None = None,
+) -> StockOperation:
+    existing = await session.scalar(
+        select(StockOperation).where(StockOperation.client_request_id == data.client_request_id)
+    )
+    if existing is not None:
+        return existing
+    if data.source_type == SourceType.MINI_PROGRAM and mini_program_user is None:
+        raise AppError("INVALID_SOURCE_TYPE", "小程序来源只能由小程序出库创建")
+    if mini_program_user is not None and data.source_type != SourceType.MINI_PROGRAM:
+        raise AppError("INVALID_SOURCE_TYPE", "小程序出库必须使用小程序来源")
+    if data.source_type == SourceType.REVERSAL and reversal_of_id is None:
+        raise AppError("INVALID_SOURCE_TYPE", "冲销来源只能由冲销接口创建")
+    if operation_type == OperationType.OUTBOUND and not data.business_reason:
+        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写用途")
+    _validate_operation_semantics(
+        operation_type, data.source_type, data.receiver_unit, data.receiver_name
+    )
+    materials = await _lock_and_validate_materials(session, data.lines)
+    existing = cast(
+        StockOperation | None,
+        await session.scalar(
+            select(StockOperation)
+            .where(StockOperation.client_request_id == data.client_request_id)
+            .with_for_update()
+        ),
+    )
+    if existing is not None:
+        return existing
+    item = StockOperation(
+        operation_no=f"TMP-{uuid4().hex[:20]}",
+        operation_type=operation_type,
+        occurred_at=utc_naive(data.occurred_at),
+        business_reason=data.business_reason,
+        receiver_unit=data.receiver_unit,
+        receiver_name=data.receiver_name,
+        subitem_no=data.subitem_no,
+        source_type=(
+            SourceType.MANUAL
+            if data.source_type == SourceType.MINI_PROGRAM
+            else data.source_type
+        ),
+        reversal_of_id=reversal_of_id,
+        client_request_id=data.client_request_id,
+        mini_program_user_name_snapshot=(
+            mini_program_user.display_name if mini_program_user else None
+        ),
+        lines=[],
+    )
+    session.add(item)
+    await session.flush()
+    prefix = "IN" if operation_type == OperationType.INBOUND else "OUT"
+    item.operation_no = f"{prefix}{item.occurred_at:%Y%m%d}{item.id:06d}"
+    original_lines = (
+        {line.stock_material_id: line for line in reversal_of.lines} if reversal_of else {}
+    )
+    reversal_quantities: dict[int, Decimal] = {}
+    for line in data.lines:
+        if reversal_of is None:
+            reversal_quantities[line.stock_material_id] = line.quantity
+            continue
+        original_line = original_lines.get(line.stock_material_id)
+        if original_line is None:
+            raise AppError("INVALID_REVERSAL_LINE", "冲销行不在原流水内", status_code=400)
+        if line.quantity > original_line.remaining_qty:
+            raise AppError(
+                "INSUFFICIENT_QUANTITY",
+                f"冲销数量超过剩余可冲数量 {original_line.remaining_qty}",
+                status_code=409,
+            )
+        reversal_quantities[line.stock_material_id] = line.quantity
+    item.lines = [
+        StockOperationLine(
+            stock_material_id=line.stock_material_id,
+            quantity=reversal_quantities[line.stock_material_id],
+            remaining_qty=reversal_quantities[line.stock_material_id],
+            before_qty=ZERO,
+            after_qty=ZERO,
+            material_name_snapshot=materials[line.stock_material_id].name,
+            model_spec_snapshot=materials[line.stock_material_id].model_spec,
+            unit_name_snapshot=materials[line.stock_material_id].unit_name,
+        )
+        for line in data.lines
+    ]
+    await session.flush()
+    for line in data.lines:
+        original_line = original_lines.get(line.stock_material_id) if reversal_of else None
+        if original_line is not None:
+            original_line.remaining_qty = original_line.remaining_qty - reversal_quantities[
+                line.stock_material_id
+            ]
+    await session.flush()
+    await replay_materials(session, materials)
+    await log_event(
+        session,
+        business_type="STOCK_OPERATION",
+        business_id=item.id,
+        action="CREATED" if reversal_of_id is None else "REVERSED",
+        after_data=_operation_snapshot(item),
+    )
+    if reversal_of_id is None:
+        await webhook_service.enqueue_event(
+            session,
+            (
+                WebhookEventType.STOCK_INBOUND_CREATED
+                if operation_type == OperationType.INBOUND
+                else WebhookEventType.STOCK_OUTBOUND_CREATED
+            ),
+            {
+                "occurred_at": item.occurred_at.isoformat(timespec="seconds") + "Z",
+                "source_type": _operation_source_type(item).value,
+                "business_reason": item.business_reason,
+                "receiver_unit": item.receiver_unit,
+                "receiver_name": item.receiver_name,
+                "subitem_no": item.subitem_no,
+                "materials": [
+                    {
+                        "name": line.material_name_snapshot,
+                        "model_spec": line.model_spec_snapshot,
+                        "quantity": str(line.quantity),
+                        "unit_name": line.unit_name_snapshot,
+                        "before_qty": str(line.before_qty),
+                        "after_qty": str(line.after_qty),
+                    }
+                    for line in item.lines
+                ],
+            },
+        )
+    await session.flush()
+    return item
+
+
+async def update_operation(
+    session: AsyncSession, item: StockOperation, data: OperationUpdate
+) -> StockOperation:
+    validate_version(data.version, item.version)
+    if (
+        item.mini_program_user_name_snapshot is not None
+        and data.source_type != SourceType.MINI_PROGRAM
+    ):
+        raise AppError("INVALID_SOURCE_TYPE", "小程序流水必须保留小程序来源")
+    if item.mini_program_user_name_snapshot is None and data.source_type == SourceType.MINI_PROGRAM:
+        raise AppError("INVALID_SOURCE_TYPE", "普通流水不能改为小程序来源")
+    if data.operation_type == OperationType.OUTBOUND and not data.business_reason:
+        raise AppError("BUSINESS_REASON_REQUIRED", "出库必须填写用途")
+    _validate_operation_semantics(
+        data.operation_type, data.source_type, data.receiver_unit, data.receiver_name
+    )
+    before = _operation_snapshot(item)
+    old_material_ids = {line.stock_material_id for line in item.lines}
+    materials = await _lock_and_validate_materials(
+        session, data.lines, additional_material_ids=old_material_ids
+    )
+    item.operation_type = data.operation_type
+    item.occurred_at = utc_naive(data.occurred_at)
+    item.source_type = (
+        SourceType.MANUAL if data.source_type == SourceType.MINI_PROGRAM else data.source_type
+    )
+    item.business_reason = data.business_reason
+    item.receiver_unit = data.receiver_unit
+    item.receiver_name = data.receiver_name
+    item.subitem_no = data.subitem_no
+    item.version += 1
+    existing_lines = {line.stock_material_id: line for line in item.lines}
+    updated_lines: list[StockOperationLine] = []
+    for line in data.lines:
+        material = materials[line.stock_material_id]
+        stored = existing_lines.get(line.stock_material_id)
+        if stored is None:
+            stored = StockOperationLine(
+                stock_material_id=line.stock_material_id,
+                before_qty=ZERO,
+                after_qty=ZERO,
+                remaining_qty=line.quantity,
+            )
+        stored.quantity = line.quantity
+        stored.remaining_qty = min(stored.remaining_qty, line.quantity)
+        stored.material_name_snapshot = material.name
+        stored.model_spec_snapshot = material.model_spec
+        stored.unit_name_snapshot = material.unit_name
+        stored.version = stored.version + 1 if stored.id is not None else 1
+        updated_lines.append(stored)
+    item.lines = updated_lines
+    await session.flush()
+    await replay_materials(session, old_material_ids | set(materials))
+    await log_event(
+        session,
+        business_type="STOCK_OPERATION",
+        business_id=item.id,
+        action="UPDATED",
+        before_data=before,
+        after_data=_operation_snapshot(item),
+    )
+    return item
+
+
+async def reverse_operation(
+    session: AsyncSession, original: StockOperation, data: ReverseOperationRequest
+) -> StockOperation:
+    existing = await session.scalar(
+        select(StockOperation).where(StockOperation.client_request_id == data.client_request_id)
+    )
+    if existing:
+        return existing
+    reverse_at = max(
+        datetime.now(UTC),
+        original.occurred_at.replace(tzinfo=UTC) + timedelta(microseconds=1),
+    )
+    payload = OperationCreate(
+        client_request_id=data.client_request_id,
+        occurred_at=reverse_at,
+        source_type=SourceType.REVERSAL,
+        business_reason=data.reason,
+        receiver_unit=None,
+        receiver_name=None,
+        subitem_no=original.subitem_no,
+        lines=data.lines,
+    )
+    reverse_type = (
+        OperationType.OUTBOUND
+        if original.operation_type == OperationType.INBOUND
+        else OperationType.INBOUND
+    )
+    return await create_operation(
+        session, payload, reverse_type, reversal_of_id=original.id, reversal_of=original
+    )
+
+
+async def search_operations(
+    session: AsyncSession,
+    *,
+    operation_no: str | None,
+    operation_type: OperationType | None,
+    material_name: str | None,
+    source_type: SourceType | None,
+    start_at: datetime | None,
+    end_at: datetime | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[StockOperation], int]:
+    return await inventory_repository.search_operations(
+        session,
+        operation_no=operation_no,
+        operation_type=operation_type,
+        material_name=material_name,
+        source_type=source_type,
+        start_at=start_at,
+        end_at=end_at,
+        page=page,
+        page_size=page_size,
+    )
+
+
+async def inventory_balances(
+    session: AsyncSession,
+    *,
+    keyword: str | None,
+    minimum_qty: Decimal | None,
+    maximum_qty: Decimal | None,
+    low_stock_only: bool,
+    page: int,
+    page_size: int,
+    material_id: int | None = None,
+) -> tuple[list[InventoryBalanceRead], int]:
+    materials, total = await inventory_repository.search_inventory_materials(
+        session,
+        keyword=keyword,
+        minimum_qty=minimum_qty,
+        maximum_qty=maximum_qty,
+        low_stock_only=low_stock_only,
+        page=page,
+        page_size=page_size,
+        material_id=material_id,
+    )
+    recent_consumption = await recent_outbound_consumption(session, (item.id for item in materials))
+    result = []
+    for item in materials:
+        balance = item.balance
+        policy = item.replenishment_policy
+        current = balance.quantity if balance else ZERO
+        low = bool(policy and policy.enabled and current <= policy.minimum_qty)
+        suggested = recent_consumption.get(item.id, ZERO)
+        result.append(
+            InventoryBalanceRead(
+                stock_material_id=item.id,
+                name=item.name,
+                alias=item.alias,
+                model_spec=item.model_spec,
+                unit_name=item.unit_name,
+                current_qty=current,
+                minimum_qty=policy.minimum_qty if policy else None,
+                is_low_stock=low,
+                suggested_purchase_qty=suggested,
+                updated_at=utc_aware(balance.updated_at if balance else item.updated_at),
+            )
+        )
+    return result, total

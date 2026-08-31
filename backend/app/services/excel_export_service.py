@@ -1,0 +1,393 @@
+from __future__ import annotations
+
+import json
+import os
+import re
+import unicodedata
+from datetime import date
+from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
+from typing import Any, TypeGuard
+from urllib.parse import quote
+
+from fastapi.responses import Response
+from openpyxl import Workbook  # type: ignore[import-untyped]
+from openpyxl.drawing.image import Image as XLImage  # type: ignore[import-untyped]
+from openpyxl.drawing.spreadsheet_drawing import (  # type: ignore[import-untyped]
+    AnchorMarker,
+    OneCellAnchor,
+)
+from openpyxl.formatting.rule import FormulaRule  # type: ignore[import-untyped]
+from openpyxl.styles import (  # type: ignore[import-untyped]
+    Alignment,
+    Border,
+    Font,
+    PatternFill,
+    Side,
+)
+from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
+from openpyxl.utils.units import pixels_to_EMU  # type: ignore[import-untyped]
+from openpyxl.worksheet.datavalidation import (  # type: ignore[import-untyped]
+    DataValidation,
+)
+
+from app.core.config import settings
+from app.core.errors import AppError
+
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+ILLEGAL_EXCEL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
+
+# 导出图片：嵌入原始 PNG，显示尺寸统一约 96px（等比缩放），横向 96+8px 一槽位
+_IMAGE_DISPLAY = 96
+_IMAGE_GAP_PX = 8
+_IMAGE_ROW_HEIGHT = 74
+
+
+def excel_response(content: bytes, filename: str) -> Response:
+    """构造 Excel 下载响应（各导出路由共用，统一 Content-Type 与文件名）。"""
+    return Response(
+        content=content,
+        media_type=XLSX_CONTENT_TYPE,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
+
+
+def write_export_file(target: Path, content: bytes) -> None:
+    """原子写入导出文件：先写 .tmp 再改名，避免中途失败留下“完成态”文件。"""
+    tmp = target.with_name(f"{target.name}.tmp")
+    tmp.write_bytes(content)
+    os.replace(tmp, target)
+
+
+def _load_spec(file_name: str) -> dict[str, Any]:
+    path = settings.template_dir / file_name
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_MISSING",
+            f"Excel 导出模板缺失：{file_name}，请检查后端代码目录 app/templates",
+            details={"template": file_name, "template_dir": str(settings.template_dir)},
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_INVALID",
+            f"Excel 导出模板编码错误：{file_name}",
+            details={"template": file_name},
+        ) from exc
+    try:
+        return json.loads(content)  # type: ignore[no-any-return]
+    except json.JSONDecodeError as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_INVALID",
+            f"Excel 导出模板格式错误：{file_name}",
+            details={"template": file_name},
+        ) from exc
+
+
+def _style(cell: Any, style: dict[str, Any]) -> None:
+    color = style.get("fill")
+    cell.font = Font(
+        name=style.get("font_name", "等线"),
+        size=style.get("font_size", 11),
+        bold=style.get("bold", False),
+    )
+    cell.alignment = Alignment(
+        horizontal=style.get("horizontal"),
+        vertical=style.get("vertical"),
+        wrap_text=style.get("wrap_text", False),
+    )
+    if color:
+        cell.fill = PatternFill("solid", fgColor=f"FF{color}")
+    if style.get("border"):
+        side = Side(style="thin", color="FF000000")
+        cell.border = Border(left=side, right=side, top=side, bottom=side)
+    if number_format := style.get("number_format"):
+        cell.number_format = number_format
+
+
+def _set_dimensions(sheet: Any, spec: dict[str, Any]) -> None:
+    for column, width in spec.get("column_widths", {}).items():
+        sheet.column_dimensions[column].width = width
+    for row, height in spec.get("row_heights", {}).items():
+        sheet.row_dimensions[int(row)].height = height
+
+
+def _cell_value(row: dict[str, Any], column: dict[str, Any]) -> Any:
+    field = column.get("field")
+    value = row.get(field) if field else None
+    result = value if value not in (None, "") else column.get("default")
+    if isinstance(result, str):
+        result = ILLEGAL_EXCEL_CHARACTERS.sub("", result)
+        if result.startswith(("=", "+", "-", "@")):
+            return f"'{result}"
+    return result
+
+
+def _material_code_workbook(spec: dict[str, Any], rows: list[dict[str, Any]]) -> Workbook:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = spec["sheet"]["title"]
+    sheet.sheet_view.showGridLines = spec["sheet"].get("show_grid_lines", True)
+    _set_dimensions(sheet, spec["sheet"])
+    styles = spec["styles"]
+
+    for merged_range in spec["sheet"].get("merged_cells", []):
+        sheet.merge_cells(merged_range)
+    title = sheet[spec["sheet"]["title_cell"]]
+    title.value = spec["sheet"]["title"]
+    _style(title, styles["title"])
+    for section in spec["sheet"].get("sections", []):
+        cell = sheet[section["cell"]]
+        cell.value = section["label"]
+        _style(cell, styles["section"])
+
+    header_row = spec["sheet"]["header_row"]
+    required_row = spec["sheet"]["required_row"]
+    instruction_row = spec["sheet"]["instruction_row"]
+    sheet[f"B{instruction_row}"] = "说明"
+    _style(sheet[f"B{instruction_row}"], styles["instruction"])
+    for column in spec["columns"]:
+        letter = column["column"]
+        for row_no, key in (
+            (header_row, "header"),
+            (required_row, "required"),
+            (instruction_row, "instruction"),
+        ):
+            cell = sheet[f"{letter}{row_no}"]
+            cell.value = column.get(key)
+            _style(cell, styles[column.get(f"{key}_style", "instruction")])
+
+    data_start = spec["sheet"]["data_start_row"]
+    data_row_count = max(len(rows), spec["sheet"].get("minimum_data_rows", 1))
+    for offset in range(data_row_count):
+        row = rows[offset] if offset < len(rows) else {}
+        for column in spec["columns"]:
+            cell = sheet[f"{column['column']}{data_start + offset}"]
+            cell.value = _cell_value(row, column)
+            _style(cell, styles[column.get("data_style", "data")])
+        sheet.row_dimensions[data_start + offset].height = 24
+    sheet.print_area = f"B2:AA{data_start + data_row_count - 1}"
+    return workbook
+
+
+def _purchase_application_workbook(spec: dict[str, Any], rows: list[dict[str, Any]]) -> Workbook:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = spec["sheet"]["title"]
+    sheet.freeze_panes = spec["sheet"].get("freeze_panes")
+    _set_dimensions(sheet, spec["sheet"])
+    styles = spec["styles"]
+    header_row = spec["sheet"]["header_row"]
+    data_start = spec["sheet"]["data_start_row"]
+
+    for column in spec["columns"]:
+        header = sheet[f"{column['column']}{header_row}"]
+        header.value = column["header"]
+        _style(header, styles["header"])
+    sheet.row_dimensions[header_row].height = 34
+
+    for offset, row in enumerate(rows):
+        row_no = data_start + offset
+        for column in spec["columns"]:
+            cell = sheet[f"{column['column']}{row_no}"]
+            cell.value = _cell_value(row, column)
+            _style(cell, styles[column.get("style", "data")])
+        sheet.row_dimensions[row_no].height = 24
+
+    last_column = get_column_letter(len(spec["columns"]))
+    last_row = max(data_start, data_start + len(rows) - 1)
+    for column in spec["columns"]:
+        validation_name = column.get("validation")
+        if not validation_name:
+            continue
+        options = spec["validation_lists"][validation_name]
+        validation = DataValidation(
+            type="list",
+            formula1='"' + ",".join(options) + '"',
+            allow_blank=True,
+        )
+        validation.error = "请选择下拉列表中的值"
+        validation.errorTitle = "无效选项"
+        sheet.add_data_validation(validation)
+        validation.add(f"{column['column']}{data_start}:{column['column']}{last_row}")
+
+    if rows and spec["sheet"].get("highlight_missing_first_column", False):
+        red_fill = PatternFill("solid", fgColor="FFFCE8E6")
+        sheet.conditional_formatting.add(
+            f"A{data_start}:{last_column}{last_row}",
+            FormulaRule(formula=[f"LEN($A{data_start})=0"], fill=red_fill),
+        )
+    sheet.auto_filter.ref = f"A{header_row}:{last_column}{last_row}"
+    sheet.print_area = f"A{header_row}:{last_column}{last_row}"
+    return workbook
+
+
+def render_excel(template_file: str, rows: list[dict[str, Any]]) -> tuple[bytes, str]:
+    spec = _load_spec(template_file)
+    try:
+        if template_file == "material-code-application.json":
+            workbook = _material_code_workbook(spec, rows)
+        else:
+            workbook = _purchase_application_workbook(spec, rows)
+        output = BytesIO()
+        workbook.save(output)
+        today = date.today()
+        filename = spec["output_filename"].format(
+            date=today.isoformat(),
+            date_compact=today.strftime("%Y%m%d"),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise AppError(
+            "EXPORT_TEMPLATE_INVALID",
+            f"Excel 导出模板内容不完整或无效：{template_file}",
+            details={"template": template_file},
+        ) from exc
+    return output.getvalue(), filename
+
+
+def _display_width(value: object) -> int:
+    text = "" if value is None else str(value)
+    return max(
+        (
+            sum(
+                2 if unicodedata.east_asian_width(character) in {"W", "F"} else 1
+                for character in line
+            )
+            for line in text.splitlines() or [""]
+        ),
+        default=0,
+    )
+
+
+def _result_cell_value(value: object) -> object:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, str):
+        value = ILLEGAL_EXCEL_CHARACTERS.sub("", value)
+        if value.startswith(("=", "+", "-", "@")):
+            return f"'{value}"
+    if isinstance(value, list):
+        # 非图片列表（如无图片时的空列表）→ 空单元格；其余列表合并为文本
+        return "" if not value else ", ".join(str(item) for item in value)
+    return value
+
+
+def _is_image_list(value: object) -> TypeGuard[list[Path]]:
+    return (
+        isinstance(value, list)
+        and all(isinstance(item, Path) for item in value)
+    )
+
+
+def _embed_row_images(
+    sheet: Any, row_index: int, col_index: int, paths: list[Path]
+) -> int:
+    """把一行的一张或多张原图按固定显示尺寸嵌入到指定单元格，返回成功嵌入数量。"""
+    x = added = 0
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            image = XLImage(str(path))
+        except Exception:
+            continue
+        scale = min(_IMAGE_DISPLAY / image.width, _IMAGE_DISPLAY / image.height, 1.0)
+        image.width = max(1, round(image.width * scale))
+        image.height = max(1, round(image.height * scale))
+        anchor = OneCellAnchor()
+        anchor._from = AnchorMarker(
+            col=col_index - 1,
+            row=row_index - 1,
+            colOff=pixels_to_EMU(x),
+            rowOff=0,
+        )
+        anchor.ext.width = pixels_to_EMU(image.width)
+        anchor.ext.height = pixels_to_EMU(image.height)
+        image.anchor = anchor
+        sheet.add_image(image)
+        x += _IMAGE_DISPLAY + _IMAGE_GAP_PX
+        added += 1
+    return added
+
+
+def render_result_excel(
+    filename_prefix: str,
+    columns: list[tuple[str, str]],
+    rows: list[dict[str, Any]],
+) -> tuple[bytes, str]:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = filename_prefix[:31]
+    sheet.freeze_panes = "A2"
+    sheet.sheet_view.showGridLines = False
+    sheet.sheet_view.zoomScale = 90
+
+    border_side = Side(style="thin", color="FFD8DEE8")
+    cell_border = Border(
+        left=border_side,
+        right=border_side,
+        top=border_side,
+        bottom=border_side,
+    )
+    header_fill = PatternFill("solid", fgColor="FFE9EDF3")
+    alternate_fill = PatternFill("solid", fgColor="FFF7F9FC")
+
+    for column_index, (_, label) in enumerate(columns, start=1):
+        cell = sheet.cell(row=1, column=column_index, value=label)
+        cell.font = Font(name="等线", size=11, bold=True, color="FF344054")
+        cell.fill = header_fill
+        cell.border = cell_border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    sheet.row_dimensions[1].height = 32
+
+    widths = [_display_width(label) for _, label in columns]
+    image_columns: set[int] = set()
+    image_slots: dict[int, int] = {}
+    for row_index, row in enumerate(rows, start=2):
+        row_height = 30
+        for column_index, (key, _) in enumerate(columns, start=1):
+            cell = sheet.cell(row=row_index, column=column_index)
+            cell.font = Font(name="等线", size=11, color="FF344054")
+            cell.border = cell_border
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+            if row_index % 2 == 0:
+                cell.fill = alternate_fill
+            raw_value = row.get(key)
+            if _is_image_list(raw_value):
+                image_columns.add(column_index)
+                image_slots[column_index] = max(
+                    image_slots.get(column_index, 0), len(raw_value)
+                )
+                if _embed_row_images(sheet, row_index, column_index, raw_value):
+                    row_height = max(row_height, _IMAGE_ROW_HEIGHT)
+                continue
+            value = _result_cell_value(raw_value)
+            cell.value = value
+            widths[column_index - 1] = max(widths[column_index - 1], _display_width(value))
+        sheet.row_dimensions[row_index].height = row_height
+
+    last_column = get_column_letter(len(columns))
+    last_row = max(1, len(rows) + 1)
+    sheet.auto_filter.ref = f"A1:{last_column}{last_row}"
+    sheet.print_area = f"A1:{last_column}{last_row}"
+    sheet.page_setup.orientation = "landscape"
+    sheet.page_setup.fitToWidth = 1
+    sheet.page_setup.fitToHeight = 0
+
+    for column_index, width in enumerate(widths, start=1):
+        cap = 255 if column_index in image_columns else 42
+        if column_index in image_columns:
+            width = max(
+                width,
+                image_slots[column_index] * (_IMAGE_DISPLAY + _IMAGE_GAP_PX) // 7 + 2,
+            )
+        sheet.column_dimensions[get_column_letter(column_index)].width = min(
+            max(width + 4, 14), cap
+        )
+
+    output = BytesIO()
+    workbook.save(output)
+    filename = f"{filename_prefix}_{date.today():%Y%m%d}.xlsx"
+    return output.getvalue(), filename

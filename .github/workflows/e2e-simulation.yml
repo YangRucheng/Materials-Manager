@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "server/**"
+      - "backend/**"
       - "example/database/**"
       - ".github/workflows/e2e-simulation.yml"
   workflow_dispatch:
@@ -37,19 +37,18 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      - name: 配置 Go
-        uses: actions/setup-go@v6
+      - name: 配置 Python
+        uses: actions/setup-python@v5
         with:
-          go-version-file: server/go.mod
-          cache-dependency-path: server/go.sum
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
 
-      - name: 构建 Go 后端
-        working-directory: server
-        run: |
-          sudo apt-get update && sudo apt-get install -y libwebp-dev
-          CGO_ENABLED=1 go build -o /tmp/server ./cmd/server
+      - name: 安装后端依赖
+        working-directory: backend
+        run: pip install -e ".[dev]"
 
       - name: 安装 MySQL 客户端
         run: |
@@ -62,6 +61,7 @@ jobs:
           echo "数据库初始化完成"
 
       - name: 启动后端并运行模拟
+        working-directory: backend
         env:
           APP_DATABASE_URL: "mysql+asyncmy://root:root@127.0.0.1:3306/spare_parts?charset=utf8mb4"
           APP_JWT_SECRET: "e2e-test-secret-that-is-long-enough-123456"
@@ -69,11 +69,10 @@ jobs:
           APP_WECHAT_MINI_PROGRAM_APP_SECRET: "test-primary-secret,test-secondary-secret"
           APP_UPLOAD_DIR: "/tmp/e2e-uploads"
           APP_LOG_DIR: "/tmp/e2e-logs"
-          APP_TEMPLATE_DIR: "${{ github.workspace }}/server/templates"
           E2E_BASE_URL: "http://127.0.0.1:8000"
         run: |
           set -e
-          /tmp/server > /tmp/server.log 2>&1 &
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
           BACKEND_PID=$!
           for i in $(seq 1 60); do
             if curl -sf http://127.0.0.1:8000/health > /dev/null; then
@@ -83,6 +82,5 @@ jobs:
             sleep 1
           done
           curl -sf http://127.0.0.1:8000/health > /dev/null
-          python3 -m pip install --break-system-packages httpx
-          cd "${{ github.workspace }}" && python3 server/scripts/e2e_simulation.py
+          python scripts/e2e_simulation.py
           kill "$BACKEND_PID" 2>/dev/null || true

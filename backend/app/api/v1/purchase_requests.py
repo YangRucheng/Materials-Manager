@@ -1,0 +1,315 @@
+from __future__ import annotations
+
+import asyncio
+import functools
+from decimal import Decimal
+from pathlib import Path
+from typing import Annotated, Any, Literal
+
+from fastapi import APIRouter, Query, status
+
+from app.api.deps import (
+    OrSearch,
+    OrSearch128,
+    OrSearch255,
+    PageNo,
+    PageSize,
+    SortOrder,
+    StatusFilter,
+)
+from app.core.constants import EXPORT_ROW_LIMIT
+from app.core.database import SessionLocal
+from app.core.errors import AppError
+from app.core.permissions import CurrentUser, DbSession, IfMatchVersion, PurchaseWriter
+from app.schemas import (
+    BatchUpdatePurchaseRecordsRequest,
+    ExcelExportJobRead,
+    Page,
+    PurchaseMaterialRead,
+    PurchaseRecordFilterOptions,
+    PurchaseRecordRead,
+    PurchaseRecordResultColumn,
+    PurchaseRecordResultExportRequest,
+    PurchaseRecordUpdate,
+)
+from app.services import (
+    ai_search_service,
+    excel_export_job_service,
+    excel_export_service,
+    file_service,
+    material_service,
+)
+from app.services import purchase_request_service as service
+
+router = APIRouter(tags=["申购记录"])
+RecordSearchField = Literal[
+    "plan_no",
+    "plan_date",
+    "purchase_order_no",
+    "trace_no",
+    "contract_no",
+    "vessel_no",
+    "consolidation_date",
+    "consolidation_port",
+    "sailing_date",
+    "category",
+    "material_code",
+    "material_name",
+    "model_spec",
+    "unit_name",
+    "purchase_qty",
+    "salesperson",
+    "status",
+    "purchase_date",
+    "usage",
+    "subitem_no",
+    "plan_remark",
+    "record_remark",
+]
+RECORD_RESULT_HEADERS = {
+    "purchase_qty": "申购数量",
+    "plan_date": "需求日期",
+    "purchase_order_no": "申购单号",
+    "trace_no": "追溯号",
+    "contract_no": "合同号",
+    "vessel_no": "船号",
+    "consolidation_date": "集港日期",
+    "consolidation_port": "集港港口",
+    "sailing_date": "发船日期",
+    "category": "类别",
+    "demand_department": "需求部门",
+    "material_name": "物资名称",
+    "model_spec": "物资型号",
+    "material_code": "物料编码",
+    "actual_demand_person": "提报员工",
+    "usage": "用途",
+    "purchase_responsible": "实际需求人",
+    "salesperson": "业务员",
+    "status": "状态",
+    "purchase_date": "申购日期",
+    "images": "图片",
+    "subitem_no": "子项号",
+}
+
+
+def _quantity_text(value: Decimal) -> str:
+    return format(value, "f").rstrip("0").rstrip(".") or "0"
+
+
+@router.get("/purchase-records", response_model=Page[PurchaseRecordRead])
+async def purchase_records(
+    session: DbSession,
+    user: CurrentUser,
+    page: PageNo = 1,
+    page_size: PageSize = 20,
+    record_status: StatusFilter = None,
+    empty_status: bool = False,
+    keyword: OrSearch = None,
+    search_field: RecordSearchField | None = None,
+    search_value: OrSearch255 = None,
+    purchase_order_no: OrSearch255 = None,
+    trace_no: OrSearch255 = None,
+    category: Annotated[str | None, Query(max_length=64)] = None,
+    name: OrSearch128 = None,
+    model_spec: OrSearch255 = None,
+    actual_demand_person: OrSearch128 = None,
+    purchase_responsible: OrSearch128 = None,
+    salesperson: OrSearch128 = None,
+    subitem_no: Annotated[str | None, Query(max_length=64)] = None,
+    empty_subitem_no: bool = False,
+    ai_expand: bool = False,
+    sort_by: PurchaseRecordResultColumn | None = None,
+    sort_order: SortOrder = "asc",
+) -> Page[PurchaseRecordRead]:
+    if ai_expand:
+        keyword = await ai_search_service.expand_search_value(session, keyword)
+        name = await ai_search_service.expand_search_value(session, name)
+        if search_field == "material_name":
+            search_value = await ai_search_service.expand_search_value(session, search_value)
+    items, total = await service.search_purchase_records(
+        session,
+        status=record_status,
+        empty_status=empty_status,
+        keyword=keyword,
+        search_field=search_field,
+        search_value=search_value,
+        purchase_order_no=purchase_order_no,
+        trace_no=trace_no,
+        category=category,
+        name=name,
+        model_spec=model_spec,
+        actual_demand_person=actual_demand_person,
+        purchase_responsible=purchase_responsible,
+        salesperson=salesperson,
+        subitem_no=subitem_no,
+        empty_subitem_no=empty_subitem_no,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return Page(
+        items=[service.purchase_record_read(item) for item in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@router.get("/purchase-records/filter-options", response_model=PurchaseRecordFilterOptions)
+async def purchase_record_filter_options(
+    session: DbSession, user: CurrentUser
+) -> PurchaseRecordFilterOptions:
+    (
+        actual_demand_persons,
+        purchase_responsibles,
+        subitem_nos,
+        categories,
+    ) = await service.purchase_record_filter_options(session)
+    return PurchaseRecordFilterOptions(
+        actual_demand_persons=actual_demand_persons,
+        purchase_responsibles=purchase_responsibles,
+        subitem_nos=subitem_nos,
+        categories=categories,
+        salespersons=await service.purchase_salesperson_options(session),
+        statuses=await service.purchase_status_options(session),
+    )
+
+
+@router.post(
+    "/purchase-records/export-results",
+    response_model=ExcelExportJobRead,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def export_purchase_record_results(
+    data: PurchaseRecordResultExportRequest,
+    user: CurrentUser,
+) -> ExcelExportJobRead:
+    """查询结果导出（含图片，耗时较长）：202 秒回任务，渲染在后台异步执行。"""
+    return await excel_export_job_service.enqueue_export(
+        export_type="PURCHASE_RECORD_RESULTS",
+        params=data.model_dump(mode="json"),
+        processor=functools.partial(_process_record_export, data=data),
+        created_by=user.id,
+    )
+
+
+async def _process_record_export(
+    target: Path, *, data: PurchaseRecordResultExportRequest
+) -> dict[str, object]:
+    """申购记录导出处理器：查库 + 拼行 + 渲染图片 Excel（CPU 密集走 to_thread）。"""
+    async with SessionLocal() as session:
+        items, total = await service.search_purchase_records(
+            session,
+            status=data.status,
+            empty_status=data.empty_status,
+            keyword=None,
+            search_field=None,
+            search_value=None,
+            purchase_order_no=data.purchase_order_no,
+            trace_no=data.trace_no,
+            category=data.category,
+            name=data.name,
+            model_spec=data.model_spec,
+            actual_demand_person=data.actual_demand_person,
+            purchase_responsible=data.purchase_responsible,
+            salesperson=data.salesperson,
+            subitem_no=data.subitem_no,
+            empty_subitem_no=data.empty_subitem_no,
+            page=1,
+            page_size=EXPORT_ROW_LIMIT + 1,
+            sort_by=data.sort_by,
+            sort_order=data.sort_order,
+        )
+        if total > EXPORT_ROW_LIMIT:
+            raise AppError(
+                "EXPORT_RESULT_LIMIT_EXCEEDED",
+                f"查询结果超过 {EXPORT_ROW_LIMIT} 行，请缩小筛选范围后导出",
+                status_code=400,
+                details={"total": total, "limit": EXPORT_ROW_LIMIT},
+            )
+        rows: list[dict[str, Any]] = []
+        for item in items:
+            record = service.purchase_record_read(item)
+            image_paths = [
+                file_service.file_path(image.id)
+                for image in record.images
+                if file_service.file_path(image.id).is_file()
+            ]
+            rows.append(
+                {
+                    "purchase_qty": f"{_quantity_text(record.purchase_qty)} {record.unit_name}",
+                    "plan_date": record.plan_date,
+                    "purchase_order_no": record.purchase_order_no,
+                    "trace_no": record.trace_no,
+                    "contract_no": record.contract_no,
+                    "vessel_no": record.vessel_no,
+                    "consolidation_date": record.consolidation_date,
+                    "consolidation_port": record.consolidation_port,
+                    "sailing_date": record.sailing_date,
+                    "category": record.category,
+                    "demand_department": record.demand_department,
+                    "material_name": record.material_name,
+                    "model_spec": record.model_spec,
+                    "material_code": record.material_code,
+                    "actual_demand_person": record.actual_demand_person,
+                    "usage": record.usage,
+                    "purchase_responsible": record.purchase_responsible,
+                    "salesperson": record.salesperson,
+                    "status": record.status,
+                    "purchase_date": record.purchase_date,
+                    "subitem_no": record.subitem_no,
+                    "images": image_paths,
+                }
+            )
+    columns: list[tuple[str, str]] = [(key, RECORD_RESULT_HEADERS[key]) for key in data.columns]
+    content, filename = await asyncio.to_thread(
+        excel_export_service.render_result_excel, "申购记录导出", columns, rows
+    )
+    await asyncio.to_thread(excel_export_service.write_export_file, target, content)
+    return {
+        "download_filename": filename,
+        "rows": len(rows),
+        "image_count": sum(len(row.get("images") or []) for row in rows),
+    }
+
+
+@router.patch("/purchase-records/batch", response_model=list[PurchaseRecordRead])
+async def batch_edit_purchase_records(
+    data: BatchUpdatePurchaseRecordsRequest,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> list[PurchaseRecordRead]:
+    lines = await service.batch_update_purchase_records(session, data)
+    return [service.purchase_record_read(line) for line in lines]
+
+
+@router.get("/purchase-records/{line_id}", response_model=PurchaseRecordRead)
+async def purchase_record(
+    line_id: int, session: DbSession, user: CurrentUser
+) -> PurchaseRecordRead:
+    return service.purchase_record_read(await service.get_purchase_record(session, line_id))
+
+
+@router.post("/purchase-records/{line_id}/restore-to-plan", response_model=PurchaseMaterialRead)
+async def restore_purchase_record_to_plan(
+    line_id: int,
+    session: DbSession,
+    user: PurchaseWriter,
+    if_match: IfMatchVersion,
+) -> PurchaseMaterialRead:
+    line = await service.get_purchase_record(session, line_id, for_update=True)
+    material = await service.restore_purchase_record_to_plan(session, line, if_match)
+    return await material_service.purchase_read(session, material)
+
+
+@router.patch("/purchase-records/{line_id}", response_model=PurchaseRecordRead)
+async def edit_purchase_record(
+    line_id: int,
+    data: PurchaseRecordUpdate,
+    session: DbSession,
+    user: PurchaseWriter,
+) -> PurchaseRecordRead:
+    line = await service.get_purchase_record(session, line_id, for_update=True)
+    line = await service.update_purchase_record(session, line, data)
+    return service.purchase_record_read(line)

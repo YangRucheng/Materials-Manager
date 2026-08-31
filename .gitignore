@@ -1,5 +1,14 @@
-# 旧版 Python backend（已由 Go + Gin 取代，2026-08 移除）
-backend/
+# Python backend
+backend/.venv/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.pytest-run-*/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+backend/data/logs/
+backend/data/template/
 
 # Frontend
 frontend/node_modules/
@@ -9,13 +18,9 @@ frontend/.env.local
 
 # Local configuration and databases
 .env
+backend/.env
 backend/*.db
 
 # other
 outputs/
 *.log
-# Go backend
-server/bin/
-server/coverage.out
-server/*.log
-server/data/

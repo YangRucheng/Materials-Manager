@@ -1,0 +1,607 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from uuid import UUID
+
+from sqlalchemy import func, or_, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.constants import SHANGHAI
+from app.core.errors import AppError, not_found
+from app.domain.enums import PurchasePlanStatus
+from app.models import (
+    FileObject,
+    PurchaseMaterial,
+    PurchaseMaterialImage,
+    PurchaseRequestLine,
+    StockBalance,
+    StockMaterial,
+    StockMaterialImage,
+)
+from app.repositories import material_repository
+from app.schemas import (
+    BatchUpdatePurchasePlansRequest,
+    PurchaseMaterialCreate,
+    PurchaseMaterialRead,
+    PurchaseMaterialUpdate,
+    StockMaterialCreate,
+    StockMaterialRead,
+    StockMaterialUpdate,
+)
+from app.services.common import (
+    file_read,
+    identity_hash,
+    utc_aware,
+    validate_quantity_precision,
+    validate_version,
+)
+
+
+async def _files(session: AsyncSession, image_ids: list[str]) -> list[FileObject]:
+    if not image_ids:
+        return []
+    files = list(
+        (await session.scalars(select(FileObject).where(FileObject.id.in_(image_ids)))).all()
+    )
+    by_id = {item.id: item for item in files}
+    missing = [item_id for item_id in image_ids if item_id not in by_id]
+    if missing:
+        raise AppError("INVALID_IMAGE_ID", "图片不存在", details={"file_ids": missing})
+    return [by_id[item_id] for item_id in image_ids]
+
+
+def stock_read(item: StockMaterial, *, has_operation_records: bool = False) -> StockMaterialRead:
+    return StockMaterialRead(
+        id=item.id,
+        uuid=item.uuid,
+        name=item.name,
+        name_id=item.name_id,
+        alias=item.alias,
+        model_spec=item.model_spec,
+        unit_name=item.unit_name,
+        remark=item.remark,
+        current_qty=item.balance.quantity if item.balance else 0,
+        images=[file_read(link.file) for link in item.images],
+        replenishment_policy=item.replenishment_policy,
+        has_operation_records=has_operation_records,
+        created_at=utc_aware(item.created_at),
+        updated_at=utc_aware(item.updated_at),
+        version=item.version,
+    )
+
+
+async def get_stock_material(session: AsyncSession, material_id: int) -> StockMaterial:
+    item = await material_repository.get_stock_material(session, material_id)
+    if item is None:
+        raise not_found("二级库物资")
+    return item
+
+
+async def get_stock_material_by_uuid(
+    session: AsyncSession, material_uuid: UUID
+) -> StockMaterial:
+    item = await material_repository.get_stock_material_by_uuid(session, material_uuid)
+    if item is None:
+        raise not_found("二级库物资")
+    return item
+
+
+async def stock_material_ids_with_operations(
+    session: AsyncSession, material_ids: list[int]
+) -> set[int]:
+    return await material_repository.stock_material_ids_with_operations(session, material_ids)
+
+
+async def delete_stock_material(
+    session: AsyncSession, item: StockMaterial, version: int | None
+) -> None:
+    validate_version(version, item.version)
+    if await stock_material_ids_with_operations(session, [item.id]):
+        raise AppError(
+            "STOCK_MATERIAL_IN_USE",
+            "该物资已有出入库操作记录，仅支持编辑，不能删除",
+            status_code=409,
+        )
+    await session.execute(
+        update(PurchaseMaterial)
+        .where(PurchaseMaterial.stock_material_id == item.id)
+        .values(stock_material_id=None)
+    )
+    await session.delete(item)
+    await session.flush()
+
+
+async def create_stock_material(session: AsyncSession, data: StockMaterialCreate) -> StockMaterial:
+    files = await _files(session, data.image_ids)
+    item = StockMaterial(
+        name=data.name,
+        name_id=data.name_id or None,
+        alias=data.alias or None,
+        model_spec=data.model_spec,
+        unit_name=data.unit_name,
+        remark=data.remark,
+        identity_hash=identity_hash(data.name, data.model_spec, data.unit_name),
+    )
+    item.balance = StockBalance(quantity=0)
+    item.replenishment_policy = None
+    item.images = [
+        StockMaterialImage(file_id=file.id, file=file, sort_order=index)
+        for index, file in enumerate(files)
+    ]
+    session.add(item)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise AppError(
+            "DUPLICATE_MATERIAL", "相同名称、型号规格和单位的物资已存在", status_code=409
+        ) from exc
+    return item
+
+
+async def update_stock_material(
+    session: AsyncSession, item: StockMaterial, data: StockMaterialUpdate
+) -> StockMaterial:
+    validate_version(data.version, item.version)
+    files = await _files(session, data.image_ids)
+    item.name = data.name
+    item.name_id = data.name_id or None
+    item.alias = data.alias or None
+    item.model_spec = data.model_spec
+    item.unit_name = data.unit_name
+    item.remark = data.remark
+    item.identity_hash = identity_hash(data.name, data.model_spec, data.unit_name)
+    item.images = [
+        StockMaterialImage(file_id=file.id, file=file, sort_order=index)
+        for index, file in enumerate(files)
+    ]
+    item.version += 1
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise AppError(
+            "DUPLICATE_MATERIAL", "相同名称、型号规格和单位的物资已存在", status_code=409
+        ) from exc
+    return item
+
+
+async def get_purchase_material(session: AsyncSession, material_id: int) -> PurchaseMaterial:
+    item = await session.scalar(select(PurchaseMaterial).where(PurchaseMaterial.id == material_id))
+    if item is None:
+        raise not_found("申购计划")
+    return item
+
+
+async def purchase_read(
+    session: AsyncSession,
+    item: PurchaseMaterial,
+    moved_ids: set[int] | None = None,
+) -> PurchaseMaterialRead:
+    """组装申购计划 read。
+
+    moved_ids 为 None 时单条内联查询「是否已转入申购记录」（单条调用场景，无 N+1）；
+    批量场景（列表页/批量页）由调用方先用 purchase_material_ids_moved_to_record
+    一次性预算出 moved set 再传入，避免逐条查询。
+    """
+    if moved_ids is None:
+        moved_to_record = bool(
+            await session.scalar(
+                select(PurchaseRequestLine.id)
+                .where(PurchaseRequestLine.purchase_material_id == item.id)
+                .limit(1)
+            )
+        )
+    else:
+        moved_to_record = item.id in moved_ids
+    return PurchaseMaterialRead(
+        id=item.id,
+        plan_no=item.plan_no,
+        plan_date=item.plan_date,
+        material_code=item.material_code,
+        category=item.category,
+        urgency=item.urgency,
+        demand_department=item.demand_department,
+        name=item.name,
+        model_spec=item.model_spec,
+        unit_name=item.unit_name,
+        actual_demand_person=item.actual_demand_person,
+        purchase_responsible=item.purchase_responsible,
+        planned_qty=item.planned_qty,
+        usage=item.usage,
+        subitem_no=item.subitem_no,
+        remark=item.remark,
+        stock_material_id=item.stock_material_id,
+        stock_material_name=item.stock_material.name if item.stock_material else None,
+        status=item.status,
+        moved_to_record=moved_to_record,
+        images=[file_read(link.file) for link in item.images],
+        created_at=utc_aware(item.created_at),
+        updated_at=utc_aware(item.updated_at),
+        version=item.version,
+    )
+
+
+async def purchase_material_ids_moved_to_record(
+    session: AsyncSession, ids: list[int]
+) -> set[int]:
+    return await material_repository.purchase_material_ids_moved_to_record(session, ids)
+
+
+async def _validate_stock_link(
+    session: AsyncSession, stock_material_id: int | None
+) -> StockMaterial | None:
+    if stock_material_id is None:
+        return None
+    stock = await session.get(StockMaterial, stock_material_id)
+    if stock is None:
+        raise not_found("二级库物资")
+    return stock
+
+
+async def next_purchase_plan_no(session: AsyncSession, plan_date: date) -> str:
+    prefix = f"PLAN-{plan_date:%Y%m%d}-"
+    # 计划号同时存在于 purchase_material 与记录行快照 plan_no_snapshot，
+    # 取两者最大值，保证新建计划号与已清理计划留下的快照号不冲突。
+    # with_for_update()：锁读（current read）让并发创建时后到的事务能看到
+    # 已提交的撞号行，配合 create_purchase_material 的保存点重试避免 MAX+1 竞态。
+    material_max = await session.scalar(
+        select(func.max(PurchaseMaterial.plan_no))
+        .where(PurchaseMaterial.plan_no.like(prefix + "%"))
+        .with_for_update()
+    )
+    snapshot_max = await session.scalar(
+        select(func.max(PurchaseRequestLine.plan_no_snapshot))
+        .where(PurchaseRequestLine.plan_no_snapshot.like(prefix + "%"))
+        .with_for_update()
+    )
+    previous = max((value for value in (material_max, snapshot_max) if value), default=None)
+    index = int(previous.rsplit("-", 1)[-1]) + 1 if previous else 1
+    if index > 999:
+        raise AppError(
+            "PLAN_DAILY_LIMIT_EXCEEDED",
+            "同一计划日期最多创建 999 条申购计划",
+            status_code=409,
+        )
+    return f"{prefix}{index:03d}"
+
+
+async def create_purchase_material(
+    session: AsyncSession, data: PurchaseMaterialCreate
+) -> PurchaseMaterial:
+    responsible = data.purchase_responsible or "\\"
+    validate_quantity_precision(data.planned_qty)
+    stock = await _validate_stock_link(session, data.stock_material_id)
+    files = await _files(session, data.image_ids)
+    plan_date = data.plan_date or datetime.now(SHANGHAI).date()
+    # 并发同日创建可能拿到相同 MAX+1 序号，撞 uq_purchase_material_plan_no；
+    # 用保存点重试：撞号后回滚保存点再取新序号，最多 3 次。
+    for _attempt in range(3):
+        try:
+            async with session.begin_nested():
+                item = PurchaseMaterial(
+                    plan_no=await next_purchase_plan_no(session, plan_date),
+                    plan_date=plan_date,
+                    material_code=data.material_code,
+                    category=data.category,
+                    urgency=data.urgency,
+                    demand_department=data.demand_department,
+                    name=data.name,
+                    model_spec=data.model_spec,
+                    unit_name=data.unit_name,
+                    actual_demand_person=data.actual_demand_person or responsible,
+                    purchase_responsible=responsible,
+                    planned_qty=data.planned_qty,
+                    usage=data.usage,
+                    subitem_no=data.subitem_no,
+                    remark=data.remark,
+                    stock_material_id=data.stock_material_id,
+                    status=data.status,
+                    images=[
+                        PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
+                        for index, file in enumerate(files)
+                    ],
+                )
+                item.stock_material = stock
+                session.add(item)
+                await session.flush()
+            return item
+        except IntegrityError:
+            continue
+    raise AppError(
+        "PLAN_NO_CONFLICT",
+        "计划号生成冲突，请稍后重试",
+        status_code=409,
+    )
+
+
+async def update_purchase_material(
+    session: AsyncSession, item: PurchaseMaterial, data: PurchaseMaterialUpdate
+) -> PurchaseMaterial:
+    validate_version(data.version, item.version)
+    responsible = data.purchase_responsible or item.purchase_responsible
+    validate_quantity_precision(data.planned_qty)
+    stock = await _validate_stock_link(session, data.stock_material_id)
+    files = await _files(session, data.image_ids)
+    for key in (
+        "material_code",
+        "category",
+        "urgency",
+        "demand_department",
+        "name",
+        "model_spec",
+        "unit_name",
+        "planned_qty",
+        "usage",
+        "subitem_no",
+        "remark",
+        "stock_material_id",
+    ):
+        setattr(item, key, getattr(data, key))
+    if data.plan_date is not None and data.plan_date != item.plan_date:
+        item.plan_no = await next_purchase_plan_no(session, data.plan_date)
+        item.plan_date = data.plan_date
+    if data.actual_demand_person is not None:
+        item.actual_demand_person = data.actual_demand_person
+    if "status" in data.model_fields_set:
+        item.status = data.status
+    item.purchase_responsible = responsible
+    item.stock_material = stock
+    item.images = [
+        PurchaseMaterialImage(file_id=file.id, file=file, sort_order=index)
+        for index, file in enumerate(files)
+    ]
+    item.version += 1
+    await session.flush()
+    return item
+
+
+async def batch_update_purchase_materials(
+    session: AsyncSession, data: BatchUpdatePurchasePlansRequest
+) -> list[PurchaseMaterial]:
+    material_ids = [reference.id for reference in data.materials]
+    items = list(
+        (
+            await session.scalars(
+                select(PurchaseMaterial)
+                .where(PurchaseMaterial.id.in_(material_ids))
+                .with_for_update()
+            )
+        )
+        .unique()
+        .all()
+    )
+    items_by_id = {item.id: item for item in items}
+    if len(items_by_id) != len(material_ids):
+        raise not_found("申购计划")
+
+    update_fields = data.model_fields_set & {
+        "plan_date",
+        "category",
+        "urgency",
+        "demand_department",
+        "actual_demand_person",
+        "purchase_responsible",
+        "subitem_no",
+        "usage",
+        "status",
+    }
+    updated: list[PurchaseMaterial] = []
+    for reference in data.materials:
+        item = items_by_id[reference.id]
+        validate_version(reference.version, item.version)
+        if "plan_date" in update_fields and data.plan_date != item.plan_date:
+            assert data.plan_date is not None
+            item.plan_no = await next_purchase_plan_no(session, data.plan_date)
+            item.plan_date = data.plan_date
+        if "category" in update_fields:
+            item.category = data.category
+        if "urgency" in update_fields:
+            assert data.urgency is not None
+            item.urgency = data.urgency
+        if "demand_department" in update_fields:
+            assert data.demand_department is not None
+            item.demand_department = data.demand_department
+        if "actual_demand_person" in update_fields:
+            assert data.actual_demand_person is not None
+            item.actual_demand_person = data.actual_demand_person
+        if "purchase_responsible" in update_fields:
+            assert data.purchase_responsible is not None
+            item.purchase_responsible = data.purchase_responsible
+        if "subitem_no" in update_fields:
+            item.subitem_no = data.subitem_no
+        if "usage" in update_fields:
+            assert data.usage is not None
+            item.usage = data.usage
+        if "status" in update_fields:
+            assert data.status is not None
+            item.status = data.status
+        item.version += 1
+        await session.flush()
+        updated.append(item)
+    return updated
+
+
+async def delete_purchase_material(
+    session: AsyncSession, item: PurchaseMaterial, version: int | None
+) -> None:
+    validate_version(version, item.version)
+    referenced = await session.scalar(
+        select(PurchaseRequestLine.id)
+        .where(PurchaseRequestLine.purchase_material_id == item.id)
+        .limit(1)
+    )
+    if referenced is not None:
+        raise AppError(
+            "PURCHASE_PLAN_IN_USE",
+            "已转入申购记录的计划不能删除",
+            status_code=409,
+        )
+    await session.delete(item)
+    await session.flush()
+
+
+async def search_stock_materials(
+    session: AsyncSession,
+    *,
+    keyword: str | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[StockMaterial], int]:
+    return await material_repository.search_stock_materials(
+        session, keyword=keyword, page=page, page_size=page_size
+    )
+
+
+async def search_purchase_materials(
+    session: AsyncSession,
+    *,
+    keyword: str | None,
+    search_field: str | None,
+    search_value: str | None,
+    name: str | None,
+    model_spec: str | None,
+    actual_demand_person: str | None,
+    empty_actual_demand_person: bool,
+    purchase_responsible: str | None,
+    subitem_no: str | None,
+    empty_subitem_no: bool,
+    category: str | None,
+    status: list[PurchasePlanStatus] | None,
+    coded: bool | None,
+    moved: bool | None,
+    page: int,
+    page_size: int,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+) -> tuple[list[PurchaseMaterial], int]:
+    return await material_repository.search_purchase_materials(
+        session,
+        keyword=keyword,
+        search_field=search_field,
+        search_value=search_value,
+        name=name,
+        model_spec=model_spec,
+        actual_demand_person=actual_demand_person,
+        empty_actual_demand_person=empty_actual_demand_person,
+        purchase_responsible=purchase_responsible,
+        subitem_no=subitem_no,
+        empty_subitem_no=empty_subitem_no,
+        category=category,
+        status=status,
+        coded=coded,
+        moved=moved,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+
+async def purchase_filter_options(
+    session: AsyncSession,
+    *,
+    moved: bool | None,
+    status: PurchasePlanStatus | None,
+) -> tuple[list[str], list[str], list[str], list[str]]:
+    return await material_repository.purchase_filter_options(
+        session, moved=moved, status=status
+    )
+
+
+async def purchase_materials_for_export(
+    session: AsyncSession,
+    *,
+    material_ids: list[int] | None = None,
+    keyword: str | None = None,
+    coded: bool | None = None,
+    moved: bool | None = None,
+    status: PurchasePlanStatus | None = None,
+) -> list[PurchaseMaterial]:
+    query = select(PurchaseMaterial)
+    if material_ids is not None:
+        query = query.where(PurchaseMaterial.id.in_(material_ids))
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.where(
+            or_(
+                PurchaseMaterial.name.like(like),
+                PurchaseMaterial.model_spec.like(like),
+                PurchaseMaterial.material_code.like(like),
+                PurchaseMaterial.plan_no.like(like),
+            )
+        )
+    if coded is True:
+        query = query.where(PurchaseMaterial.material_code.is_not(None))
+    elif coded is False:
+        query = query.where(PurchaseMaterial.material_code.is_(None))
+    if status is not None:
+        query = query.where(PurchaseMaterial.status == status)
+    if moved is not None:
+        record_exists = (
+            select(PurchaseRequestLine.id)
+            .where(PurchaseRequestLine.purchase_material_id == PurchaseMaterial.id)
+            .exists()
+        )
+        query = query.where(record_exists if moved else ~record_exists)
+    items = list((await session.scalars(query.order_by(PurchaseMaterial.id))).unique().all())
+    if material_ids is not None and len(items) != len(set(material_ids)):
+        raise not_found("申购计划")
+    return items
+
+
+def validate_purchase_application_export(materials: list[PurchaseMaterial]) -> None:
+    field_checks = {
+        "material_code": ("编码", lambda item: item.material_code),
+        "subitem_no": ("子项号", lambda item: item.subitem_no),
+        "usage": ("用途", lambda item: item.usage),
+    }
+    missing_fields: dict[str, list[int]] = {}
+    missing_labels: list[str] = []
+    for field, (label, value_getter) in field_checks.items():
+        missing_ids = [
+            item.id
+            for item in materials
+            if not (value := value_getter(item)) or not value.strip()
+        ]
+        if missing_ids:
+            missing_fields[field] = missing_ids
+            missing_labels.append(label)
+
+    if missing_fields:
+        raise AppError(
+            "PURCHASE_APPLICATION_EXPORT_FIELDS_REQUIRED",
+            f"导出采购申请表前请补全：{'、'.join(missing_labels)}",
+            status_code=409,
+            details={"missing_fields": missing_fields},
+        )
+
+
+def validate_purchase_approval_export(materials: list[PurchaseMaterial]) -> None:
+    """申购审批表导出必填校验：子项号、物资名称、型号、申请数量、单位、用途缺一不可。"""
+    field_checks = {
+        "subitem_no": ("子项号", lambda item: item.subitem_no),
+        "name": ("物资名称", lambda item: item.name),
+        "model_spec": ("型号", lambda item: item.model_spec),
+        "planned_qty": ("申请数量", lambda item: item.planned_qty),
+        "unit_name": ("单位", lambda item: item.unit_name),
+        "usage": ("用途", lambda item: item.usage),
+    }
+    missing_fields: dict[str, list[int]] = {}
+    missing_labels: list[str] = []
+    for field, (label, value_getter) in field_checks.items():
+        missing_ids = [
+            item.id
+            for item in materials
+            if not (value := value_getter(item)) or not str(value).strip()
+        ]
+        if missing_ids:
+            missing_fields[field] = missing_ids
+            missing_labels.append(label)
+
+    if missing_fields:
+        raise AppError(
+            "PURCHASE_APPROVAL_EXPORT_FIELDS_REQUIRED",
+            f"导出申购审批表前请补全：{'、'.join(missing_labels)}",
+            status_code=409,
+            details={"missing_fields": missing_fields},
+        )
