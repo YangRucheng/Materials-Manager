@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.errors import AppError
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, encrypt_secret
 from app.domain.enums import Role
 from app.models import MiniProgramUser, User
 
@@ -44,10 +44,16 @@ def _hash_api_token(token: str) -> str:
 async def find_user_by_api_token(session: AsyncSession, api_token: str) -> User | None:
     if len(api_token) != 36:
         return None
-    return cast(
+    user = cast(
         User | None,
         await session.scalar(select(User).where(User.api_token_hash == _hash_api_token(api_token))),
     )
+    if user is not None and not user.api_token_enc:
+        # 懒迁移：旧用户库里只有哈希时，认证请求携带的明文令牌顺手加密回写，
+        # 使管理界面此后可持续解密回显（AGENTS.md「回显约定」），无需用户重新生成。
+        user.api_token_enc = encrypt_secret(api_token)
+        await session.flush()
+    return user
 
 
 async def authenticate_user_api_token(

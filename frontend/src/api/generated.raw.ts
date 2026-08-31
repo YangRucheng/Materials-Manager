@@ -4006,7 +4006,10 @@ export interface components {
             enabled: boolean;
             /** Version */
             version: number;
-            /** Api Token */
+            /**
+             * Api Token
+             * @description 当前生效接口令牌的解密回显（加密入库，每次读取返回，令牌可多处复用无需反复重置）。仅存哈希的旧数据首次读取可能为空，待该令牌用于一次接口调用后自动加密回写即可持续回显。
+             */
             api_token?: string | null;
         };
         /** UserApiTokenRegenerate */

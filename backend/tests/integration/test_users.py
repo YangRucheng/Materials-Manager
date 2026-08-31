@@ -5,7 +5,18 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 
+from app.core.database import SessionLocal
+from app.models import User
 from tests.conftest import auth_headers, create_stock
+
+
+async def _clear_api_token_enc(user_id: int) -> None:
+    """模拟升级前的旧数据：只保留哈希、清空 Fernet 密文。"""
+    async with SessionLocal() as session:
+        item = await session.get(User, user_id)
+        assert item is not None
+        item.api_token_enc = ""
+        await session.commit()
 
 
 @pytest.mark.asyncio
@@ -130,3 +141,82 @@ async def test_operation_does_not_reference_authenticated_user(
 
     deleted = await client.delete("/api/v1/users/2", headers=admin)
     assert deleted.status_code == 204, deleted.text
+
+
+@pytest.mark.asyncio
+async def test_api_token_is_echoed_on_every_read(client: AsyncClient) -> None:
+    """回显约定：新建返回的令牌，之后每次列表/编辑读取都应回显同一明文，无需重新生成。"""
+    admin = await auth_headers(client, "admin")
+    created = await client.post(
+        "/api/v1/users",
+        headers=admin,
+        json={
+            "username": "echo-user",
+            "password": "123456",
+            "display_name": "回显用户",
+            "role": "READ_ONLY",
+            "enabled": True,
+        },
+    )
+    assert created.status_code == 201, created.text
+    user = created.json()
+    token = user["api_token"]
+    assert token is not None and UUID(token).version == 4
+
+    listed = await client.get("/api/v1/users?page_size=200", headers=admin)
+    assert listed.status_code == 200
+    row = next(i for i in listed.json()["items"] if i["id"] == user["id"])
+    assert row["api_token"] == token
+
+    patched = await client.patch(
+        f"/api/v1/users/{user['id']}",
+        headers=admin,
+        json={"display_name": "回显用户改名", "version": user["version"]},
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["api_token"] == token
+
+    # 二次读取仍稳定回显（可反复复制，绝不要求重新生成）。
+    listed_again = await client.get("/api/v1/users?page_size=200", headers=admin)
+    row_again = next(i for i in listed_again.json()["items"] if i["id"] == user["id"])
+    assert row_again["api_token"] == token
+
+
+@pytest.mark.asyncio
+async def test_legacy_hash_only_token_backfilled_and_echoed_after_use(client: AsyncClient) -> None:
+    """懒迁移：只有哈希的旧数据初次读取回显 None，令牌成功调用一次后自动回写密文并持续回显。"""
+    admin = await auth_headers(client, "admin")
+    created = await client.post(
+        "/api/v1/users",
+        headers=admin,
+        json={
+            "username": "legacy-user",
+            "password": "123456",
+            "display_name": "旧数据用户",
+            "role": "READ_ONLY",
+            "enabled": True,
+        },
+    )
+    user = created.json()
+    token = user["api_token"]
+    assert token is not None
+
+    # 抹掉密文，模拟升级到「可回显」版本之前、库里只有哈希的历史用户。
+    await _clear_api_token_enc(user["id"])
+
+    listed = await client.get("/api/v1/users?page_size=200", headers=admin)
+    row = next(i for i in listed.json()["items"] if i["id"] == user["id"])
+    assert row["api_token"] is None  # 旧数据尚未加密，读取降级为 None，不报错
+
+    # 令牌成功用于一次接口调用（认证走哈希查找）。
+    authed = await client.get("/api/v1/auth/me", headers={"X-API-Token": token})
+    assert authed.status_code == 200, authed.text
+    assert authed.json()["username"] == "legacy-user"
+
+    # 认证路径已把明文加密回写，此后无需重新生成即可回显。
+    async with SessionLocal() as session:
+        item = await session.get(User, user["id"])
+        assert item is not None and item.api_token_enc != ""
+    after = await client.get("/api/v1/users?page_size=200", headers=admin)
+    row_after = next(i for i in after.json()["items"] if i["id"] == user["id"])
+    assert row_after["api_token"] == token

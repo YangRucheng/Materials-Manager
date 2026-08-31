@@ -331,6 +331,8 @@ class McpTokenAuthMiddleware:
 
         async with SessionLocal() as session:
             user = await find_user_by_api_token(session, token)
+            # 持久化懒迁移回写的令牌密文（见 permissions.find_user_by_api_token）
+            await session.commit()
         if user is None or not user.enabled:
             await _send_auth_error(send, "MCP 接口令牌无效或用户已停用")
             return

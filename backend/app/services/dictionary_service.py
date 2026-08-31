@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
-from app.core.security import hash_password
+from app.core.security import decrypt_secret, encrypt_secret, hash_password
 from app.models import User
 from app.schemas import UserCreate, UserUpdate
 from app.services.common import validate_version
@@ -20,11 +20,22 @@ def _hash_api_token(token: str) -> str:
 
 
 def _issue_api_token(item: User) -> str:
-    """生成新令牌：库中只存哈希，明文挂到对象上一次性返回。"""
+    """生成新令牌：库中存哈希（认证查找）+ Fernet 密文（可逆回显），明文挂到对象上回显。"""
     token = str(uuid4())
     item.api_token_hash = _hash_api_token(token)
+    item.api_token_enc = encrypt_secret(token)
     item.api_token = token
     return token
+
+
+def _echo_api_token(item: User) -> None:
+    """读取路径解密回显已保存的令牌（AGENTS.md「回显约定」）。
+
+    兼容旧数据：升级前只有哈希、尚无密文的用户回显 None；其令牌下次成功用于
+    接口调用时会在认证路径自动回写密文（见 core.permissions），此后持续回显。
+    密钥轮换导致解密失败时同样降级为 None，不报错、不泄露。
+    """
+    item.api_token = decrypt_secret(item.api_token_enc)
 
 
 async def _paged(
@@ -54,6 +65,8 @@ async def list_users(
             or_(User.username.like(f"%{keyword}%"), User.display_name.like(f"%{keyword}%"))
         )
     items, total = await _paged(session, query, User, page, page_size)
+    for item in items:
+        _echo_api_token(item)
     return items, total
 
 
@@ -90,6 +103,7 @@ async def update_user(session: AsyncSession, item_id: int, data: UserUpdate) -> 
         await session.flush()
     except IntegrityError as exc:
         raise AppError("DUPLICATE_USERNAME", "用户名已存在", status_code=409) from exc
+    _echo_api_token(item)
     return item
 
 

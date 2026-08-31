@@ -1,3 +1,5 @@
+import base64
+import hashlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
@@ -5,10 +7,39 @@ from uuid import uuid4
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
 
 password_hasher = PasswordHasher()
+
+
+def fernet() -> Fernet:
+    """用于加密敏感凭证 / 配置的 Fernet 实例。
+
+    优先使用独立的 APP_FERNET_KEY；未配置时回退到由 jwt_secret 派生的密钥
+    （两者都经 SHA-256 固定为 32 字节），保证既有已加密数据可继续解密。
+    """
+    if settings.fernet_key:
+        digest = hashlib.sha256(settings.fernet_key.encode("utf-8")).digest()
+    else:
+        digest = hashlib.sha256(settings.jwt_secret.encode("utf-8")).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def encrypt_secret(value: str) -> str:
+    """加密敏感凭证（接口令牌 / API Key 等）用于落库。"""
+    return fernet().encrypt(value.encode("utf-8")).decode("ascii")
+
+
+def decrypt_secret(value: str | None) -> str | None:
+    """解密敏感凭证；空值或解密失败（如密钥轮换）时返回 None，供读取路径优雅降级。"""
+    if not value:
+        return None
+    try:
+        return fernet().decrypt(value.encode("ascii")).decode("utf-8")
+    except InvalidToken:
+        return None
 
 
 def hash_password(password: str) -> str:

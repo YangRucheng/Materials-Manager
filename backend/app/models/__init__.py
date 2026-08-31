@@ -78,11 +78,15 @@ class User(Base):
     id: Mapped[int] = mapped_column(BIGINT_ID, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    # 接口令牌只存 SHA-256 哈希，明文仅在建/重新生成时返回一次（见 dictionary_service）。
+    # 接口令牌双列存储（AGENTS.md「回显约定」）：哈希用于认证快速查找（不可逆），
+    # Fernet 密文用于可逆还原，读取接口每次解密回显，避免用户反复重新生成令牌。
     api_token_hash: Mapped[str] = mapped_column(
         String(64), unique=True, nullable=False, default=lambda: _hash_api_token(str(uuid4()))
     )
-    # 非持久化字段：仅承载最近一次生成/重新生成的明文令牌，用于一次性返回。
+    api_token_enc: Mapped[str] = mapped_column(
+        String(512), nullable=False, default="", server_default=""
+    )
+    # 非持久化字段：承载刚生成或读取时解密出的明文令牌，用于 DTO 回显。
     api_token: str | None = None
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     role: Mapped[Role] = mapped_column(SAEnum(Role), nullable=False)

@@ -56,7 +56,9 @@ async def test_permanent_api_token_authenticates_from_supported_headers(
     warehouse_id = next(
         item["id"] for item in users.json()["items"] if item["username"] == "warehouse"
     )
-    # 令牌只在重新生成接口一次性返回（库中只存哈希）。
+    # 种子用户只存哈希、无密文（升级前旧数据），列表读取回显 None。
+    assert "api_token" not in admin_login.json()["user"]
+    assert all(item["api_token"] is None for item in users.json()["items"])
     regenerated = await client.post(
         f"/api/v1/users/{warehouse_id}/api-token/regenerate",
         headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
@@ -69,8 +71,6 @@ async def test_permanent_api_token_authenticates_from_supported_headers(
     parsed = UUID(api_token)
     assert parsed.version == 4
     assert str(parsed) == api_token
-    assert "api_token" not in admin_login.json()["user"]
-    assert all(item["api_token"] is None for item in users.json()["items"])
 
     for headers in (
         {"X-API-Token": api_token},
@@ -79,6 +79,14 @@ async def test_permanent_api_token_authenticates_from_supported_headers(
         response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 200, response.text
         assert response.json()["username"] == "warehouse"
+
+    # 重新生成后写入密文，列表读取即可解密持续回显，无需再次重新生成。
+    after = await client.get(
+        "/api/v1/users",
+        headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
+    )
+    warehouse_row = next(i for i in after.json()["items"] if i["id"] == warehouse_id)
+    assert warehouse_row["api_token"] == api_token
 
 
 @pytest.mark.asyncio

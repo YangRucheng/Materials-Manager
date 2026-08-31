@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `username` VARCHAR(64) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `api_token_hash` VARCHAR(64) NOT NULL,
+  `api_token_enc` VARCHAR(512) NOT NULL DEFAULT '',
   `display_name` VARCHAR(128) NOT NULL,
   `role` ENUM('SUPER_ADMIN', 'WAREHOUSE_ADMIN', 'PURCHASE_ADMIN', 'READ_ONLY') NOT NULL,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,

@@ -99,7 +99,7 @@ export interface Page<T> {
   total: number
 }
 
-/** 用户 + 接口令牌（后端 UserApiTokenRead；令牌明文仅在新建/重新生成时返回一次） */
+/** 用户 + 接口令牌（后端 UserApiTokenRead；令牌加密入库，读取接口每次解密回显，旧数据可能为 null） */
 export interface ManagedUser extends User {
   api_token: string | null
 }

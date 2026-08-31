@@ -226,7 +226,10 @@ function remove(row: ManagedUser) {
         ><n-form-item v-if="editing" label="接口令牌"
           ><n-input-group>
             <n-input
-              :value="editing.api_token ?? '（库中只存哈希，请重新生成后再复制新令牌）'"
+              :value="
+                editing.api_token ??
+                '（旧版令牌将在其下次接口调用后自动回显；点击重新生成立即可见）'
+              "
               readonly
             />
             <n-button :disabled="!editing.api_token" @click="copyApiToken">复制令牌</n-button>
@@ -234,7 +237,7 @@ function remove(row: ManagedUser) {
           </n-input-group></n-form-item
         ><n-form-item v-if="editing" label="MCP 地址"
           ><n-input-group>
-            <n-input :value="mcpUrl || '（重新生成令牌后可复制 MCP 地址）'" readonly />
+            <n-input :value="mcpUrl || '（接口令牌回显后可复制 MCP 地址）'" readonly />
             <n-button type="primary" secondary :disabled="!mcpUrl" @click="copyMcpUrl"
               >复制地址</n-button
             >
