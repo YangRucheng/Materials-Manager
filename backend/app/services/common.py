@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import hashlib
 import re
 import unicodedata
@@ -9,31 +8,19 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from cryptography.fernet import Fernet
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement, SQLColumnExpression
 
-from app.core.config import settings
 from app.core.errors import AppError, version_conflict
+from app.core.security import (
+    fernet,  # noqa: F401  # 转发：保持既有 from app.services.common import fernet 可用
+)
 from app.domain.enums import SourceType
 from app.models import BusinessEventLog, FileObject, StockOperation
 from app.schemas import FileObjectRead, Page
 
 SearchableColumn = SQLColumnExpression[Any]
-
-
-def fernet() -> Fernet:
-    """用于加密敏感配置的 Fernet 实例。
-
-    优先使用独立的 APP_FERNET_KEY；未配置时回退到由 jwt_secret 派生的密钥
-    （两者都经 SHA-256 固定为 32 字节），保证既有已加密数据可继续解密。
-    """
-    if settings.fernet_key:
-        digest = hashlib.sha256(settings.fernet_key.encode("utf-8")).digest()
-    else:
-        digest = hashlib.sha256(settings.jwt_secret.encode("utf-8")).digest()
-    return Fernet(base64.urlsafe_b64encode(digest))
 
 
 def operation_source_type(item: StockOperation) -> SourceType:

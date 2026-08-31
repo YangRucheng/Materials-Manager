@@ -125,8 +125,15 @@ class UserRead(ReadModel):
 
 
 class UserApiTokenRead(UserRead):
-    # 令牌明文仅在新建/重新生成接口中返回一次；列表读取为 None（库中只存哈希）。
-    api_token: ApiToken | None = None
+    # 接口令牌以 Fernet 密文入库（api_token_enc），读取接口每次解密回显，避免反复重新生成。
+    # 仅存哈希的旧数据在令牌下次成功用于接口调用时自动回写密文，在此之前为 None。
+    api_token: ApiToken | None = Field(
+        default=None,
+        description=(
+            "当前生效接口令牌的解密回显（加密入库，每次读取返回，令牌可多处复用无需反复重置）。"
+            "仅存哈希的旧数据首次读取可能为空，待该令牌用于一次接口调用后自动加密回写即可持续回显。"
+        ),
+    )
 
 
 class LoginRequest(RequestModel):

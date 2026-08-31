@@ -46,9 +46,9 @@ npm run build             # 类型检查 + 生产构建
 
 > 原则：**凭证可以加密（或哈希）入库，但界面必须每次都回显已保存的值，避免每次重新生成 / 重置。**
 
-- **存储**：接口令牌、API Key 等敏感凭证不得明文落库，须加密（如 Fernet 对称加密，参考 `backend/app/services/ai_search_service.py` 的 `_encrypt_api_key` / `_decrypt_api_key`，密文存 `*_encrypted` 字段）或哈希（如用户接口令牌 SHA-256，参考 `backend/app/models/__init__.py`）后存储。
+- **存储**：接口令牌、API Key 等敏感凭证不得明文落库，须加密（如 Fernet 对称加密，参考 `backend/app/services/ai_search_service.py` 的 `_encrypt_api_key` / `_decrypt_api_key`，密文存 `*_encrypted` 字段）或哈希后存储；需要界面回显的凭证必须**加密**（可逆）入库，哈希仅用于纯认证查找。
 - **回显**：读取接口必须解密回显明文凭证，前端每次进入页面都能看到已保存的值（如 AI 搜索配置读取时 `api_key` 字段始终回显，用户无需每次重置）。**禁止**让界面出现「库中只存哈希，请重新生成后再复制」之类需要用户每次重新生成 / 输入的提示。
-- **历史特例**：用户接口令牌（`api_token_hash`）目前按「明文仅在建/重新生成时返回一次」设计，与上述约定不符；凡涉及该令牌的界面回显需求，一律按本约定改造为可回显，而不是继续提示重置。
+- **用户接口令牌（已按约定改造）**：`user` 表双列存储——`api_token_hash`（SHA-256，认证快速查找）+ `api_token_enc`（Fernet 密文，可逆回显）；`/users` 读取与 PATCH 每次解密回显（见 `dictionary_service._echo_api_token`）。仅存哈希的历史数据在令牌下次成功用于接口调用时由认证路径自动加密回写（见 `core.permissions.find_user_by_api_token`），此后持续回显，无需用户重新生成。
 - **涉及此类存储 / 回显改动时**：同步更新 `docs/openapi.yaml` 契约并重新生成前端类型（`pnpm generate:api`），在 PR 描述中说明加解密与回显方案。
 
 ## 标准开发与发布工作流（必须遵守）
