@@ -1,0 +1,350 @@
+from __future__ import annotations
+
+from typing import Any
+
+import httpx
+import pytest
+from httpx import AsyncClient
+from pytest import MonkeyPatch
+from sqlalchemy import select
+
+from app.core.database import SessionLocal
+from app.models import BusinessEventLog, SystemSetting
+from app.services import ai_search_service
+from tests.conftest import auth_headers
+from tests.integration.test_procurement import create_purchase_plan, move_to_record
+
+
+class FakeResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        return {
+            "choices": [
+                {"message": {"content": '{"expansions":[["电机","电动机"]]}'}}
+            ]
+        }
+
+
+class FakeAiClient:
+    async def post(self, *_args: object, **_kwargs: object) -> FakeResponse:
+        return FakeResponse()
+
+    async def aclose(self) -> None:
+        return None
+
+
+class TimeoutAiClient:
+    async def post(self, *_args: object, **_kwargs: object) -> FakeResponse:
+        request = httpx.Request("POST", "https://example.test/v1/chat/completions")
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    async def aclose(self) -> None:
+        return None
+
+
+class GlmResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "reasoning_content": "需要为电机补充常用规范名称。",
+                        "content": '输出如下：\n{"expansions":["电机","电动机"]}',
+                    }
+                }
+            ]
+        }
+
+
+class GlmAiClient:
+    request_json: dict[str, Any] | None = None
+
+    async def post(self, *_args: object, **kwargs: object) -> GlmResponse:
+        self.request_json = kwargs.get("json") if isinstance(kwargs.get("json"), dict) else None
+        return GlmResponse()
+
+    async def aclose(self) -> None:
+        return None
+
+
+@pytest.mark.asyncio
+async def test_super_admin_configures_ai_search_and_key_is_returned_but_encrypted_at_rest(
+    client: AsyncClient,
+) -> None:
+    admin = await auth_headers(client, "admin")
+    purchase = await auth_headers(client, "purchase")
+
+    forbidden = await client.get("/api/v1/ai-search/settings", headers=purchase)
+    assert forbidden.status_code == 403
+    default_image_settings = await client.get(
+        "/api/v1/system-settings/image-acceleration"
+    )
+    assert default_image_settings.status_code == 200
+    assert default_image_settings.json() == {"image_acceleration_server_url": ""}
+
+    saved = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "https://example.test/v1/",
+            "api_key": "secret-key",
+            "model": "fast-model",
+            "enabled": True,
+            "mini_program_code_env": "trial",
+            "mini_program_code_app_id": "wx-test-secondary",
+            "mini_program_registration_enabled": False,
+            "mini_program_new_user_enabled": False,
+            "image_acceleration_server_url": "http://192.168.1.10/",
+            "version": 0,
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json() == {
+        "endpoint": "https://example.test/v1",
+        "api_key": "secret-key",
+        "model": "fast-model",
+        "enabled": True,
+        "mini_program_code_env": "trial",
+        "mini_program_code_app_id": "wx-test-secondary",
+        "mini_program_app_ids": ["wx-test-primary", "wx-test-secondary"],
+        "mini_program_registration_enabled": False,
+        "mini_program_new_user_enabled": False,
+        "image_acceleration_server_url": "http://192.168.1.10",
+        "inventory_mode": "read_write",
+        "huaxing_inventory_mode": "query_only",
+        "purchase_plans_mode": "query_only",
+        "purchase_records_mode": "query_only",
+        "material_codes_mode": "query_only",
+        "secondary_warehouse_mode": "full",
+        "updated_at": saved.json()["updated_at"],
+        "version": 1,
+    }
+    assert "secret-key" in saved.text
+
+    loaded = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert loaded.status_code == 200, loaded.text
+    assert loaded.json()["api_key"] == "secret-key"
+    image_settings = await client.get("/api/v1/system-settings/image-acceleration")
+    assert image_settings.status_code == 200
+    assert image_settings.json() == {
+        "image_acceleration_server_url": "http://192.168.1.10"
+    }
+
+    status = await client.get("/api/v1/ai-search/status", headers=purchase)
+    assert status.status_code == 200
+    assert status.json() == {"available": True}
+
+    async with SessionLocal() as session:
+        event = await session.scalar(
+            select(BusinessEventLog).where(
+                BusinessEventLog.action == "AI_SEARCH_CONFIG_UPDATED"
+            )
+        )
+        assert event is not None
+        assert event.after_data is not None
+        encrypted = event.after_data["api_key_encrypted"]
+        assert encrypted != "secret-key"
+        assert "secret-key" not in str(encrypted)
+        assert event.after_data["mini_program_code_env"] == "trial"
+        assert event.after_data["mini_program_code_app_id"] == "wx-test-secondary"
+        assert event.after_data["mini_program_registration_enabled"] is False
+        assert event.after_data["mini_program_new_user_enabled"] is False
+        assert event.after_data["image_acceleration_server_url"] == "http://192.168.1.10"
+
+
+@pytest.mark.asyncio
+async def test_ai_expansion_applies_to_plans_and_records(
+    client: AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    admin = await auth_headers(client, "admin")
+    purchase = await auth_headers(client, "purchase")
+    monkeypatch.setattr(ai_search_service, "_client", FakeAiClient())
+
+    configured = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "https://example.test/v1",
+            "api_key": "secret-key",
+            "model": "fast-model",
+            "enabled": True,
+            "mini_program_code_env": "release",
+            "version": 0,
+        },
+    )
+    assert configured.status_code == 200, configured.text
+
+    expanded = await client.post(
+        "/api/v1/ai-search/expand",
+        headers=purchase,
+        json={"value": "电机"},
+    )
+    assert expanded.status_code == 200, expanded.text
+    assert expanded.json() == {"original": "电机", "expanded": "电机|电动机"}
+
+    motor = await create_purchase_plan(client, purchase, "电机", code="AI-001")
+    electric_motor = await create_purchase_plan(client, purchase, "电动机", code="AI-002")
+
+    normal = await client.get(
+        "/api/v1/purchase-materials", headers=purchase, params={"name": "电机"}
+    )
+    empowered = await client.get(
+        "/api/v1/purchase-materials",
+        headers=purchase,
+        params={"name": "电机", "ai_expand": True},
+    )
+    assert {item["id"] for item in normal.json()["items"]} == {motor["id"]}
+    assert {item["id"] for item in empowered.json()["items"]} == {
+        motor["id"],
+        electric_motor["id"],
+    }
+
+    first_record = await move_to_record(client, purchase, int(motor["id"]), "AI-R-001")
+    second_record = await move_to_record(
+        client, purchase, int(electric_motor["id"]), "AI-R-002"
+    )
+    records = await client.get(
+        "/api/v1/purchase-records",
+        headers=purchase,
+        params={"name": "电机", "ai_expand": True},
+    )
+    assert {item["line_id"] for item in records.json()["items"]} == {
+        first_record["line_id"],
+        second_record["line_id"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_ai_response_timeout_returns_specific_bad_request(
+    client: AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    admin = await auth_headers(client, "admin")
+    monkeypatch.setattr(ai_search_service, "_client", TimeoutAiClient())
+
+    response = await client.post(
+        "/api/v1/ai-search/settings/test",
+        headers=admin,
+        json={
+            "endpoint": "https://example.test/v1",
+            "api_key": "secret-key",
+            "model": "slow-model",
+        },
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()["code"] == "AI_RESPONSE_TIMEOUT"
+    assert "等待上游响应数据阶段" in response.json()["message"]
+    assert "slow-model" in response.json()["message"]
+    assert "https://example.test/v1/chat/completions" in response.json()["message"]
+    assert response.json()["details"]["phase"] == "response_wait"
+    assert response.json()["details"]["timeout_seconds"] == 30.0
+
+
+@pytest.mark.asyncio
+async def test_glm_models_disable_thinking_and_request_json_output(
+    client: AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    admin = await auth_headers(client, "admin")
+    glm_client = GlmAiClient()
+    monkeypatch.setattr(ai_search_service, "_client", glm_client)
+
+    response = await client.post(
+        "/api/v1/ai-search/settings/test",
+        headers=admin,
+        json={
+            "endpoint": "https://open.bigmodel.cn/api/paas/v4",
+            "api_key": "secret-key",
+            "model": "glm-4.7-flash",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["expanded"] == "电机|电动机"
+    assert glm_client.request_json is not None
+    assert glm_client.request_json["thinking"] == {"type": "disabled"}
+    assert glm_client.request_json["response_format"] == {"type": "json_object"}
+    assert glm_client.request_json["stream"] is False
+    assert glm_client.request_json["messages"][0]["role"] == "system"
+    assert "仅包含 1 个子数组" in glm_client.request_json["messages"][0]["content"]
+    assert glm_client.request_json["messages"][1] == {
+        "role": "user",
+        "content": '{"input_terms": ["电机"]}',
+    }
+    settings = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert settings.status_code == 200
+    assert settings.json()["version"] == 0
+
+
+@pytest.mark.asyncio
+async def test_setting_migrates_from_event_log_to_system_setting_table(
+    client: AsyncClient,
+) -> None:
+    """旧部署配置存于 business_event_log；system_setting 空时回退读取，更新时迁移到新表。"""
+    admin = await auth_headers(client, "admin")
+    # 模拟旧部署：只写事件日志，不写 system_setting。
+    async with SessionLocal() as session:
+        session.add(
+            BusinessEventLog(
+                business_type="SYSTEM_SETTING",
+                business_id=1,
+                action="AI_SEARCH_CONFIG_UPDATED",
+                occurred_at=ai_search_service.utcnow(),
+                after_data={
+                    "endpoint": "https://legacy.test/v1",
+                    "api_key_encrypted": (
+                        ai_search_service._encrypt_api_key("legacy-key")
+                    ),
+                    "model": "legacy-model",
+                    "enabled": True,
+                    "mini_program_code_env": "release",
+                    "mini_program_code_app_id": "wx-test-secondary",
+                    "mini_program_registration_enabled": True,
+                    "mini_program_new_user_enabled": True,
+                    "image_acceleration_server_url": "",
+                    "inventory_mode": "read_write",
+                    "huaxing_inventory_mode": "query_only",
+                    "purchase_plans_mode": "query_only",
+                    "purchase_records_mode": "query_only",
+                    "material_codes_mode": "query_only",
+                },
+            )
+        )
+        await session.commit()
+
+    loaded = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert loaded.status_code == 200, loaded.text
+    assert loaded.json()["endpoint"] == "https://legacy.test/v1"
+    assert loaded.json()["api_key"] == "legacy-key"
+    legacy_version = loaded.json()["version"]
+
+    saved = await client.put(
+        "/api/v1/ai-search/settings",
+        headers=admin,
+        json={
+            "endpoint": "https://new.test/v1/",
+            "api_key": "new-key",
+            "model": "new-model",
+            "enabled": True,
+            "mini_program_code_env": "release",
+            "mini_program_code_app_id": "wx-test-secondary",
+            "version": legacy_version,
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["endpoint"] == "https://new.test/v1"
+    assert saved.json()["version"] == legacy_version + 1
+
+    async with SessionLocal() as session:
+        row = await session.get(SystemSetting, "ai_search_config")
+        assert row is not None
+        assert row.setting_value["endpoint"] == "https://new.test/v1"
+        assert row.setting_value["api_key_encrypted"] != "new-key"
+        assert row.version == legacy_version + 1
+
+    reloaded = await client.get("/api/v1/ai-search/settings", headers=admin)
+    assert reloaded.status_code == 200, reloaded.text
+    assert reloaded.json()["endpoint"] == "https://new.test/v1"
+    assert reloaded.json()["api_key"] == "new-key"

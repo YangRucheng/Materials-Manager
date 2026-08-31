@@ -1,14 +1,14 @@
 /**
  * 前端 API 契约类型层。
  *
- * 单一事实源：docs/openapi.yaml。
+ * 单一事实源：docs/openapi.yaml（由后端 export_openapi.py 导出）。
  * 自动生成：generated.raw.ts 由 openapi-typescript 从 openapi.yaml 生成（勿手改）。
  * 本文件：类型别名 + 前端自建视图模型。
  *  - 能一一映射到 openapi schema 的类型，直接 `export type X = components['schemas']['X']`，
  *    后端改契约后重新生成即自动同步。
  *  - 前端自建的视图模型 / 泛型 / Literal（openapi 中无对应 schema）保留手写定义。
  *
- * 生成命令：npm run generate:api（openapi-typescript ../docs/openapi.yaml -o src/api/generated.raw.ts）
+ * 生成命令：npm run generate:api（先 cd backend && python scripts/export_openapi.py 同步 yaml）
  */
 import type { components } from './generated.raw'
 

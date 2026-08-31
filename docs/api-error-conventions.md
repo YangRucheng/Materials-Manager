@@ -79,14 +79,14 @@
 | 401 | 未认证或凭证无效 | `INVALID_TOKEN`、`UNAUTHORIZED` |
 | 403 | 权限不足 / 账号禁用 | `FORBIDDEN`、`ACCOUNT_DISABLED` |
 | 409 | 版本冲突 / 数据约束冲突 | `VERSION_CONFLICT`、`DATA_CONFLICT`、`INVALID_STATUS_TRANSITION` |
-| 422 | 请求参数校验失败 | 请求体字段不合法（绑定校验） |
+| 422 | 请求参数校验失败 | 请求体字段不合法（Pydantic 校验） |
 | 429 | 上游限流透传 | `AI_RATE_LIMITED` |
 | 500 | 服务内部错误 | `INTERNAL_SERVER_ERROR`、`DATABASE_QUERY_ERROR` |
 | 502 / 503 | 上游不可用 / 服务不可用 | `AI_UPSTREAM_FAILED`、`DATABASE_UNAVAILABLE` |
 
 ## 代码实现位置
 
-- 后端错误码 → 默认状态码映射：`server/internal/errors`（`AppError`、`StatusForCode`）
-- 业务错误全局处理：`server/internal/respond`（`respond.Error`）
-- 框架级 404 重映射：`server/internal/router`（`ROUTE_NOT_FOUND`）
+- 后端错误码 → 默认状态码映射：`backend/app/core/errors.py`
+- 业务错误全局处理：`backend/app/main.py`（`handle_app_error`）
+- 框架级 404 重映射：`backend/app/main.py`（`handle_http_exception`）
 - 前端 mock 与后端保持一致的映射：`frontend/src/mocks/handlers.ts`（`DEFAULT_STATUS_BY_CODE`）
