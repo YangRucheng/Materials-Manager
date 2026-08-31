@@ -5,6 +5,8 @@ ARG GIT_SHA
 RUN apk add --no-cache gcc musl-dev libwebp-dev
 WORKDIR /src
 COPY go.mod go.sum ./
+# 本地 replace 目标（third_party/extrame-xls）必须先于 go mod download 存在。
+COPY third_party ./third_party
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags "-s -w" \
