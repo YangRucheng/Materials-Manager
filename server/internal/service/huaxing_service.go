@@ -202,12 +202,45 @@ func cellQuantity(value any, rowNumber int) (*decimal.Decimal, *apperrors.AppErr
 	if text == "" {
 		return nil, nil
 	}
-	dec, err := decimal.NewFromString(text)
+	dec, err := decimal.NewFromString(normalizeNumberText(text))
 	if err != nil {
+		// 报错携带原始值：单元格经 reader 渲染后的实际内容，便于远程定位（华星 job#14 教训）。
 		return nil, apperrors.New("HUAXING_IMPORT_INVALID_QUANTITY",
-			fmt.Sprintf("第 %d 行数量不是有效数值", rowNumber), 0, map[string]any{"row": rowNumber})
+			fmt.Sprintf("第 %d 行数量 %q 不是有效数值", rowNumber, text), 0,
+			map[string]any{"row": rowNumber, "value": text})
 	}
 	return &dec, nil
+}
+
+// normalizeNumberText 清洗表格单元格中的数字显示文本：
+// 去掉千分位逗号（半角/全角）与内部空白，全角数字/小数点/正负号转半角，
+// 会计负数括号 "(1,234)" 转 "-1234"。仅影响原本会解析失败的值，不改变既有语义。
+func normalizeNumberText(text string) string {
+	s := strings.Map(func(r rune) rune {
+		switch {
+		case r == ',' || r == '，':
+			return -1
+		case r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\u00a0' || r == '\u3000':
+			return -1
+		case r >= '０' && r <= '９':
+			return r - '０' + '0'
+		case r == '．':
+			return '.'
+		case r == '＋':
+			return '+'
+		case r == '－':
+			return '-'
+		case r == '（':
+			return '('
+		case r == '）':
+			return ')'
+		}
+		return r
+	}, text)
+	if len(s) > 2 && strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
+		return "-" + s[1:len(s)-1]
+	}
+	return s
 }
 
 // ProcessHuaXingImport 解析 + 全字段去重 + 全量替换。

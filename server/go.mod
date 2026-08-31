@@ -68,9 +68,11 @@ require (
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
-	gorm.io/driver/sqlite v1.6.0 // indirect
 	modernc.org/libc v1.22.5 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
+
+// 华星库存 .xls 导入回归修复：使用仓内打过补丁的 extrame/xls（见 third_party/extrame-xls/README.md）。
+replace github.com/extrame/xls => ./third_party/extrame-xls
